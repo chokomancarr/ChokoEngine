@@ -71,6 +71,8 @@ void Engine::Init() {
 		cerr << "Default Shader link error" << endl << &program_log[0] << endl;
 		return;
 	}
+	glDetachShader(unlitProgram, vertex_shader);
+	glDetachShader(unlitProgram, fragment_shader);
 
 	unlitProgramA = glCreateProgram();
 	glAttachShader(unlitProgramA, vertex_shader);
@@ -90,6 +92,8 @@ void Engine::Init() {
 		cerr << "Default Shader (Alpha) link error" << endl << &program_log[0] << endl;
 		return;
 	}
+	glDetachShader(unlitProgramA, vertex_shader);
+	glDetachShader(unlitProgramA, fragment_shaderA);
 
 	unlitProgramC = glCreateProgram();
 	glAttachShader(unlitProgramC, vertex_shader);
@@ -109,6 +113,10 @@ void Engine::Init() {
 		cerr << "Default Shader (Alpha) link error" << endl << &program_log[0] << endl;
 		return;
 	}
+	glDetachShader(unlitProgramC, vertex_shader);
+	glDeleteShader(vertex_shader);
+	glDetachShader(unlitProgramC, fragment_shaderC);
+	glDeleteShader(fragment_shader);
 	//defaultFont = &Font("F:\\ascii 2.font");
 }
 float Dw(float f) {
@@ -253,6 +261,63 @@ byte Engine::Button(float x, float y, float w, float h, Color normalColor, Color
 	return b;
 }
 
+byte Engine::EButton(bool a, float x, float y, float w, float h, Color normalColor) {
+	return EButton(a, x, y, w, h, normalColor, LerpColor(normalColor, white(), 0.5f), LerpColor(normalColor, black(), 0.5f));
+}
+byte Engine::EButton(bool a, float x, float y, float w, float h, Color normalColor, Color highlightColor, Color pressColor) {
+	if (a) {
+		bool inside = Rect(x, y, w, h).Inside(Input::mousePos);
+		switch (Input::mouse0State) {
+		case 0:
+		case MOUSE_UP:
+			DrawQuad(x, y, w, h, inside ? highlightColor : normalColor);
+			break;
+		case MOUSE_DOWN:
+		case MOUSE_HOLD:
+			DrawQuad(x, y, w, h, inside ? pressColor : normalColor);
+			break;
+		}
+		return inside ? (MOUSE_HOVER_FLAG | Input::mouse0State) : 0;
+	}
+	else {
+		DrawQuad(x, y, w, h, normalColor);
+		return false;
+	}
+}
+byte Engine::EButton(bool a, float x, float y, float w, float h, Color normalColor, string label, float labelSize, Font* labelFont, Color labelColor) {
+	return EButton(a, x, y, w, h, normalColor, LerpColor(normalColor, white(), 0.5f), LerpColor(normalColor, black(), 0.5f), label, labelSize, labelFont, labelColor);
+}
+byte Engine::EButton(bool a, float x, float y, float w, float h, Texture* texture, Color normalColor, Color highlightColor, Color pressColor) {
+	if (a) {
+	bool inside = Rect(x, y, w, h).Inside(Input::mousePos);
+	if (texture->loaded) {
+		switch (Input::mouse0State) {
+		case 0:
+		case MOUSE_UP:
+			DrawQuad(x, y, w, h, texture->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, inside ? highlightColor : normalColor);
+			break;
+		case MOUSE_DOWN:
+		case MOUSE_HOLD:
+			DrawQuad(x, y, w, h, texture->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, inside ? pressColor : normalColor);
+			break;
+		}
+	}
+	return inside ? (MOUSE_HOVER_FLAG | Input::mouse0State) : 0;
+	}
+	else {
+		DrawQuad(x, y, w, h, normalColor);
+		return false;
+	}
+}
+byte Engine::EButton(bool a, float x, float y, float w, float h, Color normalColor, Color highlightColor, Color pressColor, string label, float labelSize, Font* labelFont, Color labelColor) {
+	byte b = EButton(a, x, y, w, h, normalColor, LerpColor(normalColor, white(), 0.5f), LerpColor(normalColor, black(), 0.5f));
+	ALIGNMENT al = labelFont->alignment;
+	labelFont->alignment = ALIGN_MIDCENTER;
+	Label(x + 0.5f*w, y + 0.5f*h, labelSize, label, labelFont);
+	labelFont->alignment = al;
+	return b;
+}
+
 void Engine::RotateUI(float aa, Vec2 point) {
 	float a = 3.1415926535f*aa / 180.0f;
 	//Display::uiMatrix = glm::mat3(1, 0, 0, 0, 1, 0, point2.x * 2 - 1, point2.y * 2 - 1, 1)*glm::mat3(cos(a), -sin(a), 0, sin(a), cos(a), 0, 0, 0, 1)*glm::mat3(1, 0, 0, 0, 1, 0, -point2.x * 2 + 1, -point2.y * 2 + 1, 1)*Display::uiMatrix;
@@ -369,6 +434,21 @@ void Engine::DrawQuad(float x, float y, float w, float h, GLuint texture, Vec2 u
 	//glDisable(GL_DEPTH_TEST);
 }
 
+void Engine::DrawIndices(const Vec3* poss, const int* is, int length, float r, float g, float b) {
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(3, GL_FLOAT, 0, poss);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glColor4f(r, g, b, 1);
+	glDrawElements(GL_TRIANGLES, length, GL_UNSIGNED_INT, is);
+	glDisableClientState(GL_VERTEX_ARRAY);
+}
+void Engine::DrawIndicesI(const Vec3* poss, const int* is, int length, float r, float g, float b) {
+	glVertexPointer(3, GL_FLOAT, 0, poss);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glColor4f(r, g, b, 1);
+	glDrawElements(GL_TRIANGLES, length, GL_UNSIGNED_INT, is);
+}
+
 void Engine::DrawLine(Vec2 v1, Vec2 v2, Color col, float width) {
 	DrawLine(Vec3(v1.x, v1.y, 1), Vec3(v2.x, v2.y, 1), col, width);
 }
@@ -389,6 +469,19 @@ void Engine::DrawLine(Vec3 v1, Vec3 v2, Color col, float width) {
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	glDrawElements(GL_LINES, 2, GL_UNSIGNED_INT, &quadIndexes[0]);
 	//glDisableVertexAttribArray(0);
+	glDisableClientState(GL_VERTEX_ARRAY);
+}
+void Engine::DrawLineW(Vec3 v1, Vec3 v2, Color col, float width) {
+	Vec3 quadPoss[2];
+	quadPoss[0] = v1;
+	quadPoss[1] = v2;
+	uint quadIndexes[4] = { 0, 1 };
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
+	glColor4f(col.r, col.g, col.b, col.a);
+	glLineWidth(width);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	glDrawElements(GL_LINES, 2, GL_UNSIGNED_INT, &quadIndexes[0]);
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
@@ -462,6 +555,12 @@ void IO::GetFolders(const string& folder, vector<string>* names)
 		} while (::FindNextFile(hFind, &fd));
 		::FindClose(hFind);
 	}
+}
+
+bool IO::HasDirectory (LPCTSTR szPath)
+{
+	DWORD dwAttrib = GetFileAttributes(szPath);
+	return (dwAttrib != INVALID_FILE_ATTRIBUTES && (dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
 }
 
 //-----------------time class---------------------

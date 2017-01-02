@@ -1,5 +1,6 @@
 #include "SceneObjects.h"
 #include "Engine.h"
+#include "Editor.h"
 
 
 MeshFilter::MeshFilter() : Component(COMP_MFT, false) {
@@ -14,7 +15,7 @@ Camera::Camera() : Component(COMP_CAM, true), ortographic(false), fov(60), ortho
 }
 
 void Camera::UpdateCamVerts() {
-	Vec3 cst = Vec3(sin(fov*0.5f * 3.14159265f / 180), cos(fov*0.5f * 3.14159265f / 180), tan(fov*0.5f * 3.14159265f / 180))*cos(fov*0.3f * 3.14159265f / 180);
+	Vec3 cst = Vec3(cos(fov*0.5f * 3.14159265f / 180), sin(fov*0.5f * 3.14159265f / 180), tan(fov*0.5f * 3.14159265f / 180))*cos(fov*0.618f * 3.14159265f / 180);
 	camVerts[1] = Vec3(cst.x, cst.y, 1 - cst.z) * 2.0f;
 	camVerts[2] = Vec3(-cst.x, cst.y, 1 - cst.z) * 2.0f;
 	camVerts[3] = Vec3(cst.x, -cst.y, 1 - cst.z) * 2.0f;
@@ -24,7 +25,6 @@ void Camera::UpdateCamVerts() {
 
 void Camera::DrawEditor() {
 	glEnableClientState(GL_VERTEX_ARRAY);
-	//glEnable(GL_DEPTH_TEST);
 	glVertexPointer(3, GL_FLOAT, 0, &camVerts[0]);
 	glLineWidth(1);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -33,6 +33,22 @@ void Camera::DrawEditor() {
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, &camVertsIds[16]);
 	glDisableClientState(GL_VERTEX_ARRAY);
+}
+
+void Camera::DrawInspector(Editor* e, Component* c, Color v, uint& pos) {
+	Camera* cam = (Camera*)c;
+	Engine::DrawQuad(v.r, v.g + pos, v.b, 16, grey2());
+	Engine::DrawTexture(v.r, v.g + pos, 16, 16, c->_expanded ? e->collapse : e->expand);
+	Engine::Label(v.r + 20, v.g + pos + 3, 12, "Camera", e->font, white());
+	if (c->_expanded) {
+		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Field of view", e->font, white());
+		Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos + 17, v.b*0.7f, 16, grey1());
+		Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 20, 12, to_string(cam->fov), e->font, white());
+
+
+		pos += 100;
+	}
+	else pos += 17;
 }
 
 SceneObject::SceneObject() : SceneObject(Vec3(), Quat(), Vec3(1, 1, 1)) {}
@@ -54,6 +70,7 @@ void SceneObject::Enable(bool enableAll) {
 
 Component* SceneObject::AddComponent(Component* c) {
 	_components.push_back(c);
+	c->object = this;
 	return c;
 }
 

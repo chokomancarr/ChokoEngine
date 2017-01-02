@@ -62,5 +62,8 @@
     <ClInclude Include="src\TestScript.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\MaterialBase.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

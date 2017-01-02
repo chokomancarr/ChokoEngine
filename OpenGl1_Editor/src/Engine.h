@@ -117,6 +117,7 @@ class IO {
 public:
 	static vector<EB_Browser_File> GetFiles(const string& path);
 	static void GetFolders(const string& path, vector<string>* names);
+	static bool HasDirectory(LPCTSTR szPath);
 };
 
 class Font {
@@ -190,6 +191,7 @@ public:
 	static void DrawTexture(float x, float y, float w, float h, Texture* texture, Color tint);
 	static void DrawLine(Vec2 v1, Vec2 v2, Color col, float width);
 	static void DrawLine(Vec3 v1, Vec3 v2, Color col, float width);
+	static void DrawLineW(Vec3 v1, Vec3 v2, Color col, float width);
 	static void Label(float x, float y, float s, string str, Font* texture);
 	static void Label(float x, float y, float s, string str, Font* texture, Color color);
 	static void Label(float x, float y, float s, string str, Font* texture, Color color, float maxw);
@@ -199,6 +201,11 @@ public:
 	static byte Button(float x, float y, float w, float h, Color normalColor, Color highlightColor, Color pressColor);
 	static byte Button(float x, float y, float w, float h, Texture* texture, Color normalColor, Color highlightColor, Color pressColor);
 	static byte Button(float x, float y, float w, float h, Color normalColor, Color highlightColor, Color pressColor, string label, float labelSize, Font* labelFont, Color labelColor);
+	static byte EButton(bool a, float x, float y, float w, float h, Color normalColor);
+	static byte EButton(bool a, float x, float y, float w, float h, Color normalColor, Color highlightColor, Color pressColor);
+	static byte EButton(bool a, float x, float y, float w, float h, Color normalColor, string label, float labelSize, Font* labelFont, Color labelColor);
+	static byte EButton(bool a, float x, float y, float w, float h, Texture* texture, Color normalColor, Color highlightColor, Color pressColor);
+	static byte EButton(bool a, float x, float y, float w, float h, Color normalColor, Color highlightColor, Color pressColor, string label, float labelSize, Font* labelFont, Color labelColor);
 
 	static void RotateUI(float a, Vec2 point);
 	static void ResetUIMatrix();
@@ -212,11 +219,11 @@ public:
 	static void DrawQuad(float x, float y, float w, float h, uint texture);
 	static void DrawQuad(float x, float y, float w, float h, Color color);
 	static void DrawQuad(float x, float y, float w, float h, uint texture, Vec2 uv0, Vec2 uv1, Vec2 uv2, Vec2 uv3, bool single, Color color);
+	static void DrawIndices(const Vec3* poss, const int* is, int length, float r, float g, float b);
+	static void DrawIndicesI(const Vec3* poss, const int* is, int length, float r, float g, float b);
 	static ulong idCounter;
 	static vector<Camera*> sceneCameras;
 };
-
-#include "SceneObjects.h"
 
 class Scene {
 public:
@@ -224,5 +231,9 @@ public:
 
 	vector<SceneObject*> objects;
 };
+
+class Editor;
+
+#include "SceneObjects.h"
 
 #endif

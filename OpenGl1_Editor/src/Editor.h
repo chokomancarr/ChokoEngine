@@ -15,13 +15,17 @@ using namespace std;
 #define EB_HEADER_SIZE 35
 #define EB_HEADER_PADDING 16
 
-class Editor;
+//class Editor;
 class EditorBlock;
 
 typedef unsigned char byte;
 typedef void(*shortcutFunc)(EditorBlock*);
+typedef pair<string, shortcutFunc> funcMap;
 typedef unordered_map<int, shortcutFunc> ShortcutMap;
+typedef unordered_map<int, funcMap[]> CommandsMap;
 int GetShortcutInt(byte c, int m);
+
+Color grey1(), grey2(), accent();
 
 class EditorBlock {
 public:
@@ -119,14 +123,18 @@ public:
 	}
 
 	float rz, rw, scale;
+	Vec3 arrowVerts[15];
+	static const int arrowIndexs[18];
 	glm::mat4 viewingMatrix;
 	bool persp;
 	Color arrowX, arrowY, arrowZ; 
 	Vec3 axesPos;
+	byte selectedTooltip, selectedShading;
 
 	void MakeMatrix();
 
 	void Draw();
+	void DrawTArrows(Vec3 pos, float size);
 	void Refresh() {}
 	void OnMouseM(Vec2 d);
 	void OnMouseScr(bool up);
@@ -147,6 +155,11 @@ public:
 	string name;
 };
 
+class I_EBI_ValueCollection {
+public:
+	vector<I_EBI_Value> vals;
+};
+
 template <class T>
 class EBI_Value : public I_EBI_Value {
 public:
@@ -156,10 +169,17 @@ public:
 
 class EBI_Asset {
 public:
-	EBI_Asset(string str, string nm);
+	//EBI_Asset(string str, string nm);
 
 	bool correct;
-	vector<I_EBI_Value*> vals;
+	vector<I_EBI_Value> vals;
+
+	virtual void Draw(Editor* e, EditorBlock* b, Color* v) = 0;
+};
+
+class EBIA_Shader : public EBI_Asset {
+public:
+	EBIA_Shader(string path);
 
 	void Draw(Editor* e, EditorBlock* b, Color* v);
 };
@@ -191,6 +211,8 @@ public:
 	//prefs
 	bool _mouseJump = true;
 
+	string projectFolder;
+
 	int activeX=-1, activeY=-1;
 	float amin, amax;
 	float dw, dh;
@@ -205,6 +227,7 @@ public:
 	int mouseOn = 0;
 	int mouseOnP = 0;
 	int scrW, scrH;
+	byte editorLayer;
 
 	int gridId[68];
 	Vec3 grid[64];
@@ -215,9 +238,10 @@ public:
 
 	string selectedFile = "";
 
-	byte selectedTooltip, selectedShading;
 	glm::mat4 viewMatrix;
 	bool persp;
+
+	//ShortcutMap globalShorts;
 
 	Texture* buttonX;
 	Texture* buttonExt; 
@@ -236,6 +260,9 @@ public:
 	void NewScene();
 	void UpdateLerpers();
 	void DrawHandles();
+
+	static bool GetCache(string& path, I_EBI_ValueCollection& vals);
+	static bool SetCache(string& path, I_EBI_ValueCollection& vals);
 };
 
 class xPossLerper {

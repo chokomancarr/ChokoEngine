@@ -56,25 +56,31 @@ void EB_Empty::Draw() {
 
 void EBH_DrawItem(SceneObject* sc, Editor* e, Color* v, int& i, int indent) {
 	int xo = indent * 20;
-	if (indent > 0) {
-		Engine::DrawLine(Vec2(xo - 10 + v->r, v->g + EB_HEADER_SIZE + 9 + 17 * i), Vec2(xo + v->r, v->g + EB_HEADER_SIZE + 10 + 17 * i), white(0.5f), 1);
-	}
-	if (Engine::Button(v->r + xo, v->g + EB_HEADER_SIZE + 1 + 17 * i, v->b - xo, 16, (e->selected == sc)? white(1, 0.5f) : grey2()) == MOUSE_RELEASE) {
+	//if (indent > 0) {
+	//	Engine::DrawLine(Vec2(xo - 10 + v->r, v->g + EB_HEADER_SIZE + 9 + 17 * i), Vec2(xo + v->r, v->g + EB_HEADER_SIZE + 10 + 17 * i), white(0.5f), 1);
+	//}
+	if (Engine::EButton((e->editorLayer == 0), v->r + xo + ((sc->childCount > 0) ? 16 : 0), v->g + EB_HEADER_SIZE + 1 + 17 * i, v->b - xo - ((sc->childCount > 0) ? 16 : 0), 16, grey2()) == MOUSE_RELEASE) {
 		e->selected = sc;
 	}
 	Engine::Label(v->r + 19 + xo, v->g + EB_HEADER_SIZE + 4 + 17 * i, 12, sc->name, e->font, white());
 	i++;
 	if (sc->childCount > 0) {
-		if (sc->_expanded) {
-			Engine::DrawTexture(v->r + xo, v->g + EB_HEADER_SIZE + 1 + 17 * (i - 1), 16, 16, e->collapse);
-			Engine::DrawLine(Vec2(xo + 10 + v->r, v->g + EB_HEADER_SIZE + 18 + 17 * (i - 1)), Vec2(xo + 10 + v->r, v->g + EB_HEADER_SIZE + 10 + 17 * (i - 1) + sc->childCount * 17), white(0.5f), 1);
-			for each (SceneObject* scc in sc->children)
-			{
-				EBH_DrawItem(scc, e, v, i, indent + 1);
-			}
+		if (Engine::EButton((e->editorLayer == 0), v->r + xo, v->g + EB_HEADER_SIZE + 1 + 17 * (i - 1), 16, 16, sc->_expanded ? e->collapse : e->expand, white(), white(), white(1, 0.6f)) == MOUSE_RELEASE) {
+			sc->_expanded = !sc->_expanded;
 		}
-		else
-			Engine::DrawTexture(v->r + xo, v->g + EB_HEADER_SIZE + 1 + 17 * (i - 1), 16, 16, e->expand);
+	}
+	if (e->selected == sc) {
+		Engine::DrawQuad(v->r + xo, v->g + EB_HEADER_SIZE + 1 + 17 * (i - 1), v->b - xo, 16, white(0.3f));
+	}
+	if (sc->childCount > 0 && sc->_expanded) {
+		//int oi = i - 1;
+		//int oii = i - 1;
+		for each (SceneObject* scc in sc->children)
+		{
+			//oii = i - 1;
+			EBH_DrawItem(scc, e, v, i, indent + 1);
+		}
+		//Engine::DrawLine(Vec2(xo + 10 + v->r, v->g + EB_HEADER_SIZE + 18 + 17 * (oi)), Vec2(xo + 10 + v->r, v->g + EB_HEADER_SIZE + 10 + 17 * (oii) + sc->childCount * 17), white(0.5f), 1);
 	}
 }
 
@@ -200,7 +206,10 @@ EB_Browser::EB_Browser(Editor* e, int x1, int y1, int x2, int y2, string dir) : 
 }
 
 bool DrawFileRect(float w, float h, float size, EB_Browser_File* file, EditorBlock* e) {
-	bool b = ((file->hasTex) ? Engine::Button(w + 1, h + 1, size - 2, size - 2, file->thumbnail, white(1, 0.8f), white(), white(1, 0.5f)) : Engine::Button(w + 1, h + 1, size - 2, size - 2, grey2())) == MOUSE_RELEASE;
+	bool b = false;
+	if (e->editor->editorLayer == 0)
+		b = ((file->hasTex) ? Engine::Button(w + 1, h + 1, size - 2, size - 2, file->thumbnail, white(1, 0.8f), white(), white(1, 0.5f)) : Engine::Button(w + 1, h + 1, size - 2, size - 2, grey2())) == MOUSE_RELEASE;
+	else Engine::DrawQuad(w + 1, h + 1, size - 2, size - 2, grey2());
 	Engine::DrawQuad(w + 1, h + 1 + size*0.6f, size - 2, size*0.4f - 2, grey2()*0.7f);
 	Engine::Label(w + 2, h + 1 + size*0.7f, 12, file->name, e->editor->font, white(), size);
 	return b;
@@ -215,7 +224,7 @@ void EB_Browser::Draw() {
 	bool in = DrawHeaders(editor, this, &v, currentDir, "Browser");
 
 	for (int y = dirs.size() - 1; y >= 0; y--) {
-		if (Engine::Button(v.r, v.g + EB_HEADER_SIZE + 1 + (16 * y), 150, 15, grey1()) == MOUSE_RELEASE) {
+		if (Engine::EButton((editor->editorLayer == 0), v.r, v.g + EB_HEADER_SIZE + 1 + (16 * y), 150, 15, grey1()) == MOUSE_RELEASE) {
 			if (dirs.at(y) != ".") {
 				if (dirs.at(y) == "..")
 					currentDir = currentDir.substr(0, currentDir.find_last_of('\\'));
@@ -226,17 +235,18 @@ void EB_Browser::Draw() {
 		}
 		Engine::Label(v.r + 2, v.g + EB_HEADER_SIZE + 4 + (16 * y), 12, dirs.at(y), editor->font, white(), 150);
 	}
-
 	float ww = 0;
 	int hh = 0;
-	for each (EB_Browser_File f in files) {
-		if (DrawFileRect(v.r + 151 + ww, v.g + EB_HEADER_SIZE + 101 * hh, 100, &f, this)) {
-			editor->selectedFile = f.path + "\\" + f.name;
+	for (int ff = files.size() - 1; ff >= 0; ff--) {
+		if (DrawFileRect(v.r + 151 + ww, v.g + EB_HEADER_SIZE + 101 * hh, 100, &files[ff], this)) {
+			editor->selectedFile = files[ff].path + "\\" + files[ff].name;
 		}
 		ww += 101;
 		if (ww > (v.b - 252)) {
 			ww = 0;
 			hh++;
+			if (v.g + EB_HEADER_SIZE + 101 * hh > Display::height)
+				break;
 		}
 	}
 }
@@ -250,7 +260,7 @@ void EB_Browser::Refresh() {
 	cout << files.size() << "files from " << currentDir << endl;
 }
 
-EB_Viewer::EB_Viewer(Editor* e, int x1, int y1, int x2, int y2): rz(45), rw(45), scale(1) {
+EB_Viewer::EB_Viewer(Editor* e, int x1, int y1, int x2, int y2) : rz(45), rw(45), scale(1) {
 	editorType = 2;
 	editor = e;
 	this->x1 = x1;
@@ -265,6 +275,7 @@ EB_Viewer::EB_Viewer(Editor* e, int x1, int y1, int x2, int y2): rz(45), rw(45),
 	shortcuts.emplace(GetShortcutInt('t', 0), &_TooltipT);
 	shortcuts.emplace(GetShortcutInt('r', 0), &_TooltipR);
 	shortcuts.emplace(GetShortcutInt('s', 0), &_TooltipS);
+
 }
 
 void EB_Viewer::MakeMatrix() {
@@ -321,7 +332,8 @@ void EB_Viewer::Draw() {
 	float ww = editor->xPoss[x2] - ww1;
 	float hh = editor->yPoss[y2] - hh1;
 	//if (!persp) {
-		glMultMatrixf(glm::value_ptr(glm::ortho(-20 * ww - 40 * ww1, 40.0f - 20 * ww - 40 * ww1, -40.0f + 20 * hh + 40 * hh1, 20 * hh + 40 * hh1, 0.0f, 1000.0f)));
+	float h40 = 40 * (hh*Display::height) / (ww*Display::width);
+		glMultMatrixf(glm::value_ptr(glm::ortho(-20 * ww - 40 * ww1, 40.0f - 20 * ww - 40 * ww1, -h40 + (h40/2) * hh + h40 * hh1, (h40/2) * hh + h40 * hh1, 0.0f, 1000.0f)));
 		glScalef(-1, 1, 1);
 	//}
 	//else {
@@ -371,7 +383,10 @@ void EB_Viewer::Draw() {
 	glColor4f(0, 0, 1, 1.0f);
 	glDrawElements(GL_LINES, 2, GL_UNSIGNED_INT, &editor->gridId[66]);
 	glDisableClientState(GL_VERTEX_ARRAY);
-	//glPopMatrix();
+	
+	//draw tooltip
+	DrawTArrows(Vec3(0, 3, -5), 2);
+
 	glPopMatrix();
 
 	glDisable(GL_STENCIL_TEST);
@@ -399,9 +414,9 @@ void EB_Viewer::Draw() {
 	string descLabelLT;
 
 	drawDescLT = 0;
-	if (Engine::Button(v.x + 5, v.y + EB_HEADER_SIZE + 10, 20, 20, editor->tooltipTexs[editor->selectedTooltip], white(0.7f), white(), white(1, 0.5f)) && MOUSE_HOVER_FLAG) {
+	if (Engine::EButton((editor->editorLayer == 0), v.x + 5, v.y + EB_HEADER_SIZE + 10, 20, 20, editor->tooltipTexs[selectedTooltip], white(0.7f), white(), white(1, 0.5f)) && MOUSE_HOVER_FLAG) {
 		drawDescLT = 1;
-		switch (editor->selectedTooltip) {
+		switch (selectedTooltip) {
 		case 0:
 			descLabelLT = "Selected Axes: Transform(T)";
 			break;
@@ -413,9 +428,9 @@ void EB_Viewer::Draw() {
 			break;
 		}
 	}
-	if (Engine::Button(v.x + 5, v.y + EB_HEADER_SIZE + 32, 20, 20, editor->shadingTexs[editor->selectedShading], white(0.7f), white(), white(1, 0.5f)) && MOUSE_HOVER_FLAG) {
+	if (Engine::EButton((editor->editorLayer == 0), v.x + 5, v.y + EB_HEADER_SIZE + 32, 20, 20, editor->shadingTexs[selectedShading], white(0.7f), white(), white(1, 0.5f)) && MOUSE_HOVER_FLAG) {
 		drawDescLT = 2;
-		switch (editor->selectedShading) {
+		switch (selectedShading) {
 		case 0:
 			descLabelLT = "Shading: Solid(Z)";
 			break;
@@ -431,6 +446,42 @@ void EB_Viewer::Draw() {
 	}
 }
 
+const int EB_Viewer::arrowIndexs[18] = { 0, 1, 2, 0, 2, 3, 0, 1, 4, 1, 2, 4, 2, 3, 4, 3, 0, 4 };
+
+void EB_Viewer::DrawTArrows(Vec3 pos, float size) {
+	glDepthFunc(GL_ALWAYS);
+	Engine::DrawLineW(pos, pos + Vec3(size / scale, 0, 0), red(), 3);
+	Engine::DrawLineW(pos, pos + Vec3(0, size / scale, 0), green(), 3);
+	Engine::DrawLineW(pos, pos + Vec3(0, 0, size / scale), blue(), 3);
+
+	
+	float s = size / scale;
+	float ds = s * 0.07f;
+	arrowVerts[0] = pos + Vec3(s, ds, ds);
+	arrowVerts[1] = pos + Vec3(s, -ds, ds);
+	arrowVerts[2] = pos + Vec3(s, -ds, -ds);
+	arrowVerts[3] = pos + Vec3(s, ds, -ds);
+	arrowVerts[4] = pos + Vec3(s*1.3f, 0, 0);
+
+	arrowVerts[5] = pos + Vec3(ds, s, ds);
+	arrowVerts[6] = pos + Vec3(-ds, s, ds);
+	arrowVerts[7] = pos + Vec3(-ds, s, -ds);
+	arrowVerts[8] = pos + Vec3(ds, s, -ds);
+	arrowVerts[9] = pos + Vec3(0, s*1.3f, 0);
+
+	arrowVerts[10] = pos + Vec3(ds, ds, s);
+	arrowVerts[11] = pos + Vec3(-ds, ds, s);
+	arrowVerts[12] = pos + Vec3(-ds, -ds, s);
+	arrowVerts[13] = pos + Vec3(ds, -ds, s);
+	arrowVerts[14] = pos + Vec3(0, 0, s*1.3f);
+
+	glEnableClientState(GL_VERTEX_ARRAY);
+	Engine::DrawIndicesI(&arrowVerts[0], &arrowIndexs[0], 15, 1, 0, 0);
+	Engine::DrawIndicesI(&arrowVerts[5], &arrowIndexs[0], 15, 0, 1, 0);
+	Engine::DrawIndicesI(&arrowVerts[10], &arrowIndexs[0], 15, 0, 0, 1);
+	glDepthFunc(GL_LEQUAL);
+}
+
 void EB_Viewer::OnMouseM(Vec2 d) {
 	if (editor->mousePressType == 1) {
 		rz += d.x;
@@ -444,6 +495,7 @@ void EB_Viewer::OnMouseScr(bool up) {
 	scale = min(max(scale, 0.01f), 1000);
 }
 
+/*
 EBI_Asset::EBI_Asset(string str, string nm) {
 	string noEd = nm.substr(0, nm.find_last_of('.'));
 	string ed = nm.substr(nm.find_last_of('.'), nm.size()-1);
@@ -460,7 +512,7 @@ EBI_Asset::EBI_Asset(string str, string nm) {
 		Vec2 v2 = Vec2(1, 2);
 		void Start();
 		};
-		*/
+		/
 		ifstream f;
 		f.open(str);
 		string s;
@@ -533,17 +585,18 @@ void EBI_Asset::Draw(Editor* e, EditorBlock* b, Color* v) {
 		e->font->alignment = ALIGN_TOPLEFT;
 		switch (val->type) {
 		case 1:
-			Engine::Button(v->r + v->b*0.3f + 1, v->g + EB_HEADER_SIZE + 1 + 26 * allH, v->b*0.7f - 2, 25, white(1, 0.7f), to_string(((EBI_Value<int>*)val)->a), 22, e->font, black());
+			Engine::EButton((e->editorLayer == 0), v->r + v->b*0.3f + 1, v->g + EB_HEADER_SIZE + 1 + 26 * allH, v->b*0.7f - 2, 25, white(1, 0.7f), to_string(((EBI_Value<int>*)val)->a), 22, e->font, black());
 			break;
 		case 2:
-			Engine::Button(v->r + v->b*0.3f + 1, v->g + EB_HEADER_SIZE + 1 + 26 * allH, v->b*0.35f - 1, 25, white(1, 0.7f), to_string(((EBI_Value<float>*)val)->a), 22, e->font, black());
-			Engine::Button(v->r + v->b*0.65f + 1, v->g + EB_HEADER_SIZE + 1 + 26 * allH, v->b*0.35f - 2, 25, white(1, 0.7f), to_string(((EBI_Value<float>*)val)->b), 22, e->font, black());
+			Engine::EButton((e->editorLayer == 0), v->r + v->b*0.3f + 1, v->g + EB_HEADER_SIZE + 1 + 26 * allH, v->b*0.35f - 1, 25, white(1, 0.7f), to_string(((EBI_Value<float>*)val)->a), 22, e->font, black());
+			Engine::EButton((e->editorLayer == 0), v->r + v->b*0.65f + 1, v->g + EB_HEADER_SIZE + 1 + 26 * allH, v->b*0.35f - 2, 25, white(1, 0.7f), to_string(((EBI_Value<float>*)val)->b), 22, e->font, black());
 			break;
 		}
 
 		allH += val->sizeH;
 	}
 }
+*/
 
 EB_Inspector::EB_Inspector(Editor* e, int x1, int y1, int x2, int y2): label("") {
 	editorType = 3;
@@ -582,32 +635,40 @@ void EB_Inspector::Draw() {
 	}
 	else if (editor->selected != nullptr){
 		Engine::DrawTexture(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 18, 18, editor->object);
-		Engine::Button(v.r + 20, v.g + 2 + EB_HEADER_SIZE, v.b - 21, 18, grey2());
+		Engine::EButton((editor->editorLayer == 0), v.r + 20, v.g + 2 + EB_HEADER_SIZE, v.b - 21, 18, grey2());
 		Engine::Label(v.r + 22, v.g + 6 + EB_HEADER_SIZE, 12, editor->selected->name, editor->font, white());
+
 		//TRS
 		Engine::Label(v.r, v.g + 23 + EB_HEADER_SIZE, 12, "Position", editor->font, white());
-		Engine::Button(v.r + v.b*0.19f, v.g + 21 + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.4f, 0.2f, 0.2f, 1));
+		Engine::EButton((editor->editorLayer == 0), v.r + v.b*0.19f, v.g + 21 + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.4f, 0.2f, 0.2f, 1));
 		Engine::Label(v.r + v.b*0.19f + 2, v.g + 23 + EB_HEADER_SIZE, 12, to_string(editor->selected->transform.position.x), editor->font, white());
-		Engine::Button(v.r + v.b*0.46f, v.g + 21 + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.2f, 0.4f, 0.2f, 1));
+		Engine::EButton((editor->editorLayer == 0), v.r + v.b*0.46f, v.g + 21 + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.2f, 0.4f, 0.2f, 1));
 		Engine::Label(v.r + v.b*0.46f + 2, v.g + 23 + EB_HEADER_SIZE, 12, to_string(editor->selected->transform.position.y), editor->font, white());
-		Engine::Button(v.r + v.b*0.73f, v.g + 21 + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.2f, 0.2f, 0.4f, 1));
+		Engine::EButton((editor->editorLayer == 0), v.r + v.b*0.73f, v.g + 21 + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.2f, 0.2f, 0.4f, 1));
 		Engine::Label(v.r + v.b*0.73f + 2, v.g + 23 + EB_HEADER_SIZE, 12, to_string(editor->selected->transform.position.z), editor->font, white());
 
 		Engine::Label(v.r, v.g + 40 + EB_HEADER_SIZE, 12, "Rotation", editor->font, white());
-		Engine::Button(v.r + v.b*0.19f, v.g + 38 + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.4f, 0.2f, 0.2f, 1));
+		Engine::EButton((editor->editorLayer == 0), v.r + v.b*0.19f, v.g + 38 + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.4f, 0.2f, 0.2f, 1));
 		Engine::Label(v.r + v.b*0.19f + 2, v.g + 40 + EB_HEADER_SIZE, 12, to_string(editor->selected->transform.eulerRotation.x), editor->font, white());
-		Engine::Button(v.r + v.b*0.46f, v.g + 38 + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.2f, 0.4f, 0.2f, 1));
+		Engine::EButton((editor->editorLayer == 0), v.r + v.b*0.46f, v.g + 38 + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.2f, 0.4f, 0.2f, 1));
 		Engine::Label(v.r + v.b*0.46f + 2, v.g + 40 + EB_HEADER_SIZE, 12, to_string(editor->selected->transform.eulerRotation.y), editor->font, white());
-		Engine::Button(v.r + v.b*0.73f, v.g + 38 + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.2f, 0.2f, 0.4f, 1));
+		Engine::EButton((editor->editorLayer == 0), v.r + v.b*0.73f, v.g + 38 + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.2f, 0.2f, 0.4f, 1));
 		Engine::Label(v.r + v.b*0.73f + 2, v.g + 40 + EB_HEADER_SIZE, 12, to_string(editor->selected->transform.eulerRotation.z), editor->font, white());
 
 		Engine::Label(v.r, v.g + 57 + EB_HEADER_SIZE, 12, "Scale", editor->font, white());
-		Engine::Button(v.r + v.b*0.19f, v.g + 55 + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.4f, 0.2f, 0.2f, 1));
+		Engine::EButton((editor->editorLayer == 0), v.r + v.b*0.19f, v.g + 55 + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.4f, 0.2f, 0.2f, 1));
 		Engine::Label(v.r + v.b*0.19f + 2, v.g + 57 + EB_HEADER_SIZE, 12, to_string(editor->selected->transform.scale.x), editor->font, white());
-		Engine::Button(v.r + v.b*0.46f, v.g + 55 + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.2f, 0.4f, 0.2f, 1));
+		Engine::EButton((editor->editorLayer == 0), v.r + v.b*0.46f, v.g + 55 + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.2f, 0.4f, 0.2f, 1));
 		Engine::Label(v.r + v.b*0.46f + 2, v.g + 57 + EB_HEADER_SIZE, 12, to_string(editor->selected->transform.scale.y), editor->font, white());
-		Engine::Button(v.r + v.b*0.73f, v.g + 55 + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.2f, 0.2f, 0.4f, 1));
+		Engine::EButton((editor->editorLayer == 0), v.r + v.b*0.73f, v.g + 55 + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.2f, 0.2f, 0.4f, 1));
 		Engine::Label(v.r + v.b*0.73f + 2, v.g + 57 + EB_HEADER_SIZE, 12, to_string(editor->selected->transform.scale.z), editor->font, white());
+		
+		//draw components
+		uint off = 74 + EB_HEADER_SIZE;
+		for each (Component* c in editor->selected->_components)
+		{
+			c->DrawInspector(editor, c, v, off);
+		}
 	}
 	else
 		Engine::Label(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 12, "Select object to inspect.", editor->font, white());
@@ -629,6 +690,8 @@ void Editor::LoadDefaultAssets() {
 	shadingTexs.push_back(new Texture("F:\\shading_trans.bmp"));
 
 	tooltipTexs.push_back(new Texture("F:\\tooltip_tr.bmp"));
+	tooltipTexs.push_back(new Texture("F:\\tooltip_rt.bmp"));
+	tooltipTexs.push_back(new Texture("F:\\tooltip_sc.bmp"));
 
 	for (int x = 0; x < 16; x++) {
 		grid[x] = Vec3((x > 7) ? x - 7 : x - 8, 0, -8);
@@ -689,14 +752,14 @@ void Editor::DrawHandles() {
 		Color v = Color(Display::width*xPoss[b->x1], Display::height*yPoss[b->y1], Display::width*xPoss[b->x2], Display::height*yPoss[b->y2]);
 
 		Engine::DrawQuad(v.r + 1, v.g + 2 + EB_HEADER_PADDING, EB_HEADER_PADDING, EB_HEADER_SIZE - 1 - EB_HEADER_PADDING, grey1());
-		if (Engine::Button(v.r + 1, v.g + 1, EB_HEADER_PADDING, EB_HEADER_PADDING, buttonExt, white(1, 0.8f), white(), white(1, 0.3f)) == MOUSE_RELEASE) { //splitter top left
+		if (Engine::EButton((b->editor->editorLayer == 0), v.r + 1, v.g + 1, EB_HEADER_PADDING, EB_HEADER_PADDING, buttonExt, white(1, 0.8f), white(), white(1, 0.3f)) == MOUSE_RELEASE) { //splitter top left
 			if (b->headerStatus == 1)
 				b->headerStatus = 0;
 			else b->headerStatus = (b->headerStatus == 0 ? 1 : 0);
 		}
 		if (b->headerStatus == 1) {
 			//Engine::RotateUI(180, Vec2(v.r + 2 + 1.5f*EB_HEADER_PADDING, v.g + 1 + 0.5f*EB_HEADER_PADDING));
-			if (Engine::Button(v.r + 2 + EB_HEADER_PADDING, v.g + 1, EB_HEADER_PADDING, EB_HEADER_PADDING, buttonExtArrow, white(0.7f, 0.8f), white(), white(1, 0.3f)) == MOUSE_RELEASE) {
+			if (Engine::EButton((b->editor->editorLayer == 0), v.r + 2 + EB_HEADER_PADDING, v.g + 1, EB_HEADER_PADDING, EB_HEADER_PADDING, buttonExtArrow, white(0.7f, 0.8f), white(), white(1, 0.3f)) == MOUSE_RELEASE) {
 				b->headerStatus = 0;
 				xPoss.push_back(xPoss.at(b->x1));
 				xLerper.push_back(xPossLerper(this, xPoss.size() - 1, xPoss.at(b->x1), 0.5f*(xPoss.at(b->x1) + xPoss.at(b->x2))));
@@ -709,7 +772,7 @@ void Editor::DrawHandles() {
 			}
 			//Engine::ResetUIMatrix();
 			Engine::RotateUI(-90, Vec2(v.r + 1 + 0.5f*EB_HEADER_PADDING, v.g + 2 + 1.5f*EB_HEADER_PADDING));
-			if (Engine::Button(v.r + 1, v.g + 2 + EB_HEADER_PADDING, EB_HEADER_PADDING, EB_HEADER_PADDING, buttonExtArrow, white(0.7f, 0.8f), white(), white(1, 0.3f)) == MOUSE_RELEASE) {
+			if (Engine::EButton((b->editor->editorLayer == 0), v.r + 1, v.g + 2 + EB_HEADER_PADDING, EB_HEADER_PADDING, EB_HEADER_PADDING, buttonExtArrow, white(0.7f, 0.8f), white(), white(1, 0.3f)) == MOUSE_RELEASE) {
 				b->headerStatus = 0;
 				yPoss.push_back(yPoss.at(b->y1));
 				yLerper.push_back(yPossLerper(this, yPoss.size() - 1, yPoss.at(b->y1), 0.5f*(yPoss.at(b->y1) + yPoss.at(b->y2))));
@@ -724,7 +787,7 @@ void Editor::DrawHandles() {
 			Engine::ResetUIMatrix();
 		}
 		Engine::DrawQuad(v.b - EB_HEADER_PADDING, v.a - EB_HEADER_PADDING - 1, EB_HEADER_PADDING, EB_HEADER_PADDING, buttonExt->pointer); //splitter bot right
-		if (Engine::Button(v.b - EB_HEADER_PADDING, v.g + 1, EB_HEADER_PADDING, EB_HEADER_PADDING, buttonX, white(0.7f, 0.8f), white(), white(1, 0.3f)) == MOUSE_RELEASE) {//window mod
+		if (Engine::EButton((editorLayer == 0), v.b - EB_HEADER_PADDING, v.g + 1, EB_HEADER_PADDING, EB_HEADER_PADDING, buttonX, white(0.7f, 0.8f), white(), white(1, 0.3f)) == MOUSE_RELEASE) {//window mod
 			blocks.erase(blocks.begin() + r);
 			delete(b);
 			break;
@@ -738,7 +801,7 @@ void Editor::DrawHandles() {
 		byte b;
 		for (int q = xPoss.size() - 1; q >= 2; q--) { //ignore 0 1
 			Int2 lim = xLimits.at(q);
-			b = Engine::Button(xPoss.at(q)*Display::width - 2, Display::height*yPoss.at(lim.x), 4, Display::height*yPoss.at(lim.y), black(0), white(0.3f, 1), white(0.7f, 1));
+			b = Engine::EButton((editorLayer == 0), xPoss.at(q)*Display::width - 2, Display::height*yPoss.at(lim.x), 4, Display::height*yPoss.at(lim.y), black(0), white(0.3f, 1), white(0.7f, 1));
 			if (b && MOUSE_HOVER_FLAG > 0) {
 				if (b == MOUSE_CLICK) {
 					activeX = q;
@@ -751,7 +814,7 @@ void Editor::DrawHandles() {
 		}
 		for (int q = yPoss.size() - 1; q >= 2 && !moused; q--) { //ignore 0 1
 			Int2 lim = yLimits.at(q);
-			b = Engine::Button(xPoss.at(lim.x)*Display::width, yPoss.at(q)*Display::height - 2, xPoss.at(lim.y)*Display::width, 4, black(0), white(0.3f, 1), white(0.7f, 1));
+			b = Engine::EButton((editorLayer == 0), xPoss.at(lim.x)*Display::width, yPoss.at(q)*Display::height - 2, xPoss.at(lim.y)*Display::width, 4, black(0), white(0.3f, 1), white(0.7f, 1));
 			if (b && MOUSE_HOVER_FLAG > 0) {
 				if (b == MOUSE_CLICK) {
 					activeY = q;

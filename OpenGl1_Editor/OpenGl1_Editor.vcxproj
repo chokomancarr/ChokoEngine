@@ -87,6 +87,7 @@
     <ClInclude Include="src\Editor.h" />
     <ClInclude Include="src\Engine.h" />
     <ClInclude Include="src\KTMModel.h" />
+    <ClInclude Include="src\MaterialBase.h" />
     <ClInclude Include="src\SceneObjects.h" />
     <ClInclude Include="src\Shader.h" />
     <ClInclude Include="src\TestScript.h" />

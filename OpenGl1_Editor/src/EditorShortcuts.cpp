@@ -1,28 +1,21 @@
 #include "Editor.h"
 #include "Engine.h"
-#include <GL/glew.h>
-#include <vector>
-#include <string>
-#include <algorithm>
-#include <Windows.h>
-#include <math.h>
 
 void EB_Viewer::_SelectAll(EditorBlock* b) {
-	cout << "select all" << endl;
+	b->editor->selected = nullptr;
 }
 void EB_Viewer::_ViewInvis(EditorBlock* b) {
-	cout << "view invis" << endl;
+	((EB_Viewer*)b)->selectedShading = (((EB_Viewer*)b)->selectedShading == 1) ? 0 : 1;
 }
 void EB_Viewer::_ViewPersp(EditorBlock* b) {
-	cout << "view persp" << endl;
 	((EB_Viewer*)b)->persp = !((EB_Viewer*)b)->persp;
 }
 void EB_Viewer::_TooltipT(EditorBlock* b) {
-	cout << "tooltip T" << endl;
+	((EB_Viewer*)b)->selectedTooltip = 0;
 }
 void EB_Viewer::_TooltipR(EditorBlock* b) {
-	cout << "tooltip R" << endl;
+	((EB_Viewer*)b)->selectedTooltip = 1;
 }
 void EB_Viewer::_TooltipS(EditorBlock* b) {
-	cout << "tooltip S" << endl;
+	((EB_Viewer*)b)->selectedTooltip = 2;
 }

@@ -16,9 +16,13 @@ public:
 	const COMPONENT_TYPE componentType = 0;
 	const bool drawable;
 	bool active;
+	SceneObject* object;
+
+	bool _expanded;
 
 	virtual void DrawEditor() = 0; //trs matrix not applied, apply before calling
-	Component(COMPONENT_TYPE t, bool draw) : componentType(t), active(true), drawable(draw) {}
+	virtual void DrawInspector(Editor* e, Component* c, Color v, uint& pos) = 0;
+	Component(COMPONENT_TYPE t, bool draw) : componentType(t), active(true), drawable(draw), _expanded(true) {}
 };
 
 class Transform : public Object {
@@ -50,6 +54,7 @@ public:
 	
 	void UpdateCamVerts();
 	void DrawEditor();
+	void DrawInspector(Editor* e, Component* c, Color v, uint& pos);
 };
 
 #define COMP_MFT 0x02
@@ -58,6 +63,7 @@ public:
 	MeshFilter();
 
 	void DrawEditor() {}
+	void DrawInspector(Editor* e, Component* c, Color v, uint& pos) {}
 };
 
 #define COMP_SCR 0xff
@@ -70,6 +76,7 @@ public:
 	virtual void Paint() {}
 
 	void DrawEditor() {} //nothing
+	void DrawInspector(Editor* e, Component* c, Color v, uint& pos) {}
 };
 
 class SceneObject : public Object {
@@ -89,6 +96,7 @@ public:
 	vector<SceneObject*> children;
 
 	SceneObject* AddChild(SceneObject* child) { childCount++; children.push_back(child); return this; }
+	SceneObject* GetChild(int i) { return children[i]; }
 	Component* AddComponent(Component* c);
 	Component* GetComponent(COMPONENT_TYPE type);
 	void RemoveComponent(Component* c);

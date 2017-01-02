@@ -84,17 +84,20 @@ GLuint Shader::CreateProgram(string& path){
 	}
 
 	GLuint program = glCreateProgram();
+	GLuint vertex_shader, fragment_shader;
 	if (vertex_shader_code != "") {
 		cout << "Vertex Shader: " << endl << vertex_shader_code;
-		GLuint vertex_shader = LoadShader(GL_VERTEX_SHADER, vertex_shader_code);
+		vertex_shader = LoadShader(GL_VERTEX_SHADER, vertex_shader_code);
 		glAttachShader(program, vertex_shader);
 	}
+	else return 0;
 	if (fragment_shader_code != "") {
 		cout << "Fragment Shader: " << endl << fragment_shader_code;
-		GLuint fragment_shader = LoadShader(GL_FRAGMENT_SHADER, fragment_shader_code);
+		fragment_shader = LoadShader(GL_FRAGMENT_SHADER, fragment_shader_code);
 		glAttachShader(program, fragment_shader);
 	}
-	
+	else return 0;
+
 	int link_result = 0;
 
 	glLinkProgram(program);
@@ -110,6 +113,11 @@ GLuint Shader::CreateProgram(string& path){
 		return 0;
 	}
 	cout << "shader linked" << endl;
+
+	glDetachShader(program, vertex_shader);
+	glDeleteShader(vertex_shader);
+	glDetachShader(program, fragment_shader);
+	glDeleteShader(fragment_shader);
 	
 	pointer = program;
 	return program;

@@ -54,14 +54,25 @@ int main(int argc, char **argv)
 	path = argv[0];
 	hwnd = GetForegroundWindow();
 
-	//SystemButtons::x = new Texture("F:\\xbutton.bmp");
-
 	editor = new Editor();
+
+	//*
+	cout << "Enter project folder path" << endl;
+
+	getline(cin, editor->projectFolder);
+	if (editor->projectFolder == "")
+		editor->projectFolder = "F:\\";
+	while (!IO::HasDirectory(editor->projectFolder.c_str())) {
+		cout << "Invalid project folder path: " << editor->projectFolder << endl;
+		getline(cin, editor->projectFolder);
+	}
+	//*/
+
 	editor->hwnd = hwnd;
 	editor->xPoss.push_back(0);
 	editor->xPoss.push_back(1);
 	editor->xPoss.push_back(0.8f);
-	editor->xPoss.push_back(0.2f);
+	editor->xPoss.push_back(0.7f);
 	editor->xLimits.push_back(Int2(0, 1));
 	editor->xLimits.push_back(Int2(0, 1));
 	editor->xLimits.push_back(Int2(0, 1));
@@ -73,16 +84,19 @@ int main(int argc, char **argv)
 	editor->yLimits.push_back(Int2(0, 1));
 	editor->yLimits.push_back(Int2(0, 1));
 	editor->yLimits.push_back(Int2(0, 2));
-	editor->blocks = vector<EditorBlock*>({ new EB_Inspector(editor, 2, 0, 1, 1), new EB_Browser(editor, 0, 2, 2, 1, "D:"), new EB_Viewer(editor, 0, 0, 3, 2), new EB_Hierarchy(editor, 3, 0, 2, 2) });
+	editor->blocks = vector<EditorBlock*>({ new EB_Inspector(editor, 2, 0, 1, 1), new EB_Browser(editor, 0, 2, 2, 1, "F:\\"), new EB_Viewer(editor, 0, 0, 3, 2), new EB_Hierarchy(editor, 3, 0, 2, 2) });
 
 	editor->NewScene();
 	editor->activeScene.objects.push_back(new SceneObject("Main Camera"));
-	editor->activeScene.objects.push_back(new SceneObject("Player"));
+	//editor->activeScene.objects.push_back(new SceneObject("Player"));
 	editor->activeScene.objects[0]
 		->AddChild(new SceneObject())
 		->AddChild(new SceneObject("Sound"))
+		->AddChild(new SceneObject("Particles"))
 		->transform.Translate(0, 3, -5)
-		->object->AddComponent(new Camera());
+		->object->AddComponent(new Camera())
+		->object->GetChild(1)
+		->AddChild(new SceneObject("Child"));
 
 	HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
 	MONITORINFO info;
@@ -94,7 +108,7 @@ int main(int argc, char **argv)
 	//EBI_Asset* e = new EBI_Asset("F:\\OpenGl1\\OpenGl1_Editor\\OpenGl1_Editor\\src\\TestScript.h", "TestScript.h");
 	//((EB_Inspector*)(editor->blocks[0]))->SelectAsset(e, "F:\\OpenGl1\\OpenGl1_Editor\\OpenGl1_Editor\\src\\TestScript.h");
 
-	TestScript* ts = new TestScript();
+	//TestScript* ts = new TestScript();
 
 	string p;
 	LPARAM hIcon = (LPARAM)LoadImage(NULL, "F:\\1.ico", IMAGE_ICON, 16, 16, LR_LOADFROMFILE);
