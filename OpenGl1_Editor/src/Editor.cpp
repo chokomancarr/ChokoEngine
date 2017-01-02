@@ -385,7 +385,8 @@ void EB_Viewer::Draw() {
 	glDisableClientState(GL_VERTEX_ARRAY);
 	
 	//draw tooltip
-	DrawTArrows(Vec3(0, 3, -5), 2);
+	if (editor->selected != nullptr)
+		DrawTArrows(editor->selected->transform.position, 2);
 
 	glPopMatrix();
 

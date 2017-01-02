@@ -40,6 +40,8 @@ public:
 	Transform* Translate(Vec3 v) { position += v; return this; }
 };
 
+#define COMP_UNDEF 0x00
+
 #define COMP_CAM 0x01
 class Camera : public Component {
 public:
@@ -63,7 +65,16 @@ public:
 	MeshFilter();
 
 	void DrawEditor() {}
-	void DrawInspector(Editor* e, Component* c, Color v, uint& pos) {}
+	void DrawInspector(Editor* e, Component* c, Color v, uint& pos);
+};
+
+#define COMP_MRD 0x10
+class MeshRenderer : public Component {
+public:
+	MeshRenderer();
+
+	void DrawEditor() {}
+	void DrawInspector(Editor* e, Component* c, Color v, uint& pos);
 };
 
 #define COMP_SCR 0xff

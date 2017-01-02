@@ -2,9 +2,41 @@
 #include "Engine.h"
 #include "Editor.h"
 
+bool DrawComponentHeader(Editor* e, string name, Color v, float pos, bool expand, byte texId) {
+	Engine::DrawQuad(v.r, v.g + pos, v.b, 16, grey2());
+	//bool hi = expand;
+	//if (Engine::EButton((e->editorLayer == 0), v.r, v.g + pos, v.b, 16, grey2(), white(1, 0.7f), grey1()) == MOUSE_RELEASE) {
+	//	hi = !expand;
+	//}
+	Engine::DrawTexture(v.r, v.g + pos, 16, 16, expand ? e->collapse : e->expand);
+	Engine::Label(v.r + 20, v.g + pos + 3, 12, name, e->font, white());
+	return true;
+}
 
 MeshFilter::MeshFilter() : Component(COMP_MFT, false) {
 
+}
+
+void MeshFilter::DrawInspector(Editor* e, Component* c, Color v, uint& pos) {
+	//MeshFilter* mft = (MeshFilter*)c;
+	if (DrawComponentHeader(e, "Mesh Filter", v, pos, c->_expanded, COMP_MFT)) {
+		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Mesh", e->font, white());
+		pos += 34;
+	}
+	else pos += 17;
+}
+
+MeshRenderer::MeshRenderer() : Component(COMP_MRD, true) {
+
+}
+
+void MeshRenderer::DrawInspector(Editor* e, Component* c, Color v, uint& pos) {
+	//MeshRenderer* mrd = (MeshRenderer*)c;
+	if (DrawComponentHeader(e, "Mesh Renderer", v, pos, c->_expanded, COMP_MRD)) {
+		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Materials", e->font, white());
+		pos += 34;
+	}
+	else pos += 17;
 }
 
 int Camera::camVertsIds[19] = { 0, 1, 0, 2, 0, 3, 0, 4, 1, 2, 2, 4, 4, 3, 3, 1, 1, 2, 5 };
@@ -37,15 +69,10 @@ void Camera::DrawEditor() {
 
 void Camera::DrawInspector(Editor* e, Component* c, Color v, uint& pos) {
 	Camera* cam = (Camera*)c;
-	Engine::DrawQuad(v.r, v.g + pos, v.b, 16, grey2());
-	Engine::DrawTexture(v.r, v.g + pos, 16, 16, c->_expanded ? e->collapse : e->expand);
-	Engine::Label(v.r + 20, v.g + pos + 3, 12, "Camera", e->font, white());
-	if (c->_expanded) {
+	if (DrawComponentHeader(e, "Camera", v, pos, c->_expanded, COMP_CAM)) {
 		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Field of view", e->font, white());
 		Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos + 17, v.b*0.7f, 16, grey1());
 		Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 20, 12, to_string(cam->fov), e->font, white());
-
-
 		pos += 100;
 	}
 	else pos += 17;
@@ -69,6 +96,13 @@ void SceneObject::Enable(bool enableAll) {
 }
 
 Component* SceneObject::AddComponent(Component* c) {
+	for each (Component* cc in _components)
+	{
+		if (cc->componentType == c->componentType) {
+			cout << "same component already exists!" << endl;
+			return nullptr;
+		}
+	}
 	_components.push_back(c);
 	c->object = this;
 	return c;

@@ -29,6 +29,9 @@ Color grey1(), grey2(), accent();
 
 class EditorBlock {
 public:
+
+	virtual ~EditorBlock() {}
+
 	int x1, y1, x2, y2;
 	byte editorType;
 	Editor* editor;

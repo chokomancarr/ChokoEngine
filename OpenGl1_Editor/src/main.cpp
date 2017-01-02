@@ -88,7 +88,7 @@ int main(int argc, char **argv)
 
 	editor->NewScene();
 	editor->activeScene.objects.push_back(new SceneObject("Main Camera"));
-	//editor->activeScene.objects.push_back(new SceneObject("Player"));
+	editor->activeScene.objects.push_back(new SceneObject("Player"));
 	editor->activeScene.objects[0]
 		->AddChild(new SceneObject())
 		->AddChild(new SceneObject("Sound"))
@@ -97,6 +97,9 @@ int main(int argc, char **argv)
 		->object->AddComponent(new Camera())
 		->object->GetChild(1)
 		->AddChild(new SceneObject("Child"));
+	editor->activeScene.objects[1]
+		->AddComponent(new MeshFilter())
+		->object->AddComponent(new MeshRenderer());
 
 	HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
 	MONITORINFO info;
