@@ -13,6 +13,8 @@ public:
 typedef unsigned char COMPONENT_TYPE;
 class Component : public Object {
 public:
+	virtual  ~Component() {}
+
 	const COMPONENT_TYPE componentType = 0;
 	const bool drawable;
 	bool active;

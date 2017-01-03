@@ -45,7 +45,7 @@ bool die = false;
 
 int q = 0;
 
-char* path;
+string path;
 Editor* editor;
 HWND hwnd;
 
@@ -61,7 +61,7 @@ int main(int argc, char **argv)
 
 	getline(cin, editor->projectFolder);
 	if (editor->projectFolder == "")
-		editor->projectFolder = "F:\\";
+		editor->projectFolder = path.substr(0, path.find_last_of('\\'));
 	while (!IO::HasDirectory(editor->projectFolder.c_str())) {
 		cout << "Invalid project folder path: " << editor->projectFolder << endl;
 		getline(cin, editor->projectFolder);
@@ -153,7 +153,7 @@ int main(int argc, char **argv)
 		return 0;
 	}
 	else {
-		Engine::Init();
+		Engine::Init(path);
 		alpha = new Texture("F:\\alpha.bmp");
 		cat = new Texture("F:\\cat.bmp");
 		girl = new Texture("F:\\test.bmp");

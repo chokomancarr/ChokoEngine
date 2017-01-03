@@ -185,7 +185,7 @@ class SceneObject;
 class Engine {
 public:
 
-	static void Init();
+	static void Init(string path);
 	static void DrawTexture(float x, float y, float w, float h, Texture* texture);
 	static void DrawTexture(float x, float y, float w, float h, Texture* texture, float alpha);
 	static void DrawTexture(float x, float y, float w, float h, Texture* texture, Color tint);
@@ -214,6 +214,8 @@ public:
 	static Font* defaultFont;
 	
 	static ulong GetNewId();
+
+	static Texture* fallbackTex;
 
 //private: //only me using this project, fk users
 	static void DrawQuad(float x, float y, float w, float h, uint texture);

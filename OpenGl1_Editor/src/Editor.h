@@ -202,6 +202,13 @@ public:
 	void Refresh() {}
 	void OnMouseM(Vec2 d) {}
 	void OnMouseScr(bool up) {}
+
+	static void DrawScalar(Editor* e, Color v, string label, float& value);
+	static void DrawVector2(Editor* e, Color v, string label, float& valueX, float& valueY);
+	static void DrawVector3(Editor* e, Color v, string label, float& valueX, float& valueY, float& valueZ);
+	static void DrawVector4(Editor* e, Color v, string label, float& valueX, float& valueY, float& valueZ, float& valueW);
+	static void DrawColor(Editor* e, Color v, string label, Color& col);
+	static void DrawTexture(Editor* e, Color v, string label, Texture* tex, Color& uv);
 };
 
 class xPossLerper;

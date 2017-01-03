@@ -675,6 +675,12 @@ void EB_Inspector::Draw() {
 		Engine::Label(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 12, "Select object to inspect.", editor->font, white());
 }
 
+void EB_Inspector::DrawScalar(Editor* e, Color v, string label, float& value) {
+	Engine::Label(v.r + 2, v.g, 12, label, e->font, white(), v.b*0.19f - 2);
+	Engine::EButton((e->editorLayer == 0), v.r + v.b*0.19f, v.g, v.b*0.71 - 1, 16, Color(0.3f, 0.3f, 0.3f, 1));
+	Engine::Label(v.r + v.b*0.19f + 2, v.g, 12, label, e->font, white(), v.b * 0.71f - 4);
+}
+
 void Editor::LoadDefaultAssets() {
 	buttonX = new Texture("F:\\xbutton.bmp", false);
 	buttonExt = new Texture("F:\\extbutton.bmp", false);

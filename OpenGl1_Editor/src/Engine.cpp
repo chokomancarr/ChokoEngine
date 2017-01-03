@@ -35,6 +35,8 @@ long long milliseconds() {
 	}
 }
 
+Texture* Engine::fallbackTex = nullptr;
+
 uint Engine::unlitProgram = 0;
 uint Engine::unlitProgramA = 0;
 uint Engine::unlitProgramC = 0;
@@ -46,7 +48,11 @@ byte Input::mouse0State = 0;
 byte Input::mouse1State = 0;
 byte Input::mouse2State = 0;
 
-void Engine::Init() {
+void Engine::Init(string path) {
+	fallbackTex = new Texture(path + "\\fallback.bmp");
+	if (!fallbackTex->loaded)
+		cout << "cannot load fallback texture!" << endl;
+
 	string vertcode = "#version 330 core\nlayout(location = 0) in vec3 pos;\nlayout(location = 1) in vec2 uv;\nout vec2 UV;\nvoid main(){ \ngl_Position.xyz = pos;\ngl_Position.w = 1.0;\nUV = uv;\n}";
 	string fragcode = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nvoid main(){\ngl_FragColor = texture(sampler, UV)*col;\n}"; //out vec3 color;\n
 	string fragcode2 = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nvoid main(){\ngl_FragColor = vec4(1, 1, 1, texture(sampler, UV).r)*col;\n}"; //out vec3 color;\n
@@ -130,13 +136,13 @@ Vec3 Ds(Vec3 v) {
 }
 
 void Engine::DrawTexture(float x, float y, float w, float h, Texture* texture) {
-	if (texture->loaded) DrawQuad(x, y, w, h, texture->pointer);
+	DrawQuad(x, y, w, h, (texture->loaded)? texture->pointer : Engine::fallbackTex->pointer);
 }
 void Engine::DrawTexture(float x, float y, float w, float h, Texture* texture, float alpha) {
-	if (texture->loaded) DrawQuad(x, y, w, h, texture->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, Color(1, 1, 1, alpha));
+	if (texture->loaded) DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, Color(1, 1, 1, alpha));
 }
 void Engine::DrawTexture(float x, float y, float w, float h, Texture* texture, Color tint) {
-	if (texture->loaded) DrawQuad(x, y, w, h, texture->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint);
+	if (texture->loaded) DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint);
 }
 
 void AddQuad(float x, float y, float w, float h, Vec2 uv0, Vec2 uv1, Vec2 uv2, Vec2 uv3, vector<Vec3>* poss, vector<uint>* indexes, vector<Vec2>* uvs, uint i) {
