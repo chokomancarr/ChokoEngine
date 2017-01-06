@@ -61,7 +61,7 @@ int main(int argc, char **argv)
 
 	getline(cin, editor->projectFolder);
 	if (editor->projectFolder == "")
-		editor->projectFolder = path.substr(0, path.find_last_of('\\'));
+		editor->projectFolder = path.substr(0, path.find_last_of('\\') + 1);
 	while (!IO::HasDirectory(editor->projectFolder.c_str())) {
 		cout << "Invalid project folder path: " << editor->projectFolder << endl;
 		getline(cin, editor->projectFolder);
@@ -84,7 +84,7 @@ int main(int argc, char **argv)
 	editor->yLimits.push_back(Int2(0, 1));
 	editor->yLimits.push_back(Int2(0, 1));
 	editor->yLimits.push_back(Int2(0, 2));
-	editor->blocks = vector<EditorBlock*>({ new EB_Inspector(editor, 2, 0, 1, 1), new EB_Browser(editor, 0, 2, 2, 1, "F:\\"), new EB_Viewer(editor, 0, 0, 3, 2), new EB_Hierarchy(editor, 3, 0, 2, 2) });
+	editor->blocks = vector<EditorBlock*>({ new EB_Inspector(editor, 2, 0, 1, 1), new EB_Browser(editor, 0, 2, 2, 1, path.substr(0, path.find_last_of('\\') + 1)), new EB_Viewer(editor, 0, 0, 3, 2), new EB_Hierarchy(editor, 3, 0, 2, 2) });
 
 	editor->NewScene();
 	editor->activeScene.objects.push_back(new SceneObject("Main Camera"));

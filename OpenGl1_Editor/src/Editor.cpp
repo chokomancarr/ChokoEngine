@@ -1,6 +1,7 @@
 #include "Editor.h"
 #include "Engine.h"
 #include <GL/glew.h>
+#include <iostream>
 #include <vector>
 #include <string>
 #include <shlobj.h>
@@ -853,4 +854,41 @@ void Editor::DrawHandles() {
 		}
 		moused = true;
 	}
+}
+
+bool Editor::ParseAsset(string& path) {
+	ifstream stream(path.c_str());
+	string parsed = "";
+	if (!stream.good()) {
+		cout << "not found!" << endl;
+		return false;
+	}
+	string ext = path.substr(path.find_last_of('.') + 1, string::npos);
+	if (ext == "shade") {
+		parsed = ShaderBase::Parse(&stream);
+	}
+	else if (ext == "blend"){
+		return false;
+	}
+	else if (ext == "bmp" || ext == "png" || ext == "jpg" || ext == "jpeg") {
+		//use imgreader.dll
+		return false;
+	}
+	else return false;
+	ofstream strm;
+	strm.open((path + ".meta"), ofstream::trunc | ofstream::out);
+	strm.write(parsed.c_str(), parsed.size());
+	strm.close();
+	SetFileAttributes((path + ".meta").c_str(), FILE_ATTRIBUTE_HIDDEN);
+	return true;
+}
+
+bool Editor::GetCache(string& path, I_EBI_ValueCollection& vals) {
+	
+	vals.vals.clear();
+	return false;
+}
+
+bool Editor::SetCache(string& path, I_EBI_ValueCollection* vals) {
+	return false;
 }

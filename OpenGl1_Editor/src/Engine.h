@@ -9,7 +9,14 @@
 #include <gl/glew.h>
 #include <string>
 #include "Shader.h"
-#include "KTMModel.h"
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <unordered_map>
+#include <glm/glm.hpp>
+#include <glm/gtx/transform.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <Windows.h>
 
 using namespace std;
@@ -118,6 +125,7 @@ public:
 	static vector<EB_Browser_File> GetFiles(const string& path);
 	static void GetFolders(const string& path, vector<string>* names);
 	static bool HasDirectory(LPCTSTR szPath);
+	static bool HasFile(LPCTSTR szPath);
 };
 
 class Font {
@@ -157,15 +165,41 @@ public:
 	static glm::mat3 uiMatrix;
 };
 
+#define SHADER_INT 0x00
+#define SHADER_FLOAT 0x01
+#define SHADER_SAMPLER 0x10
+#define SHADER_MATRIX 0x20
+class ShaderBase {
+public:
+	ShaderBase(string path);
+	~ShaderBase() {
+		glDeleteProgram(pointer);
+	}
+
+	bool loaded;
+	GLuint pointer;
+	//values applied to program on drawing stage
+	unordered_map<byte, unordered_map <GLint, void*>> values;
+
+	void Set(byte type, GLint id, void* val) { values[type][id] = val; }
+	void* Get(byte type, GLint id) { return values[type][id]; }
+	
+	//removes macros, insert include files
+	static string Parse(ifstream* text);
+};
+
 class Material {
 public:
-	uint shader;
+	ShaderBase* shader;
 
 	Material(void);
-	Material(Shader* shad);
-	void SetSampler(string name, Texture* texture);
-	void SetSampler(string name, Texture* texture, int id);
-
+	Material(ShaderBase* shad);
+	void SetTexture(string name, Texture* texture);
+	void SetTexture(GLint id, Texture* texture);
+	void SetFloat(string name, float val);
+	void SetFloat(GLint id, float val);
+	void SetInt(string name, int val);
+	void SetInt(GLint id, int val);
 };
 
 class Time {

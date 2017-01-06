@@ -1,4 +1,5 @@
 #include "Shader.h"
+#include "Engine.h"
 #include <GL/glew.h>
 #include <vector>
 #include <string>
@@ -6,6 +7,132 @@
 #include <fstream>
 
 using namespace std;
+
+bool LoadShader(GLenum shaderType, string source, GLuint& shader) {
+
+	int compile_result = 0;
+
+	shader = glCreateShader(shaderType);
+	const char *shader_code_ptr = source.c_str();
+	const int shader_code_size = source.size();
+
+	glShaderSource(shader, 1, &shader_code_ptr, &shader_code_size);
+	glCompileShader(shader);
+	glGetShaderiv(shader, GL_COMPILE_STATUS, &compile_result);
+
+	//check for errors
+	if (compile_result == GL_FALSE)
+	{
+		int info_log_length = 0;
+		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &info_log_length);
+		vector<char> shader_log(info_log_length);
+		glGetShaderInfoLog(shader, info_log_length, NULL, &shader_log[0]);
+		cerr << "error compiling shader" << endl;
+		glDeleteShader(shader);
+		shader = 0;
+		return false;
+	}
+	std::cout << "shader compiled" << endl;
+	return true;
+}
+
+ShaderBase::ShaderBase(string path) {
+	string vertex_shader_code = "";
+	string fragment_shader_code = "";
+	ifstream stream(path.c_str());
+	if (!stream.good()) {
+		cout << "not found!" << endl;
+		return;
+	}
+	string a;
+	bool hasData;
+	int x;
+	stream >> a;
+	if (a != "KTS123") {
+		cerr << "file not supported" << endl;
+		return;
+	}
+	int readingType = 0;
+	while (!stream.eof()) {
+		getline(stream, a);
+		if (readingType == 0) {
+			if (a == "VERTEXBEGIN") {
+				readingType = 1;
+			}
+			else if (a == "FRAGMENTBEGIN") {
+				readingType = 2;
+			}
+		}
+		else if (readingType == 1) {
+			if (a == "VERTEXEND") {
+				readingType = 0;
+			}
+			else if (a != ""){
+				vertex_shader_code += a + "\n";
+				hasData = true;
+			}
+		}
+		else if (readingType == 2) {
+			if (a == "FRAGMENTEND") {
+				readingType = 0;
+			}
+			else if (a != ""){
+				fragment_shader_code += a + "\n";
+				hasData = true;
+			}
+		}
+	}
+
+	if (!hasData)
+		return;
+
+	GLuint vertex_shader, fragment_shader;
+	if (vertex_shader_code != "") {
+		cout << "Vertex Shader: " << endl << vertex_shader_code;
+		if (!LoadShader(GL_VERTEX_SHADER, vertex_shader_code, vertex_shader))
+			return;
+	}
+	else return;
+	if (fragment_shader_code != "") {
+		cout << "Fragment Shader: " << endl << fragment_shader_code;
+		if (!LoadShader(GL_FRAGMENT_SHADER, fragment_shader_code, fragment_shader))
+			return;
+	}
+	else return;
+
+	pointer = glCreateProgram();
+	glAttachShader(pointer, vertex_shader);
+	glAttachShader(pointer, fragment_shader);
+
+	int link_result = 0;
+
+	glLinkProgram(pointer);
+	glGetProgramiv(pointer, GL_LINK_STATUS, &link_result);
+	if (link_result == GL_FALSE)
+	{
+		int info_log_length = 0;
+		glGetProgramiv(pointer, GL_INFO_LOG_LENGTH, &info_log_length);
+		vector<char> program_log(info_log_length);
+		glGetProgramInfoLog(pointer, info_log_length, NULL, &program_log[0]);
+		cout << "Shader link error" << endl << &program_log[0] << endl;
+		glDeleteProgram(pointer);
+		pointer = 0;
+		return;
+	}
+	cout << "shader linked" << endl;
+
+	glDetachShader(pointer, vertex_shader);
+	glDeleteShader(vertex_shader);
+	glDetachShader(pointer, fragment_shader);
+	glDeleteShader(fragment_shader);
+	loaded = true;
+}
+
+string ShaderBase::Parse(ifstream* stream) {
+	return "foo";
+}
+
+//old shader class
 
 GLuint Shader::pointer = 0;
 

@@ -271,8 +271,9 @@ public:
 	void UpdateLerpers();
 	void DrawHandles();
 
+	static bool ParseAsset(string& path);
 	static bool GetCache(string& path, I_EBI_ValueCollection& vals);
-	static bool SetCache(string& path, I_EBI_ValueCollection& vals);
+	static bool SetCache(string& path, I_EBI_ValueCollection* vals);
 };
 
 class xPossLerper {

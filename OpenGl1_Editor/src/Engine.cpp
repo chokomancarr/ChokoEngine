@@ -14,7 +14,6 @@
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <GL/glew.h>
 
 using namespace std;
 
@@ -49,7 +48,7 @@ byte Input::mouse1State = 0;
 byte Input::mouse2State = 0;
 
 void Engine::Init(string path) {
-	fallbackTex = new Texture(path + "\\fallback.bmp");
+	fallbackTex = new Texture(path.substr(0, path.find_last_of('\\') + 1) + "fallback.bmp");
 	if (!fallbackTex->loaded)
 		cout << "cannot load fallback texture!" << endl;
 
@@ -136,13 +135,13 @@ Vec3 Ds(Vec3 v) {
 }
 
 void Engine::DrawTexture(float x, float y, float w, float h, Texture* texture) {
-	DrawQuad(x, y, w, h, (texture->loaded)? texture->pointer : Engine::fallbackTex->pointer);
+	DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer);
 }
 void Engine::DrawTexture(float x, float y, float w, float h, Texture* texture, float alpha) {
-	if (texture->loaded) DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, Color(1, 1, 1, alpha));
+	DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, Color(1, 1, 1, alpha));
 }
 void Engine::DrawTexture(float x, float y, float w, float h, Texture* texture, Color tint) {
-	if (texture->loaded) DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint);
+	DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint);
 }
 
 void AddQuad(float x, float y, float w, float h, Vec2 uv0, Vec2 uv1, Vec2 uv2, Vec2 uv3, vector<Vec3>* poss, vector<uint>* indexes, vector<Vec2>* uvs, uint i) {
@@ -243,18 +242,16 @@ byte Engine::Button(float x, float y, float w, float h, Color normalColor, Color
 	return inside ? (MOUSE_HOVER_FLAG | Input::mouse0State) : 0;
 }
 byte Engine::Button(float x, float y, float w, float h, Texture* texture, Color normalColor, Color highlightColor, Color pressColor) {
-	bool inside = Rect(x, y, w, h).Inside(Input::mousePos);
-	if (texture->loaded) {
-		switch (Input::mouse0State) {
-		case 0:
-		case MOUSE_UP:
-			DrawQuad(x, y, w, h, texture->pointer, Vec2(), Vec2(0, 1), Vec2(1, 0), Vec2(1, 1), false, inside ? highlightColor : normalColor);
-			break;
-		case MOUSE_DOWN:
-		case MOUSE_HOLD:
-			DrawQuad(x, y, w, h, texture->pointer, Vec2(), Vec2(0, 1), Vec2(1, 0), Vec2(1, 1), false, inside ? pressColor : normalColor);
-			break;
-		}
+	bool inside = Rect(x, y, w, h).Inside(Input::mousePos); \
+	switch (Input::mouse0State) {
+	case 0:
+	case MOUSE_UP:
+		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(), Vec2(0, 1), Vec2(1, 0), Vec2(1, 1), false, inside ? highlightColor : normalColor);
+		break;
+	case MOUSE_DOWN:
+	case MOUSE_HOLD:
+		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(), Vec2(0, 1), Vec2(1, 0), Vec2(1, 1), false, inside ? pressColor : normalColor);
+		break;
 	}
 	return inside ? (MOUSE_HOVER_FLAG | Input::mouse0State) : 0;
 }
@@ -296,17 +293,15 @@ byte Engine::EButton(bool a, float x, float y, float w, float h, Color normalCol
 byte Engine::EButton(bool a, float x, float y, float w, float h, Texture* texture, Color normalColor, Color highlightColor, Color pressColor) {
 	if (a) {
 	bool inside = Rect(x, y, w, h).Inside(Input::mousePos);
-	if (texture->loaded) {
-		switch (Input::mouse0State) {
-		case 0:
-		case MOUSE_UP:
-			DrawQuad(x, y, w, h, texture->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, inside ? highlightColor : normalColor);
-			break;
-		case MOUSE_DOWN:
-		case MOUSE_HOLD:
-			DrawQuad(x, y, w, h, texture->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, inside ? pressColor : normalColor);
-			break;
-		}
+	switch (Input::mouse0State) {
+	case 0:
+	case MOUSE_UP:
+		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, inside ? highlightColor : normalColor);
+		break;
+	case MOUSE_DOWN:
+	case MOUSE_HOLD:
+		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, inside ? pressColor : normalColor);
+		break;
 	}
 	return inside ? (MOUSE_HOVER_FLAG | Input::mouse0State) : 0;
 	}
@@ -569,6 +564,12 @@ bool IO::HasDirectory (LPCTSTR szPath)
 	return (dwAttrib != INVALID_FILE_ATTRIBUTES && (dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
 }
 
+bool IO::HasFile(LPCTSTR szPath)
+{
+	DWORD dwAttrib = GetFileAttributes(szPath);
+	return (dwAttrib != INVALID_FILE_ATTRIBUTES && (dwAttrib & FILE_ATTRIBUTE_NORMAL));
+}
+
 //-----------------time class---------------------
 long long Time::startMillis = 0;
 long long Time::millis = 0;
@@ -810,21 +811,16 @@ Vec2 Input::mousePosRelative = Vec2(0, 0);
 
 //-------------------Material class--------------
 Material::Material() {
-	shader = Engine::unlitProgram;
+	shader = nullptr;// Engine::unlitProgram;
 }
 
-Material::Material(Shader * shad) {
-	shader = shad->pointer;
+Material::Material(ShaderBase * shad) {
+	shader = shad;
 }
 
-void Material::SetSampler(string name, Texture * texture) {
-	SetSampler(name, texture, 0);
+void Material::SetTexture(string name, Texture * texture) {
+	SetTexture(glGetUniformLocation(shader->pointer, name.c_str()), texture);
 }
-void Material::SetSampler(string name, Texture * texture, int id) {
-	GLint imageLoc = glGetUniformLocation(shader, name.c_str());
-	glUseProgram(shader);
-
-	glUniform1i(imageLoc, 0);
-	glActiveTexture(GL_TEXTURE0 + id);
-	glBindTexture(GL_TEXTURE_2D, texture->pointer);
+void Material::SetTexture(GLint id, Texture * texture) {
+	shader->Set(SHADER_SAMPLER, id, texture);
 }
