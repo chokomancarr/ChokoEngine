@@ -13,7 +13,6 @@
 #include "Engine.h"
 #include "editor.h"
 #include "SceneObjects.h"
-#include "TestScript.h"
 #include <gl/GLUT.h>
 #include <thread>
 using namespace std;
@@ -57,7 +56,8 @@ int main(int argc, char **argv)
 	editor = new Editor();
 	editor->dataPath = path.substr(0, path.find_last_of('\\') + 1);
 
-	Editor::ParseAsset("D:\\test.shade");
+	//Editor::ParseAsset("D:\\test.shade");
+	//editor->Compile();
 
 	//*
 	cout << "Enter project folder path" << endl;
@@ -297,6 +297,18 @@ void TimerGL(int i)
 
 
 void KeyboardGL(unsigned char c, int x, int y) {
+	int mods = glutGetModifiers();
+	if ((mods & 2) == 2) {
+		c = (c | (3 << 5));
+	}
+	if (mods == 1)
+		c += 32;
+	ShortcutMapGlobal::const_iterator got = editor->globalShorts.find(GetShortcutInt(c, mods));
+
+	if (got != editor->globalShorts.end()) {
+		(*got->second)(editor);
+		return;
+	}
 	for each (EditorBlock* e in editor->blocks) {
 		Color v = Color(Display::width*editor->xPoss[e->x1], Display::height*editor->yPoss[e->y1], Display::width*editor->xPoss[e->x2], Display::height*editor->yPoss[e->y2]);
 		v.a = round(v.a - v.g) - 1;
@@ -304,7 +316,7 @@ void KeyboardGL(unsigned char c, int x, int y) {
 		v.g = round(v.g) + 1;
 		v.r = round(v.r) + 1;
 		if (Engine::Button(v.r, v.g, v.b, v.a) && MOUSE_HOVER_FLAG) {
-			ShortcutMap::const_iterator got = e->shortcuts.find(GetShortcutInt(c, glutGetModifiers()));
+			ShortcutMap::const_iterator got = e->shortcuts.find(GetShortcutInt(c, mods));
 
 			if (got != e->shortcuts.end())
 				(*got->second)(e);

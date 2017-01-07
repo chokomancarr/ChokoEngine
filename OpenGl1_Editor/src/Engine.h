@@ -263,6 +263,8 @@ public:
 	static void DrawIndicesI(const Vec3* poss, const int* is, int length, float r, float g, float b);
 	static ulong idCounter;
 	static vector<Camera*> sceneCameras;
+	
+	void Render();
 };
 
 class Scene {
@@ -270,6 +272,8 @@ public:
 	Scene() {}
 
 	vector<SceneObject*> objects;
+
+
 };
 
 class Editor;

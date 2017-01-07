@@ -18,7 +18,7 @@
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <GL/glew.h>
+#include <GL\freeglut.h>
 
 HWND Editor::hwnd = 0;
 string Editor::dataPath = "";
@@ -686,23 +686,23 @@ void EB_Inspector::DrawScalar(Editor* e, Color v, string label, float& value) {
 }
 
 void Editor::LoadDefaultAssets() {
-	buttonX = new Texture("F:\\xbutton.bmp", false);
-	buttonExt = new Texture("F:\\extbutton.bmp", false);
-	buttonExtArrow = new Texture("F:\\extbutton arrow.bmp", false);
-	background = new Texture("F:\\lines.bmp", false);
+	buttonX = GetRes("xbutton");
+	buttonExt = GetRes("extbutton");
+	buttonExtArrow = GetRes("extbutton arrow");
+	background = GetRes("lines");
 
-	placeholder = new Texture("F:\\placeholder.bmp");
-	checkers = new Texture("F:\\checkers.bmp", false, true);
-	expand = new Texture("F:\\expand.bmp", false);
-	collapse = new Texture("F:\\collapse.bmp", false);
-	object = new Texture("F:\\object.bmp", false);
+	placeholder = GetRes("placeholder");
+	checkers = GetRes("checkers", false, true);
+	expand = GetRes("expand");
+	collapse = GetRes("collapse");
+	object = GetRes("object");
 
-	shadingTexs.push_back(new Texture("F:\\shading_solid.bmp"));
-	shadingTexs.push_back(new Texture("F:\\shading_trans.bmp"));
+	shadingTexs.push_back(GetRes("shading_solid"));
+	shadingTexs.push_back(GetRes("shading_trans"));
 
-	tooltipTexs.push_back(new Texture("F:\\tooltip_tr.bmp"));
-	tooltipTexs.push_back(new Texture("F:\\tooltip_rt.bmp"));
-	tooltipTexs.push_back(new Texture("F:\\tooltip_sc.bmp"));
+	tooltipTexs.push_back(GetRes("tooltip_tr"));
+	tooltipTexs.push_back(GetRes("tooltip_rt"));
+	tooltipTexs.push_back(GetRes("tooltip_sc"));
 
 	for (int x = 0; x < 16; x++) {
 		grid[x] = Vec3((x > 7) ? x - 7 : x - 8, 0, -8);
@@ -733,6 +733,8 @@ void Editor::LoadDefaultAssets() {
 	gridId[65] = 61;
 	gridId[66] = 62;
 	gridId[67] = 63;
+
+	globalShorts.emplace(GetShortcutInt('b', GLUT_ACTIVE_CTRL), &Compile);
 }
 
 void Editor::NewScene() {
@@ -859,6 +861,16 @@ void Editor::DrawHandles() {
 	}
 }
 
+Texture* Editor::GetRes(string name) {
+	return GetRes(name, false, false);
+}
+Texture* Editor::GetRes(string name, bool mipmap) {
+	return GetRes(name, mipmap, false);
+}
+Texture* Editor::GetRes(string name, bool mipmap, bool nearest) {
+	return new Texture(dataPath + "res\\" + name + ".bmp", mipmap, nearest);
+}
+
 bool Editor::ParseAsset(string path) {
 	ifstream stream(path.c_str());
 	string parsed = "";
@@ -871,6 +883,7 @@ bool Editor::ParseAsset(string path) {
 		parsed = ShaderBase::Parse(&stream);
 	}
 	else if (ext == "blend"){
+
 		return false;
 	}
 	else if (ext == "bmp" || ext == "png" || ext == "jpg" || ext == "jpeg") {
@@ -894,4 +907,30 @@ bool Editor::GetCache(string& path, I_EBI_ValueCollection& vals) {
 
 bool Editor::SetCache(string& path, I_EBI_ValueCollection* vals) {
 	return false;
+}
+
+void Editor::Compile(Editor* e) {
+	//HKEY key;
+	//if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\MSBuild\\ToolsVersions\\4.0", 0, KEY_READ, &key) == ERROR_SUCCESS) {
+		LPDWORD word;
+		char s[255];
+		DWORD i = 255;
+		if (RegGetValue(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\MSBuild\\ToolsVersions\\4.0", "MSBuildToolsPath", RRF_RT_ANY, nullptr, &s, &i) == ERROR_SUCCESS) {
+			cout << "Executing msbuild at " << s << "msbuild.exe" << endl;
+
+			int ii = (int)ShellExecute(NULL, "open", (string(s) + "\\msbuild.exe").c_str(), " F:\\TestProject\\TestProject.vcxproj", NULL, SW_HIDE);
+			if (ii > 32) {
+				cout << "Compile success!" << endl;
+			}
+			else {
+				cout << "Compile failure: error code " << ii << endl;
+			}
+		}
+		else {
+			cout << "msbuild not found!" << endl;
+		}
+	//}
+	//else {
+	//	cout << "msbuild not found!" << endl;
+	//}
 }

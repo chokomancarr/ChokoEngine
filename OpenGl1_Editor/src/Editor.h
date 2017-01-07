@@ -20,8 +20,11 @@ class EditorBlock;
 
 typedef unsigned char byte;
 typedef void(*shortcutFunc)(EditorBlock*);
+typedef void(*shortcutFuncGlobal)(Editor*);
 typedef pair<string, shortcutFunc> funcMap;
+typedef pair<string, shortcutFunc> funcMapGlobal;
 typedef unordered_map<int, shortcutFunc> ShortcutMap;
+typedef unordered_map<int, shortcutFuncGlobal> ShortcutMapGlobal;
 typedef unordered_map<int, funcMap[]> CommandsMap;
 int GetShortcutInt(byte c, int m);
 
@@ -252,7 +255,7 @@ public:
 	glm::mat4 viewMatrix;
 	bool persp;
 
-	//ShortcutMap globalShorts;
+	ShortcutMapGlobal globalShorts;
 
 	Texture* buttonX;
 	Texture* buttonExt; 
@@ -271,10 +274,16 @@ public:
 	void NewScene();
 	void UpdateLerpers();
 	void DrawHandles();
+	
+	static Texture* GetRes(string name);
+	static Texture* GetRes(string name, bool mipmap);
+	static Texture* GetRes(string name, bool mipmap, bool nearest);
 
 	static bool ParseAsset(string path);
 	static bool GetCache(string& path, I_EBI_ValueCollection& vals);
 	static bool SetCache(string& path, I_EBI_ValueCollection* vals);
+
+	static void Compile(Editor* e);
 };
 
 class xPossLerper {

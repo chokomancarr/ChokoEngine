@@ -1,18 +1,15 @@
-﻿Build started 07/01/2017 12:32:51.
+﻿Build started 08/01/2017 00:03:00.
      1>Project "C:\Users\Pua Kai\Documents\GitHub\OpenGl_Engine\OpenGl1_Editor\OpenGl1_Editor.vcxproj" on node 2 (Build target(s)).
      1>ClCompile:
-         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /I"C:\Users\Pua Kai\Documents\GitHub\OpenGl_Engine\packages\nupengl.core.0.1.0.1\build\native\../..//build/native/include/" /I./glm /I./png /I./zlib /I./jpeg /ZI /nologo /W3 /WX- /sdl /Od /Oy- /D _MBCS /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt src\Editor.cpp src\SceneObjects.cpp src\Shader.cpp
-         Shader.cpp
-         SceneObjects.cpp
-     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\sceneobjects.cpp(22): warning C4244: 'argument' : conversion from 'uint' to 'float', possible loss of data
-     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\sceneobjects.cpp(35): warning C4244: 'argument' : conversion from 'uint' to 'float', possible loss of data
-     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\sceneobjects.cpp(72): warning C4244: 'argument' : conversion from 'uint' to 'float', possible loss of data
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /I"C:\Users\Pua Kai\Documents\GitHub\OpenGl_Engine\packages\nupengl.core.0.1.0.1\build\native\../..//build/native/include/" /I./glm /I./png /I./zlib /I./jpeg /ZI /nologo /W3 /WX- /sdl /Od /Oy- /D _MBCS /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt src\Editor.cpp src\main.cpp
+         main.cpp
          Editor.cpp
      1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\editor.cpp(42): warning C4244: 'argument' : conversion from 'int' to 'float', possible loss of data
      1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\editor.cpp(331): warning C4244: 'argument' : conversion from 'int' to 'float', possible loss of data
      1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\editor.cpp(684): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
-     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\editor.cpp(845): warning C4244: 'argument' : conversion from 'int' to 'float', possible loss of data
-     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\editor.cpp(855): warning C4244: 'argument' : conversion from 'int' to 'float', possible loss of data
+     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\editor.cpp(847): warning C4244: 'argument' : conversion from 'int' to 'float', possible loss of data
+     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\editor.cpp(857): warning C4244: 'argument' : conversion from 'int' to 'float', possible loss of data
+     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\editor.cpp(915): warning C4101: 'word' : unreferenced local variable
          Generating Code...
        Link:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\Pua Kai\Documents\GitHub\OpenGl_Engine\Debug\OpenGl1_Editor.exe" /INCREMENTAL /NOLOGO "C:\Users\Pua Kai\Documents\GitHub\OpenGl_Engine\packages\nupengl.core.0.1.0.1\build\native\../..//build/native/lib/Win32\glew32.lib" "C:\Users\Pua Kai\Documents\GitHub\OpenGl_Engine\packages\nupengl.core.0.1.0.1\build\native\../..//build/native/lib/Win32\glfw3dll.lib" "C:\Users\Pua Kai\Documents\GitHub\OpenGl_Engine\packages\nupengl.core.0.1.0.1\build\native\../..//build/native/lib/Win32\freeglut.lib" kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib opengl32.lib glu32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\Users\Pua Kai\Documents\GitHub\OpenGl_Engine\Debug\OpenGl1_Editor.pdb" /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\Pua Kai\Documents\GitHub\OpenGl_Engine\Debug\OpenGl1_Editor.lib" /MACHINE:X86 Debug\Editor.obj
@@ -20,12 +17,12 @@
          Debug\Engine.obj
          Debug\KTMModel.obj
          Debug\main.obj
+         Debug\RenderEngine.obj
          Debug\SceneObjects.obj
          Debug\Shader.obj
-         Debug\TestScript.obj
          OpenGl1_Editor.vcxproj -> C:\Users\Pua Kai\Documents\GitHub\OpenGl_Engine\Debug\OpenGl1_Editor.exe
      1>Done Building Project "C:\Users\Pua Kai\Documents\GitHub\OpenGl_Engine\OpenGl1_Editor\OpenGl1_Editor.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:00:06.18
+Time Elapsed 00:00:06.14

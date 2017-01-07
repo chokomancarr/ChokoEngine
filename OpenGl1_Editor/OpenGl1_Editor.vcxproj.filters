@@ -33,10 +33,10 @@
     <ClCompile Include="src\Editor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\TestScript.cpp">
+    <ClCompile Include="src\EditorShortcuts.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\EditorShortcuts.cpp">
+    <ClCompile Include="src\RenderEngine.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -54,9 +54,6 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="src\Editor.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\TestScript.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="src\MaterialBase.h">

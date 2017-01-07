@@ -78,9 +78,9 @@
       <DeploymentContent>false</DeploymentContent>
     </ClCompile>
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\RenderEngine.cpp" />
     <ClCompile Include="src\SceneObjects.cpp" />
     <ClCompile Include="src\Shader.cpp" />
-    <ClCompile Include="src\TestScript.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -91,7 +91,6 @@
     <ClInclude Include="src\KTMModel.h" />
     <ClInclude Include="src\MaterialBase.h" />
     <ClInclude Include="src\SceneObjects.h" />
-    <ClInclude Include="src\TestScript.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
