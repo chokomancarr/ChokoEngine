@@ -1,0 +1,19 @@
+//INSTART
+//layout0 in vec3 pos;
+//layout1 in vec2 texCoord;
+//INEND
+
+//V2FSTART
+//vec2 uv;
+//V2FEND
+
+VERTSTART
+layout0 in vec3 pos;
+layout1 in vec2 texCoord;
+out vec2 uv;
+VERTEND
+
+FRAGSTART
+in vec2 uv;
+out vec4 outColor;
+FRAGEND
