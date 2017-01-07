@@ -8,7 +8,6 @@
 
 #include <gl/glew.h>
 #include <string>
-#include "Shader.h"
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -18,6 +17,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <Windows.h>
+#include <jpeglib.h>
+#include <png.h>
 
 using namespace std;
 
@@ -126,6 +127,7 @@ public:
 	static void GetFolders(const string& path, vector<string>* names);
 	static bool HasDirectory(LPCTSTR szPath);
 	static bool HasFile(LPCTSTR szPath);
+	static string ReadFile(const string& path);
 };
 
 class Font {
@@ -172,6 +174,7 @@ public:
 class ShaderBase {
 public:
 	ShaderBase(string path);
+	ShaderBase(string vert, string frag);
 	~ShaderBase() {
 		glDeleteProgram(pointer);
 	}
@@ -186,6 +189,7 @@ public:
 	
 	//removes macros, insert include files
 	static string Parse(ifstream* text);
+	static bool LoadShader(GLenum shaderType, string source, GLuint& shader);
 };
 
 class Material {

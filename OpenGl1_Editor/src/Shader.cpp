@@ -1,5 +1,5 @@
-#include "Shader.h"
 #include "Engine.h"
+#include "Editor.h"
 #include <GL/glew.h>
 #include <vector>
 #include <string>
@@ -8,7 +8,7 @@
 
 using namespace std;
 
-bool LoadShader(GLenum shaderType, string source, GLuint& shader) {
+bool ShaderBase::LoadShader(GLenum shaderType, string source, GLuint& shader) {
 
 	int compile_result = 0;
 
@@ -46,7 +46,6 @@ ShaderBase::ShaderBase(string path) {
 	}
 	string a;
 	bool hasData;
-	int x;
 	stream >> a;
 	if (a != "KTS123") {
 		cerr << "file not supported" << endl;
@@ -128,11 +127,105 @@ ShaderBase::ShaderBase(string path) {
 	loaded = true;
 }
 
-string ShaderBase::Parse(ifstream* stream) {
-	return "foo";
+ShaderBase::ShaderBase(string vertex_shader_code, string fragment_shader_code) {
+	GLuint vertex_shader, fragment_shader;
+	if (vertex_shader_code != "") {
+		cout << "Vertex Shader: " << endl << vertex_shader_code;
+		if (!LoadShader(GL_VERTEX_SHADER, vertex_shader_code, vertex_shader))
+			return;
+	}
+	else return;
+	if (fragment_shader_code != "") {
+		cout << "Fragment Shader: " << endl << fragment_shader_code;
+		if (!LoadShader(GL_FRAGMENT_SHADER, fragment_shader_code, fragment_shader))
+			return;
+	}
+	else return;
+
+	pointer = glCreateProgram();
+	glAttachShader(pointer, vertex_shader);
+	glAttachShader(pointer, fragment_shader);
+
+	int link_result = 0;
+
+	glLinkProgram(pointer);
+	glGetProgramiv(pointer, GL_LINK_STATUS, &link_result);
+	if (link_result == GL_FALSE)
+	{
+		int info_log_length = 0;
+		glGetProgramiv(pointer, GL_INFO_LOG_LENGTH, &info_log_length);
+		vector<char> program_log(info_log_length);
+		glGetProgramInfoLog(pointer, info_log_length, NULL, &program_log[0]);
+		cout << "Shader link error" << endl << &program_log[0] << endl;
+		glDeleteProgram(pointer);
+		pointer = 0;
+		return;
+	}
+	cout << "shader linked" << endl;
+
+	glDetachShader(pointer, vertex_shader);
+	glDeleteShader(vertex_shader);
+	glDetachShader(pointer, fragment_shader);
+	glDeleteShader(fragment_shader);
+	loaded = true;
 }
 
-//old shader class
+string ShaderBase::Parse(ifstream* stream) {
+	string a, aa = "";
+	vector<string> included;
+	byte readingType = 0;
+	while (!(*stream).eof()) {
+		getline(*stream, a);
+		if (readingType == 0) {
+			if (a == "INSTART")
+				readingType = 1;
+			else {
+				if (a.size() > 10 && a.substr(0, 9) == "#include ") {
+					string nmm = "", nm = a.substr(9, string::npos);
+					for (uint r = 0; r < nm.size(); r++) {
+						char c = nm[r];
+						if (c != ' ' && c != '\t' && c != '\r' && c != '\n')
+							nmm += c;
+					}
+					if (find(included.begin(), included.end(), a) >= included.begin() + included.size()) {
+						included.push_back(a);
+						string path(Editor::dataPath + "ShaderIncludes\\" + nmm + ".shadinc");
+						string in = IO::ReadFile(path);
+						if (in != "") {
+							cout << nmm << ".shadinc included" << endl;
+							aa += "//Included from " + nmm + ".shadinc\n";
+							aa += in + "\n";
+							aa += "//end of " + nmm + ".shadinc\n";
+						}
+						else {
+							aa += "//" + a + " (not found!)\n";
+						}
+					}
+				}
+				else aa += a + "\n";
+			}
+		}
+		else if (readingType == 1) {
+			if (a == "INEND")
+				readingType = 0;
+			else {
+				if (a.substr(0, 6) == "layout" && a.size() > 6 && a[6] != '(') {
+					try {
+						string ss = a.substr(6, string::npos);
+						int r = stoi(ss, nullptr);
+						aa += "layout(position=" + to_string(r) + ")" + ss + "\n";
+					}
+					catch (invalid_argument a) {
+						cout << "shader syntax error" << endl;
+					}
+				}
+			}
+		}
+	}
+	return aa;
+}
+
+/*old shader class
 
 GLuint Shader::pointer = 0;
 
@@ -313,7 +406,6 @@ bool Shader::SetTexture(GLuint program, GLchar* name, string& path, int w, int h
 	}
 	else return false;
 }
-*/
 
 void Shader::SetUniform(GLuint program, GLchar* name, float val) {
 	glUseProgram(program);
@@ -336,3 +428,4 @@ void Shader::SetWindow(GLuint program, float w, float h) {
 		cout << "program uniform not found";
 	glUseProgram(0);
 }
+*/

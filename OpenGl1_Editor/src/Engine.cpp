@@ -1,11 +1,11 @@
 #include "Engine.h"
 #include "Editor.h"
-#include "Shader.h"
 #include <GL/glew.h>
 #include <vector>
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <climits>
 #include <Windows.h>
 #include <math.h>
@@ -58,72 +58,77 @@ void Engine::Init(string path) {
 	string fragcode3 = "#version 330 core\nin vec2 UV;\nuniform vec4 col;\nvoid main(){\ngl_FragColor = col;\n}"; //out vec3 color;\n
 
 	unlitProgram = glCreateProgram();
-	GLuint vertex_shader = Shader::LoadShader(GL_VERTEX_SHADER, vertcode);
-	glAttachShader(unlitProgram, vertex_shader);
-	GLuint fragment_shader = Shader::LoadShader(GL_FRAGMENT_SHADER, fragcode);
-	glAttachShader(unlitProgram, fragment_shader);
-
+	GLuint vertex_shader, fragment_shader;
 	int link_result = 0;
+	int info_log_length = 0;
+	if (ShaderBase::LoadShader(GL_VERTEX_SHADER, vertcode, vertex_shader)
+		&& ShaderBase::LoadShader(GL_FRAGMENT_SHADER, fragcode, fragment_shader)) {
+		glAttachShader(unlitProgram, vertex_shader);
+		glAttachShader(unlitProgram, fragment_shader);
 
-	glLinkProgram(unlitProgram);
-	glGetProgramiv(unlitProgram, GL_LINK_STATUS, &link_result);
-	if (link_result == GL_FALSE)
-	{
-		int info_log_length = 0;
-		glGetProgramiv(unlitProgram, GL_INFO_LOG_LENGTH, &info_log_length);
-		vector<char> program_log(info_log_length);
-		glGetProgramInfoLog(unlitProgram, info_log_length, NULL, &program_log[0]);
-		cerr << "Default Shader link error" << endl << &program_log[0] << endl;
-		return;
+
+		glLinkProgram(unlitProgram);
+		glGetProgramiv(unlitProgram, GL_LINK_STATUS, &link_result);
+		if (link_result == GL_FALSE)
+		{
+			glGetProgramiv(unlitProgram, GL_INFO_LOG_LENGTH, &info_log_length);
+			vector<char> program_log(info_log_length);
+			glGetProgramInfoLog(unlitProgram, info_log_length, NULL, &program_log[0]);
+			cerr << "Default Shader link error" << endl << &program_log[0] << endl;
+			return;
+		}
+		glDetachShader(unlitProgram, vertex_shader);
+		glDetachShader(unlitProgram, fragment_shader);
 	}
-	glDetachShader(unlitProgram, vertex_shader);
-	glDetachShader(unlitProgram, fragment_shader);
+	GLuint fragment_shaderA;
+	if (ShaderBase::LoadShader(GL_FRAGMENT_SHADER, fragcode2, fragment_shaderA)) {
+		unlitProgramA = glCreateProgram();
+		glAttachShader(unlitProgramA, vertex_shader);
+		glAttachShader(unlitProgramA, fragment_shaderA);
 
-	unlitProgramA = glCreateProgram();
-	glAttachShader(unlitProgramA, vertex_shader);
-	GLuint fragment_shaderA = Shader::LoadShader(GL_FRAGMENT_SHADER, fragcode2);
-	glAttachShader(unlitProgramA, fragment_shaderA);
+		link_result = 0;
 
-	link_result = 0;
-
-	glLinkProgram(unlitProgramA);
-	glGetProgramiv(unlitProgramA, GL_LINK_STATUS, &link_result);
-	if (link_result == GL_FALSE)
-	{
-		int info_log_length = 0;
-		glGetProgramiv(unlitProgramA, GL_INFO_LOG_LENGTH, &info_log_length);
-		vector<char> program_log(info_log_length);
-		glGetProgramInfoLog(unlitProgramA, info_log_length, NULL, &program_log[0]);
-		cerr << "Default Shader (Alpha) link error" << endl << &program_log[0] << endl;
-		return;
+		glLinkProgram(unlitProgramA);
+		glGetProgramiv(unlitProgramA, GL_LINK_STATUS, &link_result);
+		if (link_result == GL_FALSE)
+		{
+			int info_log_length = 0;
+			glGetProgramiv(unlitProgramA, GL_INFO_LOG_LENGTH, &info_log_length);
+			vector<char> program_log(info_log_length);
+			glGetProgramInfoLog(unlitProgramA, info_log_length, NULL, &program_log[0]);
+			cerr << "Default Shader (Alpha) link error" << endl << &program_log[0] << endl;
+			return;
+		}
+		glDetachShader(unlitProgramA, vertex_shader);
+		glDetachShader(unlitProgramA, fragment_shaderA);
 	}
-	glDetachShader(unlitProgramA, vertex_shader);
-	glDetachShader(unlitProgramA, fragment_shaderA);
+	GLuint fragment_shaderC;
+	if (ShaderBase::LoadShader(GL_FRAGMENT_SHADER, fragcode3, fragment_shaderC)) {
+		unlitProgramC = glCreateProgram();
+		glAttachShader(unlitProgramC, vertex_shader);
+		glAttachShader(unlitProgramC, fragment_shaderC);
 
-	unlitProgramC = glCreateProgram();
-	glAttachShader(unlitProgramC, vertex_shader);
-	GLuint fragment_shaderC = Shader::LoadShader(GL_FRAGMENT_SHADER, fragcode3);
-	glAttachShader(unlitProgramC, fragment_shaderC);
+		link_result = 0;
 
-	link_result = 0;
-
-	glLinkProgram(unlitProgramC);
-	glGetProgramiv(unlitProgramC, GL_LINK_STATUS, &link_result);
-	if (link_result == GL_FALSE)
-	{
-		int info_log_length = 0;
-		glGetProgramiv(unlitProgramC, GL_INFO_LOG_LENGTH, &info_log_length);
-		vector<char> program_log(info_log_length);
-		glGetProgramInfoLog(unlitProgramC, info_log_length, NULL, &program_log[0]);
-		cerr << "Default Shader (Alpha) link error" << endl << &program_log[0] << endl;
-		return;
+		glLinkProgram(unlitProgramC);
+		glGetProgramiv(unlitProgramC, GL_LINK_STATUS, &link_result);
+		if (link_result == GL_FALSE)
+		{
+			int info_log_length = 0;
+			glGetProgramiv(unlitProgramC, GL_INFO_LOG_LENGTH, &info_log_length);
+			vector<char> program_log(info_log_length);
+			glGetProgramInfoLog(unlitProgramC, info_log_length, NULL, &program_log[0]);
+			cerr << "Default Shader (Alpha) link error" << endl << &program_log[0] << endl;
+			return;
+		}
+		glDetachShader(unlitProgramC, vertex_shader);
+		glDeleteShader(vertex_shader);
+		glDetachShader(unlitProgramC, fragment_shaderC);
+		glDeleteShader(fragment_shader);
+		//defaultFont = &Font("F:\\ascii 2.font");
 	}
-	glDetachShader(unlitProgramC, vertex_shader);
-	glDeleteShader(vertex_shader);
-	glDetachShader(unlitProgramC, fragment_shaderC);
-	glDeleteShader(fragment_shader);
-	//defaultFont = &Font("F:\\ascii 2.font");
 }
+
 float Dw(float f) {
 	return (f / Display::width);
 }
@@ -173,7 +178,7 @@ void Engine::Label(float x, float y, float s, string st, Font* font, Color color
 	vector<Vec2> uvs;
 
 	if (font->loaded) {
-		for (int a = 0; a < strlen(str); a++) {
+		for (uint a = 0; a < strlen(str); a++) {
 			int o = str[a];
 			float h = (o*1.0f / font->gchars(s));
 			float w = (1 - (font->gpadding(s)*1.0f / font->gwidth(s)));
@@ -570,6 +575,17 @@ bool IO::HasFile(LPCTSTR szPath)
 	return (dwAttrib != INVALID_FILE_ATTRIBUTES && (dwAttrib & FILE_ATTRIBUTE_NORMAL));
 }
 
+string IO::ReadFile(const string& path) {
+	ifstream stream(path.c_str());
+	if (!stream.good()) {
+		cout << "not found! " << path << endl;
+		return "";
+	}
+	stringstream buffer;
+	buffer << stream.rdbuf();
+	return buffer.str();
+}
+
 //-----------------time class---------------------
 long long Time::startMillis = 0;
 long long Time::millis = 0;
@@ -699,7 +715,7 @@ Font::Font(const string& paths, const string& pathb, int size) : loaded(false), 
 	if (paths != "") {
 		cout << "opening font at " << paths << endl;
 		unsigned char header[6];
-		unsigned int charSize;
+		//unsigned int charSize;
 		unsigned char *data;
 
 		FILE *file;
@@ -719,7 +735,7 @@ Font::Font(const string& paths, const string& pathb, int size) : loaded(false), 
 			return;
 		}
 		width = header[4];
-		int ii = 2;
+		uint ii = 2;
 		while (ii < width)
 			ii *= 2;
 		padding = ii - width;
@@ -745,7 +761,7 @@ Font::Font(const string& paths, const string& pathb, int size) : loaded(false), 
 	}
 	cout << "opening font at " << pathb << endl;
 	unsigned char header[6];
-	unsigned int charSize;
+	//unsigned int charSize;
 	unsigned char *data;
 
 	FILE *file;
@@ -765,7 +781,7 @@ Font::Font(const string& paths, const string& pathb, int size) : loaded(false), 
 		return;
 	}
 	width2 = header[4];
-	int ii = 2;
+	uint ii = 2;
 	while (ii < width2)
 		ii *= 2;
 	padding2 = ii - width2;

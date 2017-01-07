@@ -21,6 +21,7 @@
 #include <GL/glew.h>
 
 HWND Editor::hwnd = 0;
+string Editor::dataPath = "";
 
 Color grey1() {
 	return Color(33.0f / 255, 37.0f / 255, 40.0f / 255, 1);
@@ -114,7 +115,9 @@ HICON GetHighResolutionIcon(LPTSTR pszPath)
 		if (hResult == S_OK) {
 			return hIcon;
 		}
+		else return nullptr;
 	}
+	else return nullptr;
 }
 
 EB_Browser_File::EB_Browser_File(string path, string name) : path(path), name(name), hasTex(false) {
@@ -856,11 +859,11 @@ void Editor::DrawHandles() {
 	}
 }
 
-bool Editor::ParseAsset(string& path) {
+bool Editor::ParseAsset(string path) {
 	ifstream stream(path.c_str());
 	string parsed = "";
 	if (!stream.good()) {
-		cout << "not found!" << endl;
+		cout << "asset not found!" << endl;
 		return false;
 	}
 	string ext = path.substr(path.find_last_of('.') + 1, string::npos);
@@ -871,7 +874,7 @@ bool Editor::ParseAsset(string& path) {
 		return false;
 	}
 	else if (ext == "bmp" || ext == "png" || ext == "jpg" || ext == "jpeg") {
-		//use imgreader.dll
+
 		return false;
 	}
 	else return false;

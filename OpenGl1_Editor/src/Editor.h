@@ -223,6 +223,7 @@ public:
 
 	string projectFolder;
 
+	static string dataPath;
 	int activeX=-1, activeY=-1;
 	float amin, amax;
 	float dw, dh;
@@ -271,7 +272,7 @@ public:
 	void UpdateLerpers();
 	void DrawHandles();
 
-	static bool ParseAsset(string& path);
+	static bool ParseAsset(string path);
 	static bool GetCache(string& path, I_EBI_ValueCollection& vals);
 	static bool SetCache(string& path, I_EBI_ValueCollection* vals);
 };
