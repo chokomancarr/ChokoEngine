@@ -977,7 +977,7 @@ bool DoMsBuild(Editor* e) {
 	char s[255];
 	DWORD i = 255;
 	if (RegGetValue(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\MSBuild\\ToolsVersions\\4.0", "MSBuildToolsPath", RRF_RT_ANY, nullptr, &s, &i) == ERROR_SUCCESS) {
-		cout << "Executing msbuild at " << s << "msbuild.exe" << endl;
+		cout << "Executing " << s << "msbuild.exe" << endl;
 
 		SECURITY_ATTRIBUTES sa;
 		sa.nLength = sizeof(SECURITY_ATTRIBUTES);
@@ -999,8 +999,8 @@ bool DoMsBuild(Editor* e) {
 		startInfo.dwFlags |= STARTF_USESTDHANDLES;
 
 		string ss = (string(s) + "\\msbuild.exe");
-		if (CreateProcess(ss.c_str(), "F:\\TestProject\\TestProject.vcxproj /v:n /fl /flp:LogFile=F:\\TestProject\\MyLog.log", NULL, NULL, true, 0, NULL, NULL, &startInfo, &processInfo) != 0) {
-			e->buildLog.push_back("Compiling...");
+		if (CreateProcess(ss.c_str(), "F:\\TestProject\\TestProject.vcxproj /v:n /fl /flp:LogFile=F:\\TestProject\\MyLog.log", NULL, NULL, true, 0, NULL, "F:\\TestProject\\", &startInfo, &processInfo) != 0) {
+			e->buildLog.push_back("Compiling from " + ss);
 			cout << "compiling" << endl;
 			WaitForSingleObject(processInfo.hProcess, INFINITE);
 			DWORD ii;
