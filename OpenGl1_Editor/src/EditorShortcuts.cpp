@@ -1,6 +1,14 @@
 #include "Editor.h"
 #include "Engine.h"
 
+void EB_Viewer::_OpenMenuW(EditorBlock* b) {
+	b->editor->RegisterMenu(b, vector<string>({ "(De)Select All (A)", "Dummy", "Dummy" }), vector<shortcutFunc>({ &_SelectAll, nullptr, nullptr }), 2);
+}
+
+void EB_Viewer::_OpenMenuChgMani(EditorBlock* b) {
+	b->editor->RegisterMenu(b, vector<string>({ "Transform", "Rotate", "Scale" }), vector<shortcutFunc>({ &_TooltipT, &_TooltipR, &_TooltipS }), 0);
+}
+
 void EB_Viewer::_SelectAll(EditorBlock* b) {
 	b->editor->selected = nullptr;
 }

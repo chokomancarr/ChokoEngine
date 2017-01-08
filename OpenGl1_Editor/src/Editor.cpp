@@ -19,6 +19,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <GL\freeglut.h>
+#include <chrono>
+#include <thread>
 
 HWND Editor::hwnd = 0;
 string Editor::dataPath = "";
@@ -273,6 +275,9 @@ EB_Viewer::EB_Viewer(Editor* e, int x1, int y1, int x2, int y2) : rz(45), rw(45)
 	this->y2 = y2;
 	MakeMatrix();
 
+	shortcuts.emplace(GetShortcutInt('w', 0), &_OpenMenuW);
+	shortcuts.emplace(GetShortcutInt(' ', 2), &_OpenMenuChgMani);
+
 	shortcuts.emplace(GetShortcutInt('a', 0), &_SelectAll);
 	shortcuts.emplace(GetShortcutInt('z', 0), &_ViewInvis);
 	shortcuts.emplace(GetShortcutInt('5', 0), &_ViewPersp);
@@ -337,8 +342,9 @@ void EB_Viewer::Draw() {
 	float hh = editor->yPoss[y2] - hh1;
 	//if (!persp) {
 	float h40 = 40 * (hh*Display::height) / (ww*Display::width);
-		glMultMatrixf(glm::value_ptr(glm::ortho(-20 * ww - 40 * ww1, 40.0f - 20 * ww - 40 * ww1, -h40 + (h40/2) * hh + h40 * hh1, (h40/2) * hh + h40 * hh1, 0.0f, 1000.0f)));
-		glScalef(-1, 1, 1);
+	glMultMatrixf(glm::value_ptr(glm::ortho(-20 * ww, 40.0f - 20 * ww, -40.0f + 20 * hh, 20 * hh, 0.01f, 1000.0f)));
+	float mww = max(ww, 0.3f) * scale;
+	glScalef(-mww, mww*Display::width/Display::height, mww);
 	//}
 	//else {
 		//glMultMatrixf(glm::value_ptr(glm::perspective(30.0f, 1.0f, 0.01f, 1000.0f)));
@@ -347,8 +353,6 @@ void EB_Viewer::Draw() {
 	glTranslatef(0, 0, -30);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	float mww = max(ww, 0.3f)*scale;
-	glScalef(mww, mww, mww);
 	glPushMatrix();
 	float csz = cos(-rz*3.14159265f / 180.0f);
 	float snz = sin(-rz*3.14159265f / 180.0f);
@@ -389,8 +393,11 @@ void EB_Viewer::Draw() {
 	glDisableClientState(GL_VERTEX_ARRAY);
 	
 	//draw tooltip
-	if (editor->selected != nullptr)
-		DrawTArrows(editor->selected->transform.position, 2);
+	if (editor->selected != nullptr) {
+		if (selectedTooltip == 0) DrawTArrows(editor->selected->transform.position, 2);
+		else if (selectedTooltip == 1) DrawTArrows(editor->selected->transform.position, 2);
+		else DrawSArrows(editor->selected->transform.position, 2);
+	}
 
 	glPopMatrix();
 
@@ -423,13 +430,13 @@ void EB_Viewer::Draw() {
 		drawDescLT = 1;
 		switch (selectedTooltip) {
 		case 0:
-			descLabelLT = "Selected Axes: Transform(T)";
+			descLabelLT = "Selected Axes: Transform";
 			break;
 		case 1:
-			descLabelLT = "Selected Axes: Rotate(R)";
+			descLabelLT = "Selected Axes: Rotate";
 			break;
 		case 2:
-			descLabelLT = "Selected Axes: Scale(S)";
+			descLabelLT = "Selected Axes: Scale";
 			break;
 		}
 	}
@@ -451,7 +458,8 @@ void EB_Viewer::Draw() {
 	}
 }
 
-const int EB_Viewer::arrowIndexs[18] = { 0, 1, 2, 0, 2, 3, 0, 1, 4, 1, 2, 4, 2, 3, 4, 3, 0, 4 };
+const int EB_Viewer::arrowTIndexs[18] = { 0, 1, 2, 0, 2, 3, 0, 1, 4, 1, 2, 4, 2, 3, 4, 3, 0, 4 };
+const int EB_Viewer::arrowSIndexs[18] = { 0, 1, 2, 0, 2, 3, 0, 1, 4, 1, 2, 4, 2, 3, 4, 3, 0, 4 };
 
 void EB_Viewer::DrawTArrows(Vec3 pos, float size) {
 	glDepthFunc(GL_ALWAYS);
@@ -481,11 +489,27 @@ void EB_Viewer::DrawTArrows(Vec3 pos, float size) {
 	arrowVerts[14] = pos + Vec3(0, 0, s*1.3f);
 
 	glEnableClientState(GL_VERTEX_ARRAY);
-	Engine::DrawIndicesI(&arrowVerts[0], &arrowIndexs[0], 15, 1, 0, 0);
-	Engine::DrawIndicesI(&arrowVerts[5], &arrowIndexs[0], 15, 0, 1, 0);
-	Engine::DrawIndicesI(&arrowVerts[10], &arrowIndexs[0], 15, 0, 0, 1);
+	Engine::DrawIndicesI(&arrowVerts[0], &arrowTIndexs[0], 15, 1, 0, 0);
+	Engine::DrawIndicesI(&arrowVerts[5], &arrowTIndexs[0], 15, 0, 1, 0);
+	Engine::DrawIndicesI(&arrowVerts[10], &arrowTIndexs[0], 15, 0, 0, 1);
 	glDepthFunc(GL_LEQUAL);
 }
+
+void EB_Viewer::DrawSArrows(Vec3 pos, float size) {
+	glDepthFunc(GL_ALWAYS);
+	Engine::DrawLineW(pos, pos + Vec3(size / scale, 0, 0), red(), 3);
+	Engine::DrawLineW(pos, pos + Vec3(0, size / scale, 0), green(), 3);
+	Engine::DrawLineW(pos, pos + Vec3(0, 0, size / scale), blue(), 3);
+
+
+	float s = size / scale;
+	float ds = s * 0.07f;
+	Engine::DrawCube(pos + Vec3((size / scale) + ds, 0, 0), ds, ds, ds, red());
+	Engine::DrawCube(pos + Vec3(0, (size / scale) + ds, 0), ds, ds, ds, green());
+	Engine::DrawCube(pos + Vec3(0, 0, (size / scale) + ds), ds, ds, ds, blue());
+	glDepthFunc(GL_LEQUAL);
+}
+
 
 void EB_Viewer::OnMouseM(Vec2 d) {
 	if (editor->mousePressType == 1) {
@@ -758,7 +782,6 @@ void Editor::UpdateLerpers() {
 
 void Editor::DrawHandles() {
 	bool moused = false;
-
 	int r = 0;
 	for each (EditorBlock* b in blocks)
 	{
@@ -777,7 +800,7 @@ void Editor::DrawHandles() {
 				xPoss.push_back(xPoss.at(b->x1));
 				xLerper.push_back(xPossLerper(this, xPoss.size() - 1, xPoss.at(b->x1), 0.5f*(xPoss.at(b->x1) + xPoss.at(b->x2))));
 				//xPoss.at(xPoss.size()-1) = 0.5f*(xPoss.at(b->x1) + xPoss.at(b->x2));
-				xLimits.push_back(xLimits.at(xLimits.size()-1));
+				xLimits.push_back(xLimits.at(xLimits.size() - 1));
 				blocks.push_back(new EB_Empty(this, b->x1, b->y1, xPoss.size() - 1, b->y2));
 
 				b->x1 = xPoss.size() - 1;
@@ -859,6 +882,46 @@ void Editor::DrawHandles() {
 		}
 		moused = true;
 	}
+
+	if (editorLayer > 0) {
+		if (editorLayer == 1) {
+			Engine::DrawQuad(0, 0, Display::width, Display::height, black(0.3f));
+			int off = 0;
+			for (int r = 0, q = menuNames.size(); r < q; r++) {
+				if (Engine::Button(popupPos.x, popupPos.y + off, 200, 15, white(1, 0.7f), menuNames[r], 12, font, black()) == MOUSE_RELEASE) {
+					if (menuFuncs[r] != nullptr)
+						menuFuncs[r](menuBlock);
+					editorLayer = 0;
+					return;
+				}
+				off += 16;
+				if ((menuPadding & (r + 1)) > 0) {
+					off++;
+				}
+
+			}
+			if (Input::mouse0State == MOUSE_UP)
+				editorLayer = 0;
+		}
+		else if (editorLayer == 4) {
+			Engine::DrawQuad(0, 0, Display::width, Display::height, black(0.8f));
+			Engine::DrawProgressBar(50.0f, Display::height - 30.0f, Display::width - 100.0f, 20.0f, buildProgressValue, white(1, 0.2f), background, white(1, 0.35f), 1, 2);
+			Engine::Label(55.0f, Display::height - 26.0f, 12, buildLabel, font, white());
+			for (int i = buildLog.size() - 1, dy = 0; i >= 0; i--) {
+				Engine::Label(30.0f, Display::height - 50.0f - 15.0f*dy, 12, buildLog[i], font, white(0.7f));
+				dy++;
+			}
+		}
+	}
+}
+
+void Editor::RegisterMenu(EditorBlock* block, vector<string> names, vector<shortcutFunc> funcs, int padding) {
+	editorLayer = 1;
+	menuBlock = block;
+	menuNames = names;
+	menuFuncs = funcs;
+	popupPos = Input::mousePos;
+	menuPadding = padding;
 }
 
 Texture* Editor::GetRes(string name) {
@@ -909,28 +972,96 @@ bool Editor::SetCache(string& path, I_EBI_ValueCollection* vals) {
 	return false;
 }
 
-void Editor::Compile(Editor* e) {
-	//HKEY key;
-	//if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\MSBuild\\ToolsVersions\\4.0", 0, KEY_READ, &key) == ERROR_SUCCESS) {
-		LPDWORD word;
-		char s[255];
-		DWORD i = 255;
-		if (RegGetValue(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\MSBuild\\ToolsVersions\\4.0", "MSBuildToolsPath", RRF_RT_ANY, nullptr, &s, &i) == ERROR_SUCCESS) {
-			cout << "Executing msbuild at " << s << "msbuild.exe" << endl;
+bool DoMsBuild(Editor* e) {
+	LPDWORD word;
+	char s[255];
+	DWORD i = 255;
+	if (RegGetValue(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\MSBuild\\ToolsVersions\\4.0", "MSBuildToolsPath", RRF_RT_ANY, nullptr, &s, &i) == ERROR_SUCCESS) {
+		cout << "Executing msbuild at " << s << "msbuild.exe" << endl;
 
-			int ii = (int)ShellExecute(NULL, "open", (string(s) + "\\msbuild.exe").c_str(), " F:\\TestProject\\TestProject.vcxproj", NULL, SW_HIDE);
-			if (ii > 32) {
-				cout << "Compile success!" << endl;
+		SECURITY_ATTRIBUTES sa;
+		sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+		sa.bInheritHandle = TRUE;
+		sa.lpSecurityDescriptor = NULL;
+		HANDLE stdOutR, stdOutW;
+		if (!CreatePipe(&stdOutR, &stdOutW, &sa, 0)) {
+			return false;
+		}
+		if (!SetHandleInformation(stdOutR, HANDLE_FLAG_INHERIT, 0)){
+			return false;
+		}
+		STARTUPINFO startInfo;
+		PROCESS_INFORMATION processInfo;
+		ZeroMemory(&startInfo, sizeof(STARTUPINFO));
+		ZeroMemory(&processInfo, sizeof(PROCESS_INFORMATION));
+		startInfo.cb = sizeof(STARTUPINFO);
+		startInfo.hStdOutput = stdOutW;
+		startInfo.dwFlags |= STARTF_USESTDHANDLES;
+
+		string ss = (string(s) + "\\msbuild.exe");
+		if (CreateProcess(ss.c_str(), "F:\\TestProject\\TestProject.vcxproj /v:n /fl /flp:LogFile=F:\\TestProject\\MyLog.log", NULL, NULL, true, 0, NULL, NULL, &startInfo, &processInfo) != 0) {
+			e->buildLog.push_back("Compiling...");
+			cout << "compiling" << endl;
+			WaitForSingleObject(processInfo.hProcess, INFINITE);
+			DWORD ii;
+			GetExitCodeProcess(processInfo.hProcess, &ii);
+
+			DWORD dwRead;
+			CHAR chBuf[4096];
+			bool bSuccess = FALSE;
+			string out = "";
+			bSuccess = ReadFile(stdOutR, chBuf, 4096, &dwRead, NULL);
+			if (bSuccess && dwRead > 0) {
+				string s(chBuf, dwRead);
+				out += s;
 			}
-			else {
-				cout << "Compile failure: error code " << ii << endl;
+			for (int r = 0; r < out.size();) {
+				int rr = out.find_first_of('\n', r);
+				if (rr == string::npos)
+					rr = out.size()-1;
+				e->buildLog.push_back(out.substr(r, rr-r));
+				r = rr + 1;
 			}
+
+			//cout << "Compile failure: error code " << GetLastError() << endl;
+			cout << "compile end" << endl;
+			e->buildLog.push_back("Compile finished with code " + to_string(ii) + ".");
+			return true;
 		}
 		else {
-			cout << "msbuild not found!" << endl;
+			e->buildLog.push_back("Cannot start msbuild!");
 		}
-	//}
-	//else {
-	//	cout << "msbuild not found!" << endl;
-	//}
+		CloseHandle(stdOutR);
+		CloseHandle(stdOutW);
+	}
+	else {
+		e->buildLog.push_back("msbuild not found!");
+		return false;
+	}
+}
+
+void Editor::Compile(Editor* e) {
+	e->WAITINGBUILDSTARTFLAG = true;
+}
+
+void Editor::DoCompile() {
+	editorLayer = 4;
+	buildLog.clear();
+	buildLabel = "Build: copying files...";
+	buildProgressValue = 0;
+	//copy files
+	buildLog.push_back("Copying: dummy source directory -> dummy target directory");
+	buildLog.push_back("Copying: dummy source directory2 -> dummy target directory2");
+	buildLog.push_back("Copying: dummy source directory3 -> dummy target directory3");
+	this_thread::sleep_for(chrono::seconds(2));
+	//compile
+	buildProgressValue = 50;
+	buildLabel = "Build: executing msbuild...";
+	if (!DoMsBuild(this)) {
+		buildLog.push_back("Cannot execute MsBuild. Build canceled.");
+	}
+
+	buildProgressValue = 100;
+	buildLabel = "Build: complete.";
+	buildLog.push_back("Build finished: press Escape to exit.");
 }

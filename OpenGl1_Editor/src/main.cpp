@@ -201,6 +201,11 @@ void InitGL(int i) {
 }
 
 void DoUpdate() {
+	if (editor->WAITINGBUILDSTARTFLAG) {
+		editor->WAITINGBUILDSTARTFLAG = false;
+		editor->DoCompile();
+		return;
+	}
 	int i = -1, k = 0;
 	for each (EditorBlock* e in editor->blocks) {
 		Color v = Color(Display::width*editor->xPoss[e->x1], Display::height*editor->yPoss[e->y1], Display::width*editor->xPoss[e->x2], Display::height*editor->yPoss[e->y2]);
@@ -301,30 +306,34 @@ void KeyboardGL(unsigned char c, int x, int y) {
 	if ((mods & 2) == 2) {
 		c = (c | (3 << 5));
 	}
-	if (mods == 1)
+	if (mods == 1 && c > 64)
 		c += 32;
-	ShortcutMapGlobal::const_iterator got = editor->globalShorts.find(GetShortcutInt(c, mods));
 
-	if (got != editor->globalShorts.end()) {
-		(*got->second)(editor);
-		return;
-	}
-	for each (EditorBlock* e in editor->blocks) {
-		Color v = Color(Display::width*editor->xPoss[e->x1], Display::height*editor->yPoss[e->y1], Display::width*editor->xPoss[e->x2], Display::height*editor->yPoss[e->y2]);
-		v.a = round(v.a - v.g) - 1;
-		v.b = round(v.b - v.r) - 1;
-		v.g = round(v.g) + 1;
-		v.r = round(v.r) + 1;
-		if (Engine::Button(v.r, v.g, v.b, v.a) && MOUSE_HOVER_FLAG) {
-			ShortcutMap::const_iterator got = e->shortcuts.find(GetShortcutInt(c, mods));
+	if (editor->editorLayer == 0) {
+		ShortcutMapGlobal::const_iterator got = editor->globalShorts.find(GetShortcutInt(c, mods));
+		if (got != editor->globalShorts.end()) {
+			(*got->second)(editor);
+			return;
+		}
+		for each (EditorBlock* e in editor->blocks) {
+			Color v = Color(Display::width*editor->xPoss[e->x1], Display::height*editor->yPoss[e->y1], Display::width*editor->xPoss[e->x2], Display::height*editor->yPoss[e->y2]);
+			v.a = round(v.a - v.g) - 1;
+			v.b = round(v.b - v.r) - 1;
+			v.g = round(v.g) + 1;
+			v.r = round(v.r) + 1;
+			if (Engine::Button(v.r, v.g, v.b, v.a) && MOUSE_HOVER_FLAG) {
+				ShortcutMap::const_iterator got = e->shortcuts.find(GetShortcutInt(c, mods));
 
-			if (got != e->shortcuts.end())
-				(*got->second)(e);
+				if (got != e->shortcuts.end())
+					(*got->second)(e);
 
-			//e->OnKey(c, glutGetModifiers());
-			break;
+				//e->OnKey(c, glutGetModifiers());
+				break;
+			}
 		}
 	}
+	else if (c == 27) //escape key
+		editor->editorLayer = 0;
 }
 
 void MouseGL(int button, int state, int x, int y) {

@@ -130,7 +130,8 @@ public:
 
 	float rz, rw, scale;
 	Vec3 arrowVerts[15];
-	static const int arrowIndexs[18];
+	static const int arrowTIndexs[18];
+	static const int arrowSIndexs[18];
 	glm::mat4 viewingMatrix;
 	bool persp;
 	Color arrowX, arrowY, arrowZ; 
@@ -141,9 +142,14 @@ public:
 
 	void Draw();
 	void DrawTArrows(Vec3 pos, float size);
+	void DrawSArrows(Vec3 pos, float size);
 	void Refresh() {}
 	void OnMouseM(Vec2 d);
 	void OnMouseScr(bool up);
+
+	static void _OpenMenuW(EditorBlock*);
+	static void _OpenMenuX(EditorBlock*);
+	static void _OpenMenuChgMani(EditorBlock*);
 
 	static void _SelectAll(EditorBlock*);
 	static void _ViewInvis(EditorBlock*);
@@ -235,6 +241,22 @@ public:
 	vector<yPossLerper> yLerper;
 	vector<Int2> xLimits, yLimits; //not include 0 1
 	vector<EditorBlock*> blocks;
+	Vec2 popupPos;
+	EditorBlock* menuBlock;
+	int menuPadding;
+	vector<string> menuNames; //menu = layer1
+	vector<shortcutFunc> menuFuncs;
+	//edit = layer2
+	//progress = layer3
+	string progressName;
+	float progressValue;
+
+	bool WAITINGBUILDSTARTFLAG = false;
+	//building - layer4: custom progress to look cool
+	vector<string> buildLog;
+	string buildLabel;
+	float buildProgressValue;
+
 	Font* font;
 	static HWND hwnd;
 	char mousePressType = -1;
@@ -274,6 +296,8 @@ public:
 	void NewScene();
 	void UpdateLerpers();
 	void DrawHandles();
+
+	void RegisterMenu(EditorBlock* block, vector<string> names, vector<shortcutFunc> funcs, int padding);
 	
 	static Texture* GetRes(string name);
 	static Texture* GetRes(string name, bool mipmap);
@@ -284,6 +308,8 @@ public:
 	static bool SetCache(string& path, I_EBI_ValueCollection* vals);
 
 	static void Compile(Editor* e);
+	void DoCompile();
+
 };
 
 class xPossLerper {

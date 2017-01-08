@@ -222,8 +222,8 @@ class SceneObject;
 
 class Engine {
 public:
-
 	static void Init(string path);
+
 	static void DrawTexture(float x, float y, float w, float h, Texture* texture);
 	static void DrawTexture(float x, float y, float w, float h, Texture* texture, float alpha);
 	static void DrawTexture(float x, float y, float w, float h, Texture* texture, Color tint);
@@ -244,6 +244,8 @@ public:
 	static byte EButton(bool a, float x, float y, float w, float h, Color normalColor, string label, float labelSize, Font* labelFont, Color labelColor);
 	static byte EButton(bool a, float x, float y, float w, float h, Texture* texture, Color normalColor, Color highlightColor, Color pressColor);
 	static byte EButton(bool a, float x, float y, float w, float h, Color normalColor, Color highlightColor, Color pressColor, string label, float labelSize, Font* labelFont, Color labelColor);
+	//scaleType: 0=scale, 1=clip, 2=tile
+	static void DrawProgressBar(float x, float y, float w, float h, float progress, Color background, Texture* foreground, Color tint, int padding, byte scaleType);
 
 	static void RotateUI(float a, Vec2 point);
 	static void ResetUIMatrix();
@@ -255,10 +257,12 @@ public:
 
 	static Texture* fallbackTex;
 
-//private: //only me using this project, fk users
+//private: //fk users
 	static void DrawQuad(float x, float y, float w, float h, uint texture);
+	static void DrawQuad(float x, float y, float w, float h, uint texture, Color color);
 	static void DrawQuad(float x, float y, float w, float h, Color color);
 	static void DrawQuad(float x, float y, float w, float h, uint texture, Vec2 uv0, Vec2 uv1, Vec2 uv2, Vec2 uv3, bool single, Color color);
+	static void DrawCube(Vec3 pos, float dx, float dy, float dz, Color color);
 	static void DrawIndices(const Vec3* poss, const int* is, int length, float r, float g, float b);
 	static void DrawIndicesI(const Vec3* poss, const int* is, int length, float r, float g, float b);
 	static ulong idCounter;

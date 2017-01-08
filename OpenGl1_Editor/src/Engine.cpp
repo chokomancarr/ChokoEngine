@@ -168,7 +168,7 @@ void Engine::Label(float x, float y, float s, string st, Font* font) {
 	Label(x, y, s, st, font, Color(0, 0, 0, 1));
 }
 void Engine::Label(float x, float y, float s, string st, Font* font, Color color) {
-	Label(x, y, s, st, font, color, _FMAX);
+	Label(x, y, s, st, font, color, -1);
 }
 void Engine::Label(float x, float y, float s, string st, Font* font, Color color, float maxw) {
 	const char* str = st.c_str();
@@ -183,19 +183,24 @@ void Engine::Label(float x, float y, float s, string st, Font* font, Color color
 			float h = (o*1.0f / font->gchars(s));
 			float w = (1 - (font->gpadding(s)*1.0f / font->gwidth(s)));
 
-			if ((a+3)*s*font->gw2h(s)*w > maxw) {
-				o = '.';
-				h = (o*1.0f / font->gchars(s));
-				w = (1 - (font->gpadding(s)*1.0f / font->gwidth(s)));
-				DrawQuad(x + a*s*font->gw2h(s)*w - (s*font->gw2h(s)*w*st.size()*(font->alignment & 0x0f)*0.5f), y - s*(1 - ((font->alignment & 0xf0) >> 4)*0.5f), s*font->gw2h(s)*w, s, font->getpointer(s), Vec2(0, h + (1.0f / font->gchars(s))), Vec2(w, h + (1.0f / font->gchars(s))), Vec2(0, h), Vec2(w, h), true, color);
-				a++;
-				DrawQuad(x + a*s*font->gw2h(s)*w - (s*font->gw2h(s)*w*st.size()*(font->alignment & 0x0f)*0.5f), y - s*(1 - ((font->alignment & 0xf0) >> 4)*0.5f), s*font->gw2h(s)*w, s, font->getpointer(s), Vec2(0, h + (1.0f / font->gchars(s))), Vec2(w, h + (1.0f / font->gchars(s))), Vec2(0, h), Vec2(w, h), true, color);
-				break;
+			if (maxw > 0) {
+				if ((a + 3)*s*font->gw2h(s)*w > maxw) {
+					o = '.';
+					h = (o*1.0f / font->gchars(s));
+					w = (1 - (font->gpadding(s)*1.0f / font->gwidth(s)));
+					DrawQuad(x + a*s*font->gw2h(s)*w - (s*font->gw2h(s)*w*st.size()*(font->alignment & 0x0f)*0.5f), y - s*(1 - ((font->alignment & 0xf0) >> 4)*0.5f), s*font->gw2h(s)*w, s, font->getpointer(s), Vec2(0, h + (1.0f / font->gchars(s))), Vec2(w, h + (1.0f / font->gchars(s))), Vec2(0, h), Vec2(w, h), true, color);
+					a++;
+					DrawQuad(x + a*s*font->gw2h(s)*w - (s*font->gw2h(s)*w*st.size()*(font->alignment & 0x0f)*0.5f), y - s*(1 - ((font->alignment & 0xf0) >> 4)*0.5f), s*font->gw2h(s)*w, s, font->getpointer(s), Vec2(0, h + (1.0f / font->gchars(s))), Vec2(w, h + (1.0f / font->gchars(s))), Vec2(0, h), Vec2(w, h), true, color);
+					break;
+				}
 			}
+			int x0 = (x + a*s*font->gw2h(s)*w - (s*font->gw2h(s)*w*st.size()*(font->alignment & 0x0f)*0.5f));
+			if (x0 > Display::width)
+				break;
 
 			float r = Display::height * 1.0f / Display::width; //(x2 + a*s2*font->w2h*w*r) * 2 - 1, (1 - y2) * 2 - 1, s2*font->w2h * 2 * w*r, -s2 * 2
 			//DrawQuad(x + a*s*font->gw2h(s)*w - (s*font->gw2h(s)*w*st.size()*(font->alignment & 0x0f)*0.5f), y - s*(1 - ((font->alignment & 0xf0) >> 4)*0.5f), s*font->gw2h(s)*w, s, font->getpointer(s), Vec2(0, h + (1.0f / font->gchars(s))), Vec2(w, h + (1.0f / font->gchars(s))), Vec2(0, h), Vec2(w, h), true, color);//Vec2(0, 0.49), Vec2(1, 0.49));//(1.0f / font->chars)), Vec2(1, h - (1.0f / font->chars)));
-			AddQuad(x + a*s*font->gw2h(s)*w - (s*font->gw2h(s)*w*st.size()*(font->alignment & 0x0f)*0.5f), y - s*(1 - ((font->alignment & 0xf0) >> 4)*0.5f), s*font->gw2h(s)*w, s, Vec2(0, h + (1.0f / font->gchars(s))), Vec2(w, h + (1.0f / font->gchars(s))), Vec2(0, h), Vec2(w, h), &quadPoss, &indexes, &uvs, a * 4);
+			AddQuad(x0, (int)(y - s*(1 - ((font->alignment & 0xf0) >> 4)*0.5f)), s*font->gw2h(s)*w, s, Vec2(0, h + (1.0f / font->gchars(s))), Vec2(w, h + (1.0f / font->gchars(s))), Vec2(0, h), Vec2(w, h), &quadPoss, &indexes, &uvs, a * 4);
 		}
 		for (int y = quadPoss.size()-1; y >= 0; y--) {
 			quadPoss[y] = Ds(Display::uiMatrix*quadPoss[y]);
@@ -263,8 +268,8 @@ byte Engine::Button(float x, float y, float w, float h, Texture* texture, Color 
 byte Engine::Button(float x, float y, float w, float h, Color normalColor, Color highlightColor, Color pressColor, string label, float labelSize, Font* labelFont, Color labelColor) {
 	byte b = Button(x, y, w, h, normalColor, LerpColor(normalColor, white(), 0.5f), LerpColor(normalColor, black(), 0.5f));
 	ALIGNMENT al = labelFont->alignment;
-	labelFont->alignment = ALIGN_MIDCENTER;
-	Label(x + 0.5f*w, y + 0.5f*h, labelSize, label, labelFont);
+	labelFont->alignment = ALIGN_MIDLEFT;
+	Label((int)(x + 2), (int)(y + 0.5f*h), labelSize, label, labelFont, labelColor);
 	labelFont->alignment = al;
 	return b;
 }
@@ -311,7 +316,7 @@ byte Engine::EButton(bool a, float x, float y, float w, float h, Texture* textur
 	return inside ? (MOUSE_HOVER_FLAG | Input::mouse0State) : 0;
 	}
 	else {
-		DrawQuad(x, y, w, h, normalColor);
+		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, normalColor);
 		return false;
 	}
 }
@@ -322,6 +327,13 @@ byte Engine::EButton(bool a, float x, float y, float w, float h, Color normalCol
 	Label(x + 0.5f*w, y + 0.5f*h, labelSize, label, labelFont);
 	labelFont->alignment = al;
 	return b;
+}
+
+void Engine::DrawProgressBar(float x, float y, float w, float h, float progress, Color background, Texture* foreground, Color tint, int padding, byte clip) {
+	DrawQuad(x, y, w, h, background);
+	progress = clamp(progress, 0, 100)*0.01f;
+	float tx = (clip == 0) ? 1 : ((clip == 1) ? progress : w*progress / h);
+	DrawQuad(x + padding, y + padding, w*progress - 2 * padding, h - 2 * padding, foreground->pointer, Vec2(0, 1), Vec2(tx, 1), Vec2(0, 0), Vec2(tx, 0), false, tint);
 }
 
 void Engine::RotateUI(float aa, Vec2 point) {
@@ -336,7 +348,9 @@ void Engine::ResetUIMatrix() {
 void Engine::DrawQuad(float x, float y, float w, float h, uint texture) {
 	DrawQuad(x, y, w, h, texture, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, Color(1, 1, 1, 1));
 }
-
+void Engine::DrawQuad(float x, float y, float w, float h, uint texture, Color color) {
+	DrawQuad(x, y, w, h, texture, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, color);
+}
 void Engine::DrawQuad(float x, float y, float w, float h, Color color) {
 	Vec3 quadPoss[4];
 	quadPoss[0].x = x;
@@ -438,6 +452,27 @@ void Engine::DrawQuad(float x, float y, float w, float h, GLuint texture, Vec2 u
 	glDisableClientState(GL_VERTEX_ARRAY);
 	//glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	//glDisable(GL_DEPTH_TEST);
+}
+
+void Engine::DrawCube(Vec3 pos, float dx, float dy, float dz, Color color) {
+	Vec3 quadPoss[8];
+	quadPoss[0] = pos + Vec3(-dx, -dy, -dz);
+	quadPoss[1] = pos + Vec3(dx, -dy, -dz);
+	quadPoss[2] = pos + Vec3(-dx, dy, -dz);
+	quadPoss[3] = pos + Vec3(dx, dy, -dz);
+	quadPoss[4] = pos + Vec3(-dx, -dy, dz);
+	quadPoss[5] = pos + Vec3(dx, -dy, dz);
+	quadPoss[6] = pos + Vec3(-dx, dy, dz);
+	quadPoss[7] = pos + Vec3(dx, dy, dz);
+	uint quadIndexes[24] = { 0, 1, 3, 2, 4, 5, 7, 6, 0, 2, 6, 4, 1, 3, 7, 5, 0, 1, 5, 4, 2, 3, 7, 6 };
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
+	glColor4f(color.r, color.g, color.b, color.a);
+
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glDrawElements(GL_QUADS, 24, GL_UNSIGNED_INT, &quadIndexes[0]);
+
+	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
 void Engine::DrawIndices(const Vec3* poss, const int* is, int length, float r, float g, float b) {
