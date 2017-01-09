@@ -21,6 +21,7 @@
 #include <GL\freeglut.h>
 #include <chrono>
 #include <thread>
+#include <filesystem>
 
 HWND Editor::hwnd = 0;
 string Editor::dataPath = "";
@@ -42,7 +43,7 @@ bool DrawHeaders(Editor* e, EditorBlock* b, Color* v, string titleS, string titl
 	Vec2 v2(v->b*0.1f, EB_HEADER_SIZE*0.1f);
 	Engine::DrawQuad(v->r + EB_HEADER_PADDING + 1, v->g, v->b - 3 - 2 * EB_HEADER_PADDING, EB_HEADER_SIZE, e->background->pointer, Vec2(), Vec2(v2.x, 0), Vec2(0, v2.y), v2, false, accent());
 	Engine::Label(round(v->r + 5 + EB_HEADER_PADDING), round(v->g + 2), 10, titleS, e->font, black(), Display::width);
-	Engine::Label(round(v->r + 8 + EB_HEADER_PADDING), round(v->g + 12), 21, titleB, e->font, black());
+	Engine::Label(round(v->r + 8 + EB_HEADER_PADDING), round(v->g + 12), 22, titleB, e->font, black());
 	return Rect(v->r, v->g + EB_HEADER_SIZE + 1, v->b, v->a - EB_HEADER_SIZE - 2).Inside(Input::mousePos);
 }
 
@@ -122,83 +123,15 @@ HICON GetHighResolutionIcon(LPTSTR pszPath)
 	else return nullptr;
 }
 
-EB_Browser_File::EB_Browser_File(string path, string name) : path(path), name(name), hasTex(false) {
-	/*
-	string s = path + "\\" + name;
-	std::wstring stemp = std::wstring(s.begin(), s.end());
-	PCWSTR pp = stemp.c_str();
-
-	HRESULT hr = CoInitialize(nullptr);
-
-	// Get the thumbnail
-	IShellItem* item = nullptr;
-	hr = SHCreateItemFromParsingName(pp, nullptr, IID_PPV_ARGS(&item));
-
-	if (hr != S_OK) {
-		cout << "thumbnail fail 0: " << hr << endl;
-		return;
+EB_Browser_File::EB_Browser_File(Editor* e, string path, string name) : path(path), name(name), thumbnail(-1) {
+	
+	string ext = name.substr(name.find_last_of('.') + 1, string::npos);
+	for (int a = e->assetIcons.size() - 1; a >= 0; a--) {
+		if (ext == e->assetIconsExt[a]) {
+			thumbnail = a;
+			break;
+		}
 	}
-
-	IThumbnailCache* cache = nullptr;
-	hr = CoCreateInstance(
-		CLSID_LocalThumbnailCache,
-		nullptr,
-		CLSCTX_INPROC,
-		IID_PPV_ARGS(&cache));
-
-	if (hr != S_OK) {
-		cout << "thumbnail fail 1: " << hr << endl;
-		return;
-	}
-
-	ISharedBitmap* shared_bitmap;
-	hr = cache->GetThumbnail(
-		item,
-		1024,
-		WTS_EXTRACT,
-		&shared_bitmap,
-		nullptr,
-		nullptr);
-
-	if (hr != S_OK) {
-		cout << "thumbnail fail 2: " << hr << endl;
-		return;
-	}
-
-	// Retrieve thumbnail HBITMAP
-	HBITMAP hbitmap = NULL;
-	hr = shared_bitmap->GetSharedBitmap(&hbitmap);
-
-	HDC dc = GetDC(NULL);
-	HDC dc_mem = CreateCompatibleDC(dc);
-
-	// Get required buffer size
-	BITMAPINFO bmi;
-	ZeroMemory(&bmi, sizeof(BITMAPINFO));
-	bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-
-	cout << "reading image from hbitmap" << endl;
-
-	BYTE* pixels = new BYTE[bmi.bmiHeader.biSizeImage];
-	bmi.bmiHeader.biCompression = BI_RGB;
-
-	unsigned char data = 0;
-	if (GetDIBits(dc_mem, hbitmap, 0, bmi.bmiHeader.biHeight, (LPVOID)pixels, &bmi, DIB_RGB_COLORS) == 0) {
-		cout << "image load from hbitmap failed" << endl;
-		return;
-	}
-	thumbnail = new Texture();
-	glGenTextures(1, &thumbnail->pointer);
-	glBindTexture(GL_TEXTURE_2D, thumbnail->pointer);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, bmi.bmiHeader.biWidth, abs(bmi.bmiHeader.biHeight), 0, GL_BGR, GL_UNSIGNED_BYTE, pixels);
-	//glGenerateMipmap(GL_TEXTURE_2D);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glBindTexture(GL_TEXTURE_2D, 0);
-	thumbnail->loaded = true;
-	cout << "image loaded from hbitmap: " << bmi.bmiHeader.biWidth << "x" << abs(bmi.bmiHeader.biHeight) << endl;
-	hasTex = true;
-	*/
 }
 
 EB_Browser::EB_Browser(Editor* e, int x1, int y1, int x2, int y2, string dir) : currentDir(dir) {
@@ -214,8 +147,14 @@ EB_Browser::EB_Browser(Editor* e, int x1, int y1, int x2, int y2, string dir) : 
 bool DrawFileRect(float w, float h, float size, EB_Browser_File* file, EditorBlock* e) {
 	bool b = false;
 	if (e->editor->editorLayer == 0)
-		b = ((file->hasTex) ? Engine::Button(w + 1, h + 1, size - 2, size - 2, file->thumbnail, white(1, 0.8f), white(), white(1, 0.5f)) : Engine::Button(w + 1, h + 1, size - 2, size - 2, grey2())) == MOUSE_RELEASE;
-	else Engine::DrawQuad(w + 1, h + 1, size - 2, size - 2, grey2());
+		b = ((file->thumbnail >= 0) ? Engine::Button(w + 1, h + 1, size - 2, size - 2, e->editor->assetIcons[file->thumbnail], white(1, 0.8f), white(), white(1, 0.5f)) : Engine::Button(w + 1, h + 1, size - 2, size - 2, grey2())) == MOUSE_RELEASE;
+	else {
+		b = false;
+		if (file->thumbnail >= 0)
+			Engine::DrawTexture(w + 1, h + 1, size - 2, size - 2, e->editor->assetIcons[file->thumbnail]);
+		else
+			Engine::DrawQuad(w + 1, h + 1, size - 2, size - 2, grey2());
+	}
 	Engine::DrawQuad(w + 1, h + 1 + size*0.6f, size - 2, size*0.4f - 2, grey2()*0.7f);
 	Engine::Label(w + 2, h + 1 + size*0.7f, 12, file->name, e->editor->font, white(), size);
 	return b;
@@ -262,7 +201,7 @@ void EB_Browser::Refresh() {
 	files.clear();
 	IO::GetFolders(currentDir, &dirs);
 	cout << dirs.size() << "folders from " << currentDir << endl;
-	files = IO::GetFiles(currentDir);
+	files = IO::GetFilesE(editor, currentDir);
 	cout << files.size() << "files from " << currentDir << endl;
 }
 
@@ -728,6 +667,21 @@ void Editor::LoadDefaultAssets() {
 	tooltipTexs.push_back(GetRes("tooltip_rt"));
 	tooltipTexs.push_back(GetRes("tooltip_sc"));
 
+	checkbox0 = GetRes("checkbox_false");
+	checkbox1 = GetRes("checkbox_true");
+	
+	assetIconsExt.push_back("h");
+	assetIconsExt.push_back("blend");
+	assetIconsExt.push_back("cpp");
+	assetIconsExt.push_back("shade");
+	assetIcons.push_back(new Texture(dataPath + "res\\asset_header.bmp"));
+	assetIcons.push_back(new Texture(dataPath + "res\\asset_blend.bmp"));
+	assetIcons.push_back(new Texture(dataPath + "res\\asset_cpp.bmp"));
+	assetIcons.push_back(new Texture(dataPath + "res\\asset_shade.bmp"));
+	//assetIcons.push_back(GetRes("asset_blend"));
+	//assetIcons.push_back(GetRes("asset_cpp"));
+	//assetIcons.push_back(GetRes("asset_shade"));
+
 	for (int x = 0; x < 16; x++) {
 		grid[x] = Vec3((x > 7) ? x - 7 : x - 8, 0, -8);
 		grid[x + 44] = Vec3((x > 7) ? x - 7 : x - 8, 0, 8);
@@ -759,6 +713,7 @@ void Editor::LoadDefaultAssets() {
 	gridId[67] = 63;
 
 	globalShorts.emplace(GetShortcutInt('b', GLUT_ACTIVE_CTRL), &Compile);
+	globalShorts.emplace(GetShortcutInt('u', GLUT_ACTIVE_CTRL), &ShowPrefs);
 }
 
 void Editor::NewScene() {
@@ -905,12 +860,19 @@ void Editor::DrawHandles() {
 		}
 		else if (editorLayer == 4) {
 			Engine::DrawQuad(0, 0, Display::width, Display::height, black(0.8f));
-			Engine::DrawProgressBar(50.0f, Display::height - 30.0f, Display::width - 100.0f, 20.0f, buildProgressValue, white(1, 0.2f), background, white(1, 0.35f), 1, 2);
+			Engine::DrawProgressBar(50.0f, Display::height - 30.0f, Display::width - 100.0f, 20.0f, buildProgressValue, white(1, 0.2f), background, buildProgressColor, 1, 2);
 			Engine::Label(55.0f, Display::height - 26.0f, 12, buildLabel, font, white());
 			for (int i = buildLog.size() - 1, dy = 0; i >= 0; i--) {
-				Engine::Label(30.0f, Display::height - 50.0f - 15.0f*dy, 12, buildLog[i], font, white(0.7f));
+				Engine::Label(30.0f, Display::height - 50.0f - 15.0f*dy, 12, buildLog[i], font, buildLogErrors[i]? red() : white(0.7f));
 				dy++;
 			}
+		}
+		else if (editorLayer == 5) {
+			Engine::DrawQuad(0, 0, Display::width, Display::height, black(0.6f));
+			Engine::DrawQuad(Display::width*0.1f, Display::height*0.1f, Display::width*0.8f, Display::height*0.8f, black(0.8f));
+			Engine::Label(Display::width*0.1f + 10, Display::height*0.1f + 18, 21, "Build settings", font, white());
+			_cleanOnBuild = Engine::DrawToggle(Display::width*0.1f + 12, Display::height*0.1f + 44, 14, _cleanOnBuild? checkbox1 : checkbox0, _cleanOnBuild);
+			Engine::Label(Display::width*0.1f + 30, Display::height*0.1f + 46, 12, "Remove visual studio files on build", font, white());
 		}
 	}
 }
@@ -962,6 +924,11 @@ bool Editor::ParseAsset(string path) {
 	return true;
 }
 
+void Editor::AddBuildLog(string s) {
+	buildLog.push_back(s);
+	buildLogErrors.push_back(s.find("error C") != string::npos);
+}
+
 bool Editor::GetCache(string& path, I_EBI_ValueCollection& vals) {
 	
 	vals.vals.clear();
@@ -985,9 +952,11 @@ bool DoMsBuild(Editor* e) {
 		sa.lpSecurityDescriptor = NULL;
 		HANDLE stdOutR, stdOutW;
 		if (!CreatePipe(&stdOutR, &stdOutW, &sa, 0)) {
+			e->AddBuildLog("failed to create pipe for stdout!");
 			return false;
 		}
 		if (!SetHandleInformation(stdOutR, HANDLE_FLAG_INHERIT, 0)){
+			e->AddBuildLog("failed to set handle for stdout!");
 			return false;
 		}
 		STARTUPINFO startInfo;
@@ -999,43 +968,65 @@ bool DoMsBuild(Editor* e) {
 		startInfo.dwFlags |= STARTF_USESTDHANDLES;
 
 		string ss = (string(s) + "\\msbuild.exe");
-		if (CreateProcess(ss.c_str(), "F:\\TestProject\\TestProject.vcxproj /v:n /fl /flp:LogFile=F:\\TestProject\\MyLog.log", NULL, NULL, true, 0, NULL, "F:\\TestProject\\", &startInfo, &processInfo) != 0) {
-			e->buildLog.push_back("Compiling from " + ss);
+		/*
+		if (IO::HasFile("F:\\TestProject\\Debug\\TestProject.exe")) {
+			e->buildLog.push_back("removing previous executable");
+			if (remove("F:\\TestProject\\Debug\\TestProject.exe") != 0) {
+				e->buildLog.push_back("unable to remove previous executable!");
+				return false;
+			}
+		}
+		*/
+		bool failed = true;
+		byte FINISH = 0;
+		_putenv("MSBUILDDISABLENODEREUSE=1");
+		if (CreateProcess(ss.c_str(), "F:\\TestProject\\TestProject.vcxproj /nr:false /t:Build /p:Configuration=Release /v:n /nologo /fl /flp:LogFile=F:\\TestProject\\BuildLog.txt", NULL, NULL, true, 0, NULL, "F:\\TestProject\\", &startInfo, &processInfo) != 0) {
+			e->AddBuildLog("Compiling from " + ss);
 			cout << "compiling" << endl;
-			WaitForSingleObject(processInfo.hProcess, INFINITE);
-			DWORD ii;
-			GetExitCodeProcess(processInfo.hProcess, &ii);
+			DWORD w;
+			do {
+				w = WaitForSingleObject(processInfo.hProcess, 0.5f);
+				DWORD dwRead;
+				CHAR chBuf[4096];
+				bool bSuccess = FALSE;
+				string out = "";
+				bSuccess = ReadFile(stdOutR, chBuf, 4096, &dwRead, NULL);
+				if (bSuccess && dwRead > 0) {
+					string s(chBuf, dwRead);
+					out += s;
+				}
+				for (int r = 0; r < out.size();) {
+					int rr = out.find_first_of('\n', r);
+					if (rr == string::npos)
+						rr = out.size() - 1;
+					string sss = out.substr(r, rr - r);
+					e->AddBuildLog(sss);
+					if (sss.substr(0, 16) == "Build succeeded.") {
+						failed = false;
+						FINISH = 1;
+					}
+					else if (sss.substr(0, 12) == "Build FAILED") {
+						FINISH = 1;
+					}
+					r = rr + 1;
+				}
+				if (FINISH == 1 && e->buildLog[e->buildLog.size() - 1].substr(0, 13) == "Time Elapsed ")
+					FINISH = 2;
+			} while (w == WAIT_TIMEOUT && FINISH != 2);
 
-			DWORD dwRead;
-			CHAR chBuf[4096];
-			bool bSuccess = FALSE;
-			string out = "";
-			bSuccess = ReadFile(stdOutR, chBuf, 4096, &dwRead, NULL);
-			if (bSuccess && dwRead > 0) {
-				string s(chBuf, dwRead);
-				out += s;
-			}
-			for (int r = 0; r < out.size();) {
-				int rr = out.find_first_of('\n', r);
-				if (rr == string::npos)
-					rr = out.size()-1;
-				e->buildLog.push_back(out.substr(r, rr-r));
-				r = rr + 1;
-			}
-
-			//cout << "Compile failure: error code " << GetLastError() << endl;
-			cout << "compile end" << endl;
-			e->buildLog.push_back("Compile finished with code " + to_string(ii) + ".");
-			return true;
+			//DWORD ii;
+			//GetExitCodeProcess(processInfo.hProcess, &ii);
+			//e->AddBuildLog("Compile finished with code " + to_string(ii) + ".");
+			return (!failed);
 		}
 		else {
-			e->buildLog.push_back("Cannot start msbuild!");
+			e->AddBuildLog("Cannot start msbuild!");
 		}
 		CloseHandle(stdOutR);
 		CloseHandle(stdOutW);
 	}
 	else {
-		e->buildLog.push_back("msbuild not found!");
+		e->AddBuildLog("msbuild version 4.0 not found!");
 		return false;
 	}
 }
@@ -1044,24 +1035,59 @@ void Editor::Compile(Editor* e) {
 	e->WAITINGBUILDSTARTFLAG = true;
 }
 
+void Editor::ShowPrefs(Editor* e) {
+	e->editorLayer = 5;
+}
+
+void SetBuildFail(Editor* e) {
+	e->buildLabel = "Build: failed.";
+	e->buildProgressColor = red(1, 0.7f);
+}
+
 void Editor::DoCompile() {
+	buildProgressColor = white(1, 0.35f);
 	editorLayer = 4;
 	buildLog.clear();
+	buildLogErrors.clear();
 	buildLabel = "Build: copying files...";
 	buildProgressValue = 0;
 	//copy files
-	buildLog.push_back("Copying: dummy source directory -> dummy target directory");
-	buildLog.push_back("Copying: dummy source directory2 -> dummy target directory2");
-	buildLog.push_back("Copying: dummy source directory3 -> dummy target directory3");
+	AddBuildLog("Copying: dummy source directory -> dummy target directory");
+	AddBuildLog("Copying: dummy source directory2 -> dummy target directory2");
+	AddBuildLog("Copying: dummy source directory3 -> dummy target directory3");
 	this_thread::sleep_for(chrono::seconds(2));
 	//compile
 	buildProgressValue = 50;
 	buildLabel = "Build: executing msbuild...";
 	if (!DoMsBuild(this)) {
-		buildLog.push_back("Cannot execute MsBuild. Build canceled.");
+		SetBuildFail(this);
 	}
-
-	buildProgressValue = 100;
-	buildLabel = "Build: complete.";
-	buildLog.push_back("Build finished: press Escape to exit.");
+	else {//if (IO::HasFile("F:\\TestProject\\Debug\\TestProject.exe")) {
+		if (_cleanOnBuild) {
+			buildProgressValue = 90;
+			AddBuildLog("Cleaning up...");
+			buildLabel = "Build: cleaning up...";
+			//tr2::sys::remove_all("F:\\TestProject\\Release\\TestProject.tlog");
+			for each (string s1 in IO::GetFiles("F:\\TestProject\\Release\\TestProject.tlog"))
+			{
+				AddBuildLog("deleting " + s1);
+				remove(s1.c_str());
+			}
+			RemoveDirectory("F:\\TestProject\\Release\\TestProject.tlog\\");
+			for each (string s2 in IO::GetFiles("F:\\TestProject\\Release"))
+			{
+				string ss = s2.substr(s2.size() - 4, string::npos);
+				if (ss != ".dll" && s2 != "F:\\TestProject\\Release\\TestProject.exe") {
+					AddBuildLog("deleting " + s2);
+					remove(s2.c_str());
+				}
+			}
+		}
+		buildProgressValue = 100;
+		buildLabel = "Build: complete.";
+		buildProgressColor = green(1, 0.7f);
+		AddBuildLog("Build finished: press Escape to exit.");
+		ShellExecute(NULL, "open", "explorer", " /select,F:\\TestProject\\Release\\TestProject.exe", NULL, SW_SHOW);
+	}
+	//else SetBuildFail(this);
 }

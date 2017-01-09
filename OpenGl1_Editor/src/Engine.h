@@ -61,6 +61,8 @@ typedef unsigned char ALIGNMENT;
 
 long long milliseconds();
 
+class Editor;
+
 //shorthands
 Color red(), green(), blue(), cyan(), black(), white();
 Color red(float f), green(float f), blue(float f), cyan(float f), black(float f), white(float f);
@@ -98,11 +100,12 @@ public:
 	Texture(const string& path, bool mipmap);
 	Texture(const string& path, bool mipmap, bool nearest);
 	Texture(HBITMAP bmp, int width, int height);
-	~Texture(){ Delete(); }
+	~Texture(){ glDeleteTextures(1, &pointer); }
 	bool loaded;
 	unsigned int width, height;
 	GLuint pointer;
 
+	/*
 	Texture &operator=(const Texture&) = delete; //No copy-assignment.
 	Texture &operator=(Texture &&other)
 	{
@@ -112,18 +115,19 @@ public:
 		pointer = other.pointer;
 		loaded = other.loaded;
 	}
-
 protected:
 	void Delete() {
 		glDeleteTextures(1, &pointer);
 	}
+	*/
 };
 
 class EB_Browser_File;
 
 class IO {
 public:
-	static vector<EB_Browser_File> GetFiles(const string& path);
+	static vector<string> GetFiles(const string& path);
+	static vector<EB_Browser_File> GetFilesE(Editor* e, const string& path);
 	static void GetFolders(const string& path, vector<string>* names);
 	static bool HasDirectory(LPCTSTR szPath);
 	static bool HasFile(LPCTSTR szPath);
@@ -244,6 +248,9 @@ public:
 	static byte EButton(bool a, float x, float y, float w, float h, Color normalColor, string label, float labelSize, Font* labelFont, Color labelColor);
 	static byte EButton(bool a, float x, float y, float w, float h, Texture* texture, Color normalColor, Color highlightColor, Color pressColor);
 	static byte EButton(bool a, float x, float y, float w, float h, Color normalColor, Color highlightColor, Color pressColor, string label, float labelSize, Font* labelFont, Color labelColor);
+	static bool DrawToggle(float x, float y, float s, Color col, bool t);
+	static bool DrawToggle(float x, float y, float s, Texture* texture, bool t);
+	static bool DrawToggle(float x, float y, float s, Texture* texture, Color col, bool t);
 	//scaleType: 0=scale, 1=clip, 2=tile
 	static void DrawProgressBar(float x, float y, float w, float h, float progress, Color background, Texture* foreground, Color tint, int padding, byte scaleType);
 
@@ -279,8 +286,6 @@ public:
 
 
 };
-
-class Editor;
 
 #include "SceneObjects.h"
 

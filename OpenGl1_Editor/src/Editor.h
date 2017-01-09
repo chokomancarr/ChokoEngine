@@ -89,15 +89,10 @@ public:
 
 class EB_Browser_File {
 public:
-	EB_Browser_File(string path, string name);
-	~EB_Browser_File() {
-		if (hasTex)
-			delete(thumbnail);
-	}
+	EB_Browser_File(Editor* e, string path, string name);
 	string path;
 	string name;
-	bool hasTex;
-	Texture* thumbnail;
+	int thumbnail;
 };
 
 class EB_Browser_SubPath {
@@ -229,6 +224,7 @@ class Editor {
 public:
 	//prefs
 	bool _mouseJump = true;
+	bool _cleanOnBuild = true;
 
 	string projectFolder;
 
@@ -247,15 +243,19 @@ public:
 	vector<string> menuNames; //menu = layer1
 	vector<shortcutFunc> menuFuncs;
 	//edit = layer2
-	//progress = layer3
+	//progress = layer4
 	string progressName;
 	float progressValue;
+	//prefs = layer5
 
 	bool WAITINGBUILDSTARTFLAG = false;
 	//building - layer4: custom progress to look cool
 	vector<string> buildLog;
+	void AddBuildLog(string s);
+	vector<bool> buildLogErrors;
 	string buildLabel;
 	float buildProgressValue;
+	Color buildProgressColor;
 
 	Font* font;
 	static HWND hwnd;
@@ -288,8 +288,12 @@ public:
 	Texture* expand;
 	Texture* collapse;
 	Texture* object;
+	Texture *checkbox0, *checkbox1;
 	vector<Texture*> tooltipTexs;
 	vector<Texture*> shadingTexs;
+
+	vector<string> assetIconsExt;
+	vector<Texture*> assetIcons;
 	//Texture buttonDash;
 
 	void LoadDefaultAssets();
@@ -308,6 +312,8 @@ public:
 	static bool SetCache(string& path, I_EBI_ValueCollection* vals);
 
 	static void Compile(Editor* e);
+	static void ShowPrefs(Editor* e);
+
 	void DoCompile();
 
 };

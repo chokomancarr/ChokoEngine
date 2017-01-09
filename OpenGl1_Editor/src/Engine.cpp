@@ -252,15 +252,15 @@ byte Engine::Button(float x, float y, float w, float h, Color normalColor, Color
 	return inside ? (MOUSE_HOVER_FLAG | Input::mouse0State) : 0;
 }
 byte Engine::Button(float x, float y, float w, float h, Texture* texture, Color normalColor, Color highlightColor, Color pressColor) {
-	bool inside = Rect(x, y, w, h).Inside(Input::mousePos); \
+	bool inside = Rect(x, y, w, h).Inside(Input::mousePos);
 	switch (Input::mouse0State) {
 	case 0:
 	case MOUSE_UP:
-		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(), Vec2(0, 1), Vec2(1, 0), Vec2(1, 1), false, inside ? highlightColor : normalColor);
+		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, inside ? highlightColor : normalColor);
 		break;
 	case MOUSE_DOWN:
 	case MOUSE_HOLD:
-		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(), Vec2(0, 1), Vec2(1, 0), Vec2(1, 1), false, inside ? pressColor : normalColor);
+		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, inside ? pressColor : normalColor);
 		break;
 	}
 	return inside ? (MOUSE_HOVER_FLAG | Input::mouse0State) : 0;
@@ -327,6 +327,25 @@ byte Engine::EButton(bool a, float x, float y, float w, float h, Color normalCol
 	Label(x + 0.5f*w, y + 0.5f*h, labelSize, label, labelFont);
 	labelFont->alignment = al;
 	return b;
+}
+
+bool Engine::DrawToggle(float x, float y, float s, Color col, bool t) {
+	byte b = Button(x, y, s, s, col);
+	if (b == MOUSE_RELEASE)
+		t = !t;
+	return t;
+}
+bool Engine::DrawToggle(float x, float y, float s, Texture* texture, bool t) {
+	byte b = Button(x, y, s, s, texture, white(1, 0.7f), white(), white(1, 0.4f));
+	if (b == MOUSE_RELEASE)
+		t = !t;
+	return t;
+}
+bool Engine::DrawToggle(float x, float y, float s, Texture* texture, Color col, bool t) {
+	byte b = Button(x, y, s, s, texture, col, LerpColor(col, white(), 0.5f), LerpColor(col, black(), 0.5f));
+	if (b == MOUSE_RELEASE)
+		t = !t;
+	return t;
 }
 
 void Engine::DrawProgressBar(float x, float y, float w, float h, float progress, Color background, Texture* foreground, Color tint, int padding, byte clip) {
@@ -563,7 +582,25 @@ void Debug::Error(string c, string s) {
 
 }
 //-----------------io class-----------------------
-vector<EB_Browser_File> IO::GetFiles (const string& folder)
+vector<string> IO::GetFiles(const string& folder)
+{
+	vector<string> names;
+	string search_path = folder + "/*.*";
+	WIN32_FIND_DATA fd;
+	HANDLE hFind = ::FindFirstFile(search_path.c_str(), &fd);
+	if (hFind != INVALID_HANDLE_VALUE) {
+		do {
+			// read all (real) files in current folder
+			// , delete '!' read other 2 default folder . and ..
+			if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+				names.push_back(folder + "\\" + fd.cFileName);
+			}
+		} while (::FindNextFile(hFind, &fd));
+		::FindClose(hFind);
+	}
+	return names;
+}
+vector<EB_Browser_File> IO::GetFilesE (Editor* e, const string& folder)
 {
 	vector<EB_Browser_File> names;
 	string search_path = folder + "/*.*";
@@ -574,7 +611,7 @@ vector<EB_Browser_File> IO::GetFiles (const string& folder)
 			// read all (real) files in current folder
 			// , delete '!' read other 2 default folder . and ..
 			if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
-				names.push_back(EB_Browser_File(folder, fd.cFileName));
+				names.push_back(EB_Browser_File(e, folder, fd.cFileName));
 			}
 		} while (::FindNextFile(hFind, &fd));
 		::FindClose(hFind);
@@ -607,7 +644,7 @@ bool IO::HasDirectory (LPCTSTR szPath)
 bool IO::HasFile(LPCTSTR szPath)
 {
 	DWORD dwAttrib = GetFileAttributes(szPath);
-	return (dwAttrib != INVALID_FILE_ATTRIBUTES && (dwAttrib & FILE_ATTRIBUTE_NORMAL));
+	return (dwAttrib != INVALID_FILE_ATTRIBUTES);// && (dwAttrib & FILE_ATTRIBUTE_NORMAL));
 }
 
 string IO::ReadFile(const string& path) {

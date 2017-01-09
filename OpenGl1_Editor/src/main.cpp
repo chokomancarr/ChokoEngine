@@ -33,7 +33,6 @@ void OnDie();
 void renderScene();
 void closeCallback();
 
-Texture *alpha, *cat, *girl;
 Font *font;
 
 thread updateThread;
@@ -87,8 +86,7 @@ int main(int argc, char **argv)
 	editor->yLimits.push_back(Int2(0, 1));
 	editor->yLimits.push_back(Int2(0, 1));
 	editor->yLimits.push_back(Int2(0, 2));
-	editor->blocks = vector<EditorBlock*>({ new EB_Inspector(editor, 2, 0, 1, 1), new EB_Browser(editor, 0, 2, 2, 1, "D:\\"), new EB_Viewer(editor, 0, 0, 3, 2), new EB_Hierarchy(editor, 3, 0, 2, 2) }); //path.substr(0, path.find_last_of('\\') + 1)
-
+	
 	editor->NewScene();
 	editor->activeScene.objects.push_back(new SceneObject("Main Camera"));
 	editor->activeScene.objects.push_back(new SceneObject("Player"));
@@ -157,13 +155,11 @@ int main(int argc, char **argv)
 	}
 	else {
 		Engine::Init(path);
-		alpha = new Texture("F:\\alpha.bmp");
-		cat = new Texture("F:\\cat.bmp");
-		girl = new Texture("F:\\test.bmp");
 		font = new Font("F:\\ascii s2.font", "F:\\ascii 3.font", 17);
 		editor->font = font;
 
 		editor->LoadDefaultAssets();
+		editor->blocks = vector<EditorBlock*>({ new EB_Inspector(editor, 2, 0, 1, 1), new EB_Browser(editor, 0, 2, 2, 1, "D:\\"), new EB_Viewer(editor, 0, 0, 3, 2), new EB_Hierarchy(editor, 3, 0, 2, 2) }); //path.substr(0, path.find_last_of('\\') + 1)
 
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -264,6 +260,7 @@ void OnDie() {
 	updateThread.join();
 }
 
+bool hi;
 void DrawOverlay() {
 	editor->UpdateLerpers();
 	for (int i = editor->blocks.size() - 1; i >= 0; i--) {
@@ -303,7 +300,7 @@ void TimerGL(int i)
 
 void KeyboardGL(unsigned char c, int x, int y) {
 	int mods = glutGetModifiers();
-	if ((mods & 2) == 2) {
+	if ((mods & 2) == 2 && c != 32) {
 		c = (c | (3 << 5));
 	}
 	if (mods == 1 && c > 64)
@@ -349,10 +346,10 @@ void MouseGL(int button, int state, int x, int y) {
 		Input::mouse2 = (state == 0);
 		return;
 	case 3:
-		if (state == GLUT_DOWN) editor->blocks[editor->mouseOnP]->OnMouseScr(true);
+		if (state == GLUT_DOWN && editor->editorLayer == 0) editor->blocks[editor->mouseOnP]->OnMouseScr(true);
 		return;
 	case 4:
-		if (state == GLUT_DOWN) editor->blocks[editor->mouseOnP]->OnMouseScr(false);
+		if (state == GLUT_DOWN && editor->editorLayer == 0) editor->blocks[editor->mouseOnP]->OnMouseScr(false);
 		return;
 	}
 }
@@ -371,7 +368,8 @@ void MotionGLP(int x, int y) {
 }
 
 void MotionGL(int x, int y) {
-	editor->blocks[editor->mouseOn]->OnMouseM(Vec2(x, y) - Input::mousePos);
+	if (editor->editorLayer == 0)
+		editor->blocks[editor->mouseOn]->OnMouseM(Vec2(x, y) - Input::mousePos);
 	Input::mousePos = Vec2(x, y);
 	Input::mousePosRelative = Vec2(x*1.0f / Display::width, y*1.0f / Display::height);
 }
