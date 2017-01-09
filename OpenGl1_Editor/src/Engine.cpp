@@ -356,7 +356,7 @@ void Engine::DrawProgressBar(float x, float y, float w, float h, float progress,
 }
 
 void Engine::RotateUI(float aa, Vec2 point) {
-	float a = 3.1415926535f*aa / 180.0f;
+	float a = -3.1415926535f*aa / 180.0f;
 	//Display::uiMatrix = glm::mat3(1, 0, 0, 0, 1, 0, point2.x * 2 - 1, point2.y * 2 - 1, 1)*glm::mat3(cos(a), -sin(a), 0, sin(a), cos(a), 0, 0, 0, 1)*glm::mat3(1, 0, 0, 0, 1, 0, -point2.x * 2 + 1, -point2.y * 2 + 1, 1)*Display::uiMatrix;
 	Display::uiMatrix = glm::mat3(1, 0, 0, 0, 1, 0, point.x, point.y, 1)*glm::mat3(cos(a), -sin(a), 0, sin(a), cos(a), 0, 0, 0, 1)*glm::mat3(1, 0, 0, 0, 1, 0, -point.x, -point.y, 1)*Display::uiMatrix;
 }
@@ -611,7 +611,9 @@ vector<EB_Browser_File> IO::GetFilesE (Editor* e, const string& folder)
 			// read all (real) files in current folder
 			// , delete '!' read other 2 default folder . and ..
 			if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
-				names.push_back(EB_Browser_File(e, folder, fd.cFileName));
+				string aa(fd.cFileName);
+				if (!(aa.length() > 5 && aa.substr(aa.length() - 5, string::npos) == ".meta"))
+					names.push_back(EB_Browser_File(e, folder, fd.cFileName));
 			}
 		} while (::FindNextFile(hFind, &fd));
 		::FindClose(hFind);

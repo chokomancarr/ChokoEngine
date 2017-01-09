@@ -123,12 +123,13 @@ HICON GetHighResolutionIcon(LPTSTR pszPath)
 	else return nullptr;
 }
 
-EB_Browser_File::EB_Browser_File(Editor* e, string path, string name) : path(path), name(name), thumbnail(-1) {
-	
+EB_Browser_File::EB_Browser_File(Editor* e, string path, string nm) : path(path), thumbnail(-1) {
+	name = nm;
 	string ext = name.substr(name.find_last_of('.') + 1, string::npos);
 	for (int a = e->assetIcons.size() - 1; a >= 0; a--) {
 		if (ext == e->assetIconsExt[a]) {
 			thumbnail = a;
+			name = name.substr(0, name.find_last_of('.'));
 			break;
 		}
 	}
@@ -215,15 +216,23 @@ EB_Viewer::EB_Viewer(Editor* e, int x1, int y1, int x2, int y2) : rz(45), rw(45)
 	MakeMatrix();
 
 	shortcuts.emplace(GetShortcutInt('w', 0), &_OpenMenuW);
-	shortcuts.emplace(GetShortcutInt(' ', 2), &_OpenMenuChgMani);
+	shortcuts.emplace(GetShortcutInt(' ', GLUT_ACTIVE_CTRL), &_OpenMenuChgMani);
+	shortcuts.emplace(GetShortcutInt(' ', GLUT_ACTIVE_ALT), &_OpenMenuChgOrient);
 
 	shortcuts.emplace(GetShortcutInt('a', 0), &_SelectAll);
 	shortcuts.emplace(GetShortcutInt('z', 0), &_ViewInvis);
 	shortcuts.emplace(GetShortcutInt('5', 0), &_ViewPersp);
+
 	shortcuts.emplace(GetShortcutInt('t', 0), &_TooltipT);
 	shortcuts.emplace(GetShortcutInt('r', 0), &_TooltipR);
 	shortcuts.emplace(GetShortcutInt('s', 0), &_TooltipS);
 
+	shortcuts.emplace(GetShortcutInt('1', 0), &_ViewFront);
+	shortcuts.emplace(GetShortcutInt('1', GLUT_ACTIVE_ALT), &_ViewBack);
+	shortcuts.emplace(GetShortcutInt('3', 0), &_ViewRight);
+	shortcuts.emplace(GetShortcutInt('3', GLUT_ACTIVE_ALT), &_ViewLeft);
+	shortcuts.emplace(GetShortcutInt('7', 0), &_ViewTop);
+	shortcuts.emplace(GetShortcutInt('7', GLUT_ACTIVE_ALT), &_ViewBottom);
 }
 
 void EB_Viewer::MakeMatrix() {
@@ -318,19 +327,21 @@ void EB_Viewer::Draw() {
 	}
 
 	//draw grid
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glVertexPointer(3, GL_FLOAT, 0, &editor->grid[0]);
-	glLineWidth(0.5f);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	glColor4f(0.3f, 0.3f, 0.3f, 1.0f);
-	glDrawElements(GL_LINES, 64, GL_UNSIGNED_INT, &editor->gridId[0]);
-	glColor4f(1, 0, 0, 1.0f);
-	glLineWidth(1);
-	glDrawElements(GL_LINES, 2, GL_UNSIGNED_INT, &editor->gridId[64]);
-	glColor4f(0, 0, 1, 1.0f);
-	glDrawElements(GL_LINES, 2, GL_UNSIGNED_INT, &editor->gridId[66]);
-	glDisableClientState(GL_VERTEX_ARRAY);
-	
+	if (editor->_showGrid) {
+		glEnableClientState(GL_VERTEX_ARRAY);
+		glVertexPointer(3, GL_FLOAT, 0, &editor->grid[0]);
+		glLineWidth(0.5f);
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		glColor4f(0.3f, 0.3f, 0.3f, 1.0f);
+		glDrawElements(GL_LINES, 64, GL_UNSIGNED_INT, &editor->gridId[0]);
+		glColor4f(1, 0, 0, 1.0f);
+		glLineWidth(1);
+		glDrawElements(GL_LINES, 2, GL_UNSIGNED_INT, &editor->gridId[64]);
+		glColor4f(0, 0, 1, 1.0f);
+		glDrawElements(GL_LINES, 2, GL_UNSIGNED_INT, &editor->gridId[66]);
+		glDisableClientState(GL_VERTEX_ARRAY);
+	}
+
 	//draw tooltip
 	if (editor->selected != nullptr) {
 		if (selectedTooltip == 0) DrawTArrows(editor->selected->transform.position, 2);
@@ -369,13 +380,13 @@ void EB_Viewer::Draw() {
 		drawDescLT = 1;
 		switch (selectedTooltip) {
 		case 0:
-			descLabelLT = "Selected Axes: Transform";
+			descLabelLT = "Selected Axes: Transform (Ctrl-Space)";
 			break;
 		case 1:
-			descLabelLT = "Selected Axes: Rotate";
+			descLabelLT = "Selected Axes: Rotate (Ctrl-Space)";
 			break;
 		case 2:
-			descLabelLT = "Selected Axes: Scale";
+			descLabelLT = "Selected Axes: Scale (Ctrl-Space)";
 			break;
 		}
 	}
@@ -387,6 +398,20 @@ void EB_Viewer::Draw() {
 			break;
 		case 1:
 			descLabelLT = "Shading: Wire(Z)";
+			break;
+		}
+	}
+	if (Engine::EButton((editor->editorLayer == 0), v.x + 5, v.y + EB_HEADER_SIZE + 54, 20, 20, editor->orientTexs[selectedOrient], white(0.7f), white(), white(1, 0.5f)) && MOUSE_HOVER_FLAG) {
+		drawDescLT = 3;
+		switch (selectedOrient) {
+		case 0:
+			descLabelLT = "Selected Orientation: Global (Alt-Space)";
+			break;
+		case 1:
+			descLabelLT = "Selected Orientation: Local (Alt-Space)";
+			break;
+		case 2:
+			descLabelLT = "Selected Orientation: View (Alt-Space)";
 			break;
 		}
 	}
@@ -649,6 +674,8 @@ void EB_Inspector::DrawScalar(Editor* e, Color v, string label, float& value) {
 }
 
 void Editor::LoadDefaultAssets() {
+	font = new Font(dataPath + "res\\default_s.font", dataPath + "res\\default_l.font", 17);
+
 	buttonX = GetRes("xbutton");
 	buttonExt = GetRes("extbutton");
 	buttonExtArrow = GetRes("extbutton arrow");
@@ -667,6 +694,10 @@ void Editor::LoadDefaultAssets() {
 	tooltipTexs.push_back(GetRes("tooltip_rt"));
 	tooltipTexs.push_back(GetRes("tooltip_sc"));
 
+	orientTexs.push_back(GetRes("orien_global"));
+	orientTexs.push_back(GetRes("orien_local"));
+	orientTexs.push_back(GetRes("orien_view"));
+
 	checkbox0 = GetRes("checkbox_false");
 	checkbox1 = GetRes("checkbox_true");
 	
@@ -674,10 +705,12 @@ void Editor::LoadDefaultAssets() {
 	assetIconsExt.push_back("blend");
 	assetIconsExt.push_back("cpp");
 	assetIconsExt.push_back("shade");
-	assetIcons.push_back(new Texture(dataPath + "res\\asset_header.bmp"));
-	assetIcons.push_back(new Texture(dataPath + "res\\asset_blend.bmp"));
-	assetIcons.push_back(new Texture(dataPath + "res\\asset_cpp.bmp"));
-	assetIcons.push_back(new Texture(dataPath + "res\\asset_shade.bmp"));
+	assetIconsExt.push_back("txt");
+	assetIcons.push_back(new Texture(dataPath + "res\\asset_header.bmp", false));
+	assetIcons.push_back(new Texture(dataPath + "res\\asset_blend.bmp", false));
+	assetIcons.push_back(new Texture(dataPath + "res\\asset_cpp.bmp", false));
+	assetIcons.push_back(new Texture(dataPath + "res\\asset_shade.bmp", false));
+	assetIcons.push_back(new Texture(dataPath + "res\\asset_txt.bmp", false));
 	//assetIcons.push_back(GetRes("asset_blend"));
 	//assetIcons.push_back(GetRes("asset_cpp"));
 	//assetIcons.push_back(GetRes("asset_shade"));
@@ -749,7 +782,7 @@ void Editor::DrawHandles() {
 			else b->headerStatus = (b->headerStatus == 0 ? 1 : 0);
 		}
 		if (b->headerStatus == 1) {
-			//Engine::RotateUI(180, Vec2(v.r + 2 + 1.5f*EB_HEADER_PADDING, v.g + 1 + 0.5f*EB_HEADER_PADDING));
+			Engine::RotateUI(90, Vec2(v.r + 2 + 1.5f*EB_HEADER_PADDING, v.g + 1 + 0.5f*EB_HEADER_PADDING));
 			if (Engine::EButton((b->editor->editorLayer == 0), v.r + 2 + EB_HEADER_PADDING, v.g + 1, EB_HEADER_PADDING, EB_HEADER_PADDING, buttonExtArrow, white(0.7f, 0.8f), white(), white(1, 0.3f)) == MOUSE_RELEASE) {
 				b->headerStatus = 0;
 				xPoss.push_back(xPoss.at(b->x1));
@@ -759,10 +792,11 @@ void Editor::DrawHandles() {
 				blocks.push_back(new EB_Empty(this, b->x1, b->y1, xPoss.size() - 1, b->y2));
 
 				b->x1 = xPoss.size() - 1;
+				Engine::ResetUIMatrix();
 				break;
 			}
-			//Engine::ResetUIMatrix();
-			Engine::RotateUI(-90, Vec2(v.r + 1 + 0.5f*EB_HEADER_PADDING, v.g + 2 + 1.5f*EB_HEADER_PADDING));
+			Engine::ResetUIMatrix();
+			Engine::RotateUI(180, Vec2(v.r + 1 + 0.5f*EB_HEADER_PADDING, v.g + 2 + 1.5f*EB_HEADER_PADDING));
 			if (Engine::EButton((b->editor->editorLayer == 0), v.r + 1, v.g + 2 + EB_HEADER_PADDING, EB_HEADER_PADDING, EB_HEADER_PADDING, buttonExtArrow, white(0.7f, 0.8f), white(), white(1, 0.3f)) == MOUSE_RELEASE) {
 				b->headerStatus = 0;
 				yPoss.push_back(yPoss.at(b->y1));
@@ -863,16 +897,27 @@ void Editor::DrawHandles() {
 			Engine::DrawProgressBar(50.0f, Display::height - 30.0f, Display::width - 100.0f, 20.0f, buildProgressValue, white(1, 0.2f), background, buildProgressColor, 1, 2);
 			Engine::Label(55.0f, Display::height - 26.0f, 12, buildLabel, font, white());
 			for (int i = buildLog.size() - 1, dy = 0; i >= 0; i--) {
-				Engine::Label(30.0f, Display::height - 50.0f - 15.0f*dy, 12, buildLog[i], font, buildLogErrors[i]? red() : white(0.7f));
+				Engine::Label(30.0f, Display::height - 50.0f - 15.0f*dy, 12, buildLog[i], font, buildLogErrors[i]? red() : white(0.7f), Display::width - 50);
 				dy++;
 			}
 		}
 		else if (editorLayer == 5) {
 			Engine::DrawQuad(0, 0, Display::width, Display::height, black(0.6f));
 			Engine::DrawQuad(Display::width*0.1f, Display::height*0.1f, Display::width*0.8f, Display::height*0.8f, black(0.8f));
-			Engine::Label(Display::width*0.1f + 10, Display::height*0.1f + 18, 21, "Build settings", font, white());
-			_cleanOnBuild = Engine::DrawToggle(Display::width*0.1f + 12, Display::height*0.1f + 44, 14, _cleanOnBuild? checkbox1 : checkbox0, _cleanOnBuild);
-			Engine::Label(Display::width*0.1f + 30, Display::height*0.1f + 46, 12, "Remove visual studio files on build", font, white());
+			int offy = 18;
+
+			Engine::Label(Display::width*0.1f + 10, Display::height*0.1f + offy, 21, "Viewer settings", font, white());
+			_showGrid = Engine::DrawToggle(Display::width*0.1f + 12, Display::height*0.1f + offy + 26, 14, _showGrid ? checkbox1 : checkbox0, _showGrid);
+			Engine::Label(Display::width*0.1f + 30, Display::height*0.1f + offy + 28, 12, "Show grid", font, white());
+			_mouseJump = Engine::DrawToggle(Display::width*0.1f + 12, Display::height*0.1f + offy + 46, 14, _mouseJump ? checkbox1 : checkbox0, _mouseJump);
+			Engine::Label(Display::width*0.1f + 30, Display::height*0.1f + offy + 48, 12, "Mouse stay inside window", font, white());
+
+			offy = 100;
+			Engine::Label(Display::width*0.1f + 10, Display::height*0.1f + offy, 21, "Build settings", font, white());
+			Engine::Label(Display::width*0.1f + 10, Display::height*0.1f + offy + 28, 12, "Data bundle size (x100Mb)", font, white());
+			Engine::Button(Display::width*0.1f + 200, Display::height*0.1f + offy + 25, 70, 16, grey2(), to_string(_assetDataSize), 12, font, white());
+			_cleanOnBuild = Engine::DrawToggle(Display::width*0.1f + 12, Display::height*0.1f + offy + 46, 14, _cleanOnBuild ? checkbox1 : checkbox0, _cleanOnBuild);
+			Engine::Label(Display::width*0.1f + 30, Display::height*0.1f + offy + 48, 12, "Remove visual studio files on build", font, white());
 		}
 	}
 }

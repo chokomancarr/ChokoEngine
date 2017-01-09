@@ -131,7 +131,7 @@ public:
 	bool persp;
 	Color arrowX, arrowY, arrowZ; 
 	Vec3 axesPos;
-	byte selectedTooltip, selectedShading;
+	byte selectedTooltip, selectedShading, selectedOrient;
 
 	void MakeMatrix();
 
@@ -145,13 +145,26 @@ public:
 	static void _OpenMenuW(EditorBlock*);
 	static void _OpenMenuX(EditorBlock*);
 	static void _OpenMenuChgMani(EditorBlock*);
+	static void _OpenMenuChgOrient(EditorBlock*);
 
 	static void _SelectAll(EditorBlock*);
 	static void _ViewInvis(EditorBlock*);
 	static void _ViewPersp(EditorBlock*);
+
 	static void _TooltipT(EditorBlock*);
 	static void _TooltipR(EditorBlock*);
 	static void _TooltipS(EditorBlock*);
+
+	static void _OrientG(EditorBlock*);
+	static void _OrientL(EditorBlock*);
+	static void _OrientV(EditorBlock*);
+
+	static void _ViewFront(EditorBlock*);
+	static void _ViewBack(EditorBlock*);
+	static void _ViewLeft(EditorBlock*);
+	static void _ViewRight(EditorBlock*);
+	static void _ViewTop(EditorBlock*);
+	static void _ViewBottom(EditorBlock*);
 };
 
 class I_EBI_Value {
@@ -223,7 +236,9 @@ class yPossMerger;
 class Editor {
 public:
 	//prefs
+	bool _showGrid = true;
 	bool _mouseJump = true;
+	int _assetDataSize = 10; //x100Mb
 	bool _cleanOnBuild = true;
 
 	string projectFolder;
@@ -291,6 +306,7 @@ public:
 	Texture *checkbox0, *checkbox1;
 	vector<Texture*> tooltipTexs;
 	vector<Texture*> shadingTexs;
+	vector<Texture*> orientTexs;
 
 	vector<string> assetIconsExt;
 	vector<Texture*> assetIcons;

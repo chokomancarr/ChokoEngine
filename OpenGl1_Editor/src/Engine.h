@@ -221,7 +221,11 @@ public:
 //see SceneObjects.h
 class Object;
 class Component;
+class Transform;
 class Camera;
+class MeshFilter;
+class MeshRenderer;
+class SceneScript;
 class SceneObject;
 
 class Engine {

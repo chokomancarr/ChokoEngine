@@ -115,7 +115,8 @@ int main(int argc, char **argv)
 	//TestScript* ts = new TestScript();
 
 	string p;
-	LPARAM hIcon = (LPARAM)LoadImage(NULL, "F:\\1.ico", IMAGE_ICON, 16, 16, LR_LOADFROMFILE);
+	string ip = editor->dataPath + "1.ico";
+	LPARAM hIcon = (LPARAM)LoadImage(NULL, ip.c_str(), IMAGE_ICON, 16, 16, LR_LOADFROMFILE);
 	SendMessage(hwnd, WM_SETICON, ICON_SMALL, hIcon);
 	SendMessage(hwnd, WM_SETICON, ICON_BIG, hIcon);
 	SendMessage(GetWindow(hwnd, GW_OWNER), WM_SETICON, ICON_SMALL, hIcon);
@@ -155,11 +156,9 @@ int main(int argc, char **argv)
 	}
 	else {
 		Engine::Init(path);
-		font = new Font("F:\\ascii s2.font", "F:\\ascii 3.font", 17);
-		editor->font = font;
-
 		editor->LoadDefaultAssets();
 		editor->blocks = vector<EditorBlock*>({ new EB_Inspector(editor, 2, 0, 1, 1), new EB_Browser(editor, 0, 2, 2, 1, "D:\\"), new EB_Viewer(editor, 0, 0, 3, 2), new EB_Hierarchy(editor, 3, 0, 2, 2) }); //path.substr(0, path.find_last_of('\\') + 1)
+		font = editor->font;
 
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -305,7 +304,8 @@ void KeyboardGL(unsigned char c, int x, int y) {
 	}
 	if (mods == 1 && c > 64)
 		c += 32;
-
+	
+	cout << (int)c << endl;
 	if (editor->editorLayer == 0) {
 		ShortcutMapGlobal::const_iterator got = editor->globalShorts.find(GetShortcutInt(c, mods));
 		if (got != editor->globalShorts.end()) {
