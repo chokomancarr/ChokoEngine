@@ -19,6 +19,7 @@ using namespace std;
 class EditorBlock;
 
 typedef unsigned char byte;
+typedef void(*dataFunc)(EditorBlock*, void*);
 typedef void(*shortcutFunc)(EditorBlock*);
 typedef void(*shortcutFuncGlobal)(Editor*);
 typedef pair<string, shortcutFunc> funcMap;
@@ -46,8 +47,9 @@ public:
 
 	virtual void Draw() = 0;
 	virtual void Refresh() = 0;
-	virtual void OnMouseM(Vec2 d) = 0;
-	virtual void OnMouseScr(bool up) = 0;
+	virtual void OnMouseM(Vec2 d) {}
+	virtual void OnMousePress(int i) {}
+	virtual void OnMouseScr(bool up) {}
 protected:
 	void DrawControlButtons();
 	//EditorBlock(byte t, float x1, float y1, float x2, float y2) : type(t), x1(x1), x2(x2), y1(y1), y2(y2) {}
@@ -66,8 +68,6 @@ public:
 
 	void Draw();
 	void Refresh(){} //nothing
-	void OnMouseM(Vec2 d) {}
-	void OnMouseScr(bool up) {}
 };
 
 class EB_Hierarchy: public EditorBlock {
@@ -83,8 +83,6 @@ public:
 
 	void Draw();
 	void Refresh(){} //nothing
-	void OnMouseM(Vec2 d) {}
-	void OnMouseScr(bool up) {}
 };
 
 class EB_Browser_File {
@@ -112,8 +110,6 @@ public:
 
 	void Draw();
 	void Refresh();
-	void OnMouseM(Vec2 d) {}
-	void OnMouseScr(bool up) {}
 };
 
 class EB_Viewer : public EditorBlock {
@@ -133,38 +129,40 @@ public:
 	Vec3 axesPos;
 	byte selectedTooltip, selectedShading, selectedOrient;
 
+	Vec3 preModVals;
+	float modVal; //delta
+	byte modifying;//[type 1g 2r 3s][axis 0f, 1x 2y 3z]
+	Vec3 modAxisDir;
+
 	void MakeMatrix();
 
 	void Draw();
 	void DrawTArrows(Vec3 pos, float size);
 	void DrawSArrows(Vec3 pos, float size);
 	void Refresh() {}
-	void OnMouseM(Vec2 d);
-	void OnMouseScr(bool up);
+	void OnMouseM(Vec2 d) override;
+	void OnMousePress(int i) override;
+	void OnMouseScr(bool up) override;
 
-	static void _OpenMenuW(EditorBlock*);
-	static void _OpenMenuX(EditorBlock*);
-	static void _OpenMenuChgMani(EditorBlock*);
-	static void _OpenMenuChgOrient(EditorBlock*);
+	static void _Grab(EditorBlock*), _Rotate(EditorBlock*), _Scale(EditorBlock*);
+	static void _X(EditorBlock*), _Y(EditorBlock*), _Z(EditorBlock*);
 
-	static void _SelectAll(EditorBlock*);
-	static void _ViewInvis(EditorBlock*);
-	static void _ViewPersp(EditorBlock*);
+	static void _OpenMenuAdd(EditorBlock*), _OpenMenuCom(EditorBlock*), _OpenMenuW(EditorBlock*), _OpenMenuX(EditorBlock*);
+	static void _OpenMenuChgMani(EditorBlock*), _OpenMenuChgOrient(EditorBlock*);
 
-	static void _TooltipT(EditorBlock*);
-	static void _TooltipR(EditorBlock*);
-	static void _TooltipS(EditorBlock*);
-
-	static void _OrientG(EditorBlock*);
-	static void _OrientL(EditorBlock*);
-	static void _OrientV(EditorBlock*);
-
-	static void _ViewFront(EditorBlock*);
-	static void _ViewBack(EditorBlock*);
-	static void _ViewLeft(EditorBlock*);
-	static void _ViewRight(EditorBlock*);
-	static void _ViewTop(EditorBlock*);
-	static void _ViewBottom(EditorBlock*);
+	static byte preAddType;
+	static void _AddObjectE(EditorBlock*), _AddObjectCam(EditorBlock*), _AddObjectAud(EditorBlock*);
+	static void _AddComScr(EditorBlock*), _AddComAud(EditorBlock*), _AddComRend(EditorBlock*), _AddComMesh(EditorBlock*);
+	
+	static void _DoAddComScr(EditorBlock* b, void* v), _DoAddComRend(EditorBlock* b, void* v);
+	static void _D2AddComCam(EditorBlock*), _D2AddComMrd(EditorBlock*), _D2AddComMft(EditorBlock*);
+	
+	static void _AddObjAsI(EditorBlock*); //, _AddObjAsC(EditorBlock*), _AddObjAsP(EditorBlock*);
+	
+	static void _TooltipT(EditorBlock*), _TooltipR(EditorBlock*), _TooltipS(EditorBlock*);
+	static void _SelectAll(EditorBlock*), _ViewInvis(EditorBlock*), _ViewPersp(EditorBlock*);
+	static void _OrientG(EditorBlock*), _OrientL(EditorBlock*), _OrientV(EditorBlock*);
+	static void _ViewFront(EditorBlock*), _ViewBack(EditorBlock*), _ViewLeft(EditorBlock*), _ViewRight(EditorBlock*), _ViewTop(EditorBlock*), _ViewBottom(EditorBlock*);
 };
 
 class I_EBI_Value {
@@ -217,8 +215,6 @@ public:
 	void Deselect();
 	void Draw();
 	void Refresh() {}
-	void OnMouseM(Vec2 d) {}
-	void OnMouseScr(bool up) {}
 
 	static void DrawScalar(Editor* e, Color v, string label, float& value);
 	static void DrawVector2(Editor* e, Color v, string label, float& valueX, float& valueY);
@@ -255,8 +251,12 @@ public:
 	Vec2 popupPos;
 	EditorBlock* menuBlock;
 	int menuPadding;
+	string menuTitle;
 	vector<string> menuNames; //menu = layer1
+	bool menuFuncIsSingle;
 	vector<shortcutFunc> menuFuncs;
+	dataFunc menuFuncSingle;
+	vector<void*> menuFuncVals;
 	//edit = layer2
 	//progress = layer4
 	string progressName;
@@ -311,14 +311,18 @@ public:
 	vector<string> assetIconsExt;
 	vector<Texture*> assetIcons;
 	//Texture buttonDash;
+	vector<string> headerAssets;
 
 	void LoadDefaultAssets();
+	void RefreshScriptAssets();
+	void GenerateScriptResolver();
 	void NewScene();
 	void UpdateLerpers();
 	void DrawHandles();
 
-	void RegisterMenu(EditorBlock* block, vector<string> names, vector<shortcutFunc> funcs, int padding);
-	
+	void RegisterMenu(EditorBlock* block, string title, vector<string> names, vector<shortcutFunc> funcs, int padding);
+	void RegisterMenu(EditorBlock* block, string title, vector<string> names, dataFunc func, vector<void*> vals, int padding);
+
 	static Texture* GetRes(string name);
 	static Texture* GetRes(string name, bool mipmap);
 	static Texture* GetRes(string name, bool mipmap, bool nearest);
@@ -329,6 +333,7 @@ public:
 
 	static void Compile(Editor* e);
 	static void ShowPrefs(Editor* e);
+	static void SaveScene(Editor* e);
 
 	void DoCompile();
 

@@ -139,6 +139,30 @@ Vec3 Ds(Vec3 v) {
 	return Vec3(Dw(v.x) * 2 - 1, 1 - Dh(v.y) * 2, 1);
 }
 
+void Engine::BeginStencil(float x, float y, float w, float h) {
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LEQUAL);
+	glClear(GL_DEPTH_BUFFER_BIT);
+	glEnable(GL_STENCIL_TEST);
+	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+	glDepthMask(GL_FALSE);
+	glStencilFunc(GL_NEVER, 1, 0xFF);
+	glStencilOp(GL_REPLACE, GL_KEEP, GL_KEEP); // draw 1s on test fail (always)
+	glStencilMask(0xFF); // draw stencil pattern
+	glClear(GL_STENCIL_BUFFER_BIT); // needs mask=0xFF
+	Engine::DrawQuad(x, y, w, h, white());
+	//Engine::DrawQuad(v.r, v.g, v.b, v.a, white());
+	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+	glDepthMask(GL_TRUE);
+	glStencilMask(0x0);
+	glStencilFunc(GL_EQUAL, 1, 0xFF);
+}
+
+void Engine::EndStencil() {
+	glDisable(GL_STENCIL_TEST);
+	glDisable(GL_DEPTH_TEST);
+}
+
 void Engine::DrawTexture(float x, float y, float w, float h, Texture* texture) {
 	DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer);
 }
@@ -299,6 +323,9 @@ byte Engine::EButton(bool a, float x, float y, float w, float h, Color normalCol
 }
 byte Engine::EButton(bool a, float x, float y, float w, float h, Color normalColor, string label, float labelSize, Font* labelFont, Color labelColor) {
 	return EButton(a, x, y, w, h, normalColor, LerpColor(normalColor, white(), 0.5f), LerpColor(normalColor, black(), 0.5f), label, labelSize, labelFont, labelColor);
+}
+byte Engine::EButton(bool a, float x, float y, float w, float h, Texture* texture, Color color) {
+	return EButton(a, x, y, w, h, texture, color, LerpColor(color, white(), 0.5f), LerpColor(color, black(), 0.5f));
 }
 byte Engine::EButton(bool a, float x, float y, float w, float h, Texture* texture, Color normalColor, Color highlightColor, Color pressColor) {
 	if (a) {
@@ -913,4 +940,61 @@ void Material::SetTexture(string name, Texture * texture) {
 }
 void Material::SetTexture(GLint id, Texture * texture) {
 	shader->Set(SHADER_SAMPLER, id, texture);
+}
+
+void _StreamWrite(void* val, ofstream* stream, int size) {
+	stream->write(reinterpret_cast<char const *>(val), size);
+}
+
+float B2F(char c[]) {
+	float ff;
+	*((char*)(&ff) + 0) = c[0];
+	*((char*)(&ff) + 1) = c[1];
+	*((char*)(&ff) + 2) = c[2];
+	*((char*)(&ff) + 3) = c[3];
+	return ff;
+}
+
+void Serialize(Editor* e, SceneObject* o, ofstream* stream) {
+	/*
+	Object data
+	O[tx][ty][tz][rx][ry][rz][sx][sy][sz] (trs=float32)
+	(components)
+	C[type][...]c (type=byte)
+	(child objects...)
+	o
+	*/
+	stream->write("O", 1);
+	_StreamWrite(&o->transform.position.x, stream, 4);
+	_StreamWrite(&o->transform.position.y, stream, 4);
+	_StreamWrite(&o->transform.position.z, stream, 4);
+	_StreamWrite(&o->transform.eulerRotation.x, stream, 4);
+	_StreamWrite(&o->transform.eulerRotation.y, stream, 4);
+	_StreamWrite(&o->transform.eulerRotation.z, stream, 4);
+	_StreamWrite(&o->transform.scale.x, stream, 4);
+	_StreamWrite(&o->transform.scale.y, stream, 4);
+	_StreamWrite(&o->transform.scale.z, stream, 4);
+	for each (Component* c in o->_components)
+	{
+		stream->write("C", 1);
+		byte t = c->componentType;
+		_StreamWrite(&t, stream, 1);
+		c->Serialize(e, stream);
+		stream->write("c", 1);
+	}
+	for each (SceneObject* oo in o->children)
+	{
+		Serialize(e, oo, stream);
+	}
+	stream->write("o", 1);
+}
+
+void Scene::Save(Editor* e) {
+	ofstream sw(e->projectFolder + "Assets\\test.scene", ios::out);
+	float f = 1.0f;
+	_StreamWrite(&f, &sw, 4);
+	for each (SceneObject* sc in objects) {
+		Serialize(e, sc, &sw);
+	}
+	sw.close();
 }

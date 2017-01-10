@@ -96,11 +96,15 @@ void EB_Hierarchy::Draw() {
 	v.g = round(v.g) + 1;
 	v.r = round(v.r) + 1;
 	DrawHeaders(editor, this, &v, "Scene objects", "Hierarchy");
+
+	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
+	glDisable(GL_DEPTH_TEST);
 	int i = 0;
 	for each (SceneObject* sc in editor->activeScene.objects)
 	{
 		EBH_DrawItem(sc, editor, &v, i, 0);
 	}
+	Engine::EndStencil();
 }
 
 HICON GetHighResolutionIcon(LPTSTR pszPath)
@@ -169,6 +173,9 @@ void EB_Browser::Draw() {
 	v.r = round(v.r) + 1;
 	bool in = DrawHeaders(editor, this, &v, currentDir, "Browser");
 
+	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
+	glDisable(GL_DEPTH_TEST);
+
 	for (int y = dirs.size() - 1; y >= 0; y--) {
 		if (Engine::EButton((editor->editorLayer == 0), v.r, v.g + EB_HEADER_SIZE + 1 + (16 * y), 150, 15, grey1()) == MOUSE_RELEASE) {
 			if (dirs.at(y) != ".") {
@@ -195,6 +202,8 @@ void EB_Browser::Draw() {
 				break;
 		}
 	}
+
+	Engine::EndStencil();
 }
 
 void EB_Browser::Refresh() {
@@ -215,17 +224,23 @@ EB_Viewer::EB_Viewer(Editor* e, int x1, int y1, int x2, int y2) : rz(45), rw(45)
 	this->y2 = y2;
 	MakeMatrix();
 
+	shortcuts.emplace(GetShortcutInt('a', GLUT_ACTIVE_SHIFT), &_OpenMenuAdd);
+	shortcuts.emplace(GetShortcutInt('c', GLUT_ACTIVE_SHIFT), &_OpenMenuCom);
 	shortcuts.emplace(GetShortcutInt('w', 0), &_OpenMenuW);
 	shortcuts.emplace(GetShortcutInt(' ', GLUT_ACTIVE_CTRL), &_OpenMenuChgMani);
 	shortcuts.emplace(GetShortcutInt(' ', GLUT_ACTIVE_ALT), &_OpenMenuChgOrient);
+
+	shortcuts.emplace(GetShortcutInt('x', 0), &_X);
+	shortcuts.emplace(GetShortcutInt('y', 0), &_Y);
+	shortcuts.emplace(GetShortcutInt('z', 0), &_Z);
 
 	shortcuts.emplace(GetShortcutInt('a', 0), &_SelectAll);
 	shortcuts.emplace(GetShortcutInt('z', 0), &_ViewInvis);
 	shortcuts.emplace(GetShortcutInt('5', 0), &_ViewPersp);
 
-	shortcuts.emplace(GetShortcutInt('t', 0), &_TooltipT);
-	shortcuts.emplace(GetShortcutInt('r', 0), &_TooltipR);
-	shortcuts.emplace(GetShortcutInt('s', 0), &_TooltipS);
+	shortcuts.emplace(GetShortcutInt('g', 0), &_Grab);
+	shortcuts.emplace(GetShortcutInt('r', 0), &_Rotate);
+	shortcuts.emplace(GetShortcutInt('s', 0), &_Scale);
 
 	shortcuts.emplace(GetShortcutInt('1', 0), &_ViewFront);
 	shortcuts.emplace(GetShortcutInt('1', GLUT_ACTIVE_ALT), &_ViewBack);
@@ -262,24 +277,8 @@ void EB_Viewer::Draw() {
 	v.r = round(v.r) + 1;
 	DrawHeaders(editor, this, &v, "scene ID here", "Viewer");
 
-	glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_LEQUAL);
-	glClear(GL_DEPTH_BUFFER_BIT);
-	glEnable(GL_STENCIL_TEST);
-	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-	glDepthMask(GL_FALSE);
-	glStencilFunc(GL_NEVER, 1, 0xFF);
-	glStencilOp(GL_REPLACE, GL_KEEP, GL_KEEP); // draw 1s on test fail (always)
-	glStencilMask(0xFF); // draw stencil pattern
-	glClear(GL_STENCIL_BUFFER_BIT); // needs mask=0xFF
-	Engine::DrawQuad(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2, white());
-	//Engine::DrawQuad(v.r, v.g, v.b, v.a, white());
-	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-	glDepthMask(GL_TRUE);
-	glStencilMask(0x0);
-	glStencilFunc(GL_EQUAL, 0, 0xFF);
+	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
 
-	glStencilFunc(GL_EQUAL, 1, 0xFF);
 	Vec2 v2 = Vec2(Display::width, Display::height)*0.03f;
 	Engine::DrawQuad(0, 0, Display::width, Display::height, white(1, 0.2f));//editor->checkers->pointer, Vec2(), Vec2(v2.x, 0), Vec2(0, v2.y), v2, true, white(0.05f));
 	glMatrixMode(GL_PROJECTION);
@@ -343,16 +342,21 @@ void EB_Viewer::Draw() {
 	}
 
 	//draw tooltip
+	glDepthFunc(GL_ALWAYS);
 	if (editor->selected != nullptr) {
-		if (selectedTooltip == 0) DrawTArrows(editor->selected->transform.position, 2);
-		else if (selectedTooltip == 1) DrawTArrows(editor->selected->transform.position, 2);
-		else DrawSArrows(editor->selected->transform.position, 2);
+		if (modifying == 0) {
+			if (selectedTooltip == 0) DrawTArrows(editor->selected->transform.position, 2);
+			else if (selectedTooltip == 1) DrawTArrows(editor->selected->transform.position, 2);
+			else DrawSArrows(editor->selected->transform.position, 2);
+		}
+		else {
+			Engine::DrawLineW(editor->selected->transform.position + modAxisDir*-100000.0f, editor->selected->transform.position + modAxisDir*100000.0f, white(), 3);
+		}
 	}
 
 	glPopMatrix();
 
-	glDisable(GL_STENCIL_TEST);
-	glDisable(GL_DEPTH_TEST);
+	Engine::EndStencil();
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -481,115 +485,48 @@ void EB_Viewer::OnMouseM(Vec2 d) {
 		rw += d.y;
 		MakeMatrix();
 	}
+	else if (modifying > 0) {
+		cout << (int)(modifying & 0x0f) << endl;
+		modVal += d.x / Display::width - d.y / Display::height;
+		if (modifying >> 4 == 1) {
+			switch (modifying & 0x0f) {
+			case 1:
+				editor->selected->transform.position = preModVals + Vec3(-(modVal) * 40 / scale, 0, 0);
+				break;
+			case 2:
+				editor->selected->transform.position = preModVals + Vec3(0, (modVal) * 40 / scale, 0);
+				break;
+			case 3:
+				editor->selected->transform.position = preModVals + Vec3(0, 0, (modVal) * 40 / scale);
+				break;
+			}
+		}
+	}
+}
+
+void EB_Viewer::OnMousePress(int i) {
+	if (modifying > 0) {
+		if (i != 0) {
+			switch (modifying >> 4) {
+			case 1:
+				editor->selected->transform.position = preModVals;
+				break;
+			case 2:
+				editor->selected->transform.eulerRotation = preModVals;
+				break;
+			case 3:
+				editor->selected->transform.scale = preModVals;
+				break;
+			}
+		}
+		modifying = 0;
+	}
 }
 
 void EB_Viewer::OnMouseScr(bool up) {
 	scale += (up?0.1f:-0.1f);
 	scale = min(max(scale, 0.01f), 1000);
 }
-
-/*
-EBI_Asset::EBI_Asset(string str, string nm) {
-	string noEd = nm.substr(0, nm.find_last_of('.'));
-	string ed = nm.substr(nm.find_last_of('.'), nm.size()-1);
-	if (ed == ".h") {
-		/*
-		#include "Engine.h"
-		class TestScript : public SceneScript {
-		public:
-		TestScript() {}
-		int foo = 0;
-		int boo= 1;
-		int koo =2;
-		int roo= 3;
-		Vec2 v2 = Vec2(1, 2);
-		void Start();
-		};
-		/
-		ifstream f;
-		f.open(str);
-		string s;
-		string cs = "class" + noEd + ":publicSceneScript{";
-		bool corrClass = false;
-		int brackets = 0;
-		while (!f.eof()){
-			getline(f, s);
-			if (!corrClass) {
-				s.erase(remove(s.begin(), s.end(), ' '), s.end());
-				s.erase(remove(s.begin(), s.end(), '\t'), s.end());
-				if (s.size() >= cs.size()) {
-					if (s.substr(0, cs.size()) == cs) {
-						corrClass = true;
-						correct = true;
-						brackets = 1;
-						continue;
-					}
-				}
-			}
-			else {
-				while (s.find_first_of(' ') == 0 || s.find_first_of('\t') == 0)
-					s = s.substr(1, s.size());
-				int fs = s.find_first_of(' ');
-				string ss = s.substr(0, fs);
-				size_t eq = s.find_first_of('=');
-				string nm = s.substr(fs + 1, min(eq, s.size()) - 1 - fs);
-				nm.erase(remove(nm.begin(), nm.end(), ' '), nm.end());
-				nm.erase(remove(nm.begin(), nm.end(), '\t'), nm.end());
-				if (ss == "int") {
-					if (eq != string::npos) {
-						vals.push_back(new EBI_Value<int>(nm, 1, 1, stoi(s.substr(eq + 1, s.size() - 1)), 0, 0, 0));
-					}
-					else {
-						vals.push_back(new EBI_Value<int>(nm, 1, 1, 0, 0, 0, 0));
-					}
-				}
-				if (ss == "Vec2") {
-					if (eq != string::npos) {
-						string v = s.substr(eq + 1, s.size() - 1);
-						v.erase(remove(v.begin(), v.end(), ' '), v.end());
-						int bb = v.find_first_of('(');
-						int bc = v.find_first_of(',');
-						int be = v.find_first_of(')');
-						vals.push_back(new EBI_Value<float>(nm, 2, 1, stof(v.substr(bb + 1, bc - bb - 1)), stof(v.substr(bc + 1, be - bc - 1)), 0, 0));
-					}
-					else {
-						vals.push_back(new EBI_Value<float>(nm, 2, 1, 0, 0, 0, 0));
-					}
-				}
-				s.erase(remove(s.begin(), s.end(), ' '), s.end());
-				s.erase(remove(s.begin(), s.end(), '\t'), s.end());
-				brackets += count(s.begin(), s.end(), '{');
-				brackets -= count(s.begin(), s.end(), '}');
-				if (brackets == 0) {
-					corrClass = false;
-				}
-			}
-		}
-		f.close();
-	}
-}
-
-void EBI_Asset::Draw(Editor* e, EditorBlock* b, Color* v) {
-	int allH = 0;
-	for each (I_EBI_Value* val in vals)
-	{
-		e->font->alignment = ALIGN_MIDLEFT;
-		Engine::Label(v->r + 3, v->g + EB_HEADER_SIZE + 1 + 26 * (allH + 0.5f), 22, val->name, e->font, white());
-		e->font->alignment = ALIGN_TOPLEFT;
-		switch (val->type) {
-		case 1:
-			Engine::EButton((e->editorLayer == 0), v->r + v->b*0.3f + 1, v->g + EB_HEADER_SIZE + 1 + 26 * allH, v->b*0.7f - 2, 25, white(1, 0.7f), to_string(((EBI_Value<int>*)val)->a), 22, e->font, black());
-			break;
-		case 2:
-			Engine::EButton((e->editorLayer == 0), v->r + v->b*0.3f + 1, v->g + EB_HEADER_SIZE + 1 + 26 * allH, v->b*0.35f - 1, 25, white(1, 0.7f), to_string(((EBI_Value<float>*)val)->a), 22, e->font, black());
-			Engine::EButton((e->editorLayer == 0), v->r + v->b*0.65f + 1, v->g + EB_HEADER_SIZE + 1 + 26 * allH, v->b*0.35f - 2, 25, white(1, 0.7f), to_string(((EBI_Value<float>*)val)->b), 22, e->font, black());
-			break;
-		}
-
-		allH += val->sizeH;
-	}
-}
-*/
 
 EB_Inspector::EB_Inspector(Editor* e, int x1, int y1, int x2, int y2): label("") {
 	editorType = 3;
@@ -747,6 +684,47 @@ void Editor::LoadDefaultAssets() {
 
 	globalShorts.emplace(GetShortcutInt('b', GLUT_ACTIVE_CTRL), &Compile);
 	globalShorts.emplace(GetShortcutInt('u', GLUT_ACTIVE_CTRL), &ShowPrefs);
+	globalShorts.emplace(GetShortcutInt('s', GLUT_ACTIVE_CTRL), &SaveScene);
+}
+
+void AddH(string dir, vector<string>* h) {
+	for each (string s in IO::GetFiles(dir)) {
+		if (s.substr(s.size() - 2, string::npos) == ".h")
+			h->push_back(s.substr(s.find_last_of('\\') + 1, string::npos));
+	}
+	vector<string> dirs;
+	IO::GetFolders(dir, &dirs);
+	for each (string ss in dirs) {
+		if (ss != "." && ss != "..")
+			AddH(dir + "\\" + ss, h);
+	}
+}
+
+void Editor::RefreshScriptAssets() {
+	headerAssets.clear();
+	AddH(projectFolder + "Assets", &headerAssets);
+	GenerateScriptResolver();
+}
+
+void Editor::GenerateScriptResolver() {
+	string h = "#include <unordered_map>\n#include \"Engine.h\"\ntypedef SceneScript(*sceneScriptInstantiator)();\nclass SceneScriptResolver {\npublic:\n\tSceneScriptResolver();\n\tstd::unordered_map<int, sceneScriptInstantiator> map;\n};";
+	string s = "#include \"SceneScriptResolver.h\"\n#include \"Engine.h\"\n\n";
+	for (int a = 0, b = headerAssets.size(); a < b; a++) {
+		s += "#include \"" + headerAssets[a] + "\"\n";
+		string ss = headerAssets[a].substr(0, headerAssets[a].size()-2);
+		s += ss + " _Inst" + to_string(a) + "() { return new " + ss + "(); }\n\n";
+	}
+	s += "\n\nusing namespace std;\r\nSceneScriptResolver::SceneScriptResolver() {\n";
+	for (int a = 0, b = headerAssets.size(); a < b; a++) {
+		s += "\tmap.emplace(" + to_string(a) + ", &Inst" + to_string(a) + ");\n";
+	}
+	s += "}";
+	ofstream ofs (projectFolder + "\\System\\SceneScriptResolver.cpp");
+	ofs << s;
+	ofs.close();
+	ofs.open(projectFolder + "\\System\\SceneScriptResolver.h");
+	ofs << h;
+	ofs.close();
 }
 
 void Editor::NewScene() {
@@ -875,12 +853,17 @@ void Editor::DrawHandles() {
 	if (editorLayer > 0) {
 		if (editorLayer == 1) {
 			Engine::DrawQuad(0, 0, Display::width, Display::height, black(0.3f));
-			int off = 0;
+			Engine::Label(popupPos.x + 2, popupPos.y, 12, menuTitle, font, white());
+			int off = 14;
 			for (int r = 0, q = menuNames.size(); r < q; r++) {
 				if (Engine::Button(popupPos.x, popupPos.y + off, 200, 15, white(1, 0.7f), menuNames[r], 12, font, black()) == MOUSE_RELEASE) {
-					if (menuFuncs[r] != nullptr)
-						menuFuncs[r](menuBlock);
 					editorLayer = 0;
+					if (menuFuncIsSingle) {
+						if (menuFuncSingle != nullptr)
+							menuFuncSingle(menuBlock, menuFuncVals[r]);
+					}
+					else if (menuFuncs[r] != nullptr)
+						menuFuncs[r](menuBlock);
 					return;
 				}
 				off += 16;
@@ -922,11 +905,25 @@ void Editor::DrawHandles() {
 	}
 }
 
-void Editor::RegisterMenu(EditorBlock* block, vector<string> names, vector<shortcutFunc> funcs, int padding) {
+void Editor::RegisterMenu(EditorBlock* block, string title, vector<string> names, vector<shortcutFunc> funcs, int padding) {
 	editorLayer = 1;
+	menuFuncIsSingle = false;
+	menuTitle = title;
 	menuBlock = block;
 	menuNames = names;
 	menuFuncs = funcs;
+	popupPos = Input::mousePos;
+	menuPadding = padding;
+}
+
+void Editor::RegisterMenu(EditorBlock* block, string title, vector<string> names, dataFunc func, vector<void*> vals, int padding) {
+	editorLayer = 1;
+	menuFuncIsSingle = true;
+	menuTitle = title;
+	menuBlock = block;
+	menuNames = names;
+	menuFuncSingle = func;
+	menuFuncVals = vals;
 	popupPos = Input::mousePos;
 	menuPadding = padding;
 }
@@ -1084,6 +1081,10 @@ void Editor::ShowPrefs(Editor* e) {
 	e->editorLayer = 5;
 }
 
+void Editor::SaveScene(Editor* e) {
+	e->activeScene.Save(e);
+}
+
 void SetBuildFail(Editor* e) {
 	e->buildLabel = "Build: failed.";
 	e->buildProgressColor = red(1, 0.7f);
@@ -1136,3 +1137,106 @@ void Editor::DoCompile() {
 	}
 	//else SetBuildFail(this);
 }
+
+/*
+EBI_Asset::EBI_Asset(string str, string nm) {
+string noEd = nm.substr(0, nm.find_last_of('.'));
+string ed = nm.substr(nm.find_last_of('.'), nm.size()-1);
+if (ed == ".h") {
+/*
+#include "Engine.h"
+class TestScript : public SceneScript {
+public:
+TestScript() {}
+int foo = 0;
+int boo= 1;
+int koo =2;
+int roo= 3;
+Vec2 v2 = Vec2(1, 2);
+void Start();
+};
+/
+ifstream f;
+f.open(str);
+string s;
+string cs = "class" + noEd + ":publicSceneScript{";
+bool corrClass = false;
+int brackets = 0;
+while (!f.eof()){
+getline(f, s);
+if (!corrClass) {
+s.erase(remove(s.begin(), s.end(), ' '), s.end());
+s.erase(remove(s.begin(), s.end(), '\t'), s.end());
+if (s.size() >= cs.size()) {
+if (s.substr(0, cs.size()) == cs) {
+corrClass = true;
+correct = true;
+brackets = 1;
+continue;
+}
+}
+}
+else {
+while (s.find_first_of(' ') == 0 || s.find_first_of('\t') == 0)
+s = s.substr(1, s.size());
+int fs = s.find_first_of(' ');
+string ss = s.substr(0, fs);
+size_t eq = s.find_first_of('=');
+string nm = s.substr(fs + 1, min(eq, s.size()) - 1 - fs);
+nm.erase(remove(nm.begin(), nm.end(), ' '), nm.end());
+nm.erase(remove(nm.begin(), nm.end(), '\t'), nm.end());
+if (ss == "int") {
+if (eq != string::npos) {
+vals.push_back(new EBI_Value<int>(nm, 1, 1, stoi(s.substr(eq + 1, s.size() - 1)), 0, 0, 0));
+}
+else {
+vals.push_back(new EBI_Value<int>(nm, 1, 1, 0, 0, 0, 0));
+}
+}
+if (ss == "Vec2") {
+if (eq != string::npos) {
+string v = s.substr(eq + 1, s.size() - 1);
+v.erase(remove(v.begin(), v.end(), ' '), v.end());
+int bb = v.find_first_of('(');
+int bc = v.find_first_of(',');
+int be = v.find_first_of(')');
+vals.push_back(new EBI_Value<float>(nm, 2, 1, stof(v.substr(bb + 1, bc - bb - 1)), stof(v.substr(bc + 1, be - bc - 1)), 0, 0));
+}
+else {
+vals.push_back(new EBI_Value<float>(nm, 2, 1, 0, 0, 0, 0));
+}
+}
+s.erase(remove(s.begin(), s.end(), ' '), s.end());
+s.erase(remove(s.begin(), s.end(), '\t'), s.end());
+brackets += count(s.begin(), s.end(), '{');
+brackets -= count(s.begin(), s.end(), '}');
+if (brackets == 0) {
+corrClass = false;
+}
+}
+}
+f.close();
+}
+}
+
+void EBI_Asset::Draw(Editor* e, EditorBlock* b, Color* v) {
+int allH = 0;
+for each (I_EBI_Value* val in vals)
+{
+e->font->alignment = ALIGN_MIDLEFT;
+Engine::Label(v->r + 3, v->g + EB_HEADER_SIZE + 1 + 26 * (allH + 0.5f), 22, val->name, e->font, white());
+e->font->alignment = ALIGN_TOPLEFT;
+switch (val->type) {
+case 1:
+Engine::EButton((e->editorLayer == 0), v->r + v->b*0.3f + 1, v->g + EB_HEADER_SIZE + 1 + 26 * allH, v->b*0.7f - 2, 25, white(1, 0.7f), to_string(((EBI_Value<int>*)val)->a), 22, e->font, black());
+break;
+case 2:
+Engine::EButton((e->editorLayer == 0), v->r + v->b*0.3f + 1, v->g + EB_HEADER_SIZE + 1 + 26 * allH, v->b*0.35f - 1, 25, white(1, 0.7f), to_string(((EBI_Value<float>*)val)->a), 22, e->font, black());
+Engine::EButton((e->editorLayer == 0), v->r + v->b*0.65f + 1, v->g + EB_HEADER_SIZE + 1 + 26 * allH, v->b*0.35f - 2, 25, white(1, 0.7f), to_string(((EBI_Value<float>*)val)->b), 22, e->font, black());
+break;
+}
+
+allH += val->sizeH;
+}
+}
+*/

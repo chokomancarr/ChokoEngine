@@ -23,4 +23,4 @@
 
 ##TODO
  - Add _IS_EDITOR macro to prevent calling Editor functions in game
- - Unique pointers ( ˘ω˘)
+ - Unique / shared pointers ( ˘ω˘)

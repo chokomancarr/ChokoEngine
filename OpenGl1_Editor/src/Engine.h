@@ -71,6 +71,7 @@ Color LerpColor(Color a, Color b, float f);
 float clamp(float f, float a, float b);
 Vec3 rotate(Vec3 v, Quat q);
 glm::mat4 Quat2Mat(Quat q);
+void _StreamWrite(void* val, ofstream* stream, int size);
 
 struct Int2 {
 public:	
@@ -90,9 +91,11 @@ public:
 	static void Message(string c, string s);
 	static void Warning(string c, string s);
 	static void Error(string c, string s);
-
 };
 
+typedef byte ASSETTYPE;
+
+#define ASSETTYPE_TEXTURE 0x01
 class Texture {
 public:
 	Texture() {}
@@ -171,6 +174,7 @@ public:
 	static glm::mat3 uiMatrix;
 };
 
+#define ASSETTYPE_SHADER 0x02
 #define SHADER_INT 0x00
 #define SHADER_FLOAT 0x01
 #define SHADER_SAMPLER 0x10
@@ -196,6 +200,7 @@ public:
 	static bool LoadShader(GLenum shaderType, string source, GLuint& shader);
 };
 
+#define ASSETTYPE_MATERIAL 0x03
 class Material {
 public:
 	ShaderBase* shader;
@@ -225,6 +230,13 @@ class Transform;
 class Camera;
 class MeshFilter;
 class MeshRenderer;
+
+//see Assetmanager
+class AssetItem;
+class AssetManager;
+
+#define ASSETTYPE_SCRIPT_H 0xfe
+#define ASSETTYPE_SCRIPT_CPP 0xff
 class SceneScript;
 class SceneObject;
 
@@ -232,6 +244,8 @@ class Engine {
 public:
 	static void Init(string path);
 
+	static void BeginStencil(float x, float y, float w, float h);
+	static void EndStencil();
 	static void DrawTexture(float x, float y, float w, float h, Texture* texture);
 	static void DrawTexture(float x, float y, float w, float h, Texture* texture, float alpha);
 	static void DrawTexture(float x, float y, float w, float h, Texture* texture, Color tint);
@@ -250,6 +264,7 @@ public:
 	static byte EButton(bool a, float x, float y, float w, float h, Color normalColor);
 	static byte EButton(bool a, float x, float y, float w, float h, Color normalColor, Color highlightColor, Color pressColor);
 	static byte EButton(bool a, float x, float y, float w, float h, Color normalColor, string label, float labelSize, Font* labelFont, Color labelColor);
+	static byte EButton(bool a, float x, float y, float w, float h, Texture* texture, Color color);
 	static byte EButton(bool a, float x, float y, float w, float h, Texture* texture, Color normalColor, Color highlightColor, Color pressColor);
 	static byte EButton(bool a, float x, float y, float w, float h, Color normalColor, Color highlightColor, Color pressColor, string label, float labelSize, Font* labelFont, Color labelColor);
 	static bool DrawToggle(float x, float y, float s, Color col, bool t);
@@ -286,9 +301,10 @@ class Scene {
 public:
 	Scene() {}
 
+	string sceneName;
 	vector<SceneObject*> objects;
 
-
+	void Save(Editor* e);
 };
 
 #include "SceneObjects.h"

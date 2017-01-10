@@ -8,11 +8,14 @@ public:
 	Object() : id(Engine::GetNewId()) {}
 	ulong id;
 	string name;
+
+	virtual bool ReferencingObject(Object* o) { return false; }
 };
 
 typedef unsigned char COMPONENT_TYPE;
 class Component : public Object {
 public:
+	Component(COMPONENT_TYPE t, bool draw) : componentType(t), active(true), drawable(draw), _expanded(true) {}
 	virtual  ~Component() {}
 
 	const COMPONENT_TYPE componentType = 0;
@@ -20,11 +23,15 @@ public:
 	bool active;
 	SceneObject* object;
 
+	bool serializable; 
+	vector<pair<void*, void*>> serializedValues;
+
 	bool _expanded;
 
+	virtual void LoadDefaultValues() {}
 	virtual void DrawEditor() = 0; //trs matrix not applied, apply before calling
 	virtual void DrawInspector(Editor* e, Component* c, Color v, uint& pos) = 0;
-	Component(COMPONENT_TYPE t, bool draw) : componentType(t), active(true), drawable(draw), _expanded(true) {}
+	virtual void Serialize(Editor* e, ofstream* stream) {}
 };
 
 class Transform : public Object {
@@ -59,6 +66,7 @@ public:
 	void UpdateCamVerts();
 	void DrawEditor();
 	void DrawInspector(Editor* e, Component* c, Color v, uint& pos);
+	void Serialize(Editor* e, ofstream* stream) override;
 };
 
 #define COMP_MFT 0x02
@@ -82,14 +90,22 @@ public:
 #define COMP_SCR 0xff
 class SceneScript : public Component {
 public:
-	SceneScript() : Component(COMP_SCR, false) {}
+	//called in editor
+	SceneScript(Editor* e, string name);
+
+	string name;
+
+
 	virtual void Start() {}
 	virtual void Update() {}
 	virtual void LateUpdate() {}
 	virtual void Paint() {}
 
 	void DrawEditor() {} //nothing
-	void DrawInspector(Editor* e, Component* c, Color v, uint& pos) {}
+	void DrawInspector(Editor* e, Component* c, Color v, uint& pos);
+	void Serialize(Editor* e, ofstream* stream) override;
+
+	//bool ReferencingObject(Object* o) override;
 };
 
 class SceneObject : public Object {

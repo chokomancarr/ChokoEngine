@@ -63,18 +63,19 @@ int main(int argc, char **argv)
 
 	getline(cin, editor->projectFolder);
 	if (editor->projectFolder == "")
-		editor->projectFolder = editor->dataPath;
+		editor->projectFolder = "F:\\TestProject\\";
 	else while (!IO::HasDirectory(editor->projectFolder.c_str())) {
 		cout << "Invalid project folder path: " << editor->projectFolder << endl;
 		getline(cin, editor->projectFolder);
 	}
+	editor->RefreshScriptAssets();
 	//*/
 
 	editor->hwnd = hwnd;
 	editor->xPoss.push_back(0);
 	editor->xPoss.push_back(1);
-	editor->xPoss.push_back(0.8f);
-	editor->xPoss.push_back(0.7f);
+	editor->xPoss.push_back(0.75f);
+	editor->xPoss.push_back(0.63f);
 	editor->xLimits.push_back(Int2(0, 1));
 	editor->xLimits.push_back(Int2(0, 1));
 	editor->xLimits.push_back(Int2(0, 1));
@@ -138,7 +139,7 @@ int main(int argc, char **argv)
 
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
-	glutInitWindowSize(512, 512);
+	glutInitWindowSize(1366, 768);
 	glutCreateWindow("Application");
 	HWND hwnd2 = GetActiveWindow();
 	ShowWindow(hwnd2, SW_MAXIMIZE);
@@ -202,6 +203,7 @@ void DoUpdate() {
 		return;
 	}
 	int i = -1, k = 0;
+	editor->mouseOn = 0;
 	for each (EditorBlock* e in editor->blocks) {
 		Color v = Color(Display::width*editor->xPoss[e->x1], Display::height*editor->yPoss[e->y1], Display::width*editor->xPoss[e->x2], Display::height*editor->yPoss[e->y2]);
 		v.a = round(v.a - v.g) - 1;
@@ -210,6 +212,7 @@ void DoUpdate() {
 		v.r = round(v.r) + 1;
 		if (Engine::Button(v.r, v.g, v.b, v.a) && MOUSE_HOVER_FLAG) {
 			i = k;
+			editor->mouseOn = i;
 			break;
 		}
 		k++;
@@ -219,21 +222,21 @@ void DoUpdate() {
 			editor->mouseOnP = i;
 			if (Input::mouse0State == MOUSE_DOWN) {
 				editor->mousePressType = 0;
-				editor->mouseOn = i;
+				//editor->mouseOn = i;
 			}
 			else if (Input::mouse1State == MOUSE_DOWN) {
 				editor->mousePressType = 1;
-				editor->mouseOn = i;
+				//editor->mouseOn = i;
 			}
 			else if (Input::mouse2State == MOUSE_DOWN) {
 				editor->mousePressType = 2;
-				editor->mouseOn = i;
+				//editor->mouseOn = i;
 			}
 		}
 		else {
 			if ((editor->mousePressType == 0 && !Input::mouse0) || (editor->mousePressType == 1 && !Input::mouse1) || (editor->mousePressType == 2 && !Input::mouse2)) {
 				editor->mousePressType = -1;
-				editor->mouseOn = 0;
+				//editor->mouseOn = 0;
 			}
 		}
 	}
@@ -250,6 +253,12 @@ void UpdateLoop() {
 		Time::time = (millis - Time::startMillis)*0.001;
 		Time::millis = millis;
 		Input::UpdateMouse();
+		if (Input::mouse0State == MOUSE_DOWN)
+			editor->blocks[editor->mouseOnP]->OnMousePress(0);
+		if (Input::mouse1State == MOUSE_DOWN)
+			editor->blocks[editor->mouseOnP]->OnMousePress(1);
+		if (Input::mouse2State == MOUSE_DOWN)
+			editor->blocks[editor->mouseOnP]->OnMousePress(2);
 		DoUpdate();
 	}
 }
@@ -305,7 +314,6 @@ void KeyboardGL(unsigned char c, int x, int y) {
 	if (mods == 1 && c > 64)
 		c += 32;
 	
-	cout << (int)c << endl;
 	if (editor->editorLayer == 0) {
 		ShortcutMapGlobal::const_iterator got = editor->globalShorts.find(GetShortcutInt(c, mods));
 		if (got != editor->globalShorts.end()) {
@@ -322,8 +330,7 @@ void KeyboardGL(unsigned char c, int x, int y) {
 				ShortcutMap::const_iterator got = e->shortcuts.find(GetShortcutInt(c, mods));
 
 				if (got != e->shortcuts.end())
-					(*got->second)(e);
-
+						(*got->second)(e);
 				//e->OnKey(c, glutGetModifiers());
 				break;
 			}
@@ -334,17 +341,16 @@ void KeyboardGL(unsigned char c, int x, int y) {
 }
 
 void MouseGL(int button, int state, int x, int y) {
-
 	switch (button) {
 	case 0:
 		Input::mouse0 = (state == 0);
-		return;
+		break;
 	case 1:
 		Input::mouse1 = (state == 0);
-		return;
+		break;
 	case 2:
 		Input::mouse2 = (state == 0);
-		return;
+		break;
 	case 3:
 		if (state == GLUT_DOWN && editor->editorLayer == 0) editor->blocks[editor->mouseOnP]->OnMouseScr(true);
 		return;
@@ -363,6 +369,8 @@ void ReshapeGL(int w, int h) {
 
 //void MouseGL(int button, int state, int x, int y);
 void MotionGLP(int x, int y) {
+	if (editor->editorLayer == 0)
+		editor->blocks[editor->mouseOn]->OnMouseM(Vec2(x, y) - Input::mousePos);
 	Input::mousePos = Vec2(x, y);
 	Input::mousePosRelative = Vec2(x*1.0f / Display::width, y*1.0f / Display::height);
 }

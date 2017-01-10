@@ -1,38 +1,12 @@
-﻿Build started 09/01/2017 14:18:19.
+﻿Build started 10/01/2017 20:19:53.
      1>Project "C:\Users\Pua Kai\Documents\GitHub\OpenGl_Engine\OpenGl1_Editor\OpenGl1_Editor.vcxproj" on node 2 (Build target(s)).
      1>ClCompile:
-         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /I"C:\Users\Pua Kai\Documents\GitHub\OpenGl_Engine\packages\nupengl.core.0.1.0.1\build\native\../..//build/native/include/" /I./glm /I./png /I./zlib /I./jpeg /ZI /nologo /W3 /WX- /sdl /Od /Oy- /D _MBCS /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt src\Editor.cpp src\EditorShortcuts.cpp src\Engine.cpp src\RenderEngine.cpp src\SceneObjects.cpp src\Shader.cpp src\main.cpp
-         main.cpp
-         Shader.cpp
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /I"C:\Users\Pua Kai\Documents\GitHub\OpenGl_Engine\packages\nupengl.core.0.1.0.1\build\native\../..//build/native/include/" /I./glm /I./png /I./zlib /I./jpeg /ZI /nologo /W3 /WX- /sdl /Od /Oy- /D _MBCS /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt src\SceneObjects.cpp
          SceneObjects.cpp
-     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\sceneobjects.cpp(22): warning C4244: 'argument' : conversion from 'uint' to 'float', possible loss of data
-     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\sceneobjects.cpp(35): warning C4244: 'argument' : conversion from 'uint' to 'float', possible loss of data
-     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\sceneobjects.cpp(72): warning C4244: 'argument' : conversion from 'uint' to 'float', possible loss of data
-         RenderEngine.cpp
-         Engine.cpp
-     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\engine.cpp(197): warning C4244: 'initializing' : conversion from 'float' to 'int', possible loss of data
-     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\engine.cpp(203): warning C4244: 'argument' : conversion from 'int' to 'float', possible loss of data
-     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\engine.cpp(272): warning C4244: 'argument' : conversion from 'int' to 'float', possible loss of data
-     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\engine.cpp(552): warning C4554: '|' : check operator precedence for possible error; use parentheses to clarify precedence
-     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\engine.cpp(556): warning C4554: '|' : check operator precedence for possible error; use parentheses to clarify precedence
-     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\engine.cpp(560): warning C4554: '|' : check operator precedence for possible error; use parentheses to clarify precedence
-         EditorShortcuts.cpp
-         Editor.cpp
-     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\editor.cpp(45): warning C4244: 'argument' : conversion from 'int' to 'float', possible loss of data
-     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\editor.cpp(284): warning C4244: 'argument' : conversion from 'int' to 'float', possible loss of data
-     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\editor.cpp(672): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
-     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\editor.cpp(859): warning C4244: 'argument' : conversion from 'int' to 'float', possible loss of data
-     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\editor.cpp(869): warning C4244: 'argument' : conversion from 'int' to 'float', possible loss of data
-     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\editor.cpp(877): warning C4244: 'argument' : conversion from 'int' to 'float', possible loss of data
-     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\editor.cpp(896): warning C4244: 'argument' : conversion from 'int' to 'float', possible loss of data
-     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\editor.cpp(900): warning C4244: 'argument' : conversion from 'int' to 'float', possible loss of data
-     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\editor.cpp(905): warning C4244: 'argument' : conversion from 'int' to 'float', possible loss of data
-     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\editor.cpp(1033): warning C4244: 'argument' : conversion from 'float' to 'DWORD', possible loss of data
-     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\editor.cpp(1038): warning C4800: 'BOOL' : forcing value to bool 'true' or 'false' (performance warning)
-     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\editor.cpp(1043): warning C4018: '<' : signed/unsigned mismatch
-     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\editor.cpp(988): warning C4101: 'word' : unreferenced local variable
-         Generating Code...
-     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\editor.cpp(1077): warning C4715: 'DoMsBuild' : not all control paths return a value
+     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\sceneobjects.cpp(25): warning C4244: 'argument' : conversion from 'uint' to 'float', possible loss of data
+     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\sceneobjects.cpp(38): warning C4244: 'argument' : conversion from 'uint' to 'float', possible loss of data
+     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\sceneobjects.cpp(75): warning C4244: 'argument' : conversion from 'uint' to 'float', possible loss of data
+     1>c:\users\pua kai\documents\github\opengl_engine\opengl1_editor\src\sceneobjects.cpp(101): warning C4244: 'argument' : conversion from 'uint' to 'float', possible loss of data
        Link:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\Pua Kai\Documents\GitHub\OpenGl_Engine\Debug\OpenGl1_Editor.exe" /INCREMENTAL /NOLOGO "C:\Users\Pua Kai\Documents\GitHub\OpenGl_Engine\packages\nupengl.core.0.1.0.1\build\native\../..//build/native/lib/Win32\glew32.lib" "C:\Users\Pua Kai\Documents\GitHub\OpenGl_Engine\packages\nupengl.core.0.1.0.1\build\native\../..//build/native/lib/Win32\glfw3dll.lib" "C:\Users\Pua Kai\Documents\GitHub\OpenGl_Engine\packages\nupengl.core.0.1.0.1\build\native\../..//build/native/lib/Win32\freeglut.lib" kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib opengl32.lib glu32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\Users\Pua Kai\Documents\GitHub\OpenGl_Engine\Debug\OpenGl1_Editor.pdb" /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\Pua Kai\Documents\GitHub\OpenGl_Engine\Debug\OpenGl1_Editor.lib" /MACHINE:X86 Debug\Editor.obj
          Debug\EditorShortcuts.obj
@@ -41,10 +15,11 @@
          Debug\main.obj
          Debug\RenderEngine.obj
          Debug\SceneObjects.obj
+         Debug\SceneScriptResolver.obj
          Debug\Shader.obj
          OpenGl1_Editor.vcxproj -> C:\Users\Pua Kai\Documents\GitHub\OpenGl_Engine\Debug\OpenGl1_Editor.exe
      1>Done Building Project "C:\Users\Pua Kai\Documents\GitHub\OpenGl_Engine\OpenGl1_Editor\OpenGl1_Editor.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:00:14.07
+Time Elapsed 00:00:02.74

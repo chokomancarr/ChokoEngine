@@ -3,12 +3,15 @@
 #include "Editor.h"
 
 bool DrawComponentHeader(Editor* e, string name, Color v, float pos, bool expand, byte texId) {
-	Engine::DrawQuad(v.r, v.g + pos, v.b, 16, grey2());
+	Engine::DrawQuad(v.r, v.g + pos, v.b - 17, 16, grey2());
 	//bool hi = expand;
 	//if (Engine::EButton((e->editorLayer == 0), v.r, v.g + pos, v.b, 16, grey2(), white(1, 0.7f), grey1()) == MOUSE_RELEASE) {
 	//	hi = !expand;
 	//}
 	Engine::DrawTexture(v.r, v.g + pos, 16, 16, expand ? e->collapse : e->expand);
+	if (Engine::EButton(e->editorLayer == 0, v.r + v.b - 16, v.g + pos, 16, 16, e->buttonX, white(1, 0.7f))) {
+
+	}
 	Engine::Label(v.r + 20, v.g + pos + 3, 12, name, e->font, white());
 	return true;
 }
@@ -73,6 +76,29 @@ void Camera::DrawInspector(Editor* e, Component* c, Color v, uint& pos) {
 		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Field of view", e->font, white());
 		Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos + 17, v.b*0.7f, 16, grey1());
 		Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 20, 12, to_string(cam->fov), e->font, white());
+		pos += 100;
+	}
+	else pos += 17;
+}
+
+void Camera::Serialize(Editor* e, ofstream* stream) {
+	_StreamWrite(&fov, stream, 4);
+}
+
+SceneScript::SceneScript(Editor* e, string name) : name(name), Component(COMP_SCR, false) {
+
+}
+void SceneScript::Serialize(Editor* e, ofstream* stream) {
+	for (int a = e->headerAssets.size() - 1; a >= 0; a--) {
+		if (e->headerAssets[a] == name) {
+			_StreamWrite(&a, stream, 4);
+		}
+	}
+}
+
+void SceneScript::DrawInspector(Editor* e, Component* c, Color v, uint& pos) {
+	SceneScript* scr = (SceneScript*)c;
+	if (DrawComponentHeader(e, scr->name + "(Script)", v, pos, c->_expanded, COMP_SCR)) {
 		pos += 100;
 	}
 	else pos += 17;
