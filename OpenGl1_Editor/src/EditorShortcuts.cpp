@@ -19,8 +19,8 @@ void EB_Viewer::_Grab(EditorBlock* b) {
 				break;
 			}
 		}
-		v->modifying = 0x11;
-		v->modVal = 0;
+		v->modifying = 0x10;
+		v->modVal = Vec2();
 		v->preModVals = v->editor->selected->transform.position;
 	}
 }

@@ -130,7 +130,7 @@ public:
 	byte selectedTooltip, selectedShading, selectedOrient;
 
 	Vec3 preModVals;
-	float modVal; //delta
+	Vec2 modVal; //delta
 	byte modifying;//[type 1g 2r 3s][axis 0f, 1x 2y 3z]
 	Vec3 modAxisDir;
 

@@ -18,7 +18,7 @@
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <GL\freeglut.h>
+#include <GL/freeglut.h>
 #include <chrono>
 #include <thread>
 #include <filesystem>
@@ -257,7 +257,7 @@ void EB_Viewer::MakeMatrix() {
 	float snw = sin(rw*3.14159265f / 180.0f);
 	viewingMatrix = glm::mat4(csz, 0, -snz, 0, 0, 1, 0, 0, snz, 0, csz, 0, 0, 0, 0, 1);
 	viewingMatrix = glm::mat4(1, 0, 0, 0, 0, csw, snw, 0, 0, -snw, csw, 0, 0, 0, 0, 1)*viewingMatrix;
-	arrowX = viewingMatrix*Color(1, 0, 0, 0);
+	arrowX = viewingMatrix*Color(-1, 0, 0, 0);
 	arrowY = viewingMatrix*Color(0, 1, 0, 0);
 	arrowZ = viewingMatrix*Color(0, 0, 1, 0);
 }
@@ -487,17 +487,24 @@ void EB_Viewer::OnMouseM(Vec2 d) {
 	}
 	else if (modifying > 0) {
 		cout << (int)(modifying & 0x0f) << endl;
-		modVal += d.x / Display::width - d.y / Display::height;
+		modVal += Vec2(d.x / Display::width, d.y / Display::height);
 		if (modifying >> 4 == 1) {
 			switch (modifying & 0x0f) {
+				/*
+			case 0: {
+			Color c = glm::inverse(viewingMatrix)*Color(modVal.y, 0, -modVal.x, 0);
+			editor->selected->transform.position = preModVals + Vec3(c.x, c.y, c.z)*40.0f/scale;
+			break;
+			}
+			*/
 			case 1:
-				editor->selected->transform.position = preModVals + Vec3(-(modVal) * 40 / scale, 0, 0);
+				editor->selected->transform.position = preModVals + Vec3((-modVal.x + modVal.y) * 40 / scale, 0, 0);
 				break;
 			case 2:
-				editor->selected->transform.position = preModVals + Vec3(0, (modVal) * 40 / scale, 0);
+				editor->selected->transform.position = preModVals + Vec3(0, (modVal.x - modVal.y) * 40 / scale, 0);
 				break;
 			case 3:
-				editor->selected->transform.position = preModVals + Vec3(0, 0, (modVal) * 40 / scale);
+				editor->selected->transform.position = preModVals + Vec3(0, 0, (modVal.x - modVal.y) * 40 / scale);
 				break;
 			}
 		}
@@ -707,7 +714,7 @@ void Editor::RefreshScriptAssets() {
 }
 
 void Editor::GenerateScriptResolver() {
-	string h = "#include <unordered_map>\n#include \"Engine.h\"\ntypedef SceneScript(*sceneScriptInstantiator)();\nclass SceneScriptResolver {\npublic:\n\tSceneScriptResolver();\n\tstd::unordered_map<int, sceneScriptInstantiator> map;\n};";
+	string h = "#include <unordered_map>\n#include \"Engine.h\"\ntypedef SceneScript(*sceneScriptInstantiator)();\nclass SceneScriptResolver {\npublic:\n\tSceneScriptResolver();\n\tstd::vector<sceneScriptInstantiator> map;\n};";
 	string s = "#include \"SceneScriptResolver.h\"\n#include \"Engine.h\"\n\n";
 	for (int a = 0, b = headerAssets.size(); a < b; a++) {
 		s += "#include \"" + headerAssets[a] + "\"\n";
@@ -716,7 +723,7 @@ void Editor::GenerateScriptResolver() {
 	}
 	s += "\n\nusing namespace std;\r\nSceneScriptResolver::SceneScriptResolver() {\n";
 	for (int a = 0, b = headerAssets.size(); a < b; a++) {
-		s += "\tmap.emplace(" + to_string(a) + ", &Inst" + to_string(a) + ");\n";
+		s += "\tmap.push_back(&Inst" + to_string(a) + ");\n";
 	}
 	s += "}";
 	ofstream ofs (projectFolder + "\\System\\SceneScriptResolver.cpp");
@@ -871,6 +878,9 @@ void Editor::DrawHandles() {
 					off++;
 				}
 
+			}
+			if (off == 14) {
+				Engine::Label(popupPos.x + 2, popupPos.y + off, 12, "Nothing here!", font, white(0.7f));
 			}
 			if (Input::mouse0State == MOUSE_UP)
 				editorLayer = 0;
@@ -1063,6 +1073,9 @@ bool DoMsBuild(Editor* e) {
 		}
 		else {
 			e->AddBuildLog("Cannot start msbuild!");
+			CloseHandle(stdOutR);
+			CloseHandle(stdOutW);
+			return false;
 		}
 		CloseHandle(stdOutR);
 		CloseHandle(stdOutW);

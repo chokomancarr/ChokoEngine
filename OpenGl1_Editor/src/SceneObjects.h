@@ -59,6 +59,7 @@ public:
 
 	bool ortographic;
 	float fov, orthoSize;
+	Rect screenPos;
 
 	Vec3 camVerts[6];
 	static int camVertsIds[19];
