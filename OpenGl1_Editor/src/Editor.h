@@ -266,8 +266,10 @@ public:
 	bool WAITINGBUILDSTARTFLAG = false;
 	//building - layer4: custom progress to look cool
 	vector<string> buildLog;
-	void AddBuildLog(string s);
+	void AddBuildLog(Editor* e, string s);
 	vector<bool> buildLogErrors;
+	string buildErrorPath;
+	int buildErrorLine;
 	string buildLabel;
 	float buildProgressValue;
 	Color buildProgressColor;

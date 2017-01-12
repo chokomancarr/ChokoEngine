@@ -976,9 +976,17 @@ bool Editor::ParseAsset(string path) {
 	return true;
 }
 
-void Editor::AddBuildLog(string s) {
+void Editor::AddBuildLog(Editor* e, string s) {
 	buildLog.push_back(s);
-	buildLogErrors.push_back(s.find("error C") != string::npos);
+	bool a = s.find("error C") != string::npos;
+	buildLogErrors.push_back(a);
+	if (a && (buildErrorPath == "")) {
+		while (s[0] == ' ' || s[0] == '\t')
+			s = s.substr(1, string::npos);
+		int i = s.find_first_of('(');
+		buildErrorPath = s.substr(0, i);
+		buildErrorLine = stoi(s.substr(i, s.find_first_of(')') - i - 1));
+	}
 }
 
 bool Editor::GetCache(string& path, I_EBI_ValueCollection& vals) {
@@ -1004,11 +1012,11 @@ bool DoMsBuild(Editor* e) {
 		sa.lpSecurityDescriptor = NULL;
 		HANDLE stdOutR, stdOutW;
 		if (!CreatePipe(&stdOutR, &stdOutW, &sa, 0)) {
-			e->AddBuildLog("failed to create pipe for stdout!");
+			e->AddBuildLog(e, "failed to create pipe for stdout!");
 			return false;
 		}
 		if (!SetHandleInformation(stdOutR, HANDLE_FLAG_INHERIT, 0)){
-			e->AddBuildLog("failed to set handle for stdout!");
+			e->AddBuildLog(e, "failed to set handle for stdout!");
 			return false;
 		}
 		STARTUPINFO startInfo;
@@ -1033,7 +1041,7 @@ bool DoMsBuild(Editor* e) {
 		byte FINISH = 0;
 		_putenv("MSBUILDDISABLENODEREUSE=1");
 		if (CreateProcess(ss.c_str(), "F:\\TestProject\\TestProject.vcxproj /nr:false /t:Build /p:Configuration=Release /v:n /nologo /fl /flp:LogFile=F:\\TestProject\\BuildLog.txt", NULL, NULL, true, 0, NULL, "F:\\TestProject\\", &startInfo, &processInfo) != 0) {
-			e->AddBuildLog("Compiling from " + ss);
+			e->AddBuildLog(e, "Compiling from " + ss);
 			cout << "compiling" << endl;
 			DWORD w;
 			do {
@@ -1052,7 +1060,7 @@ bool DoMsBuild(Editor* e) {
 					if (rr == string::npos)
 						rr = out.size() - 1;
 					string sss = out.substr(r, rr - r);
-					e->AddBuildLog(sss);
+					e->AddBuildLog(e, sss);
 					if (sss.substr(0, 16) == "Build succeeded.") {
 						failed = false;
 						FINISH = 1;
@@ -1072,7 +1080,7 @@ bool DoMsBuild(Editor* e) {
 			return (!failed);
 		}
 		else {
-			e->AddBuildLog("Cannot start msbuild!");
+			e->AddBuildLog(e, "Cannot start msbuild!");
 			CloseHandle(stdOutR);
 			CloseHandle(stdOutW);
 			return false;
@@ -1081,7 +1089,7 @@ bool DoMsBuild(Editor* e) {
 		CloseHandle(stdOutW);
 	}
 	else {
-		e->AddBuildLog("msbuild version 4.0 not found!");
+		e->AddBuildLog(e, "msbuild version 4.0 not found!");
 		return false;
 	}
 }
@@ -1111,9 +1119,9 @@ void Editor::DoCompile() {
 	buildLabel = "Build: copying files...";
 	buildProgressValue = 0;
 	//copy files
-	AddBuildLog("Copying: dummy source directory -> dummy target directory");
-	AddBuildLog("Copying: dummy source directory2 -> dummy target directory2");
-	AddBuildLog("Copying: dummy source directory3 -> dummy target directory3");
+	AddBuildLog(this, "Copying: dummy source directory -> dummy target directory");
+	AddBuildLog(this, "Copying: dummy source directory2 -> dummy target directory2");
+	AddBuildLog(this, "Copying: dummy source directory3 -> dummy target directory3");
 	this_thread::sleep_for(chrono::seconds(2));
 	//compile
 	buildProgressValue = 50;
@@ -1124,12 +1132,12 @@ void Editor::DoCompile() {
 	else {//if (IO::HasFile("F:\\TestProject\\Debug\\TestProject.exe")) {
 		if (_cleanOnBuild) {
 			buildProgressValue = 90;
-			AddBuildLog("Cleaning up...");
+			AddBuildLog(this, "Cleaning up...");
 			buildLabel = "Build: cleaning up...";
 			//tr2::sys::remove_all("F:\\TestProject\\Release\\TestProject.tlog");
 			for each (string s1 in IO::GetFiles("F:\\TestProject\\Release\\TestProject.tlog"))
 			{
-				AddBuildLog("deleting " + s1);
+				AddBuildLog(this, "deleting " + s1);
 				remove(s1.c_str());
 			}
 			RemoveDirectory("F:\\TestProject\\Release\\TestProject.tlog\\");
@@ -1137,7 +1145,7 @@ void Editor::DoCompile() {
 			{
 				string ss = s2.substr(s2.size() - 4, string::npos);
 				if (ss != ".dll" && s2 != "F:\\TestProject\\Release\\TestProject.exe") {
-					AddBuildLog("deleting " + s2);
+					AddBuildLog(this, "deleting " + s2);
 					remove(s2.c_str());
 				}
 			}
@@ -1145,7 +1153,7 @@ void Editor::DoCompile() {
 		buildProgressValue = 100;
 		buildLabel = "Build: complete.";
 		buildProgressColor = green(1, 0.7f);
-		AddBuildLog("Build finished: press Escape to exit.");
+		AddBuildLog(this, "Build finished: press Escape to exit.");
 		ShellExecute(NULL, "open", "explorer", " /select,F:\\TestProject\\Release\\TestProject.exe", NULL, SW_SHOW);
 	}
 	//else SetBuildFail(this);

@@ -79,13 +79,17 @@ void Camera::DrawInspector(Editor* e, Component* c, Color v, uint& pos) {
 		Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 20, 12, to_string(cam->fov), e->font, white());
 		Engine::Label(v.r + 2, v.g + pos + 35, 12, "Frustrum", e->font, white());
 		Engine::Label(v.r + 4, v.g + pos + 50, 12, "X", e->font, white());
+		Engine::DrawQuad(v.r + 20, v.g + pos + 47, v.b*0.3f - 20, 16, grey1());
 		Engine::Label(v.r + v.b*0.3f + 4, v.g + pos + 50, 12, "Y", e->font, white());
-		Engine::Label(v.r + 4, v.g + pos + 65, 12, "W", e->font, white());
-		Engine::Label(v.r + v.b*0.3f + 4, v.g + pos + 65, 12, "H", e->font, white());
+		Engine::DrawQuad(v.r + v.b*0.3f + 20, v.g + pos + 47, v.b*0.3f - 20, 16, grey1());
+		Engine::Label(v.r + 4, v.g + pos + 67, 12, "W", e->font, white());
+		Engine::DrawQuad(v.r + 20, v.g + pos + 64, v.b*0.3f - 20, 16, grey1());
+		Engine::Label(v.r + v.b*0.3f + 4, v.g + pos + 67, 12, "H", e->font, white());
+		Engine::DrawQuad(v.r + v.b*0.3f + 20, v.g + pos + 64, v.b*0.3f - 20, 16, grey1());
 		float dh = ((v.b*0.35f - 1)*Display::height / Display::width) - 1;
 		Engine::DrawQuad(v.r + v.b*0.65f, v.g + pos + 35, v.b*0.35f - 1, dh, grey1());
 		Engine::DrawQuad(v.r + v.b*0.65f + ((v.b*0.35f - 1)*screenPos.x), v.g + pos + 35 + dh*screenPos.y, (v.b*0.35f - 1)*screenPos.w, dh*screenPos.h, grey2());
-		pos += max(37 + dh, 80);
+		pos += max(37 + dh, 87);
 	}
 	else pos += 17;
 }
