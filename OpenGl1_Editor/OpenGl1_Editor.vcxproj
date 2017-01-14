@@ -47,7 +47,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>./glm;./png;./zlib;./jpeg</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>./glm;./png;./zlib;./jpeg;./hdr</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -71,6 +71,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="hdr\hdr.cpp" />
     <ClCompile Include="src\Editor.cpp" />
     <ClCompile Include="src\EditorShortcuts.cpp" />
     <ClCompile Include="src\Engine.cpp" />

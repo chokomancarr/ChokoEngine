@@ -47,6 +47,8 @@ string path;
 Editor* editor;
 HWND hwnd;
 
+Background* b;
+
 int main(int argc, char **argv)
 {
 	path = argv[0];
@@ -177,6 +179,7 @@ int main(int argc, char **argv)
 		updateThread = thread(UpdateLoop);
 		atexit(OnDie);
 
+		b = new Background("D:\\test.hdr");
 
 		glutMainLoop();
 		//thread updateThread(glutMainLoop);
@@ -275,6 +278,8 @@ void DrawOverlay() {
 		editor->blocks[i]->Draw();
 	}
 	editor->DrawHandles();
+
+	Engine::DrawQuad(0, 0, Display::width, Display::height, b->pointer, white());
 }
 
 void renderScene()

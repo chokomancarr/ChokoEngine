@@ -1,5 +1,6 @@
 #include "Engine.h"
 #include "Editor.h"
+#include "hdr.h"
 #include <GL/glew.h>
 #include <vector>
 #include <string>
@@ -39,6 +40,7 @@ Texture* Engine::fallbackTex = nullptr;
 uint Engine::unlitProgram = 0;
 uint Engine::unlitProgramA = 0;
 uint Engine::unlitProgramC = 0;
+uint Engine::skyProgram = 0;
 Font* Engine::defaultFont;//&Font("F:\\ascii 2.font");
 bool Input::mouse0 = false;
 bool Input::mouse1 = false;
@@ -380,6 +382,63 @@ void Engine::DrawProgressBar(float x, float y, float w, float h, float progress,
 	progress = clamp(progress, 0, 100)*0.01f;
 	float tx = (clip == 0) ? 1 : ((clip == 1) ? progress : w*progress / h);
 	DrawQuad(x + padding, y + padding, w*progress - 2 * padding, h - 2 * padding, foreground->pointer, Vec2(0, 1), Vec2(tx, 1), Vec2(0, 0), Vec2(tx, 0), false, tint);
+}
+
+void Engine::DrawSky(float x, float y, float w, float h, Background* sky, float forX, float forY, float angleW, float rot) { //forward: x (-90~90), y (0~360), can repeat
+	Vec3 quadPoss[4];
+	quadPoss[0].x = x;
+	quadPoss[0].y = y;
+	quadPoss[1].x = x + w;
+	quadPoss[1].y = y;
+	quadPoss[2].x = x;
+	quadPoss[2].y = y + h;
+	quadPoss[3].x = x + w;
+	quadPoss[3].y = y + h;
+	for (int y = 0; y < 4; y++) {
+		quadPoss[y].z = 1;
+		//Vec3 v = quadPoss[y];
+		quadPoss[y] = Ds(Display::uiMatrix*quadPoss[y]);
+	}
+	glDepthFunc(GL_EQUAL); //1
+	float xa = forX - angleW*0.5f;
+	float xb = forX + angleW*0.5f;
+	float ya = forY - angleW*0.5f*Display::height / Display::width;
+	float yb = forY + angleW*0.5f*Display::height / Display::width;
+	Vec2 quadUv[4]{ Vec2(xa, ya), Vec2(xb, ya), Vec2(xb, yb), Vec2(xa, yb)};
+	uint quadIndexes[4] = { 0, 1, 3, 2 };
+	uint prog = skyProgram;
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
+	glUseProgram(prog);
+
+
+	GLint skyLoc = glGetUniformLocation(prog, "sky");
+	glUniform1i(skyLoc, sky->pointer);
+	//GLint dirLoc = glGetUniformLocation(prog, "dir");
+	//glUniform2f(dirLoc, forX, forY);
+	//GLint angleLoc = glGetUniformLocation(prog, "angle");
+	//glUniform1f(angleLoc, angleW);
+
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &quadPoss[0]);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, &quadUv[0]);
+
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glDrawElements(GL_QUADS, 4, GL_UNSIGNED_INT, &quadIndexes[0]);
+
+	glDisableVertexAttribArray(0);
+	glUseProgram(0);
+
+	/*
+	glColor3f(1.0f, 0.0f, 0.0f);
+	glLineWidth(1);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	glDrawElements(GL_QUADS, 4, GL_UNSIGNED_INT, &quadIndexes[0]);
+	*/
+
+	glDisableClientState(GL_VERTEX_ARRAY);
+
 }
 
 void Engine::RotateUI(float aa, Vec2 point) {
@@ -742,6 +801,10 @@ glm::mat4 Quat2Mat(Quat q) {
 Texture::Texture(const string& path) : Texture(path, true, false) {}
 Texture::Texture(const string& path, bool mipmap) : Texture(path, mipmap, false) {}
 Texture::Texture(const string& path, bool mipmap, bool nearest) {
+	if (path.size() < 5 || path.substr(path.size() - 4, string::npos) != ".bmp") {
+		printf("Image path invalid!");
+		return;
+	}
 	cout << "opening image at " << path << endl;
 	unsigned char header[54]; // Each BMP file begins by a 54-bytes header
 	unsigned int dataPos;     // Position in the file where the actual data begins
@@ -809,6 +872,27 @@ Texture::Texture(HBITMAP bmp, int width, int height) {
 	*/
 }
 
+Background::Background(const string& path) : width(0), height(0) {
+	if (path.size() < 5 || path.substr(path.size() - 4, string::npos) != ".hdr") {
+		printf("HDRI path invalid!");
+		return;
+	}
+	cout << "opening hdr image at " << path << endl;
+	
+	unsigned char* data = hdr::read_hdr(path.c_str(), &width, &height);
+	if (data == NULL)
+		return;
+
+	glGenTextures(1, &pointer);
+	glBindTexture(GL_TEXTURE_2D, pointer);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	//if (mipmap) glGenerateMipmap(GL_TEXTURE_2D);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	loaded = true;
+	cout << "HDR Image loaded: " << width << "x" << height << endl;
+}
 
 //-----------------font class---------------------
 Font::Font(const string& path) : Font("", path, -1) {}

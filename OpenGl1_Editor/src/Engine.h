@@ -128,7 +128,7 @@ protected:
 class Background {
 public:
 	Background() {}
-	//Background(const string& path);
+	Background(const string& path);
 
 	bool loaded;
 	unsigned int width, height;
@@ -283,11 +283,13 @@ public:
 	static bool DrawToggle(float x, float y, float s, Texture* texture, Color col, bool t);
 	//scaleType: 0=scale, 1=clip, 2=tile
 	static void DrawProgressBar(float x, float y, float w, float h, float progress, Color background, Texture* foreground, Color tint, int padding, byte scaleType);
+	static void DrawSky(Background* sky, float forX, float forY, float angleW, float rot);
+	static void DrawSky(float x, float y, float w, float h, Background* sky, float forX, float forY, float angleW, float rot);
 
 	static void RotateUI(float a, Vec2 point);
 	static void ResetUIMatrix();
 
-	static uint unlitProgram, unlitProgramA, unlitProgramC;
+	static uint unlitProgram, unlitProgramA, unlitProgramC, skyProgram;
 	static Font* defaultFont;
 	
 	static ulong GetNewId();
@@ -307,7 +309,7 @@ public:
 	
 	unordered_map<byte, vector<string>> assetData;
 	unordered_map<string, byte[]> assetDataLoaded;
-	byte[] GetAsset(string name);
+	//byte GetAsset(string name);
 	
 
 	void Render();

@@ -314,6 +314,7 @@ void EB_Viewer::Draw() {
 	glMultMatrixf(glm::value_ptr(glm::mat4(1, 0, 0, 0, 0, csw, snw, 0, 0, -snw, csw, 0, 0, 0, 0, 1)));
 	glMultMatrixf(glm::value_ptr(glm::mat4(csz, 0, -snz, 0, 0, 1, 0, 0, snz, 0, csz, 0, 0, 0, 0, 1)));
 	glEnable(GL_DEPTH_TEST);
+	glClearDepth(1);
 
 	//draw scene//
 	for each (SceneObject* sc in editor->activeScene.objects)
