@@ -313,7 +313,7 @@ void KeyboardGL(unsigned char c, int x, int y) {
 	}
 	if (mods == 1 && c > 64)
 		c += 32;
-	
+
 	if (editor->editorLayer == 0) {
 		ShortcutMapGlobal::const_iterator got = editor->globalShorts.find(GetShortcutInt(c, mods));
 		if (got != editor->globalShorts.end()) {
@@ -330,14 +330,21 @@ void KeyboardGL(unsigned char c, int x, int y) {
 				ShortcutMap::const_iterator got = e->shortcuts.find(GetShortcutInt(c, mods));
 
 				if (got != e->shortcuts.end())
-						(*got->second)(e);
+					(*got->second)(e);
 				//e->OnKey(c, glutGetModifiers());
 				break;
 			}
 		}
 	}
-	else if (c == 27) //escape key
-		editor->editorLayer = 0;
+	else if (c == 27) {//escape key
+		if (editor->editorLayer != 4 || editor->buildEnd) {
+			editor->editorLayer = 0;
+		}
+	}
+	else if (c == 13 && editor->editorLayer == 4 && editor->buildEnd && editor->buildErrorPath != "") { //enter
+		string cmd = " " + editor->buildErrorPath + " -n" + to_string(editor->buildErrorLine);
+		ShellExecute(NULL, "open", "C:\\Program Files (x86)\\Notepad++\\Notepad++.exe", cmd.c_str(), NULL, SW_SHOW);
+	}
 }
 
 void MouseGL(int button, int state, int x, int y) {

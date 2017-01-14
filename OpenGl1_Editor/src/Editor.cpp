@@ -66,6 +66,7 @@ void EBH_DrawItem(SceneObject* sc, Editor* e, Color* v, int& i, int indent) {
 	//}
 	if (Engine::EButton((e->editorLayer == 0), v->r + xo + ((sc->childCount > 0) ? 16 : 0), v->g + EB_HEADER_SIZE + 1 + 17 * i, v->b - xo - ((sc->childCount > 0) ? 16 : 0), 16, grey2()) == MOUSE_RELEASE) {
 		e->selected = sc;
+		e->selectGlobal = false;
 	}
 	Engine::Label(v->r + 19 + xo, v->g + EB_HEADER_SIZE + 4 + 17 * i, 12, sc->name, e->font, white());
 	i++;
@@ -99,7 +100,12 @@ void EB_Hierarchy::Draw() {
 
 	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
 	glDisable(GL_DEPTH_TEST);
-	int i = 0;
+	if (Engine::EButton((editor->editorLayer == 0), v.r, v.g + EB_HEADER_SIZE + 1, v.b, 16, Color(0.2f, 0.2f, 0.4f, 1)) == MOUSE_RELEASE) {
+		editor->selected = nullptr;
+		editor->selectGlobal = true;
+	}
+	Engine::Label(v.r + 19, v.g + EB_HEADER_SIZE + 4, 12, "Global", editor->font, white());
+	int i = 1;
 	for each (SceneObject* sc in editor->activeScene.objects)
 	{
 		EBH_DrawItem(sc, editor, &v, i, 0);
@@ -562,7 +568,7 @@ void EB_Inspector::Draw() {
 	v.b = round(v.b - v.r) - 1;
 	v.g = round(v.g) + 1;
 	v.r = round(v.r) + 1;
-	DrawHeaders(editor, this, &v, isAsset ? (loaded ? label : "No object selected") : ((editor->selected != nullptr) ? editor->selected->name : "No object selected"), "Inspector");
+	DrawHeaders(editor, this, &v, isAsset ? (loaded ? label : "No object selected") : ((editor->selected != nullptr ) ? editor->selected->name : editor->selectGlobal? "Scene settings" : "No object selected"), "Inspector");
 
 	if (isAsset) {
 		if (loaded)
@@ -576,29 +582,9 @@ void EB_Inspector::Draw() {
 		Engine::Label(v.r + 22, v.g + 6 + EB_HEADER_SIZE, 12, editor->selected->name, editor->font, white());
 
 		//TRS
-		Engine::Label(v.r, v.g + 23 + EB_HEADER_SIZE, 12, "Position", editor->font, white());
-		Engine::EButton((editor->editorLayer == 0), v.r + v.b*0.19f, v.g + 21 + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.4f, 0.2f, 0.2f, 1));
-		Engine::Label(v.r + v.b*0.19f + 2, v.g + 23 + EB_HEADER_SIZE, 12, to_string(editor->selected->transform.position.x), editor->font, white());
-		Engine::EButton((editor->editorLayer == 0), v.r + v.b*0.46f, v.g + 21 + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.2f, 0.4f, 0.2f, 1));
-		Engine::Label(v.r + v.b*0.46f + 2, v.g + 23 + EB_HEADER_SIZE, 12, to_string(editor->selected->transform.position.y), editor->font, white());
-		Engine::EButton((editor->editorLayer == 0), v.r + v.b*0.73f, v.g + 21 + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.2f, 0.2f, 0.4f, 1));
-		Engine::Label(v.r + v.b*0.73f + 2, v.g + 23 + EB_HEADER_SIZE, 12, to_string(editor->selected->transform.position.z), editor->font, white());
-
-		Engine::Label(v.r, v.g + 40 + EB_HEADER_SIZE, 12, "Rotation", editor->font, white());
-		Engine::EButton((editor->editorLayer == 0), v.r + v.b*0.19f, v.g + 38 + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.4f, 0.2f, 0.2f, 1));
-		Engine::Label(v.r + v.b*0.19f + 2, v.g + 40 + EB_HEADER_SIZE, 12, to_string(editor->selected->transform.eulerRotation.x), editor->font, white());
-		Engine::EButton((editor->editorLayer == 0), v.r + v.b*0.46f, v.g + 38 + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.2f, 0.4f, 0.2f, 1));
-		Engine::Label(v.r + v.b*0.46f + 2, v.g + 40 + EB_HEADER_SIZE, 12, to_string(editor->selected->transform.eulerRotation.y), editor->font, white());
-		Engine::EButton((editor->editorLayer == 0), v.r + v.b*0.73f, v.g + 38 + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.2f, 0.2f, 0.4f, 1));
-		Engine::Label(v.r + v.b*0.73f + 2, v.g + 40 + EB_HEADER_SIZE, 12, to_string(editor->selected->transform.eulerRotation.z), editor->font, white());
-
-		Engine::Label(v.r, v.g + 57 + EB_HEADER_SIZE, 12, "Scale", editor->font, white());
-		Engine::EButton((editor->editorLayer == 0), v.r + v.b*0.19f, v.g + 55 + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.4f, 0.2f, 0.2f, 1));
-		Engine::Label(v.r + v.b*0.19f + 2, v.g + 57 + EB_HEADER_SIZE, 12, to_string(editor->selected->transform.scale.x), editor->font, white());
-		Engine::EButton((editor->editorLayer == 0), v.r + v.b*0.46f, v.g + 55 + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.2f, 0.4f, 0.2f, 1));
-		Engine::Label(v.r + v.b*0.46f + 2, v.g + 57 + EB_HEADER_SIZE, 12, to_string(editor->selected->transform.scale.y), editor->font, white());
-		Engine::EButton((editor->editorLayer == 0), v.r + v.b*0.73f, v.g + 55 + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.2f, 0.2f, 0.4f, 1));
-		Engine::Label(v.r + v.b*0.73f + 2, v.g + 57 + EB_HEADER_SIZE, 12, to_string(editor->selected->transform.scale.z), editor->font, white());
+		DrawVector3(editor, v, 21, "Position", editor->selected->transform.position);
+		DrawVector3(editor, v, 38, "Rotation", editor->selected->transform.eulerRotation);
+		DrawVector3(editor, v, 55, "Scale", editor->selected->transform.scale);
 		
 		//draw components
 		uint off = 74 + EB_HEADER_SIZE;
@@ -607,14 +593,26 @@ void EB_Inspector::Draw() {
 			c->DrawInspector(editor, c, v, off);
 		}
 	}
+	else if (editor->selectGlobal) {
+		//Engine::DrawTexture(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 18, 18, editor->object);
+		Engine::DrawQuad(v.r + 20, v.g + 2 + EB_HEADER_SIZE, v.b - 21, 18, grey1());
+		Engine::Label(v.r + 22, v.g + 6 + EB_HEADER_SIZE, 12, "Scene Settings", editor->font, white());
+
+		Engine::Label(v.r, v.g + 23 + EB_HEADER_SIZE, 12, "Sky", editor->font, white());
+
+	}
 	else
 		Engine::Label(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 12, "Select object to inspect.", editor->font, white());
 }
 
-void EB_Inspector::DrawScalar(Editor* e, Color v, string label, float& value) {
-	Engine::Label(v.r + 2, v.g, 12, label, e->font, white(), v.b*0.19f - 2);
-	Engine::EButton((e->editorLayer == 0), v.r + v.b*0.19f, v.g, v.b*0.71 - 1, 16, Color(0.3f, 0.3f, 0.3f, 1));
-	Engine::Label(v.r + v.b*0.19f + 2, v.g, 12, label, e->font, white(), v.b * 0.71f - 4);
+void EB_Inspector::DrawVector3(Editor* e, Color v, float dh, string label, Vec3& value) {
+	Engine::Label(v.r, v.g + dh + 2 + EB_HEADER_SIZE, 12, label, e->font, white());
+	Engine::EButton((e->editorLayer == 0), v.r + v.b*0.19f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.4f, 0.2f, 0.2f, 1));
+	Engine::Label(v.r + v.b*0.19f + 2, v.g + dh + 2 + EB_HEADER_SIZE, 12, to_string(value.x), e->font, white());
+	Engine::EButton((e->editorLayer == 0), v.r + v.b*0.46f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.2f, 0.4f, 0.2f, 1));
+	Engine::Label(v.r + v.b*0.46f + 2, v.g + dh + 2 + EB_HEADER_SIZE, 12, to_string(value.y), e->font, white());
+	Engine::EButton((e->editorLayer == 0), v.r + v.b*0.73f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.2f, 0.2f, 0.4f, 1));
+	Engine::Label(v.r + v.b*0.73f + 2, v.g + dh + 2 + EB_HEADER_SIZE, 12, to_string(value.z), e->font, white());
 }
 
 void Editor::LoadDefaultAssets() {
@@ -984,9 +982,11 @@ void Editor::AddBuildLog(Editor* e, string s) {
 		while (s[0] == ' ' || s[0] == '\t')
 			s = s.substr(1, string::npos);
 		int i = s.find_first_of('(');
-		buildErrorPath = s.substr(0, i);
-		buildErrorLine = stoi(s.substr(i, s.find_first_of(')') - i - 1));
+		buildErrorPath = "F:\\TestProject\\" + s.substr(0, i);
+		string ii = s.substr(i + 1, s.find_first_of(')') - i - 1);
+		buildErrorLine = stoi(ii);
 	}
+
 }
 
 bool Editor::GetCache(string& path, I_EBI_ValueCollection& vals) {
@@ -1106,12 +1106,9 @@ void Editor::SaveScene(Editor* e) {
 	e->activeScene.Save(e);
 }
 
-void SetBuildFail(Editor* e) {
-	e->buildLabel = "Build: failed.";
-	e->buildProgressColor = red(1, 0.7f);
-}
-
 void Editor::DoCompile() {
+	buildEnd = false;
+	buildErrorPath = "";
 	buildProgressColor = white(1, 0.35f);
 	editorLayer = 4;
 	buildLog.clear();
@@ -1127,7 +1124,9 @@ void Editor::DoCompile() {
 	buildProgressValue = 50;
 	buildLabel = "Build: executing msbuild...";
 	if (!DoMsBuild(this)) {
-		SetBuildFail(this);
+		buildLabel = "Build: failed.";
+		buildProgressColor = red(1, 0.7f);
+		AddBuildLog(this, "Press Enter to open first error file.");
 	}
 	else {//if (IO::HasFile("F:\\TestProject\\Debug\\TestProject.exe")) {
 		if (_cleanOnBuild) {
@@ -1156,6 +1155,7 @@ void Editor::DoCompile() {
 		AddBuildLog(this, "Build finished: press Escape to exit.");
 		ShellExecute(NULL, "open", "explorer", " /select,F:\\TestProject\\Release\\TestProject.exe", NULL, SW_SHOW);
 	}
+	buildEnd = true;
 	//else SetBuildFail(this);
 }
 

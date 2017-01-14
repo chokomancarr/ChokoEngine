@@ -216,12 +216,13 @@ public:
 	void Draw();
 	void Refresh() {}
 
-	static void DrawScalar(Editor* e, Color v, string label, float& value);
-	static void DrawVector2(Editor* e, Color v, string label, float& valueX, float& valueY);
-	static void DrawVector3(Editor* e, Color v, string label, float& valueX, float& valueY, float& valueZ);
-	static void DrawVector4(Editor* e, Color v, string label, float& valueX, float& valueY, float& valueZ, float& valueW);
-	static void DrawColor(Editor* e, Color v, string label, Color& col);
-	static void DrawTexture(Editor* e, Color v, string label, Texture* tex, Color& uv);
+	static void DrawScalar(Editor* e, Color v, float dh, string label, float& value);
+	static void DrawVector2(Editor* e, Color v, float dh, string label, Vec2& value);
+	static void DrawVector3(Editor* e, Color v, float dh, string label, Vec3& value);
+	static void DrawVector4(Editor* e, Color v, float dh, string label, Color& value);
+	static void DrawColor(Editor* e, Color v, float dh, string label, Color& col);
+	static void DrawAssetPicker(Editor* e, Color v, string label, string type[], string& assetName);
+	//static void DrawTexture(Editor* e, Color v, string label, Texture* tex, Color& uv);
 };
 
 class xPossLerper;
@@ -273,6 +274,7 @@ public:
 	string buildLabel;
 	float buildProgressValue;
 	Color buildProgressColor;
+	bool buildEnd; //allow esc
 
 	Font* font;
 	static HWND hwnd;
@@ -288,6 +290,7 @@ public:
 	bool sceneLoaded;
 	Scene activeScene;
 	SceneObject* selected;
+	bool selectGlobal;
 
 	string selectedFile = "";
 

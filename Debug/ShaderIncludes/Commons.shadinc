@@ -7,6 +7,19 @@
 //vec2 uv;
 //V2FEND
 
+COMMONSTART
+vec4 samplehdri (sampler2D sampler, Vec3 dir) {
+	
+}
+vec4 hdr2float (vec4 in) {
+	float p = pow(2, in.a);
+	vec4 c;
+	c.rgb = vec3(in.r, in.g, in.b)*p;
+	c.a = 1;
+	return c;
+}
+COMMONEND
+
 VERTSTART
 layout0 in vec3 pos;
 layout1 in vec2 texCoord;

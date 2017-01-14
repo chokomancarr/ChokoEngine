@@ -93,12 +93,11 @@ public:
 	static void Error(string c, string s);
 };
 
-typedef byte ASSETTYPE;
+typedef unsigned char ASSETTYPE;
 
 #define ASSETTYPE_TEXTURE 0x01
 class Texture {
 public:
-	Texture() {}
 	Texture(const string& path);
 	Texture(const string& path, bool mipmap);
 	Texture(const string& path, bool mipmap, bool nearest);
@@ -123,6 +122,18 @@ protected:
 		glDeleteTextures(1, &pointer);
 	}
 	*/
+};
+
+#define ASSETTYPE_HDRI 0x02
+class Background {
+public:
+	Background() {}
+	//Background(const string& path);
+
+	bool loaded;
+	unsigned int width, height;
+	GLuint pointer;
+
 };
 
 class EB_Browser_File;
@@ -174,7 +185,7 @@ public:
 	static glm::mat3 uiMatrix;
 };
 
-#define ASSETTYPE_SHADER 0x02
+#define ASSETTYPE_SHADER 0x05
 #define SHADER_INT 0x00
 #define SHADER_FLOAT 0x01
 #define SHADER_SAMPLER 0x10
@@ -200,7 +211,7 @@ public:
 	static bool LoadShader(GLenum shaderType, string source, GLuint& shader);
 };
 
-#define ASSETTYPE_MATERIAL 0x03
+#define ASSETTYPE_MATERIAL 0x10
 class Material {
 public:
 	ShaderBase* shader;
@@ -294,6 +305,11 @@ public:
 	static ulong idCounter;
 	static vector<Camera*> sceneCameras;
 	
+	unordered_map<byte, vector<string>> assetData;
+	unordered_map<string, byte[]> assetDataLoaded;
+	byte[] GetAsset(string name);
+	
+
 	void Render();
 };
 
@@ -302,6 +318,8 @@ public:
 	Scene() {}
 
 	string sceneName;
+	//global parameters
+	Background* sky;
 	vector<SceneObject*> objects;
 
 	void Save(Editor* e);
