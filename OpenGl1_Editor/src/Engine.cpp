@@ -1,6 +1,7 @@
 #include "Engine.h"
 #include "Editor.h"
 #include "hdr.h"
+#include "KTMModel.h"
 #include <GL/glew.h>
 #include <vector>
 #include <string>
@@ -8,6 +9,7 @@
 #include <fstream>
 #include <sstream>
 #include <climits>
+#include <shellapi.h>
 #include <Windows.h>
 #include <math.h>
 #include <glm/glm.hpp>
@@ -55,12 +57,12 @@ void Engine::Init(string path) {
 		cout << "cannot load fallback texture!" << endl;
 
 	string vertcode = "#version 330 core\nlayout(location = 0) in vec3 pos;\nlayout(location = 1) in vec2 uv;\nout vec2 UV;\nvoid main(){ \ngl_Position.xyz = pos;\ngl_Position.w = 1.0;\nUV = uv;\n}";
-	string fragcode = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nvoid main(){\ngl_FragColor = texture(sampler, UV)*col;\n}"; //out vec3 color;\n
-	string fragcode2 = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nvoid main(){\ngl_FragColor = vec4(1, 1, 1, texture(sampler, UV).r)*col;\n}"; //out vec3 color;\n
-	string fragcode3 = "#version 330 core\nin vec2 UV;\nuniform vec4 col;\nvoid main(){\ngl_FragColor = col;\n}"; //out vec3 color;\n
-	//string fragcodeSky = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec2 dir;\nuniform float angle;\nout vec4 color;\nvoid main(){\nvec4 col = texture(sampler, UV);\ncolor.rgb = col.rgb*pow(2, col.a*255-128);\ncolor.a = 1;\n}"; //(1.0f / 256.0f) * pow(2, (float)(exponent - 128));
-	//string fragcodeSky = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec2 dir;\nuniform float length;\nout vec4 color;\nvoid main(){\nfloat ay = asin((dir.y + UV.y)/length);\nfloat l2 = length*cos(ay);\nfloat ax = asin((dir.x + UV.x)/l2);\ncolor = texture(sampler, vec2(0.5, 0.5) + vec2(ax, ay));\ncolor.a = 1;\n}";
-	string fragcodeSky = "in vec2 UV;uniform sampler2D sampler;uniform vec2 dir;uniform float length;out vec4 color;void main(){float ay = asin((UV.y) / length);float l2 = length*cos(ay);float ax = asin((dir.x + UV.x) / l2);color = texture(sampler, vec2((dir.x + ax / 3.14159)*sin(dir.y + ay / 3.14159) + 0.5, (dir.y + ay / 3.14159)));color.a = 1;}";
+	string fragcode = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nvoid main(){\ngl_FragVec4 = texture(sampler, UV)*col;\n}"; //out vec3 Vec4;\n
+	string fragcode2 = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nvoid main(){\ngl_FragVec4 = vec4(1, 1, 1, texture(sampler, UV).r)*col;\n}"; //out vec3 Vec4;\n
+	string fragcode3 = "#version 330 core\nin vec2 UV;\nuniform vec4 col;\nvoid main(){\ngl_FragVec4 = col;\n}"; //out vec3 Vec4;\n
+	//string fragcodeSky = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec2 dir;\nuniform float angle;\nout vec4 Vec4;\nvoid main(){\nvec4 col = texture(sampler, UV);\nVec4.rgb = col.rgb*pow(2, col.a*255-128);\nVec4.a = 1;\n}"; //(1.0f / 256.0f) * pow(2, (float)(exponent - 128));
+	//string fragcodeSky = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec2 dir;\nuniform float length;\nout vec4 Vec4;\nvoid main(){\nfloat ay = asin((dir.y + UV.y)/length);\nfloat l2 = length*cos(ay);\nfloat ax = asin((dir.x + UV.x)/l2);\nVec4 = texture(sampler, vec2(0.5, 0.5) + vec2(ax, ay));\nVec4.a = 1;\n}";
+	string fragcodeSky = "in vec2 UV;uniform sampler2D sampler;uniform vec2 dir;uniform float length;out vec4 Vec4;void main(){float ay = asin((UV.y) / length);float l2 = length*cos(ay);float ax = asin((dir.x + UV.x) / l2);Vec4 = texture(sampler, vec2((dir.x + ax / 3.14159)*sin(dir.y + ay / 3.14159) + 0.5, (dir.y + ay / 3.14159)));Vec4.a = 1;}";
 
 	unlitProgram = glCreateProgram();
 	GLuint vertex_shader, fragment_shader;
@@ -123,7 +125,7 @@ void Engine::Init(string path) {
 			glGetProgramiv(unlitProgramC, GL_INFO_LOG_LENGTH, &info_log_length);
 			vector<char> program_log(info_log_length);
 			glGetProgramInfoLog(unlitProgramC, info_log_length, NULL, &program_log[0]);
-			cerr << "Default Shader (Color) link error" << endl << &program_log[0] << endl;
+			cerr << "Default Shader (Vec4) link error" << endl << &program_log[0] << endl;
 			return;
 		}
 		glDetachShader(unlitProgramC, vertex_shader);
@@ -172,7 +174,7 @@ void Engine::BeginStencil(float x, float y, float w, float h) {
 	glDepthFunc(GL_LEQUAL);
 	glClear(GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_STENCIL_TEST);
-	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+	glVec4Mask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 	glDepthMask(GL_FALSE);
 	glStencilFunc(GL_NEVER, 1, 0xFF);
 	glStencilOp(GL_REPLACE, GL_KEEP, GL_KEEP); // draw 1s on test fail (always)
@@ -180,7 +182,7 @@ void Engine::BeginStencil(float x, float y, float w, float h) {
 	glClear(GL_STENCIL_BUFFER_BIT); // needs mask=0xFF
 	Engine::DrawQuad(x, y, w, h, white());
 	//Engine::DrawQuad(v.r, v.g, v.b, v.a, white());
-	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+	glVec4Mask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 	glDepthMask(GL_TRUE);
 	glStencilMask(0x0);
 	glStencilFunc(GL_EQUAL, 1, 0xFF);
@@ -195,9 +197,9 @@ void Engine::DrawTexture(float x, float y, float w, float h, Texture* texture) {
 	DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer);
 }
 void Engine::DrawTexture(float x, float y, float w, float h, Texture* texture, float alpha) {
-	DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, Color(1, 1, 1, alpha));
+	DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, Vec4(1, 1, 1, alpha));
 }
-void Engine::DrawTexture(float x, float y, float w, float h, Texture* texture, Color tint) {
+void Engine::DrawTexture(float x, float y, float w, float h, Texture* texture, Vec4 tint) {
 	DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint);
 }
 
@@ -217,12 +219,14 @@ void AddQuad(float x, float y, float w, float h, Vec2 uv0, Vec2 uv1, Vec2 uv2, V
 }
 
 void Engine::Label(float x, float y, float s, string st, Font* font) {
-	Label(x, y, s, st, font, Color(0, 0, 0, 1));
+	Label(x, y, s, st, font, Vec4(0, 0, 0, 1));
 }
-void Engine::Label(float x, float y, float s, string st, Font* font, Color color) {
-	Label(x, y, s, st, font, color, -1);
+void Engine::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4) {
+	Label(x, y, s, st, font, Vec4, -1);
 }
-void Engine::Label(float x, float y, float s, string st, Font* font, Color color, float maxw) {
+void Engine::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4, float maxw) {
+	if (st == "")
+		return;
 	const char* str = st.c_str();
 	
 	vector<Vec3> quadPoss;
@@ -240,9 +244,9 @@ void Engine::Label(float x, float y, float s, string st, Font* font, Color color
 					o = '.';
 					h = (o*1.0f / font->gchars(s));
 					w = (1 - (font->gpadding(s)*1.0f / font->gwidth(s)));
-					DrawQuad(x + a*s*font->gw2h(s)*w - (s*font->gw2h(s)*w*st.size()*(font->alignment & 0x0f)*0.5f), y - s*(1 - ((font->alignment & 0xf0) >> 4)*0.5f), s*font->gw2h(s)*w, s, font->getpointer(s), Vec2(0, h + (1.0f / font->gchars(s))), Vec2(w, h + (1.0f / font->gchars(s))), Vec2(0, h), Vec2(w, h), true, color);
+					DrawQuad(x + a*s*font->gw2h(s)*w - (s*font->gw2h(s)*w*st.size()*(font->alignment & 0x0f)*0.5f), y - s*(1 - ((font->alignment & 0xf0) >> 4)*0.5f), s*font->gw2h(s)*w, s, font->getpointer(s), Vec2(0, h + (1.0f / font->gchars(s))), Vec2(w, h + (1.0f / font->gchars(s))), Vec2(0, h), Vec2(w, h), true, Vec4);
 					a++;
-					DrawQuad(x + a*s*font->gw2h(s)*w - (s*font->gw2h(s)*w*st.size()*(font->alignment & 0x0f)*0.5f), y - s*(1 - ((font->alignment & 0xf0) >> 4)*0.5f), s*font->gw2h(s)*w, s, font->getpointer(s), Vec2(0, h + (1.0f / font->gchars(s))), Vec2(w, h + (1.0f / font->gchars(s))), Vec2(0, h), Vec2(w, h), true, color);
+					DrawQuad(x + a*s*font->gw2h(s)*w - (s*font->gw2h(s)*w*st.size()*(font->alignment & 0x0f)*0.5f), y - s*(1 - ((font->alignment & 0xf0) >> 4)*0.5f), s*font->gw2h(s)*w, s, font->getpointer(s), Vec2(0, h + (1.0f / font->gchars(s))), Vec2(w, h + (1.0f / font->gchars(s))), Vec2(0, h), Vec2(w, h), true, Vec4);
 					break;
 				}
 			}
@@ -251,7 +255,7 @@ void Engine::Label(float x, float y, float s, string st, Font* font, Color color
 				break;
 
 			float r = Display::height * 1.0f / Display::width; //(x2 + a*s2*font->w2h*w*r) * 2 - 1, (1 - y2) * 2 - 1, s2*font->w2h * 2 * w*r, -s2 * 2
-			//DrawQuad(x + a*s*font->gw2h(s)*w - (s*font->gw2h(s)*w*st.size()*(font->alignment & 0x0f)*0.5f), y - s*(1 - ((font->alignment & 0xf0) >> 4)*0.5f), s*font->gw2h(s)*w, s, font->getpointer(s), Vec2(0, h + (1.0f / font->gchars(s))), Vec2(w, h + (1.0f / font->gchars(s))), Vec2(0, h), Vec2(w, h), true, color);//Vec2(0, 0.49), Vec2(1, 0.49));//(1.0f / font->chars)), Vec2(1, h - (1.0f / font->chars)));
+			//DrawQuad(x + a*s*font->gw2h(s)*w - (s*font->gw2h(s)*w*st.size()*(font->alignment & 0x0f)*0.5f), y - s*(1 - ((font->alignment & 0xf0) >> 4)*0.5f), s*font->gw2h(s)*w, s, font->getpointer(s), Vec2(0, h + (1.0f / font->gchars(s))), Vec2(w, h + (1.0f / font->gchars(s))), Vec2(0, h), Vec2(w, h), true, Vec4);//Vec2(0, 0.49), Vec2(1, 0.49));//(1.0f / font->chars)), Vec2(1, h - (1.0f / font->chars)));
 			AddQuad(x0, (int)(y - s*(1 - ((font->alignment & 0xf0) >> 4)*0.5f)), s*font->gw2h(s)*w, s, Vec2(0, h + (1.0f / font->gchars(s))), Vec2(w, h + (1.0f / font->gchars(s))), Vec2(0, h), Vec2(w, h), &quadPoss, &indexes, &uvs, a * 4);
 		}
 		for (int y = quadPoss.size()-1; y >= 0; y--) {
@@ -266,7 +270,7 @@ void Engine::Label(float x, float y, float s, string st, Font* font, Color color
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, font->getpointer(s));
 		GLint baseColLoc = glGetUniformLocation(prog, "col");
-		glUniform4f(baseColLoc, color.r, color.g, color.b, color.a);
+		glUniform4f(baseColLoc, Vec4.r, Vec4.g, Vec4.b, Vec4.a);
 		glEnableVertexAttribArray(0);
 		glEnableVertexAttribArray(1);
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &quadPoss[0]);
@@ -283,100 +287,100 @@ void Engine::Label(float x, float y, float s, string st, Font* font, Color color
 byte Engine::Button(float x, float y, float w, float h) {
 	return Rect(x, y, w, h).Inside(Input::mousePos) ? (MOUSE_HOVER_FLAG | Input::mouse0State) : 0;
 }
-byte Engine::Button(float x, float y, float w, float h, Color normalColor) {
-	return Button(x, y, w, h, normalColor, LerpColor(normalColor, white(), 0.5f), LerpColor(normalColor, black(), 0.5f));
+byte Engine::Button(float x, float y, float w, float h, Vec4 normalVec4) {
+	return Button(x, y, w, h, normalVec4, LerpVec4(normalVec4, white(), 0.5f), LerpVec4(normalVec4, black(), 0.5f));
 }
-byte Engine::Button(float x, float y, float w, float h, Color normalColor, string label, float labelSize, Font* labelFont, Color labelColor) {
-	return Button(x, y, w, h, normalColor, LerpColor(normalColor, white(), 0.5f), LerpColor(normalColor, black(), 0.5f), label, labelSize, labelFont, labelColor);
+byte Engine::Button(float x, float y, float w, float h, Vec4 normalVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4) {
+	return Button(x, y, w, h, normalVec4, LerpVec4(normalVec4, white(), 0.5f), LerpVec4(normalVec4, black(), 0.5f), label, labelSize, labelFont, labelVec4);
 }
-byte Engine::Button(float x, float y, float w, float h, Color normalColor, Color highlightColor, Color pressColor) {
+byte Engine::Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4) {
 	bool inside = Rect(x, y, w, h).Inside(Input::mousePos);
 	switch (Input::mouse0State) {
 	case 0:
 	case MOUSE_UP:
-		DrawQuad(x, y, w, h, inside ? highlightColor : normalColor);
+		DrawQuad(x, y, w, h, inside ? highlightVec4 : normalVec4);
 		break;
 	case MOUSE_DOWN:
 	case MOUSE_HOLD:
-		DrawQuad(x, y, w, h, inside ? pressColor : normalColor);
+		DrawQuad(x, y, w, h, inside ? pressVec4 : normalVec4);
 		break;
 	}
 	return inside ? (MOUSE_HOVER_FLAG | Input::mouse0State) : 0;
 }
-byte Engine::Button(float x, float y, float w, float h, Texture* texture, Color normalColor, Color highlightColor, Color pressColor) {
+byte Engine::Button(float x, float y, float w, float h, Texture* texture, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4) {
 	bool inside = Rect(x, y, w, h).Inside(Input::mousePos);
 	switch (Input::mouse0State) {
 	case 0:
 	case MOUSE_UP:
-		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, inside ? highlightColor : normalColor);
+		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, inside ? highlightVec4 : normalVec4);
 		break;
 	case MOUSE_DOWN:
 	case MOUSE_HOLD:
-		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, inside ? pressColor : normalColor);
+		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, inside ? pressVec4 : normalVec4);
 		break;
 	}
 	return inside ? (MOUSE_HOVER_FLAG | Input::mouse0State) : 0;
 }
-byte Engine::Button(float x, float y, float w, float h, Color normalColor, Color highlightColor, Color pressColor, string label, float labelSize, Font* labelFont, Color labelColor) {
-	byte b = Button(x, y, w, h, normalColor, LerpColor(normalColor, white(), 0.5f), LerpColor(normalColor, black(), 0.5f));
+byte Engine::Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4) {
+	byte b = Button(x, y, w, h, normalVec4, LerpVec4(normalVec4, white(), 0.5f), LerpVec4(normalVec4, black(), 0.5f));
 	ALIGNMENT al = labelFont->alignment;
 	labelFont->alignment = ALIGN_MIDLEFT;
-	Label((int)(x + 2), (int)(y + 0.5f*h), labelSize, label, labelFont, labelColor);
+	Label((int)(x + 2), (int)(y + 0.5f*h), labelSize, label, labelFont, labelVec4);
 	labelFont->alignment = al;
 	return b;
 }
 
-byte Engine::EButton(bool a, float x, float y, float w, float h, Color normalColor) {
-	return EButton(a, x, y, w, h, normalColor, LerpColor(normalColor, white(), 0.5f), LerpColor(normalColor, black(), 0.5f));
+byte Engine::EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4) {
+	return EButton(a, x, y, w, h, normalVec4, LerpVec4(normalVec4, white(), 0.5f), LerpVec4(normalVec4, black(), 0.5f));
 }
-byte Engine::EButton(bool a, float x, float y, float w, float h, Color normalColor, Color highlightColor, Color pressColor) {
+byte Engine::EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4) {
 	if (a) {
 		bool inside = Rect(x, y, w, h).Inside(Input::mousePos);
 		switch (Input::mouse0State) {
 		case 0:
 		case MOUSE_UP:
-			DrawQuad(x, y, w, h, inside ? highlightColor : normalColor);
+			DrawQuad(x, y, w, h, inside ? highlightVec4 : normalVec4);
 			break;
 		case MOUSE_DOWN:
 		case MOUSE_HOLD:
-			DrawQuad(x, y, w, h, inside ? pressColor : normalColor);
+			DrawQuad(x, y, w, h, inside ? pressVec4 : normalVec4);
 			break;
 		}
 		return inside ? (MOUSE_HOVER_FLAG | Input::mouse0State) : 0;
 	}
 	else {
-		DrawQuad(x, y, w, h, normalColor);
+		DrawQuad(x, y, w, h, normalVec4);
 		return false;
 	}
 }
-byte Engine::EButton(bool a, float x, float y, float w, float h, Color normalColor, string label, float labelSize, Font* labelFont, Color labelColor) {
-	return EButton(a, x, y, w, h, normalColor, LerpColor(normalColor, white(), 0.5f), LerpColor(normalColor, black(), 0.5f), label, labelSize, labelFont, labelColor);
+byte Engine::EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4) {
+	return EButton(a, x, y, w, h, normalVec4, LerpVec4(normalVec4, white(), 0.5f), LerpVec4(normalVec4, black(), 0.5f), label, labelSize, labelFont, labelVec4);
 }
-byte Engine::EButton(bool a, float x, float y, float w, float h, Texture* texture, Color color) {
-	return EButton(a, x, y, w, h, texture, color, LerpColor(color, white(), 0.5f), LerpColor(color, black(), 0.5f));
+byte Engine::EButton(bool a, float x, float y, float w, float h, Texture* texture, Vec4 Vec4) {
+	return EButton(a, x, y, w, h, texture, Vec4, LerpVec4(Vec4, white(), 0.5f), LerpVec4(Vec4, black(), 0.5f));
 }
-byte Engine::EButton(bool a, float x, float y, float w, float h, Texture* texture, Color normalColor, Color highlightColor, Color pressColor) {
+byte Engine::EButton(bool a, float x, float y, float w, float h, Texture* texture, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4) {
 	if (a) {
 	bool inside = Rect(x, y, w, h).Inside(Input::mousePos);
 	switch (Input::mouse0State) {
 	case 0:
 	case MOUSE_UP:
-		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, inside ? highlightColor : normalColor);
+		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, inside ? highlightVec4 : normalVec4);
 		break;
 	case MOUSE_DOWN:
 	case MOUSE_HOLD:
-		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, inside ? pressColor : normalColor);
+		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, inside ? pressVec4 : normalVec4);
 		break;
 	}
 	return inside ? (MOUSE_HOVER_FLAG | Input::mouse0State) : 0;
 	}
 	else {
-		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, normalColor);
+		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, normalVec4);
 		return false;
 	}
 }
-byte Engine::EButton(bool a, float x, float y, float w, float h, Color normalColor, Color highlightColor, Color pressColor, string label, float labelSize, Font* labelFont, Color labelColor) {
-	byte b = EButton(a, x, y, w, h, normalColor, LerpColor(normalColor, white(), 0.5f), LerpColor(normalColor, black(), 0.5f));
+byte Engine::EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4) {
+	byte b = EButton(a, x, y, w, h, normalVec4, LerpVec4(normalVec4, white(), 0.5f), LerpVec4(normalVec4, black(), 0.5f));
 	ALIGNMENT al = labelFont->alignment;
 	labelFont->alignment = ALIGN_MIDCENTER;
 	Label(x + 0.5f*w, y + 0.5f*h, labelSize, label, labelFont);
@@ -384,7 +388,7 @@ byte Engine::EButton(bool a, float x, float y, float w, float h, Color normalCol
 	return b;
 }
 
-bool Engine::DrawToggle(float x, float y, float s, Color col, bool t) {
+bool Engine::DrawToggle(float x, float y, float s, Vec4 col, bool t) {
 	byte b = Button(x, y, s, s, col);
 	if (b == MOUSE_RELEASE)
 		t = !t;
@@ -396,14 +400,14 @@ bool Engine::DrawToggle(float x, float y, float s, Texture* texture, bool t) {
 		t = !t;
 	return t;
 }
-bool Engine::DrawToggle(float x, float y, float s, Texture* texture, Color col, bool t) {
-	byte b = Button(x, y, s, s, texture, col, LerpColor(col, white(), 0.5f), LerpColor(col, black(), 0.5f));
+bool Engine::DrawToggle(float x, float y, float s, Texture* texture, Vec4 col, bool t) {
+	byte b = Button(x, y, s, s, texture, col, LerpVec4(col, white(), 0.5f), LerpVec4(col, black(), 0.5f));
 	if (b == MOUSE_RELEASE)
 		t = !t;
 	return t;
 }
 
-void Engine::DrawProgressBar(float x, float y, float w, float h, float progress, Color background, Texture* foreground, Color tint, int padding, byte clip) {
+void Engine::DrawProgressBar(float x, float y, float w, float h, float progress, Vec4 background, Texture* foreground, Vec4 tint, int padding, byte clip) {
 	DrawQuad(x, y, w, h, background);
 	progress = clamp(progress, 0, 100)*0.01f;
 	float tx = (clip == 0) ? 1 : ((clip == 1) ? progress : w*progress / h);
@@ -479,12 +483,12 @@ void Engine::ResetUIMatrix() {
 }
 
 void Engine::DrawQuad(float x, float y, float w, float h, uint texture) {
-	DrawQuad(x, y, w, h, texture, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, Color(1, 1, 1, 1));
+	DrawQuad(x, y, w, h, texture, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, Vec4(1, 1, 1, 1));
 }
-void Engine::DrawQuad(float x, float y, float w, float h, uint texture, Color color) {
-	DrawQuad(x, y, w, h, texture, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, color);
+void Engine::DrawQuad(float x, float y, float w, float h, uint texture, Vec4 Vec4) {
+	DrawQuad(x, y, w, h, texture, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, Vec4);
 }
-void Engine::DrawQuad(float x, float y, float w, float h, Color color) {
+void Engine::DrawQuad(float x, float y, float w, float h, Vec4 Vec4) {
 	Vec3 quadPoss[4];
 	quadPoss[0].x = x;
 	quadPoss[0].y = y;
@@ -506,7 +510,7 @@ void Engine::DrawQuad(float x, float y, float w, float h, Color color) {
 	glUseProgram(prog);
 
 	GLint baseColLoc = glGetUniformLocation(prog, "col");
-	glUniform4f(baseColLoc, color.r, color.g, color.b, color.a);
+	glUniform4f(baseColLoc, Vec4.r, Vec4.g, Vec4.b, Vec4.a);
 
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &quadPoss[0]);
@@ -518,7 +522,7 @@ void Engine::DrawQuad(float x, float y, float w, float h, Color color) {
 	glUseProgram(0);
 
 	/*
-	glColor3f(1.0f, 0.0f, 0.0f);
+	glVec43f(1.0f, 0.0f, 0.0f);
 	glLineWidth(1);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	glDrawElements(GL_QUADS, 4, GL_UNSIGNED_INT, &quadIndexes[0]);
@@ -527,7 +531,7 @@ void Engine::DrawQuad(float x, float y, float w, float h, Color color) {
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
-void Engine::DrawQuad(float x, float y, float w, float h, GLuint texture, Vec2 uv0, Vec2 uv1, Vec2 uv2, Vec2 uv3, bool single, Color color) {
+void Engine::DrawQuad(float x, float y, float w, float h, GLuint texture, Vec2 uv0, Vec2 uv1, Vec2 uv2, Vec2 uv3, bool single, Vec4 Vec4) {
 	Vec3 quadPoss[4];
 	quadPoss[0].x = x;
 	quadPoss[0].y = y;
@@ -561,7 +565,7 @@ void Engine::DrawQuad(float x, float y, float w, float h, GLuint texture, Vec2 u
 	glBindTexture(GL_TEXTURE_2D, texture);
 
 	GLint baseColLoc = glGetUniformLocation(prog, "col");
-	glUniform4f(baseColLoc, color.r, color.g, color.b, color.a);
+	glUniform4f(baseColLoc, Vec4.r, Vec4.g, Vec4.b, Vec4.a);
 
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
@@ -576,7 +580,7 @@ void Engine::DrawQuad(float x, float y, float w, float h, GLuint texture, Vec2 u
 	glUseProgram(0);
 
 	/*
-	glColor3f(1.0f, 0.0f, 0.0f);
+	glVec43f(1.0f, 0.0f, 0.0f);
 	glLineWidth(1);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	glDrawElements(GL_QUADS, 4, GL_UNSIGNED_INT, &quadIndexes[0]);
@@ -587,7 +591,7 @@ void Engine::DrawQuad(float x, float y, float w, float h, GLuint texture, Vec2 u
 	//glDisable(GL_DEPTH_TEST);
 }
 
-void Engine::DrawCube(Vec3 pos, float dx, float dy, float dz, Color color) {
+void Engine::DrawCube(Vec3 pos, float dx, float dy, float dz, Vec4 Vec4) {
 	Vec3 quadPoss[8];
 	quadPoss[0] = pos + Vec3(-dx, -dy, -dz);
 	quadPoss[1] = pos + Vec3(dx, -dy, -dz);
@@ -600,7 +604,7 @@ void Engine::DrawCube(Vec3 pos, float dx, float dy, float dz, Color color) {
 	uint quadIndexes[24] = { 0, 1, 3, 2, 4, 5, 7, 6, 0, 2, 6, 4, 1, 3, 7, 5, 0, 1, 5, 4, 2, 3, 7, 6 };
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
-	glColor4f(color.r, color.g, color.b, color.a);
+	glVec44f(Vec4.r, Vec4.g, Vec4.b, Vec4.a);
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDrawElements(GL_QUADS, 24, GL_UNSIGNED_INT, &quadIndexes[0]);
@@ -612,21 +616,21 @@ void Engine::DrawIndices(const Vec3* poss, const int* is, int length, float r, f
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(3, GL_FLOAT, 0, poss);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glColor4f(r, g, b, 1);
+	glVec44f(r, g, b, 1);
 	glDrawElements(GL_TRIANGLES, length, GL_UNSIGNED_INT, is);
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 void Engine::DrawIndicesI(const Vec3* poss, const int* is, int length, float r, float g, float b) {
 	glVertexPointer(3, GL_FLOAT, 0, poss);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glColor4f(r, g, b, 1);
+	glVec44f(r, g, b, 1);
 	glDrawElements(GL_TRIANGLES, length, GL_UNSIGNED_INT, is);
 }
 
-void Engine::DrawLine(Vec2 v1, Vec2 v2, Color col, float width) {
+void Engine::DrawLine(Vec2 v1, Vec2 v2, Vec4 col, float width) {
 	DrawLine(Vec3(v1.x, v1.y, 1), Vec3(v2.x, v2.y, 1), col, width);
 }
-void Engine::DrawLine(Vec3 v1, Vec3 v2, Color col, float width) {
+void Engine::DrawLine(Vec3 v1, Vec3 v2, Vec4 col, float width) {
 	Vec3 quadPoss[2];
 	quadPoss[0] = v1;
 	quadPoss[1] = v2;
@@ -638,21 +642,21 @@ void Engine::DrawLine(Vec3 v1, Vec3 v2, Color col, float width) {
 	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
 	//glEnableVertexAttribArray(0);
 	//glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &quadPoss[0]);
-	glColor4f(col.r, col.g, col.b, col.a);
+	glVec44f(col.r, col.g, col.b, col.a);
 	glLineWidth(width);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	glDrawElements(GL_LINES, 2, GL_UNSIGNED_INT, &quadIndexes[0]);
 	//glDisableVertexAttribArray(0);
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
-void Engine::DrawLineW(Vec3 v1, Vec3 v2, Color col, float width) {
+void Engine::DrawLineW(Vec3 v1, Vec3 v2, Vec4 col, float width) {
 	Vec3 quadPoss[2];
 	quadPoss[0] = v1;
 	quadPoss[1] = v2;
 	uint quadIndexes[4] = { 0, 1 };
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
-	glColor4f(col.r, col.g, col.b, col.a);
+	glVec44f(col.r, col.g, col.b, col.a);
 	glLineWidth(width);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	glDrawElements(GL_LINES, 2, GL_UNSIGNED_INT, &quadIndexes[0]);
@@ -778,33 +782,65 @@ string IO::ReadFile(const string& path) {
 	return buffer.str();
 }
 
+TCHAR* IO::GetRegistryKeys(HKEY key) {
+	TCHAR    achKey[255];
+	TCHAR    achClass[MAX_PATH] = TEXT("");  // buffer for class name 
+	DWORD    cchClassName = MAX_PATH;  // size of class string 
+	DWORD    cSubKeys = 0;               // number of subkeys 
+	DWORD    cbMaxSubKey;              // longest subkey size 
+	DWORD    cchMaxClass;              // longest class string 
+	DWORD    cValues;              // number of values for key 
+	DWORD    cchMaxValue;          // longest value name 
+	DWORD    cbMaxValueData;       // longest value data 
+	DWORD    cbSecurityDescriptor; //
+
+	/*
+	if (RegQueryInfoKey(
+		hKey,                    // key handle 
+		achClass,                // buffer for class name 
+		&cchClassName,           // size of class string 
+		NULL,                    // reserved 
+		&cSubKeys,               // number of subkeys 
+		&nullptr,            // longest subkey size 
+		&nullptr,            // longest class string 
+		&nullptr,                // number of values for this key 
+		&nullptr,            // longest value name 
+		&nullptr,         // longest value data 
+		nullptr,			     // security descriptor 
+		nullptr) == ERROR_SUCCESS) {       // last write time 
+
+	}
+	*/
+	return nullptr;
+}
+
 //-----------------time class---------------------
 long long Time::startMillis = 0;
 long long Time::millis = 0;
 double Time::time = 0;
 float Time::delta = 0;
 
-//-----------------colors--------------------------
-Color red() { return red(1, 1); }
-Color green() { return green(1, 1); }
-Color blue() { return blue(1, 1); }
-Color cyan() { return cyan(1, 1); }
-Color black() { return black(1); }
-Color white() { return white(1, 1); }
+//-----------------Vec4s--------------------------
+Vec4 red() { return red(1, 1); }
+Vec4 green() { return green(1, 1); }
+Vec4 blue() { return blue(1, 1); }
+Vec4 cyan() { return cyan(1, 1); }
+Vec4 black() { return black(1); }
+Vec4 white() { return white(1, 1); }
 
-Color red(float f) { return red(f, 1); }
-Color green(float f) { return green(f, 1); }
-Color blue(float f) { return blue(f, 1); }
-Color cyan(float f) { return cyan(f, 1); }
-Color black(float f) { return Color(0, 0, 0, f); }
-Color white(float f) { return white(f, 1); }
+Vec4 red(float f) { return red(f, 1); }
+Vec4 green(float f) { return green(f, 1); }
+Vec4 blue(float f) { return blue(f, 1); }
+Vec4 cyan(float f) { return cyan(f, 1); }
+Vec4 black(float f) { return Vec4(0, 0, 0, f); }
+Vec4 white(float f) { return white(f, 1); }
 
-Color red(float f, float i) { return Color(i, 0, 0, f); }
-Color green(float f, float i) { return Color(0, i, 0, f); }
-Color blue(float f, float i) { return Color(0, 0, i, f); }
-Color cyan(float f, float i) { return Color(i*0.09f, i*0.706f, i, f); }
-Color white(float f, float i) { return Color(i, i, i, f); }
-Color LerpColor(Color a, Color b, float f) {
+Vec4 red(float f, float i) { return Vec4(i, 0, 0, f); }
+Vec4 green(float f, float i) { return Vec4(0, i, 0, f); }
+Vec4 blue(float f, float i) { return Vec4(0, 0, i, f); }
+Vec4 cyan(float f, float i) { return Vec4(i*0.09f, i*0.706f, i, f); }
+Vec4 white(float f, float i) { return Vec4(i, i, i, f); }
+Vec4 LerpVec4(Vec4 a, Vec4 b, float f) {
 	if (f > 1)
 		return b;
 	else if (f < 0)
@@ -887,7 +923,7 @@ Texture::Texture(HBITMAP bmp, int width, int height) {
 	return;
 	/*
 	unsigned char data = 0;
-	if (GetDIBits(dc_mem, hbitmap, 0, 0, nullptr, &bmi, DIB_RGB_COLORS) == 0) {
+	if (GetDIBits(dc_mem, hbitmap, 0, 0, nullptr, &bmi, DIB_RGB_Vec4S) == 0) {
 		cout << "image load from hbitmap failed" << endl;
 		return;
 	}

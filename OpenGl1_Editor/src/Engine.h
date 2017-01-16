@@ -28,7 +28,7 @@ typedef unsigned long ulong;
 typedef unsigned short ushort;
 typedef glm::vec2 Vec2;
 typedef glm::vec3 Vec3;
-typedef glm::vec4 Color;
+typedef glm::vec4 Vec4;
 typedef glm::quat Quat;
 
 struct Rect {
@@ -64,10 +64,10 @@ long long milliseconds();
 class Editor;
 
 //shorthands
-Color red(), green(), blue(), cyan(), black(), white();
-Color red(float f), green(float f), blue(float f), cyan(float f), black(float f), white(float f);
-Color red(float f, float i), green(float f, float i), blue(float f, float i), cyan(float f, float i), white(float f, float i);
-Color LerpColor(Color a, Color b, float f);
+Vec4 red(), green(), blue(), cyan(), black(), white();
+Vec4 red(float f), green(float f), blue(float f), cyan(float f), black(float f), white(float f);
+Vec4 red(float f, float i), green(float f, float i), blue(float f, float i), cyan(float f, float i), white(float f, float i);
+Vec4 LerpVec4(Vec4 a, Vec4 b, float f);
 float clamp(float f, float a, float b);
 Vec3 rotate(Vec3 v, Quat q);
 glm::mat4 Quat2Mat(Quat q);
@@ -132,6 +132,7 @@ public:
 	static bool HasDirectory(LPCTSTR szPath);
 	static bool HasFile(LPCTSTR szPath);
 	static string ReadFile(const string& path);
+	static TCHAR* GetRegistryKeys(HKEY key);
 };
 
 class Font {
@@ -228,30 +229,30 @@ public:
 	static void EndStencil();
 	static void DrawTexture(float x, float y, float w, float h, Texture* texture);
 	static void DrawTexture(float x, float y, float w, float h, Texture* texture, float alpha);
-	static void DrawTexture(float x, float y, float w, float h, Texture* texture, Color tint);
-	static void DrawLine(Vec2 v1, Vec2 v2, Color col, float width);
-	static void DrawLine(Vec3 v1, Vec3 v2, Color col, float width);
-	static void DrawLineW(Vec3 v1, Vec3 v2, Color col, float width);
+	static void DrawTexture(float x, float y, float w, float h, Texture* texture, Vec4 tint);
+	static void DrawLine(Vec2 v1, Vec2 v2, Vec4 col, float width);
+	static void DrawLine(Vec3 v1, Vec3 v2, Vec4 col, float width);
+	static void DrawLineW(Vec3 v1, Vec3 v2, Vec4 col, float width);
 	static void Label(float x, float y, float s, string str, Font* texture);
-	static void Label(float x, float y, float s, string str, Font* texture, Color color);
-	static void Label(float x, float y, float s, string str, Font* texture, Color color, float maxw);
+	static void Label(float x, float y, float s, string str, Font* texture, Vec4 Vec4);
+	static void Label(float x, float y, float s, string str, Font* texture, Vec4 Vec4, float maxw);
 	static byte Button(float x, float y, float w, float h);
-	static byte Button(float x, float y, float w, float h, Color normalColor);
-	static byte Button(float x, float y, float w, float h, Color normalColor, string label, float labelSize, Font* labelFont, Color labelColor);
-	static byte Button(float x, float y, float w, float h, Color normalColor, Color highlightColor, Color pressColor);
-	static byte Button(float x, float y, float w, float h, Texture* texture, Color normalColor, Color highlightColor, Color pressColor);
-	static byte Button(float x, float y, float w, float h, Color normalColor, Color highlightColor, Color pressColor, string label, float labelSize, Font* labelFont, Color labelColor);
-	static byte EButton(bool a, float x, float y, float w, float h, Color normalColor);
-	static byte EButton(bool a, float x, float y, float w, float h, Color normalColor, Color highlightColor, Color pressColor);
-	static byte EButton(bool a, float x, float y, float w, float h, Color normalColor, string label, float labelSize, Font* labelFont, Color labelColor);
-	static byte EButton(bool a, float x, float y, float w, float h, Texture* texture, Color color);
-	static byte EButton(bool a, float x, float y, float w, float h, Texture* texture, Color normalColor, Color highlightColor, Color pressColor);
-	static byte EButton(bool a, float x, float y, float w, float h, Color normalColor, Color highlightColor, Color pressColor, string label, float labelSize, Font* labelFont, Color labelColor);
-	static bool DrawToggle(float x, float y, float s, Color col, bool t);
+	static byte Button(float x, float y, float w, float h, Vec4 normalVec4);
+	static byte Button(float x, float y, float w, float h, Vec4 normalVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4);
+	static byte Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4);
+	static byte Button(float x, float y, float w, float h, Texture* texture, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4);
+	static byte Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4);
+	static byte EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4);
+	static byte EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4);
+	static byte EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4);
+	static byte EButton(bool a, float x, float y, float w, float h, Texture* texture, Vec4 Vec4);
+	static byte EButton(bool a, float x, float y, float w, float h, Texture* texture, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4);
+	static byte EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4);
+	static bool DrawToggle(float x, float y, float s, Vec4 col, bool t);
 	static bool DrawToggle(float x, float y, float s, Texture* texture, bool t);
-	static bool DrawToggle(float x, float y, float s, Texture* texture, Color col, bool t);
+	static bool DrawToggle(float x, float y, float s, Texture* texture, Vec4 col, bool t);
 	//scaleType: 0=scale, 1=clip, 2=tile
-	static void DrawProgressBar(float x, float y, float w, float h, float progress, Color background, Texture* foreground, Color tint, int padding, byte scaleType);
+	static void DrawProgressBar(float x, float y, float w, float h, float progress, Vec4 background, Texture* foreground, Vec4 tint, int padding, byte scaleType);
 	static void DrawSky(Background* sky, float forX, float forY, float angleW, float rot);
 	static void DrawSky(float x, float y, float w, float h, Background* sky, float forX, float forY, float angleW, float rot);
 
@@ -267,10 +268,10 @@ public:
 
 //private: //fk users
 	static void DrawQuad(float x, float y, float w, float h, uint texture);
-	static void DrawQuad(float x, float y, float w, float h, uint texture, Color color);
-	static void DrawQuad(float x, float y, float w, float h, Color color);
-	static void DrawQuad(float x, float y, float w, float h, uint texture, Vec2 uv0, Vec2 uv1, Vec2 uv2, Vec2 uv3, bool single, Color color);
-	static void DrawCube(Vec3 pos, float dx, float dy, float dz, Color color);
+	static void DrawQuad(float x, float y, float w, float h, uint texture, Vec4 Vec4);
+	static void DrawQuad(float x, float y, float w, float h, Vec4 Vec4);
+	static void DrawQuad(float x, float y, float w, float h, uint texture, Vec2 uv0, Vec2 uv1, Vec2 uv2, Vec2 uv3, bool single, Vec4 Vec4);
+	static void DrawCube(Vec3 pos, float dx, float dy, float dz, Vec4 Vec4);
 	static void DrawIndices(const Vec3* poss, const int* is, int length, float r, float g, float b);
 	static void DrawIndicesI(const Vec3* poss, const int* is, int length, float r, float g, float b);
 	static ulong idCounter;

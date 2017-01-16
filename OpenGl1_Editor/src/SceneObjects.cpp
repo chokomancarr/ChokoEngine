@@ -2,7 +2,7 @@
 #include "Engine.h"
 #include "Editor.h"
 
-bool DrawComponentHeader(Editor* e, string name, Color v, float pos, bool expand, byte texId) {
+bool DrawComponentHeader(Editor* e, string name, Vec4 v, float pos, bool expand, byte texId) {
 	Engine::DrawQuad(v.r, v.g + pos, v.b - 17, 16, grey2());
 	//bool hi = expand;
 	//if (Engine::EButton((e->editorLayer == 0), v.r, v.g + pos, v.b, 16, grey2(), white(1, 0.7f), grey1()) == MOUSE_RELEASE) {
@@ -38,14 +38,14 @@ void Camera::DrawEditor() {
 	glVertexPointer(3, GL_FLOAT, 0, &camVerts[0]);
 	glLineWidth(1);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	glColor4f(0, 0, 0, 1);
+	glVec44f(0, 0, 0, 1);
 	glDrawElements(GL_LINES, 16, GL_UNSIGNED_INT, &camVertsIds[0]);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, &camVertsIds[16]);
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
-void Camera::DrawInspector(Editor* e, Component* c, Color v, uint& pos) {
+void Camera::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 	Camera* cam = (Camera*)c;
 	if (DrawComponentHeader(e, "Camera", v, pos, c->_expanded, COMP_CAM)) {
 		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Field of view", e->font, white());
@@ -80,7 +80,7 @@ MeshFilter::MeshFilter() : Component(COMP_MFT, false) {
 
 }
 
-void MeshFilter::DrawInspector(Editor* e, Component* c, Color v, uint& pos) {
+void MeshFilter::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 	//MeshFilter* mft = (MeshFilter*)c;
 	if (DrawComponentHeader(e, "Mesh Filter", v, pos, c->_expanded, COMP_MFT)) {
 		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Mesh", e->font, white());
@@ -97,7 +97,7 @@ MeshRenderer::MeshRenderer() : Component(COMP_MRD, true) {
 
 }
 
-void MeshRenderer::DrawInspector(Editor* e, Component* c, Color v, uint& pos) {
+void MeshRenderer::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 	//MeshRenderer* mrd = (MeshRenderer*)c;
 	if (DrawComponentHeader(e, "Mesh Renderer", v, pos, c->_expanded, COMP_MRD)) {
 		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Materials", e->font, white());
@@ -117,7 +117,7 @@ void SceneScript::Serialize(Editor* e, ofstream* stream) {
 	}
 }
 
-void SceneScript::DrawInspector(Editor* e, Component* c, Color v, uint& pos) {
+void SceneScript::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 	SceneScript* scr = (SceneScript*)c;
 	if (DrawComponentHeader(e, scr->name + "(Script)", v, pos, c->_expanded, COMP_SCR)) {
 		pos += 100;

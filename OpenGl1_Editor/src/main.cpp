@@ -55,7 +55,7 @@ int main(int argc, char **argv)
 	editor = new Editor();
 	editor->dataPath = path.substr(0, path.find_last_of('\\') + 1);
 
-	//Editor::ParseAsset("D:\\test.shade");
+	//Editor::ParseAsset("D:\\test.blend");
 	//editor->Compile();
 
 	//*
@@ -161,7 +161,7 @@ int main(int argc, char **argv)
 		editor->blocks = vector<EditorBlock*>({ new EB_Inspector(editor, 2, 0, 1, 1), new EB_Browser(editor, 0, 2, 2, 1, "D:\\"), new EB_Viewer(editor, 0, 0, 3, 2), new EB_Hierarchy(editor, 3, 0, 2, 2) }); //path.substr(0, path.find_last_of('\\') + 1)
 		font = editor->font;
 
-		editor->activeScene.sky = new Background(editor->dataPath + "res\\bg_refl.hdr");
+		//editor->activeScene.sky = new Background(editor->dataPath + "res\\bg_refl.hdr");
 
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -206,7 +206,7 @@ void DoUpdate() {
 	int i = -1, k = 0;
 	editor->mouseOn = 0;
 	for each (EditorBlock* e in editor->blocks) {
-		Color v = Color(Display::width*editor->xPoss[e->x1], Display::height*editor->yPoss[e->y1], Display::width*editor->xPoss[e->x2], Display::height*editor->yPoss[e->y2]);
+		Vec4 v = Vec4(Display::width*editor->xPoss[e->x1], Display::height*editor->yPoss[e->y1], Display::width*editor->xPoss[e->x2], Display::height*editor->yPoss[e->y2]);
 		v.a = round(v.a - v.g) - 1;
 		v.b = round(v.b - v.r) - 1;
 		v.g = round(v.g) + 1;
@@ -280,8 +280,8 @@ void DrawOverlay() {
 
 void renderScene()
 {
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glClearColor(0, 0, 0, 1.0f);
+	glClear(GL_Vec4_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClearVec4(0, 0, 0, 1.0f);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
 
@@ -322,7 +322,7 @@ void KeyboardGL(unsigned char c, int x, int y) {
 			return;
 		}
 		for each (EditorBlock* e in editor->blocks) {
-			Color v = Color(Display::width*editor->xPoss[e->x1], Display::height*editor->yPoss[e->y1], Display::width*editor->xPoss[e->x2], Display::height*editor->yPoss[e->y2]);
+			Vec4 v = Vec4(Display::width*editor->xPoss[e->x1], Display::height*editor->yPoss[e->y1], Display::width*editor->xPoss[e->x2], Display::height*editor->yPoss[e->y2]);
 			v.a = round(v.a - v.g) - 1;
 			v.b = round(v.b - v.r) - 1;
 			v.g = round(v.g) + 1;

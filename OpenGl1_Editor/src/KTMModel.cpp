@@ -1,4 +1,5 @@
 #include "KTMModel.h"
+#include "Engine.h"
 #include <string>
 #include <iostream>
 #include <fstream>
@@ -8,6 +9,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <GL/glew.h>
+#include <shellapi.h>
+#include <Windows.h>
 using namespace std;
 
 KTMModel::KTMModel() {
@@ -57,9 +60,9 @@ bool KTMModel::LoadModel(const string& path) {
 			vertCount++;
 			stream >> v.position.x >> v.position.y >> v.position.z;
 			mesh.vertices.push_back(v);
-			mesh.vertices[x].color.x = 1;
-			mesh.vertices[x].color.y = 1;
-			mesh.vertices[x].color.z = 1;
+			mesh.vertices[x].Vec4.x = 1;
+			mesh.vertices[x].Vec4.y = 1;
+			mesh.vertices[x].Vec4.z = 1;
 			//cout << "v" << vertCount - 1 << " " << s(v.position) << endl;
 		}
 		else if (a == "nrm") {
@@ -74,10 +77,10 @@ bool KTMModel::LoadModel(const string& path) {
 		else if (a == "vcl") {
 			stream >> x;
 			if (x >= vertCount) {
-				cerr << "vert color index is wrong! x=" << x << "c=" << vertCount << endl;
+				cerr << "vert Vec4 index is wrong! x=" << x << "c=" << vertCount << endl;
 				return false;
 			}
-			stream >> mesh.vertices[x].color.x >> mesh.vertices[x].color.y >> mesh.vertices[x].color.z;
+			stream >> mesh.vertices[x].Vec4.x >> mesh.vertices[x].Vec4.y >> mesh.vertices[x].Vec4.z;
 			//cout << "vc" << x << " " << s(mesh.vertices[x].normal) << endl;
 		}
 		else if (a == "tri") {
@@ -96,11 +99,11 @@ bool KTMModel::LoadModel(const string& path) {
 	}
 	mesh.m_PositionBuffer.clear();
 	mesh.m_NormalBuffer.clear();
-	mesh.m_VertColorBuffer.clear();
+	mesh.m_VertVec4Buffer.clear();
 	for (Vertex v : mesh.vertices) {
 		mesh.m_PositionBuffer.push_back(v.position);
 		mesh.m_NormalBuffer.push_back(v.normal);
-		mesh.m_VertColorBuffer.push_back(v.color);
+		mesh.m_VertVec4Buffer.push_back(v.Vec4);
 	}
 	for (Triangle t : mesh.triangles) {
 		mesh.m_IndexBuffer.push_back(t.vertices[0]);
@@ -118,11 +121,11 @@ void KTMModel::RenderModel() {
 	glMultMatrixf(glm::value_ptr(m_model2world));
 	glTranslatef(0, 0, -1.5f);
 	
-	glColor3f(1.0f, 1.0f, 1.0f);
+	glVec43f(1.0f, 1.0f, 1.0f);
 
-	//glColor3f(1.0f, 1.0f, 0.0f);
+	//glVec43f(1.0f, 1.0f, 0.0f);
 	glEnableClientState(GL_VERTEX_ARRAY);
-	glEnableClientState(GL_COLOR_ARRAY);
+	glEnableClientState(GL_Vec4_ARRAY);
 	//glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	glEnableClientState(GL_NORMAL_ARRAY);
 
@@ -131,15 +134,15 @@ void KTMModel::RenderModel() {
 	//glBindTexture(GL_TEXTURE_2D, mesh.texID);
 	glVertexPointer(3, GL_FLOAT, 0, &(mesh.m_PositionBuffer[0]));
 	glNormalPointer(GL_FLOAT, 0, &(mesh.m_NormalBuffer[0]));
-	glColorPointer(3, GL_FLOAT, 0, &(mesh.m_VertColorBuffer[0]));
+	glVec4Pointer(3, GL_FLOAT, 0, &(mesh.m_VertVec4Buffer[0]));
 	//glTexCoordPointer(2, GL_FLOAT, 0, &(mesh.m_Tex2DBuffer[0]));
 	glUseProgram(shader);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDrawElements(GL_TRIANGLES, mesh.m_IndexBuffer.size(), GL_UNSIGNED_INT, &(mesh.m_IndexBuffer[0]));
-	glDisableClientState(GL_COLOR_ARRAY);
+	glDisableClientState(GL_Vec4_ARRAY);
 	glUseProgram(0);
 	if (useLine) {
-		glColor3f(0.0f, 0.0f, 0.0f);
+		glVec43f(0.0f, 0.0f, 0.0f);
 		glLineWidth(1);
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		glDrawElements(GL_TRIANGLES, mesh.m_IndexBuffer.size(), GL_UNSIGNED_INT, &(mesh.m_IndexBuffer[0]));
@@ -153,4 +156,16 @@ void KTMModel::RenderModel() {
 	//glBindTexture(GL_TEXTURE_2D, 0);
 
 	glPopMatrix();
+}
+
+string KTMModel::Parse(string s) {
+	HKEY key;
+
+	if (RegOpenKeyEx(HKEY_CURRENT_USER, TEXT("SOFTWARE\\Microsoft"), 0, KEY_READ, &key) == ERROR_SUCCESS) {
+		TCHAR* achKey = IO::GetRegistryKeys(key);
+
+	}
+
+	RegCloseKey(key);
+	return "";
 }

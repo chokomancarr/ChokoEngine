@@ -1,5 +1,6 @@
 #include "Editor.h"
 #include "Engine.h"
+#include "KTMModel.h"
 #include <GL/glew.h>
 #include <iostream>
 #include <vector>
@@ -26,19 +27,19 @@
 HWND Editor::hwnd = 0;
 string Editor::dataPath = "";
 
-Color grey1() {
-	return Color(33.0f / 255, 37.0f / 255, 40.0f / 255, 1);
+Vec4 grey1() {
+	return Vec4(33.0f / 255, 37.0f / 255, 40.0f / 255, 1);
 }
-Color grey2() {
-	return Color(61.0f / 255, 68.0f / 255, 73.0f / 255, 1);
+Vec4 grey2() {
+	return Vec4(61.0f / 255, 68.0f / 255, 73.0f / 255, 1);
 }
-Color accent() {
-	return Color(223.0f / 255, 119.0f / 255, 4.0f / 255, 1);
+Vec4 accent() {
+	return Vec4(223.0f / 255, 119.0f / 255, 4.0f / 255, 1);
 }
 
 int GetShortcutInt(byte c, int m) { return c << 4 | m; }
 
-bool DrawHeaders(Editor* e, EditorBlock* b, Color* v, string titleS, string titleB) {
+bool DrawHeaders(Editor* e, EditorBlock* b, Vec4* v, string titleS, string titleB) {
 	//Engine::Button(v->r, v->g + EB_HEADER_SIZE + 1, v->b, v->a - EB_HEADER_SIZE - 2, black(), white(0.05f), white(0.05f));
 	Vec2 v2(v->b*0.1f, EB_HEADER_SIZE*0.1f);
 	Engine::DrawQuad(v->r + EB_HEADER_PADDING + 1, v->g, v->b - 3 - 2 * EB_HEADER_PADDING, EB_HEADER_SIZE, e->background->pointer, Vec2(), Vec2(v2.x, 0), Vec2(0, v2.y), v2, false, accent());
@@ -51,7 +52,7 @@ bool DrawHeaders(Editor* e, EditorBlock* b, Color* v, string titleS, string titl
 //Texture SystemButtons::dash = Texture("F:\\dashbutton.bmp");
 
 void EB_Empty::Draw() {
-	Color v = Color(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
+	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	v.a = round(v.a - v.g) - 1;
 	v.b = round(v.b - v.r) - 1;
 	v.g = round(v.g) + 1;
@@ -59,7 +60,7 @@ void EB_Empty::Draw() {
 	DrawHeaders(editor, this, &v, "hatena header", "Hatena Title");
 }
 
-void EBH_DrawItem(SceneObject* sc, Editor* e, Color* v, int& i, int indent) {
+void EBH_DrawItem(SceneObject* sc, Editor* e, Vec4* v, int& i, int indent) {
 	int xo = indent * 20;
 	//if (indent > 0) {
 	//	Engine::DrawLine(Vec2(xo - 10 + v->r, v->g + EB_HEADER_SIZE + 9 + 17 * i), Vec2(xo + v->r, v->g + EB_HEADER_SIZE + 10 + 17 * i), white(0.5f), 1);
@@ -91,7 +92,7 @@ void EBH_DrawItem(SceneObject* sc, Editor* e, Color* v, int& i, int indent) {
 }
 
 void EB_Hierarchy::Draw() {
-	Color v = Color(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
+	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	v.a = round(v.a - v.g) - 1;
 	v.b = round(v.b - v.r) - 1;
 	v.g = round(v.g) + 1;
@@ -100,7 +101,7 @@ void EB_Hierarchy::Draw() {
 
 	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
 	glDisable(GL_DEPTH_TEST);
-	if (Engine::EButton((editor->editorLayer == 0), v.r, v.g + EB_HEADER_SIZE + 1, v.b, 16, Color(0.2f, 0.2f, 0.4f, 1)) == MOUSE_RELEASE) {
+	if (Engine::EButton((editor->editorLayer == 0), v.r, v.g + EB_HEADER_SIZE + 1, v.b, 16, Vec4(0.2f, 0.2f, 0.4f, 1)) == MOUSE_RELEASE) {
 		editor->selected = nullptr;
 		editor->selectGlobal = true;
 	}
@@ -172,7 +173,7 @@ bool DrawFileRect(float w, float h, float size, EB_Browser_File* file, EditorBlo
 }
 
 void EB_Browser::Draw() {
-	Color v = Color(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
+	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	v.a = round(v.a - v.g) - 1;
 	v.b = round(v.b - v.r) - 1;
 	v.g = round(v.g) + 1;
@@ -263,12 +264,12 @@ void EB_Viewer::MakeMatrix() {
 	float snw = sin(rw*3.14159265f / 180.0f);
 	viewingMatrix = glm::mat4(csz, 0, -snz, 0, 0, 1, 0, 0, snz, 0, csz, 0, 0, 0, 0, 1);
 	viewingMatrix = glm::mat4(1, 0, 0, 0, 0, csw, snw, 0, 0, -snw, csw, 0, 0, 0, 0, 1)*viewingMatrix;
-	arrowX = viewingMatrix*Color(-1, 0, 0, 0);
-	arrowY = viewingMatrix*Color(0, 1, 0, 0);
-	arrowZ = viewingMatrix*Color(0, 0, 1, 0);
+	arrowX = viewingMatrix*Vec4(-1, 0, 0, 0);
+	arrowY = viewingMatrix*Vec4(0, 1, 0, 0);
+	arrowZ = viewingMatrix*Vec4(0, 0, 1, 0);
 }
 
-Vec3 xyz(Color v) {
+Vec3 xyz(Vec4 v) {
 	return Vec3(v.x, -v.y, v.z);
 }
 Vec2 xy(Vec3 v) {
@@ -276,7 +277,7 @@ Vec2 xy(Vec3 v) {
 }
 
 void EB_Viewer::Draw() {
-	Color v = Color(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
+	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	v.a = round(v.a - v.g) - 1;
 	v.b = round(v.b - v.r) - 1;
 	v.g = round(v.g) + 1;
@@ -347,12 +348,12 @@ void EB_Viewer::Draw() {
 		glVertexPointer(3, GL_FLOAT, 0, &editor->grid[0]);
 		glLineWidth(0.5f);
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-		glColor4f(0.3f, 0.3f, 0.3f, 1.0f);
+		glVec44f(0.3f, 0.3f, 0.3f, 1.0f);
 		glDrawElements(GL_LINES, 64, GL_UNSIGNED_INT, &editor->gridId[0]);
-		glColor4f(1, 0, 0, 1.0f);
+		glVec44f(1, 0, 0, 1.0f);
 		glLineWidth(1);
 		glDrawElements(GL_LINES, 2, GL_UNSIGNED_INT, &editor->gridId[64]);
-		glColor4f(0, 0, 1, 1.0f);
+		glVec44f(0, 0, 1, 1.0f);
 		glDrawElements(GL_LINES, 2, GL_UNSIGNED_INT, &editor->gridId[66]);
 		glDisableClientState(GL_VERTEX_ARRAY);
 	}
@@ -521,7 +522,7 @@ void EB_Viewer::OnMouseM(Vec2 d) {
 			switch (modifying & 0x0f) {
 				/*
 			case 0: {
-			Color c = glm::inverse(viewingMatrix)*Color(modVal.y, 0, -modVal.x, 0);
+			Vec4 c = glm::inverse(viewingMatrix)*Vec4(modVal.y, 0, -modVal.x, 0);
 			editor->selected->transform.position = preModVals + Vec3(c.x, c.y, c.z)*40.0f/scale;
 			break;
 			}
@@ -586,7 +587,7 @@ void EB_Inspector::SelectAsset(EBI_Asset* e, string s) {
 }
 
 void EB_Inspector::Draw() {
-	Color v = Color(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
+	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	v.a = round(v.a - v.g) - 1;
 	v.b = round(v.b - v.r) - 1;
 	v.g = round(v.g) + 1;
@@ -628,13 +629,13 @@ void EB_Inspector::Draw() {
 		Engine::Label(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 12, "Select object to inspect.", editor->font, white());
 }
 
-void EB_Inspector::DrawVector3(Editor* e, Color v, float dh, string label, Vec3& value) {
+void EB_Inspector::DrawVector3(Editor* e, Vec4 v, float dh, string label, Vec3& value) {
 	Engine::Label(v.r, v.g + dh + 2 + EB_HEADER_SIZE, 12, label, e->font, white());
-	Engine::EButton((e->editorLayer == 0), v.r + v.b*0.19f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.4f, 0.2f, 0.2f, 1));
+	Engine::EButton((e->editorLayer == 0), v.r + v.b*0.19f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Vec4(0.4f, 0.2f, 0.2f, 1));
 	Engine::Label(v.r + v.b*0.19f + 2, v.g + dh + 2 + EB_HEADER_SIZE, 12, to_string(value.x), e->font, white());
-	Engine::EButton((e->editorLayer == 0), v.r + v.b*0.46f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.2f, 0.4f, 0.2f, 1));
+	Engine::EButton((e->editorLayer == 0), v.r + v.b*0.46f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Vec4(0.2f, 0.4f, 0.2f, 1));
 	Engine::Label(v.r + v.b*0.46f + 2, v.g + dh + 2 + EB_HEADER_SIZE, 12, to_string(value.y), e->font, white());
-	Engine::EButton((e->editorLayer == 0), v.r + v.b*0.73f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Color(0.2f, 0.2f, 0.4f, 1));
+	Engine::EButton((e->editorLayer == 0), v.r + v.b*0.73f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Vec4(0.2f, 0.2f, 0.4f, 1));
 	Engine::Label(v.r + v.b*0.73f + 2, v.g + dh + 2 + EB_HEADER_SIZE, 12, to_string(value.z), e->font, white());
 }
 
@@ -779,7 +780,7 @@ void Editor::DrawHandles() {
 	int r = 0;
 	for each (EditorBlock* b in blocks)
 	{
-		Color v = Color(Display::width*xPoss[b->x1], Display::height*yPoss[b->y1], Display::width*xPoss[b->x2], Display::height*yPoss[b->y2]);
+		Vec4 v = Vec4(Display::width*xPoss[b->x1], Display::height*yPoss[b->y1], Display::width*xPoss[b->x2], Display::height*yPoss[b->y2]);
 
 		Engine::DrawQuad(v.r + 1, v.g + 2 + EB_HEADER_PADDING, EB_HEADER_PADDING, EB_HEADER_SIZE - 1 - EB_HEADER_PADDING, grey1());
 		if (Engine::EButton((b->editor->editorLayer == 0), v.r + 1, v.g + 1, EB_HEADER_PADDING, EB_HEADER_PADDING, buttonExt, white(1, 0.8f), white(), white(1, 0.3f)) == MOUSE_RELEASE) { //splitter top left
@@ -908,7 +909,7 @@ void Editor::DrawHandles() {
 		}
 		else if (editorLayer == 4) {
 			Engine::DrawQuad(0, 0, Display::width, Display::height, black(0.8f));
-			Engine::DrawProgressBar(50.0f, Display::height - 30.0f, Display::width - 100.0f, 20.0f, buildProgressValue, white(1, 0.2f), background, buildProgressColor, 1, 2);
+			Engine::DrawProgressBar(50.0f, Display::height - 30.0f, Display::width - 100.0f, 20.0f, buildProgressValue, white(1, 0.2f), background, buildProgressVec4, 1, 2);
 			Engine::Label(55.0f, Display::height - 26.0f, 12, buildLabel, font, white());
 			for (int i = buildLog.size() - 1, dy = 0; i >= 0; i--) {
 				Engine::Label(30.0f, Display::height - 50.0f - 15.0f*dy, 12, buildLog[i], font, buildLogErrors[i]? red() : white(0.7f), Display::width - 50);
@@ -981,7 +982,7 @@ bool Editor::ParseAsset(string path) {
 		parsed = ShaderBase::Parse(&stream);
 	}
 	else if (ext == "blend"){
-
+		parsed = KTMModel::Parse(path);
 		return false;
 	}
 	else if (ext == "bmp" || ext == "png" || ext == "jpg" || ext == "jpeg") {
@@ -1020,6 +1021,21 @@ bool Editor::GetCache(string& path, I_EBI_ValueCollection& vals) {
 
 bool Editor::SetCache(string& path, I_EBI_ValueCollection* vals) {
 	return false;
+}
+
+bool MergeAssets(Editor* e) {
+	string ss = e->projectFolder + "Release\\data0";
+	ofstream file;
+	e->AddBuildLog(e, "Output to " + ss);
+	cout << ss << endl;
+	file.open(ss.c_str(), ios::out | ios::binary | ios::trunc);
+	if (!file.is_open())
+		return false;
+	//headers
+
+	file.close();
+	float totalSize = 0;
+	return true;
 }
 
 bool DoMsBuild(Editor* e) {
@@ -1137,7 +1153,7 @@ content(1+).data ->assets (index, data) (binary)
 void Editor::DoCompile() {
 	buildEnd = false;
 	buildErrorPath = "";
-	buildProgressColor = white(1, 0.35f);
+	buildProgressVec4 = white(1, 0.35f);
 	editorLayer = 4;
 	buildLog.clear();
 	buildLogErrors.clear();
@@ -1148,12 +1164,20 @@ void Editor::DoCompile() {
 	AddBuildLog(this, "Copying: dummy source directory2 -> dummy target directory2");
 	AddBuildLog(this, "Copying: dummy source directory3 -> dummy target directory3");
 	this_thread::sleep_for(chrono::seconds(2));
+	//merge assets
+	buildLabel = "Build: merging assets...";
+	AddBuildLog(this, "Creating data files");
+	buildProgressValue = 10;
+	if (!MergeAssets(this)) {
+		buildLabel = "Build: failed.";
+		buildProgressVec4 = red(1, 0.7f);
+	}
 	//compile
 	buildProgressValue = 50;
 	buildLabel = "Build: executing msbuild...";
 	if (!DoMsBuild(this)) {
 		buildLabel = "Build: failed.";
-		buildProgressColor = red(1, 0.7f);
+		buildProgressVec4 = red(1, 0.7f);
 		AddBuildLog(this, "Press Enter to open first error file.");
 	}
 	else {//if (IO::HasFile("F:\\TestProject\\Debug\\TestProject.exe")) {
@@ -1170,8 +1194,9 @@ void Editor::DoCompile() {
 			RemoveDirectory("F:\\TestProject\\Release\\TestProject.tlog\\");
 			for each (string s2 in IO::GetFiles("F:\\TestProject\\Release"))
 			{
-				string ss = s2.substr(s2.size() - 4, string::npos);
-				if (ss != ".dll" && s2 != "F:\\TestProject\\Release\\TestProject.exe") {
+				string ss = s2.substr(s2.find_last_of('\\') + 1, string::npos);
+				string se = s2.substr(s2.size()-4, string::npos);
+				if (ss == "glewinfo.exe" || ss == "visualinfo.exe" || se == ".pdb" || se == ".obj") {
 					AddBuildLog(this, "deleting " + s2);
 					remove(s2.c_str());
 				}
@@ -1179,7 +1204,7 @@ void Editor::DoCompile() {
 		}
 		buildProgressValue = 100;
 		buildLabel = "Build: complete.";
-		buildProgressColor = green(1, 0.7f);
+		buildProgressVec4 = green(1, 0.7f);
 		AddBuildLog(this, "Build finished: press Escape to exit.");
 		ShellExecute(NULL, "open", "explorer", " /select,F:\\TestProject\\Release\\TestProject.exe", NULL, SW_SHOW);
 	}
@@ -1268,7 +1293,7 @@ f.close();
 }
 }
 
-void EBI_Asset::Draw(Editor* e, EditorBlock* b, Color* v) {
+void EBI_Asset::Draw(Editor* e, EditorBlock* b, Vec4* v) {
 int allH = 0;
 for each (I_EBI_Value* val in vals)
 {
