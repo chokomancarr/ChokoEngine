@@ -348,12 +348,12 @@ void EB_Viewer::Draw() {
 		glVertexPointer(3, GL_FLOAT, 0, &editor->grid[0]);
 		glLineWidth(0.5f);
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-		glVec44f(0.3f, 0.3f, 0.3f, 1.0f);
+		glColor4f(0.3f, 0.3f, 0.3f, 1.0f);
 		glDrawElements(GL_LINES, 64, GL_UNSIGNED_INT, &editor->gridId[0]);
-		glVec44f(1, 0, 0, 1.0f);
+		glColor4f(1, 0, 0, 1.0f);
 		glLineWidth(1);
 		glDrawElements(GL_LINES, 2, GL_UNSIGNED_INT, &editor->gridId[64]);
-		glVec44f(0, 0, 1, 1.0f);
+		glColor4f(0, 0, 1, 1.0f);
 		glDrawElements(GL_LINES, 2, GL_UNSIGNED_INT, &editor->gridId[66]);
 		glDisableClientState(GL_VERTEX_ARRAY);
 	}

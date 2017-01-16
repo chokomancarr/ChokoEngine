@@ -57,12 +57,12 @@ void Engine::Init(string path) {
 		cout << "cannot load fallback texture!" << endl;
 
 	string vertcode = "#version 330 core\nlayout(location = 0) in vec3 pos;\nlayout(location = 1) in vec2 uv;\nout vec2 UV;\nvoid main(){ \ngl_Position.xyz = pos;\ngl_Position.w = 1.0;\nUV = uv;\n}";
-	string fragcode = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nvoid main(){\ngl_FragVec4 = texture(sampler, UV)*col;\n}"; //out vec3 Vec4;\n
-	string fragcode2 = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nvoid main(){\ngl_FragVec4 = vec4(1, 1, 1, texture(sampler, UV).r)*col;\n}"; //out vec3 Vec4;\n
-	string fragcode3 = "#version 330 core\nin vec2 UV;\nuniform vec4 col;\nvoid main(){\ngl_FragVec4 = col;\n}"; //out vec3 Vec4;\n
+	string fragcode = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\color = texture(sampler, UV)*col;\n}"; //out vec3 Vec4;\n
+	string fragcode2 = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\color = vec4(1, 1, 1, texture(sampler, UV).r)*col;\n}"; //out vec3 Vec4;\n
+	string fragcode3 = "#version 330 core\nin vec2 UV;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = col;\n}"; //out vec3 Vec4;\n
 	//string fragcodeSky = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec2 dir;\nuniform float angle;\nout vec4 Vec4;\nvoid main(){\nvec4 col = texture(sampler, UV);\nVec4.rgb = col.rgb*pow(2, col.a*255-128);\nVec4.a = 1;\n}"; //(1.0f / 256.0f) * pow(2, (float)(exponent - 128));
 	//string fragcodeSky = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec2 dir;\nuniform float length;\nout vec4 Vec4;\nvoid main(){\nfloat ay = asin((dir.y + UV.y)/length);\nfloat l2 = length*cos(ay);\nfloat ax = asin((dir.x + UV.x)/l2);\nVec4 = texture(sampler, vec2(0.5, 0.5) + vec2(ax, ay));\nVec4.a = 1;\n}";
-	string fragcodeSky = "in vec2 UV;uniform sampler2D sampler;uniform vec2 dir;uniform float length;out vec4 Vec4;void main(){float ay = asin((UV.y) / length);float l2 = length*cos(ay);float ax = asin((dir.x + UV.x) / l2);Vec4 = texture(sampler, vec2((dir.x + ax / 3.14159)*sin(dir.y + ay / 3.14159) + 0.5, (dir.y + ay / 3.14159)));Vec4.a = 1;}";
+	string fragcodeSky = "in vec2 UV;uniform sampler2D sampler;uniform vec2 dir;uniform float length;out vec4 color;void main(){float ay = asin((UV.y) / length);float l2 = length*cos(ay);float ax = asin((dir.x + UV.x) / l2);color = texture(sampler, vec2((dir.x + ax / 3.14159)*sin(dir.y + ay / 3.14159) + 0.5, (dir.y + ay / 3.14159)));color.a = 1;}";
 
 	unlitProgram = glCreateProgram();
 	GLuint vertex_shader, fragment_shader;
@@ -174,7 +174,7 @@ void Engine::BeginStencil(float x, float y, float w, float h) {
 	glDepthFunc(GL_LEQUAL);
 	glClear(GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_STENCIL_TEST);
-	glVec4Mask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 	glDepthMask(GL_FALSE);
 	glStencilFunc(GL_NEVER, 1, 0xFF);
 	glStencilOp(GL_REPLACE, GL_KEEP, GL_KEEP); // draw 1s on test fail (always)
@@ -182,7 +182,7 @@ void Engine::BeginStencil(float x, float y, float w, float h) {
 	glClear(GL_STENCIL_BUFFER_BIT); // needs mask=0xFF
 	Engine::DrawQuad(x, y, w, h, white());
 	//Engine::DrawQuad(v.r, v.g, v.b, v.a, white());
-	glVec4Mask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 	glDepthMask(GL_TRUE);
 	glStencilMask(0x0);
 	glStencilFunc(GL_EQUAL, 1, 0xFF);
@@ -604,7 +604,7 @@ void Engine::DrawCube(Vec3 pos, float dx, float dy, float dz, Vec4 Vec4) {
 	uint quadIndexes[24] = { 0, 1, 3, 2, 4, 5, 7, 6, 0, 2, 6, 4, 1, 3, 7, 5, 0, 1, 5, 4, 2, 3, 7, 6 };
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
-	glVec44f(Vec4.r, Vec4.g, Vec4.b, Vec4.a);
+	glColor4f(Vec4.r, Vec4.g, Vec4.b, Vec4.a);
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDrawElements(GL_QUADS, 24, GL_UNSIGNED_INT, &quadIndexes[0]);
@@ -616,14 +616,14 @@ void Engine::DrawIndices(const Vec3* poss, const int* is, int length, float r, f
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(3, GL_FLOAT, 0, poss);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glVec44f(r, g, b, 1);
+	glColor4f(r, g, b, 1);
 	glDrawElements(GL_TRIANGLES, length, GL_UNSIGNED_INT, is);
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 void Engine::DrawIndicesI(const Vec3* poss, const int* is, int length, float r, float g, float b) {
 	glVertexPointer(3, GL_FLOAT, 0, poss);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glVec44f(r, g, b, 1);
+	glColor4f(r, g, b, 1);
 	glDrawElements(GL_TRIANGLES, length, GL_UNSIGNED_INT, is);
 }
 
@@ -642,7 +642,7 @@ void Engine::DrawLine(Vec3 v1, Vec3 v2, Vec4 col, float width) {
 	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
 	//glEnableVertexAttribArray(0);
 	//glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &quadPoss[0]);
-	glVec44f(col.r, col.g, col.b, col.a);
+	glColor4f(col.r, col.g, col.b, col.a);
 	glLineWidth(width);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	glDrawElements(GL_LINES, 2, GL_UNSIGNED_INT, &quadIndexes[0]);
@@ -656,7 +656,7 @@ void Engine::DrawLineW(Vec3 v1, Vec3 v2, Vec4 col, float width) {
 	uint quadIndexes[4] = { 0, 1 };
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
-	glVec44f(col.r, col.g, col.b, col.a);
+	glColor4f(col.r, col.g, col.b, col.a);
 	glLineWidth(width);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	glDrawElements(GL_LINES, 2, GL_UNSIGNED_INT, &quadIndexes[0]);

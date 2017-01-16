@@ -38,7 +38,7 @@ void Camera::DrawEditor() {
 	glVertexPointer(3, GL_FLOAT, 0, &camVerts[0]);
 	glLineWidth(1);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	glVec44f(0, 0, 0, 1);
+	glColor4f(0, 0, 0, 1);
 	glDrawElements(GL_LINES, 16, GL_UNSIGNED_INT, &camVertsIds[0]);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, &camVertsIds[16]);

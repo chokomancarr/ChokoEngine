@@ -121,11 +121,11 @@ void KTMModel::RenderModel() {
 	glMultMatrixf(glm::value_ptr(m_model2world));
 	glTranslatef(0, 0, -1.5f);
 	
-	glVec43f(1.0f, 1.0f, 1.0f);
+	glColor3f(1.0f, 1.0f, 1.0f);
 
 	//glVec43f(1.0f, 1.0f, 0.0f);
 	glEnableClientState(GL_VERTEX_ARRAY);
-	glEnableClientState(GL_Vec4_ARRAY);
+	glEnableClientState(GL_COLOR_ARRAY);
 	//glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	glEnableClientState(GL_NORMAL_ARRAY);
 
@@ -134,15 +134,15 @@ void KTMModel::RenderModel() {
 	//glBindTexture(GL_TEXTURE_2D, mesh.texID);
 	glVertexPointer(3, GL_FLOAT, 0, &(mesh.m_PositionBuffer[0]));
 	glNormalPointer(GL_FLOAT, 0, &(mesh.m_NormalBuffer[0]));
-	glVec4Pointer(3, GL_FLOAT, 0, &(mesh.m_VertVec4Buffer[0]));
+	glColorPointer(3, GL_FLOAT, 0, &(mesh.m_VertVec4Buffer[0]));
 	//glTexCoordPointer(2, GL_FLOAT, 0, &(mesh.m_Tex2DBuffer[0]));
 	glUseProgram(shader);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDrawElements(GL_TRIANGLES, mesh.m_IndexBuffer.size(), GL_UNSIGNED_INT, &(mesh.m_IndexBuffer[0]));
-	glDisableClientState(GL_Vec4_ARRAY);
+	glDisableClientState(GL_COLOR_ARRAY);
 	glUseProgram(0);
 	if (useLine) {
-		glVec43f(0.0f, 0.0f, 0.0f);
+		glColor3f(0.0f, 0.0f, 0.0f);
 		glLineWidth(1);
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		glDrawElements(GL_TRIANGLES, mesh.m_IndexBuffer.size(), GL_UNSIGNED_INT, &(mesh.m_IndexBuffer[0]));
