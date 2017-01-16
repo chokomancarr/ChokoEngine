@@ -233,6 +233,7 @@ class yPossMerger;
 class Editor {
 public:
 	//prefs
+	bool _showDebugInfo = true;
 	bool _showGrid = true;
 	bool _mouseJump = true;
 	int _assetDataSize = 10; //x100Mb
@@ -317,9 +318,11 @@ public:
 	vector<Texture*> assetIcons;
 	//Texture buttonDash;
 	vector<string> headerAssets;
+	unordered_map<int, vector<void*>> normalAssets;
 
+	void CreateMetaAll();
 	void LoadDefaultAssets();
-	void RefreshScriptAssets();
+	void RefreshAssets();
 	void GenerateScriptResolver();
 	void NewScene();
 	void UpdateLerpers();

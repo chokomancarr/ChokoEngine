@@ -28,7 +28,7 @@ public:
 
 	bool _expanded;
 
-	virtual void LoadDefaultValues() {}
+	virtual void LoadDefaultValues() {} //also loads assets
 	virtual void DrawEditor() = 0; //trs matrix not applied, apply before calling
 	virtual void DrawInspector(Editor* e, Component* c, Color v, uint& pos) = 0;
 	virtual void Serialize(Editor* e, ofstream* stream) {}
@@ -47,6 +47,60 @@ public:
 
 	Transform* Translate(float x, float y, float z) { return Translate(Vec3(x, y, z)); }
 	Transform* Translate(Vec3 v) { position += v; return this; }
+};
+
+class AssetObject : public Object {
+protected:
+	AssetObject(ASSETTYPE t) : type(t) {}
+	virtual  ~AssetObject() {}
+
+	const ASSETTYPE type = 0;
+	uint id;
+	string name;
+
+	virtual void Load() = 0;
+
+};
+
+class Mesh : public AssetObject {
+public:
+	Mesh();
+
+	friend int main(int argc, char **argv);
+private:
+	Mesh(int i);
+	void Load();
+};
+
+class Texture {
+public:
+	Texture(const string& path);
+	Texture(const string& path, bool mipmap);
+	Texture(const string& path, bool mipmap, bool nearest);
+	Texture(HBITMAP bmp, int width, int height);
+	~Texture(){ glDeleteTextures(1, &pointer); }
+	bool loaded;
+	unsigned int width, height;
+	GLuint pointer;
+	friend int main(int argc, char **argv);
+private:
+	Texture(int i);
+	void Load();
+};
+
+class Background : public AssetObject {
+public:
+	Background() : AssetObject(ASSETTYPE_HDRI){}
+	Background(const string& path);
+
+	bool loaded;
+	unsigned int width, height;
+	GLuint pointer;
+	friend int main(int argc, char **argv);
+
+private:
+	Background(int i);
+	void Load() {}
 };
 
 #define COMP_UNDEF 0x00
@@ -74,9 +128,13 @@ public:
 class MeshFilter : public Component {
 public:
 	MeshFilter();
+	
+
+	//void LoadDefaultValues() override;
 
 	void DrawEditor() {}
 	void DrawInspector(Editor* e, Component* c, Color v, uint& pos);
+	void Serialize(Editor* e, ofstream* stream) override;
 };
 
 #define COMP_MRD 0x10

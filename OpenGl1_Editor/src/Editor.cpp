@@ -295,28 +295,30 @@ void EB_Viewer::Draw() {
 	float hh = editor->yPoss[y2] - hh1;
 	//if (!persp) {
 	float h40 = 40 * (hh*Display::height) / (ww*Display::width);
-	glMultMatrixf(glm::value_ptr(glm::ortho(-20 * ww, 40.0f - 20 * ww, -40.0f + 20 * hh, 20 * hh, 0.01f, 1000.0f)));
 	float mww = max(ww, 0.3f) * scale;
-	glScalef(-mww, mww*Display::width/Display::height, mww);
+	glMultMatrixf(glm::value_ptr(glm::ortho(-20 * ww, 40.0f - 20 * ww, -40.0f + 20 * hh, 20 * hh, 0.01f, 1000.0f)));
+	glScalef(-mww, mww*Display::width / Display::height, mww);
+	glTranslatef(0, 0, -30);
 	//}
 	//else {
 		//glMultMatrixf(glm::value_ptr(glm::perspective(30.0f, 1.0f, 0.01f, 1000.0f)));
 		//glScalef(1, -1, 1);
 	//}
-	glTranslatef(0, 0, -30);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	glPushMatrix();
+	//glPushMatrix();
 	float csz = cos(-rz*3.14159265f / 180.0f);
 	float snz = sin(-rz*3.14159265f / 180.0f);
 	float csw = cos(rw*3.14159265f / 180.0f);
 	float snw = sin(rw*3.14159265f / 180.0f);
-	glMultMatrixf(glm::value_ptr(glm::mat4(1, 0, 0, 0, 0, csw, snw, 0, 0, -snw, csw, 0, 0, 0, 0, 1)));
-	glMultMatrixf(glm::value_ptr(glm::mat4(csz, 0, -snz, 0, 0, 1, 0, 0, snz, 0, csz, 0, 0, 0, 0, 1)));
+	glm::mat4 mMatrix = glm::mat4(1, 0, 0, 0, 0, csw, snw, 0, 0, -snw, csw, 0, 0, 0, 0, 1) * glm::mat4(csz, 0, -snz, 0, 0, 1, 0, 0, snz, 0, csz, 0, 0, 0, 0, 1);
+	//glMultMatrixf(glm::value_ptr(glm::mat4(1, 0, 0, 0, 0, csw, snw, 0, 0, -snw, csw, 0, 0, 0, 0, 1)));
+	//glMultMatrixf(glm::value_ptr(glm::mat4(csz, 0, -snz, 0, 0, 1, 0, 0, snz, 0, csz, 0, 0, 0, 0, 1)));
+	glMultMatrixf(glm::value_ptr(mMatrix));
 	glEnable(GL_DEPTH_TEST);
 	glClearDepth(1);
 
-	//draw scene//
+	//draw scene
 	for each (SceneObject* sc in editor->activeScene.objects)
 	{
 		glPushMatrix();
@@ -331,6 +333,13 @@ void EB_Viewer::Draw() {
 		}
 		glPopMatrix();
 	}
+
+	//draw background
+	if (editor->activeScene.sky != nullptr) {
+		Engine::DrawSky(v.x, v.y, v.z, v.w, editor->activeScene.sky, rz/360.0f, rw/180.0f, 60, 0);
+		//Engine::DrawQuad(v.x, v.y, v.z, v.w, editor->activeScene.sky->pointer, white());
+	}
+	glDepthFunc(GL_LEQUAL);
 
 	//draw grid
 	if (editor->_showGrid) {
@@ -431,6 +440,11 @@ void EB_Viewer::Draw() {
 		Engine::DrawQuad(v.x + 28, v.y + EB_HEADER_SIZE + 10 + 22 * (drawDescLT - 1), 200, 20, white(1, 0.6f));
 		Engine::Label(v.x + 30, v.y + EB_HEADER_SIZE + 15 + 22 * (drawDescLT - 1), 12, descLabelLT, editor->font, black());
 	}
+
+	if (editor->_showDebugInfo) {
+		Engine::Label(v.x + 100, v.y + 10, 12, "z=" + to_string(rz) + " w = " + to_string(rw), editor->font, white());
+		Engine::Label(v.x + 100, v.y + 25, 12, "scale=" + to_string(scale), editor->font, white());
+	}
 }
 
 const int EB_Viewer::arrowTIndexs[18] = { 0, 1, 2, 0, 2, 3, 0, 1, 4, 1, 2, 4, 2, 3, 4, 3, 0, 4 };
@@ -490,6 +504,14 @@ void EB_Viewer::OnMouseM(Vec2 d) {
 	if (editor->mousePressType == 1) {
 		rz += d.x;
 		rw += d.y;
+		if (rz > 360)
+			rz -= 360;
+		else if (rz < 0)
+			rz += 360;
+		if (rw > 360)
+			rw -= 360;
+		else if (rw < 0)
+			rw += 360;
 		MakeMatrix();
 	}
 	else if (modifying > 0) {
@@ -706,7 +728,7 @@ void AddH(string dir, vector<string>* h) {
 	}
 }
 
-void Editor::RefreshScriptAssets() {
+void Editor::RefreshAssets() {
 	headerAssets.clear();
 	AddH(projectFolder + "Assets", &headerAssets);
 	GenerateScriptResolver();
@@ -1107,6 +1129,11 @@ void Editor::SaveScene(Editor* e) {
 	e->activeScene.Save(e);
 }
 
+/*
+app.exe
+content0.data -> asset list (type, name, index) (ascii), [\n], level data (binary)
+content(1+).data ->assets (index, data) (binary)
+*/
 void Editor::DoCompile() {
 	buildEnd = false;
 	buildErrorPath = "";

@@ -47,8 +47,6 @@ string path;
 Editor* editor;
 HWND hwnd;
 
-Background* b;
-
 int main(int argc, char **argv)
 {
 	path = argv[0];
@@ -70,7 +68,7 @@ int main(int argc, char **argv)
 		cout << "Invalid project folder path: " << editor->projectFolder << endl;
 		getline(cin, editor->projectFolder);
 	}
-	editor->RefreshScriptAssets();
+	editor->RefreshAssets();
 	//*/
 
 	editor->hwnd = hwnd;
@@ -163,6 +161,8 @@ int main(int argc, char **argv)
 		editor->blocks = vector<EditorBlock*>({ new EB_Inspector(editor, 2, 0, 1, 1), new EB_Browser(editor, 0, 2, 2, 1, "D:\\"), new EB_Viewer(editor, 0, 0, 3, 2), new EB_Hierarchy(editor, 3, 0, 2, 2) }); //path.substr(0, path.find_last_of('\\') + 1)
 		font = editor->font;
 
+		editor->activeScene.sky = new Background(editor->dataPath + "res\\bg_refl.hdr");
+
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glutDisplayFunc(renderScene);
@@ -178,8 +178,6 @@ int main(int argc, char **argv)
 
 		updateThread = thread(UpdateLoop);
 		atexit(OnDie);
-
-		b = new Background("D:\\test.hdr");
 
 		glutMainLoop();
 		//thread updateThread(glutMainLoop);
@@ -278,8 +276,6 @@ void DrawOverlay() {
 		editor->blocks[i]->Draw();
 	}
 	editor->DrawHandles();
-
-	Engine::DrawQuad(0, 0, Display::width, Display::height, b->pointer, white());
 }
 
 void renderScene()

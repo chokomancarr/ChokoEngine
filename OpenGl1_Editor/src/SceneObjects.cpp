@@ -17,32 +17,6 @@ bool DrawComponentHeader(Editor* e, string name, Color v, float pos, bool expand
 	return true;
 }
 
-MeshFilter::MeshFilter() : Component(COMP_MFT, false) {
-
-}
-
-void MeshFilter::DrawInspector(Editor* e, Component* c, Color v, uint& pos) {
-	//MeshFilter* mft = (MeshFilter*)c;
-	if (DrawComponentHeader(e, "Mesh Filter", v, pos, c->_expanded, COMP_MFT)) {
-		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Mesh", e->font, white());
-		pos += 34;
-	}
-	else pos += 17;
-}
-
-MeshRenderer::MeshRenderer() : Component(COMP_MRD, true) {
-
-}
-
-void MeshRenderer::DrawInspector(Editor* e, Component* c, Color v, uint& pos) {
-	//MeshRenderer* mrd = (MeshRenderer*)c;
-	if (DrawComponentHeader(e, "Mesh Renderer", v, pos, c->_expanded, COMP_MRD)) {
-		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Materials", e->font, white());
-		pos += 34;
-	}
-	else pos += 17;
-}
-
 int Camera::camVertsIds[19] = { 0, 1, 0, 2, 0, 3, 0, 4, 1, 2, 2, 4, 4, 3, 3, 1, 1, 2, 5 };
 
 Camera::Camera() : Component(COMP_CAM, true), ortographic(false), fov(60), orthoSize(10), screenPos(0.3f, 0.1f, 0.6f, 0.4f) {
@@ -96,6 +70,40 @@ void Camera::DrawInspector(Editor* e, Component* c, Color v, uint& pos) {
 
 void Camera::Serialize(Editor* e, ofstream* stream) {
 	_StreamWrite(&fov, stream, 4);
+	_StreamWrite(&screenPos.x, stream, 4);
+	_StreamWrite(&screenPos.y, stream, 4);
+	_StreamWrite(&screenPos.w, stream, 4);
+	_StreamWrite(&screenPos.h, stream, 4);
+}
+
+MeshFilter::MeshFilter() : Component(COMP_MFT, false) {
+
+}
+
+void MeshFilter::DrawInspector(Editor* e, Component* c, Color v, uint& pos) {
+	//MeshFilter* mft = (MeshFilter*)c;
+	if (DrawComponentHeader(e, "Mesh Filter", v, pos, c->_expanded, COMP_MFT)) {
+		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Mesh", e->font, white());
+		pos += 34;
+	}
+	else pos += 17;
+}
+
+void MeshFilter::Serialize(Editor* e, ofstream* stream) {
+
+}
+
+MeshRenderer::MeshRenderer() : Component(COMP_MRD, true) {
+
+}
+
+void MeshRenderer::DrawInspector(Editor* e, Component* c, Color v, uint& pos) {
+	//MeshRenderer* mrd = (MeshRenderer*)c;
+	if (DrawComponentHeader(e, "Mesh Renderer", v, pos, c->_expanded, COMP_MRD)) {
+		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Materials", e->font, white());
+		pos += 34;
+	}
+	else pos += 17;
 }
 
 SceneScript::SceneScript(Editor* e, string name) : name(name), Component(COMP_SCR, false) {

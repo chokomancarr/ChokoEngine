@@ -58,6 +58,9 @@ void Engine::Init(string path) {
 	string fragcode = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nvoid main(){\ngl_FragColor = texture(sampler, UV)*col;\n}"; //out vec3 color;\n
 	string fragcode2 = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nvoid main(){\ngl_FragColor = vec4(1, 1, 1, texture(sampler, UV).r)*col;\n}"; //out vec3 color;\n
 	string fragcode3 = "#version 330 core\nin vec2 UV;\nuniform vec4 col;\nvoid main(){\ngl_FragColor = col;\n}"; //out vec3 color;\n
+	//string fragcodeSky = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec2 dir;\nuniform float angle;\nout vec4 color;\nvoid main(){\nvec4 col = texture(sampler, UV);\ncolor.rgb = col.rgb*pow(2, col.a*255-128);\ncolor.a = 1;\n}"; //(1.0f / 256.0f) * pow(2, (float)(exponent - 128));
+	//string fragcodeSky = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec2 dir;\nuniform float length;\nout vec4 color;\nvoid main(){\nfloat ay = asin((dir.y + UV.y)/length);\nfloat l2 = length*cos(ay);\nfloat ax = asin((dir.x + UV.x)/l2);\ncolor = texture(sampler, vec2(0.5, 0.5) + vec2(ax, ay));\ncolor.a = 1;\n}";
+	string fragcodeSky = "in vec2 UV;uniform sampler2D sampler;uniform vec2 dir;uniform float length;out vec4 color;void main(){float ay = asin((UV.y) / length);float l2 = length*cos(ay);float ax = asin((dir.x + UV.x) / l2);color = texture(sampler, vec2((dir.x + ax / 3.14159)*sin(dir.y + ay / 3.14159) + 0.5, (dir.y + ay / 3.14159)));color.a = 1;}";
 
 	unlitProgram = glCreateProgram();
 	GLuint vertex_shader, fragment_shader;
@@ -120,7 +123,30 @@ void Engine::Init(string path) {
 			glGetProgramiv(unlitProgramC, GL_INFO_LOG_LENGTH, &info_log_length);
 			vector<char> program_log(info_log_length);
 			glGetProgramInfoLog(unlitProgramC, info_log_length, NULL, &program_log[0]);
-			cerr << "Default Shader (Alpha) link error" << endl << &program_log[0] << endl;
+			cerr << "Default Shader (Color) link error" << endl << &program_log[0] << endl;
+			return;
+		}
+		glDetachShader(unlitProgramC, vertex_shader);
+		glDetachShader(unlitProgramC, fragment_shaderC);
+		//defaultFont = &Font("F:\\ascii 2.font");
+	}
+	GLuint fragment_shaderS;
+	if (ShaderBase::LoadShader(GL_FRAGMENT_SHADER, fragcodeSky, fragment_shaderS)) {
+		skyProgram = glCreateProgram();
+		glAttachShader(skyProgram, vertex_shader);
+		glAttachShader(skyProgram, fragment_shaderS);
+
+		link_result = 0;
+
+		glLinkProgram(skyProgram);
+		glGetProgramiv(skyProgram, GL_LINK_STATUS, &link_result);
+		if (link_result == GL_FALSE)
+		{
+			int info_log_length = 0;
+			glGetProgramiv(skyProgram, GL_INFO_LOG_LENGTH, &info_log_length);
+			vector<char> program_log(info_log_length);
+			glGetProgramInfoLog(skyProgram, info_log_length, NULL, &program_log[0]);
+			cerr << "Sky shader link error" << endl << &program_log[0] << endl;
 			return;
 		}
 		glDetachShader(unlitProgramC, vertex_shader);
@@ -399,43 +425,45 @@ void Engine::DrawSky(float x, float y, float w, float h, Background* sky, float 
 		//Vec3 v = quadPoss[y];
 		quadPoss[y] = Ds(Display::uiMatrix*quadPoss[y]);
 	}
-	glDepthFunc(GL_EQUAL); //1
-	float xa = forX - angleW*0.5f;
-	float xb = forX + angleW*0.5f;
-	float ya = forY - angleW*0.5f*Display::height / Display::width;
-	float yb = forY + angleW*0.5f*Display::height / Display::width;
-	Vec2 quadUv[4]{ Vec2(xa, ya), Vec2(xb, ya), Vec2(xb, yb), Vec2(xa, yb)};
+	float w2h = h / w;
+	void* uvP;
+	if (w2h < 1) {
+		Vec2 quadUv[4]{Vec2(-0.5f, w2h / 2), Vec2(0.5f, w2h / 2), Vec2(-0.5f, -w2h / 2), Vec2(0.5f, -w2h / 2)};
+		uvP = &quadUv[0];
+	}
+	else {
+		Vec2 quadUv[4]{Vec2(-0.5f / w2h, 0.5f), Vec2(0.5f / w2h, 0.5f), Vec2(-0.5f / w2h, -0.5f), Vec2(0.5f / w2h, -0.5f)};
+		uvP = &quadUv[0];
+	}
 	uint quadIndexes[4] = { 0, 1, 3, 2 };
 	uint prog = skyProgram;
+
+	GLint baseImageLoc = glGetUniformLocation(prog, "sampler");
+	glUniform1i(baseImageLoc, 0);
 	glEnableClientState(GL_VERTEX_ARRAY);
+
 	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
 	glUseProgram(prog);
 
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, sky->pointer);
 
-	GLint skyLoc = glGetUniformLocation(prog, "sky");
-	glUniform1i(skyLoc, sky->pointer);
-	//GLint dirLoc = glGetUniformLocation(prog, "dir");
-	//glUniform2f(dirLoc, forX, forY);
-	//GLint angleLoc = glGetUniformLocation(prog, "angle");
-	//glUniform1f(angleLoc, angleW);
+	GLint dirLoc = glGetUniformLocation(prog, "dir");
+	glUniform2f(dirLoc, forX, -forY);
+	GLint lLoc = glGetUniformLocation(prog, "length");
+	glUniform1f(lLoc, 0.5f/sin(angleW*3.14159f/360));
 
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &quadPoss[0]);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, &quadUv[0]);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, uvP);
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDrawElements(GL_QUADS, 4, GL_UNSIGNED_INT, &quadIndexes[0]);
 
 	glDisableVertexAttribArray(0);
+	glDisableVertexAttribArray(1);
 	glUseProgram(0);
-
-	/*
-	glColor3f(1.0f, 0.0f, 0.0f);
-	glLineWidth(1);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	glDrawElements(GL_QUADS, 4, GL_UNSIGNED_INT, &quadIndexes[0]);
-	*/
 
 	glDisableClientState(GL_VERTEX_ARRAY);
 
@@ -694,12 +722,16 @@ vector<EB_Browser_File> IO::GetFilesE (Editor* e, const string& folder)
 	HANDLE hFind = ::FindFirstFile(search_path.c_str(), &fd);
 	if (hFind != INVALID_HANDLE_VALUE) {
 		do {
-			// read all (real) files in current folder
+			// read all importable files in current folder
 			// , delete '!' read other 2 default folder . and ..
 			if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
 				string aa(fd.cFileName);
-				if (!(aa.length() > 5 && aa.substr(aa.length() - 5, string::npos) == ".meta"))
-					names.push_back(EB_Browser_File(e, folder, fd.cFileName));
+				if ((aa.length() > 5 && aa.substr(aa.length() - 5, string::npos) == ".meta"))
+					names.push_back(EB_Browser_File(e, folder, aa.substr(0, aa.length() - 5)));
+				else if ((aa.length() > 2 && aa.substr(aa.length() - 2, string::npos) == ".h"))
+					names.push_back(EB_Browser_File(e, folder, aa));
+				else if ((aa.length() > 4 && aa.substr(aa.length() - 4, string::npos) == ".cpp"))
+					names.push_back(EB_Browser_File(e, folder, aa));
 			}
 		} while (::FindNextFile(hFind, &fd));
 		::FindClose(hFind);
@@ -872,23 +904,25 @@ Texture::Texture(HBITMAP bmp, int width, int height) {
 	*/
 }
 
-Background::Background(const string& path) : width(0), height(0) {
+Background::Background(const string& path) : width(0), height(0), AssetObject(ASSETTYPE_HDRI) {
 	if (path.size() < 5 || path.substr(path.size() - 4, string::npos) != ".hdr") {
 		printf("HDRI path invalid!");
 		return;
 	}
 	cout << "opening hdr image at " << path << endl;
 	
-	unsigned char* data = hdr::read_hdr(path.c_str(), &width, &height);
-	if (data == NULL)
+	byte* data2 = hdr::read_hdr(path.c_str(), &width, &height);
+	if (data2 == NULL)
 		return;
+	float* data = hdr2float(data2, width, height);
 
 	glGenTextures(1, &pointer);
 	glBindTexture(GL_TEXTURE_2D, pointer);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_FLOAT, data);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	//if (mipmap) glGenerateMipmap(GL_TEXTURE_2D);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	loaded = true;
 	cout << "HDR Image loaded: " << width << "x" << height << endl;
@@ -1030,6 +1064,25 @@ void _StreamWrite(void* val, ofstream* stream, int size) {
 	stream->write(reinterpret_cast<char const *>(val), size);
 }
 
+float* hdr2float(byte imagergbe[], int w, int h) {
+	float* image = (float *)malloc(w * h * 3 * sizeof(float));
+	for (int i = 0; i < w*h; i++) {
+		unsigned char exponent = imagergbe[i * 4 + 3];
+		if (exponent == 0) {
+			image[i * 3 + 0] = 0.0f;
+			image[i * 3 + 1] = 0.0f;
+			image[i * 3 + 2] = 0.0f;
+		}
+		else {
+			float v = (1.0f / 256.0f) * pow(2, (float)(exponent - 128));
+			image[i * 3 + 0] = (imagergbe[i * 4 + 0] + 0.5f) * v;
+			image[i * 3 + 1] = (imagergbe[i * 4 + 1] + 0.5f) * v;
+			image[i * 3 + 2] = (imagergbe[i * 4 + 2] + 0.5f) * v;
+		}
+	}
+	return image;
+}
+
 float B2F(char c[]) {
 	float ff;
 	*((char*)(&ff) + 0) = c[0];
@@ -1075,8 +1128,6 @@ void Serialize(Editor* e, SceneObject* o, ofstream* stream) {
 
 void Scene::Save(Editor* e) {
 	ofstream sw(e->projectFolder + "Assets\\test.scene", ios::out);
-	float f = 1.0f;
-	_StreamWrite(&f, &sw, 4);
 	for each (SceneObject* sc in objects) {
 		Serialize(e, sc, &sw);
 	}

@@ -27,7 +27,7 @@ bool ShaderBase::LoadShader(GLenum shaderType, string source, GLuint& shader) {
 		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &info_log_length);
 		vector<char> shader_log(info_log_length);
 		glGetShaderInfoLog(shader, info_log_length, NULL, &shader_log[0]);
-		cerr << "error compiling shader" << endl;
+		cerr << "error compiling shader" << string(shader_log.begin(), shader_log.end()) << endl;
 		glDeleteShader(shader);
 		shader = 0;
 		return false;

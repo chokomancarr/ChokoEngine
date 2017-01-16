@@ -72,6 +72,35 @@ float clamp(float f, float a, float b);
 Vec3 rotate(Vec3 v, Quat q);
 glm::mat4 Quat2Mat(Quat q);
 void _StreamWrite(void* val, ofstream* stream, int size);
+float* hdr2float(byte imagergbe[], int w, int h);
+
+//see SceneObjects.h
+class Object;
+class Component;
+class Transform;
+class Camera;
+class MeshFilter;
+class MeshRenderer;
+
+//see Assetmanager
+class AssetItem;
+class AssetManager;
+
+typedef unsigned char ASSETTYPE;
+
+#define ASSETTYPE_UNDEF 0x00
+
+#define ASSETTYPE_MESH 0x20
+#define ASSETTYPE_TEXTURE 0x01
+#define ASSETTYPE_HDRI 0x02
+#define ASSETTYPE_SCRIPT_H 0xfe
+#define ASSETTYPE_SCRIPT_CPP 0xff
+class AssetObject;
+class Mesh;
+class Texture;
+class Background;
+class SceneScript;
+class SceneObject;
 
 struct Int2 {
 public:	
@@ -91,49 +120,6 @@ public:
 	static void Message(string c, string s);
 	static void Warning(string c, string s);
 	static void Error(string c, string s);
-};
-
-typedef unsigned char ASSETTYPE;
-
-#define ASSETTYPE_TEXTURE 0x01
-class Texture {
-public:
-	Texture(const string& path);
-	Texture(const string& path, bool mipmap);
-	Texture(const string& path, bool mipmap, bool nearest);
-	Texture(HBITMAP bmp, int width, int height);
-	~Texture(){ glDeleteTextures(1, &pointer); }
-	bool loaded;
-	unsigned int width, height;
-	GLuint pointer;
-
-	/*
-	Texture &operator=(const Texture&) = delete; //No copy-assignment.
-	Texture &operator=(Texture &&other)
-	{
-		Delete();
-		width = other.width;
-		height = other.height;
-		pointer = other.pointer;
-		loaded = other.loaded;
-	}
-protected:
-	void Delete() {
-		glDeleteTextures(1, &pointer);
-	}
-	*/
-};
-
-#define ASSETTYPE_HDRI 0x02
-class Background {
-public:
-	Background() {}
-	Background(const string& path);
-
-	bool loaded;
-	unsigned int width, height;
-	GLuint pointer;
-
 };
 
 class EB_Browser_File;
@@ -234,23 +220,6 @@ public:
 	static float delta;
 };
 
-//see SceneObjects.h
-class Object;
-class Component;
-class Transform;
-class Camera;
-class MeshFilter;
-class MeshRenderer;
-
-//see Assetmanager
-class AssetItem;
-class AssetManager;
-
-#define ASSETTYPE_SCRIPT_H 0xfe
-#define ASSETTYPE_SCRIPT_CPP 0xff
-class SceneScript;
-class SceneObject;
-
 class Engine {
 public:
 	static void Init(string path);
@@ -317,7 +286,7 @@ public:
 
 class Scene {
 public:
-	Scene() {}
+	Scene() : sceneName(""), sky(nullptr) {}
 
 	string sceneName;
 	//global parameters
