@@ -31,6 +31,28 @@ typedef glm::vec3 Vec3;
 typedef glm::vec4 Vec4;
 typedef glm::quat Quat;
 
+struct Color {
+public:
+	Color() {}
+	
+	byte r, g, b, a;
+
+	string hex() {
+		string chs("0123456789ABCDEF");
+		return "#" + chs[(r & 0xf0) >> 4] + chs[r & 0x0f] + chs[(g & 0xf0) >> 4] + chs[g & 0x0f] + chs[(b & 0xf0) >> 4] + chs[b & 0x0f] + chs[(a & 0xf0) >> 4] + chs[a & 0x0f];
+	}
+
+	void SetHex(string h) {
+
+	}
+
+	Color& operator=(const Vec4& rhs)
+	{
+		
+		return *this;
+	}
+};
+
 struct Rect {
 public:
 	Rect();
@@ -90,6 +112,7 @@ typedef unsigned char ASSETTYPE;
 
 #define ASSETTYPE_UNDEF 0x00
 
+#define ASSETTYPE_SCENE 0xf0
 #define ASSETTYPE_MESH 0x20
 #define ASSETTYPE_TEXTURE 0x01
 #define ASSETTYPE_HDRI 0x02
@@ -132,7 +155,7 @@ public:
 	static bool HasDirectory(LPCTSTR szPath);
 	static bool HasFile(LPCTSTR szPath);
 	static string ReadFile(const string& path);
-	static TCHAR* GetRegistryKeys(HKEY key);
+	static vector<string> GetRegistryKeys(HKEY key);
 };
 
 class Font {

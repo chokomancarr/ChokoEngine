@@ -703,7 +703,7 @@ void Debug::Error(string c, string s) {
 vector<string> IO::GetFiles(const string& folder)
 {
 	vector<string> names;
-	string search_path = folder + "/*.*";
+	string search_path = folder + "/*";
 	WIN32_FIND_DATA fd;
 	HANDLE hFind = ::FindFirstFile(search_path.c_str(), &fd);
 	if (hFind != INVALID_HANDLE_VALUE) {
@@ -782,36 +782,22 @@ string IO::ReadFile(const string& path) {
 	return buffer.str();
 }
 
-TCHAR* IO::GetRegistryKeys(HKEY key) {
+vector<string> IO::GetRegistryKeys(HKEY key) {
 	TCHAR    achKey[255];
-	TCHAR    achClass[MAX_PATH] = TEXT("");  // buffer for class name 
-	DWORD    cchClassName = MAX_PATH;  // size of class string 
-	DWORD    cSubKeys = 0;               // number of subkeys 
-	DWORD    cbMaxSubKey;              // longest subkey size 
-	DWORD    cchMaxClass;              // longest class string 
-	DWORD    cValues;              // number of values for key 
-	DWORD    cchMaxValue;          // longest value name 
-	DWORD    cbMaxValueData;       // longest value data 
-	DWORD    cbSecurityDescriptor; //
+	TCHAR    achClass[MAX_PATH] = TEXT("");
+	DWORD    cchClassName = MAX_PATH;
+	DWORD	 size;
+	vector<string> res;
 
-	/*
-	if (RegQueryInfoKey(
-		hKey,                    // key handle 
-		achClass,                // buffer for class name 
-		&cchClassName,           // size of class string 
-		NULL,                    // reserved 
-		&cSubKeys,               // number of subkeys 
-		&nullptr,            // longest subkey size 
-		&nullptr,            // longest class string 
-		&nullptr,                // number of values for this key 
-		&nullptr,            // longest value name 
-		&nullptr,         // longest value data 
-		nullptr,			     // security descriptor 
-		nullptr) == ERROR_SUCCESS) {       // last write time 
-
+	if (RegQueryInfoKey(key, achClass, &cchClassName, NULL, &size, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr) == ERROR_SUCCESS) {
+		DWORD cbName = 255;
+		for (int i = 0; i < size; i++) {
+			if (RegEnumKeyEx(key, i, achKey, &cbName, NULL, NULL, NULL, NULL) == ERROR_SUCCESS) {
+				res.push_back(achKey);
+			}
+		}
 	}
-	*/
-	return nullptr;
+	return res;
 }
 
 //-----------------time class---------------------

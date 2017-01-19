@@ -1,5 +1,6 @@
 #include "KTMModel.h"
 #include "Engine.h"
+#include "Editor.h"
 #include <string>
 #include <iostream>
 #include <fstream>
@@ -158,14 +159,62 @@ void KTMModel::RenderModel() {
 	glPopMatrix();
 }
 
-string KTMModel::Parse(string s) {
-	HKEY key;
-
-	if (RegOpenKeyEx(HKEY_CURRENT_USER, TEXT("SOFTWARE\\Microsoft"), 0, KEY_READ, &key) == ERROR_SUCCESS) {
-		TCHAR* achKey = IO::GetRegistryKeys(key);
-
+bool KTMModel::Parse(Editor* e, string s) {
+	SECURITY_ATTRIBUTES sa;
+	sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+	sa.bInheritHandle = TRUE;
+	sa.lpSecurityDescriptor = NULL;
+	HANDLE stdOutR, stdOutW;
+	if (!CreatePipe(&stdOutR, &stdOutW, &sa, 0)) {
+		cout << "failed to create pipe for stdout!";
+		return false;
 	}
+	if (!SetHandleInformation(stdOutR, HANDLE_FLAG_INHERIT, 0)){
+		cout << "failed to set handle for stdout!";
+		return false;
+	}
+	STARTUPINFO startInfo;
+	PROCESS_INFORMATION processInfo;
+	ZeroMemory(&startInfo, sizeof(STARTUPINFO));
+	ZeroMemory(&processInfo, sizeof(PROCESS_INFORMATION));
+	startInfo.cb = sizeof(STARTUPINFO);
+	startInfo.hStdOutput = stdOutW;
+	startInfo.dwFlags |= STARTF_USESTDHANDLES;
 
-	RegCloseKey(key);
-	return "";
+	bool failed = true;
+	if (CreateProcess(e->_blenderInstallationPath.c_str(), " -h", NULL, NULL, true, 0, NULL, "F:\\TestProject\\", &startInfo, &processInfo) != 0) {
+		cout << "executing Blender..." << endl;
+		DWORD w;
+		do {
+			w = WaitForSingleObject(processInfo.hProcess, 0.5f);
+			DWORD dwRead;
+			CHAR chBuf[4096];
+			bool bSuccess = FALSE;
+			string out = "";
+			bSuccess = ReadFile(stdOutR, chBuf, 4096, &dwRead, NULL);
+			if (bSuccess && dwRead > 0) {
+				string s(chBuf, dwRead);
+				out += s;
+			}
+			for (int r = 0; r < out.size();) {
+				int rr = out.find_first_of('\n', r);
+				if (rr == string::npos)
+					rr = out.size() - 1;
+				string sss = out.substr(r, rr - r);
+				cout << sss << endl;
+				r = rr + 1;
+				failed = false;
+			}
+		} while (w == WAIT_TIMEOUT);
+		return (!failed);
+	}
+	else {
+		cout << "Cannot start Blender!" << endl;
+		CloseHandle(stdOutR);
+		CloseHandle(stdOutW);
+		return false;
+	}
+	CloseHandle(stdOutR);
+	CloseHandle(stdOutW);
+	return true;
 }

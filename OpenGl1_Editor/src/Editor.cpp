@@ -639,6 +639,17 @@ void EB_Inspector::DrawVector3(Editor* e, Vec4 v, float dh, string label, Vec3& 
 	Engine::Label(v.r + v.b*0.73f + 2, v.g + dh + 2 + EB_HEADER_SIZE, 12, to_string(value.z), e->font, white());
 }
 
+void EB_Inspector::DrawAsset(Editor* e, Vec4 v, float dh, string label, ASSETTYPE type) {
+	Engine::Label(v.r, v.g + dh + 2 + EB_HEADER_SIZE, 12, label, e->font, white());
+	if (Engine::EButton((e->editorLayer == 0), v.r + v.b*0.19f, v.g + dh + EB_HEADER_SIZE, v.b*0.71f - 1, 16, Vec4(0.4f, 0.2f, 0.2f, 1)) == MOUSE_RELEASE) {
+		e->editorLayer = 3;
+		e->browseType = type;
+		e->browseOffset = 0;
+		e->browseSize = e->allAssets[type].size();
+	}
+	Engine::Label(v.r + v.b*0.19f + 2, v.g + dh + 2 + EB_HEADER_SIZE, 12, label, e->font, white());
+}
+
 void Editor::LoadDefaultAssets() {
 	font = new Font(dataPath + "res\\default_s.font", dataPath + "res\\default_l.font", 17);
 
@@ -714,24 +725,44 @@ void Editor::LoadDefaultAssets() {
 	globalShorts.emplace(GetShortcutInt('b', GLUT_ACTIVE_CTRL), &Compile);
 	globalShorts.emplace(GetShortcutInt('u', GLUT_ACTIVE_CTRL), &ShowPrefs);
 	globalShorts.emplace(GetShortcutInt('s', GLUT_ACTIVE_CTRL), &SaveScene);
+
+	assetTypes.emplace("scene", ASSETTYPE_SCENE);
+	assetTypes.emplace("blend", ASSETTYPE_MESH);
+	assetTypes.emplace("bmp", ASSETTYPE_TEXTURE);
+	assetTypes.emplace("hdr", ASSETTYPE_HDRI);
+	
+	allAssets.emplace(ASSETTYPE_SCENE, vector<string>());
+	allAssets.emplace(ASSETTYPE_MESH, vector<string>());
+	allAssets.emplace(ASSETTYPE_TEXTURE, vector<string>());
+	allAssets.emplace(ASSETTYPE_HDRI, vector<string>());
 }
 
-void AddH(string dir, vector<string>* h) {
-	for each (string s in IO::GetFiles(dir)) {
-		if (s.substr(s.size() - 2, string::npos) == ".h")
+void AddH(Editor* e, string dir, vector<string>* h) {
+	for (string s : IO::GetFiles(dir)) {
+		if (s.size() > 3 && s.substr(s.size() - 2, string::npos) == ".h")
 			h->push_back(s.substr(s.find_last_of('\\') + 1, string::npos));
+		if (s.size() > 7 && s.substr(s.size() - 6, string::npos) == ".scene")
+			e->allAssets[ASSETTYPE_SCENE].push_back(s);
+		else {
+			if (s.size() < 7) continue;
+			string s2 = s.substr(0, s.size()-5);
+			unordered_map<string, ASSETTYPE>::const_iterator got = e->assetTypes.find(s2.substr(s2.find_last_of('.') + 1));
+			if (got != e->assetTypes.end()) {
+				e->allAssets[(got->second)].push_back(s);
+			}
+		}
 	}
 	vector<string> dirs;
 	IO::GetFolders(dir, &dirs);
 	for each (string ss in dirs) {
 		if (ss != "." && ss != "..")
-			AddH(dir + "\\" + ss, h);
+			AddH(e, dir + "\\" + ss, h);
 	}
 }
 
 void Editor::RefreshAssets() {
 	headerAssets.clear();
-	AddH(projectFolder + "Assets", &headerAssets);
+	AddH(this, projectFolder + "Assets", &headerAssets);
 	GenerateScriptResolver();
 }
 
@@ -982,8 +1013,7 @@ bool Editor::ParseAsset(string path) {
 		parsed = ShaderBase::Parse(&stream);
 	}
 	else if (ext == "blend"){
-		parsed = KTMModel::Parse(path);
-		return false;
+		return KTMModel::Parse(this, path); //blender will output to path
 	}
 	else if (ext == "bmp" || ext == "png" || ext == "jpg" || ext == "jpeg") {
 
@@ -1023,6 +1053,11 @@ bool Editor::SetCache(string& path, I_EBI_ValueCollection* vals) {
 	return false;
 }
 
+/*
+app.exe
+content0.data -> asset list (type, name, index) (ascii), [\n], level data (binary)
+content(1+).data ->assets (index, data) (binary)
+*/
 bool MergeAssets(Editor* e) {
 	string ss = e->projectFolder + "Release\\data0";
 	ofstream file;
@@ -1145,11 +1180,6 @@ void Editor::SaveScene(Editor* e) {
 	e->activeScene.Save(e);
 }
 
-/*
-app.exe
-content0.data -> asset list (type, name, index) (ascii), [\n], level data (binary)
-content(1+).data ->assets (index, data) (binary)
-*/
 void Editor::DoCompile() {
 	buildEnd = false;
 	buildErrorPath = "";

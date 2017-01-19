@@ -221,7 +221,7 @@ public:
 	static void DrawVector3(Editor* e, Vec4 v, float dh, string label, Vec3& value);
 	static void DrawVector4(Editor* e, Vec4 v, float dh, string label, Vec4& value);
 	static void DrawVec4(Editor* e, Vec4 v, float dh, string label, Vec4& col);
-	static void DrawAssetPicker(Editor* e, Vec4 v, string label, string type[], string& assetName);
+	static void DrawAsset(Editor* e, Vec4 v, float dh, string label, ASSETTYPE type);
 	//static void DrawTexture(Editor* e, Vec4 v, string label, Texture* tex, Vec4& uv);
 };
 
@@ -238,6 +238,7 @@ public:
 	bool _mouseJump = true;
 	int _assetDataSize = 10; //x100Mb
 	bool _cleanOnBuild = true;
+	string _blenderInstallationPath = "C:\\Program Files\\Blender Foundation\\Blender\\blender.exe";
 
 	string projectFolder;
 
@@ -260,6 +261,10 @@ public:
 	dataFunc menuFuncSingle;
 	vector<void*> menuFuncVals;
 	//edit = layer2
+	//select = layer3
+	ASSETTYPE browseType;
+	float browseOffset;
+	int browseSize;
 	//progress = layer4
 	string progressName;
 	float progressValue;
@@ -292,6 +297,9 @@ public:
 	Scene activeScene;
 	SceneObject* selected;
 	bool selectGlobal;
+	vector<string> includedScenes;
+	unordered_map<string, ASSETTYPE> assetTypes;
+	unordered_map<ASSETTYPE, vector<string>> allAssets;
 
 	string selectedFile = "";
 
@@ -335,7 +343,7 @@ public:
 	static Texture* GetRes(string name, bool mipmap);
 	static Texture* GetRes(string name, bool mipmap, bool nearest);
 
-	static bool ParseAsset(string path);
+	bool ParseAsset(string path);
 	static bool GetCache(string& path, I_EBI_ValueCollection& vals);
 	static bool SetCache(string& path, I_EBI_ValueCollection* vals);
 

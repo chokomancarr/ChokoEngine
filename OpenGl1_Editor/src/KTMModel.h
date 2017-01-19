@@ -9,6 +9,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <GL/glew.h>
+#include "Editor.h"
 
 using namespace std;
 
@@ -27,7 +28,7 @@ public:
 	void RenderModel();
 	void ClearModel();
 
-	static string Parse(string path);
+	static bool Parse(Editor* e, string path);
 
 protected:
 	typedef std::vector<glm::vec2> Vec2Buffer;
