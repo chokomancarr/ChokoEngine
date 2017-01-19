@@ -29,7 +29,7 @@ typedef unordered_map<int, shortcutFuncGlobal> ShortcutMapGlobal;
 typedef unordered_map<int, funcMap[]> CommandsMap;
 int GetShortcutInt(byte c, int m);
 
-Color grey1(), grey2(), accent();
+Vec4 grey1(), grey2(), accent();
 
 class EditorBlock {
 public:
@@ -125,7 +125,7 @@ public:
 	static const int arrowSIndexs[18];
 	glm::mat4 viewingMatrix;
 	bool persp;
-	Color arrowX, arrowY, arrowZ; 
+	Vec4 arrowX, arrowY, arrowZ; 
 	Vec3 axesPos;
 	byte selectedTooltip, selectedShading, selectedOrient;
 
@@ -192,14 +192,14 @@ public:
 	bool correct;
 	vector<I_EBI_Value> vals;
 
-	virtual void Draw(Editor* e, EditorBlock* b, Color* v) = 0;
+	virtual void Draw(Editor* e, EditorBlock* b, Vec4* v) = 0;
 };
 
 class EBIA_Shader : public EBI_Asset {
 public:
 	EBIA_Shader(string path);
 
-	void Draw(Editor* e, EditorBlock* b, Color* v);
+	void Draw(Editor* e, EditorBlock* b, Vec4* v);
 };
 
 class EB_Inspector : public EditorBlock {
@@ -216,13 +216,13 @@ public:
 	void Draw();
 	void Refresh() {}
 
-	static void DrawScalar(Editor* e, Color v, float dh, string label, float& value);
-	static void DrawVector2(Editor* e, Color v, float dh, string label, Vec2& value);
-	static void DrawVector3(Editor* e, Color v, float dh, string label, Vec3& value);
-	static void DrawVector4(Editor* e, Color v, float dh, string label, Color& value);
-	static void DrawColor(Editor* e, Color v, float dh, string label, Color& col);
-	static void DrawAssetPicker(Editor* e, Color v, string label, string type[], string& assetName);
-	//static void DrawTexture(Editor* e, Color v, string label, Texture* tex, Color& uv);
+	static void DrawScalar(Editor* e, Vec4 v, float dh, string label, float& value);
+	static void DrawVector2(Editor* e, Vec4 v, float dh, string label, Vec2& value);
+	static void DrawVector3(Editor* e, Vec4 v, float dh, string label, Vec3& value);
+	static void DrawVector4(Editor* e, Vec4 v, float dh, string label, Vec4& value);
+	static void DrawVec4(Editor* e, Vec4 v, float dh, string label, Vec4& col);
+	static void DrawAsset(Editor* e, Vec4 v, float dh, string label, ASSETTYPE type);
+	//static void DrawTexture(Editor* e, Vec4 v, string label, Texture* tex, Vec4& uv);
 };
 
 class xPossLerper;
@@ -238,6 +238,7 @@ public:
 	bool _mouseJump = true;
 	int _assetDataSize = 10; //x100Mb
 	bool _cleanOnBuild = true;
+	string _blenderInstallationPath = "C:\\Program Files\\Blender Foundation\\Blender\\blender.exe";
 
 	string projectFolder;
 
@@ -260,6 +261,10 @@ public:
 	dataFunc menuFuncSingle;
 	vector<void*> menuFuncVals;
 	//edit = layer2
+	//select = layer3
+	ASSETTYPE browseType;
+	float browseOffset;
+	int browseSize;
 	//progress = layer4
 	string progressName;
 	float progressValue;
@@ -274,7 +279,7 @@ public:
 	int buildErrorLine;
 	string buildLabel;
 	float buildProgressValue;
-	Color buildProgressColor;
+	Vec4 buildProgressVec4;
 	bool buildEnd; //allow esc
 
 	Font* font;
@@ -292,6 +297,9 @@ public:
 	Scene activeScene;
 	SceneObject* selected;
 	bool selectGlobal;
+	vector<string> includedScenes;
+	unordered_map<string, ASSETTYPE> assetTypes;
+	unordered_map<ASSETTYPE, vector<string>> allAssets;
 
 	string selectedFile = "";
 
@@ -335,7 +343,7 @@ public:
 	static Texture* GetRes(string name, bool mipmap);
 	static Texture* GetRes(string name, bool mipmap, bool nearest);
 
-	static bool ParseAsset(string path);
+	bool ParseAsset(string path);
 	static bool GetCache(string& path, I_EBI_ValueCollection& vals);
 	static bool SetCache(string& path, I_EBI_ValueCollection* vals);
 

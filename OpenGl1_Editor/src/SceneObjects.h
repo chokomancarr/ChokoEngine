@@ -30,7 +30,7 @@ public:
 
 	virtual void LoadDefaultValues() {} //also loads assets
 	virtual void DrawEditor() = 0; //trs matrix not applied, apply before calling
-	virtual void DrawInspector(Editor* e, Component* c, Color v, uint& pos) = 0;
+	virtual void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) = 0;
 	virtual void Serialize(Editor* e, ofstream* stream) {}
 };
 
@@ -120,7 +120,7 @@ public:
 	
 	void UpdateCamVerts();
 	void DrawEditor();
-	void DrawInspector(Editor* e, Component* c, Color v, uint& pos);
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos);
 	void Serialize(Editor* e, ofstream* stream) override;
 };
 
@@ -133,7 +133,7 @@ public:
 	//void LoadDefaultValues() override;
 
 	void DrawEditor() {}
-	void DrawInspector(Editor* e, Component* c, Color v, uint& pos);
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos);
 	void Serialize(Editor* e, ofstream* stream) override;
 };
 
@@ -143,7 +143,7 @@ public:
 	MeshRenderer();
 
 	void DrawEditor() {}
-	void DrawInspector(Editor* e, Component* c, Color v, uint& pos);
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos);
 };
 
 #define COMP_SCR 0xff
@@ -161,7 +161,7 @@ public:
 	virtual void Paint() {}
 
 	void DrawEditor() {} //nothing
-	void DrawInspector(Editor* e, Component* c, Color v, uint& pos);
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos);
 	void Serialize(Editor* e, ofstream* stream) override;
 
 	//bool ReferencingObject(Object* o) override;

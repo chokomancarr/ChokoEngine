@@ -9,6 +9,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <GL/glew.h>
+#include "Editor.h"
 
 using namespace std;
 
@@ -27,6 +28,8 @@ public:
 	void RenderModel();
 	void ClearModel();
 
+	static bool Parse(Editor* e, string path);
+
 protected:
 	typedef std::vector<glm::vec2> Vec2Buffer;
 	typedef std::vector<glm::vec3> Vec3Buffer;
@@ -37,7 +40,7 @@ protected:
 	{
 		glm::vec3   position;
 		glm::vec3   normal;
-		glm::vec3	color;
+		glm::vec3	Vec4;
 		glm::vec2   tex0;
 	};
 	typedef std::vector<Vertex> VertexList;
@@ -65,7 +68,7 @@ protected:
 		Vec3Buffer		m_NormalBuffer;
 		Vec2Buffer		m_Tex2DBuffer;
 		IndexBuffer     m_IndexBuffer;
-		Vec3Buffer		m_VertColorBuffer;
+		Vec3Buffer		m_VertVec4Buffer;
 	};
 	typedef std::vector<Mesh> MeshList;
 

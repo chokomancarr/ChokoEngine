@@ -20,10 +20,10 @@ class KTMExporter():
     meta = "KTM123"
     dir = args[0]
     name = args[1]
+    #meshOnly = args[2]
     path = None
 
     frame_offset = 0
-    log = []
 
     def execute(self):
         if os.access(self.dir, os.W_OK) is False:
@@ -40,12 +40,12 @@ class KTMExporter():
                 print ("obj " + obj.name)
                 
                 self.write(file, "  obj " + obj.name + " [\r\n")
-                #poss = obj.location
-                #self.write(file, "    pos {:f} {:f} {:f}\r\n".format(poss[0], poss[1], poss[2]))
-                #rott = obj.rotation_quaternion
-                #self.write(file, "    rot {:f} {:f} {:f} {:f}\r\n".format(rott[0], rott[1], rott[2], rott[3]))
-                #scll = obj.scale
-                #self.write(file, "    scl {:f} {:f} {:f}\r\n\r\n".format(scll[0], scll[1], scll[2]))
+                poss = obj.location
+                self.write(file, "    pos {:f} {:f} {:f}\r\n".format(poss[0], poss[1], poss[2]))
+                rott = obj.rotation_euler
+                self.write(file, "    rot {:f} {:f} {:f}\r\n".format(rott[0], rott[1], rott[2]))
+                scll = obj.scale
+                self.write(file, "    scl {:f} {:f} {:f}\r\n\r\n".format(scll[0], scll[1], scll[2]))
                 for vert in obj.data.vertices:
                     self.write(file, "    vrt {} {:f} {:f} {:f}\r\n".format(vert.index, vert.co[0], vert.co[1], vert.co[2]))
                 self.write(file, "\r\n")
@@ -54,6 +54,9 @@ class KTMExporter():
                     for loop_index in poly.loop_indices:
                         self.write(file, " {}".format(obj.data.loops[loop_index].vertex_index))
                     self.write(file, "\r\n")
+                if obj.type == 'MESH' and obj.data.shape_keys:
+                    for block in obj.data.shape_keys.key_blocks:
+                        self.write(file, "    shp " + block.name + "\r\n")
                 self.write(file, "\r\n  ]\r\n")
         #sys.exit()
 
