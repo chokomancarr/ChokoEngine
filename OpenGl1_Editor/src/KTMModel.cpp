@@ -5,6 +5,8 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <thread>
+#include <chrono>
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -164,7 +166,15 @@ bool KTMModel::Parse(Editor* e, string s) {
 	sa.nLength = sizeof(SECURITY_ATTRIBUTES);
 	sa.bInheritHandle = TRUE;
 	sa.lpSecurityDescriptor = NULL;
-	HANDLE stdOutR, stdOutW;
+	HANDLE stdOutR, stdOutW, stdInR, stdInW;
+	if (!CreatePipe(&stdInR, &stdInW, &sa, 0)) {
+		cout << "failed to create pipe for stdin!";
+		return false;
+	}
+	if (!SetHandleInformation(stdInW, HANDLE_FLAG_INHERIT, 0)){
+		cout << "failed to set handle for stdin!";
+		return false;
+	}
 	if (!CreatePipe(&stdOutR, &stdOutW, &sa, 0)) {
 		cout << "failed to create pipe for stdout!";
 		return false;
@@ -178,18 +188,40 @@ bool KTMModel::Parse(Editor* e, string s) {
 	ZeroMemory(&startInfo, sizeof(STARTUPINFO));
 	ZeroMemory(&processInfo, sizeof(PROCESS_INFORMATION));
 	startInfo.cb = sizeof(STARTUPINFO);
+	startInfo.hStdInput = stdInR;
 	startInfo.hStdOutput = stdOutW;
 	startInfo.dwFlags |= STARTF_USESTDHANDLES;
 
 	bool failed = true;
-	if (CreateProcess(e->_blenderInstallationPath.c_str(), " -h", NULL, NULL, true, 0, NULL, "F:\\TestProject\\", &startInfo, &processInfo) != 0) {
+	string cmd1(e->_blenderInstallationPath.substr(0, 2) + "\n"); //root
+	string cmd2("cd " + e->_blenderInstallationPath.substr(0, e->_blenderInstallationPath.find_last_of("\\")) + "\n");
+	string cmd3("blender \"" + s + "\" --background --python \"" + e->dataPath + "\\Python\\blend_exporter.py\" -- \"" + s.substr(0, s.find_last_of("\\")) + "?" + s.substr(s.find_last_of("\\") + 1, string::npos) + ".meta\"\n");
+	string cmdDie("exit\n");
+	if (CreateProcess("C:\\Windows\\System32\\cmd.exe", 0, NULL, NULL, true, CREATE_NO_WINDOW, NULL, "F:\\TestProject\\", &startInfo, &processInfo) != 0) {
 		cout << "executing Blender..." << endl;
+		bool bSuccess = false;
+		DWORD dwWrite;
+		bSuccess = WriteFile(stdInW, cmd1.c_str(), cmd1.size(), &dwWrite, NULL);
+		if (!bSuccess || dwWrite == 0) {
+			cout << "can't get to root!" << endl;
+			return false;
+		}
+		bSuccess = WriteFile(stdInW, cmd2.c_str(), cmd2.size(), &dwWrite, NULL);
+		if (!bSuccess || dwWrite == 0) {
+			cout << "can't navigate to blender dir!" << endl;
+			return false;
+		}
+		bSuccess = WriteFile(stdInW, cmd3.c_str(), cmd3.size(), &dwWrite, NULL);
+		if (!bSuccess || dwWrite == 0) {
+			cout << "can't execute blender!" << endl;
+			return false;
+		}
 		DWORD w;
+		bool finish = false;
 		do {
 			w = WaitForSingleObject(processInfo.hProcess, 0.5f);
 			DWORD dwRead;
 			CHAR chBuf[4096];
-			bool bSuccess = FALSE;
 			string out = "";
 			bSuccess = ReadFile(stdOutR, chBuf, 4096, &dwRead, NULL);
 			if (bSuccess && dwRead > 0) {
@@ -203,15 +235,23 @@ bool KTMModel::Parse(Editor* e, string s) {
 				string sss = out.substr(r, rr - r);
 				cout << sss << endl;
 				r = rr + 1;
-				failed = false;
+				if (sss.size() > 1 && sss[0] == '!')
+					e->_Message("Blender", sss.substr(1, string::npos));
+				if (sss.size() > 12 && sss.substr(0, 12) == "Blender quit"){
+					TerminateProcess(processInfo.hProcess, 0);
+					failed = false;
+					finish = true;
+				}
 			}
-		} while (w == WAIT_TIMEOUT);
+		} while (w == WAIT_TIMEOUT && !finish);
 		return (!failed);
 	}
 	else {
 		cout << "Cannot start Blender!" << endl;
 		CloseHandle(stdOutR);
 		CloseHandle(stdOutW);
+		CloseHandle(stdInR);
+		CloseHandle(stdInW);
 		return false;
 	}
 	CloseHandle(stdOutR);

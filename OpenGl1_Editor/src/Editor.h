@@ -70,6 +70,26 @@ public:
 	void Refresh(){} //nothing
 };
 
+class EB_Debug : public EditorBlock {
+public:
+	EB_Debug(Editor* e, int x1, int y1, int x2, int y2) {
+		editorType = 10;
+		editor = e;
+		this->x1 = x1;
+		this->y1 = y1;
+		this->x2 = x2;
+		this->y2 = y2;
+		drawM = drawW = drawE = true;
+		Refresh();
+	}
+
+	bool drawM, drawW, drawE;
+	vector<int> drawIds;
+
+	void Draw();
+	void Refresh();
+};
+
 class EB_Hierarchy: public EditorBlock {
 public:
 	EB_Hierarchy(Editor* e, int x1, int y1, int x2, int y2) {
@@ -343,6 +363,14 @@ public:
 	static Texture* GetRes(string name, bool mipmap);
 	static Texture* GetRes(string name, bool mipmap, bool nearest);
 
+	vector<pair<string, string>> messages;
+	vector<byte> messageTypes;
+
+	void _Message(string c, string s);
+	void _Warning(string c, string s);
+	void _Error(string c, string s);
+
+	void ReloadAssets(string path, bool recursive);
 	bool ParseAsset(string path);
 	static bool GetCache(string& path, I_EBI_ValueCollection& vals);
 	static bool SetCache(string& path, I_EBI_ValueCollection* vals);
@@ -352,7 +380,6 @@ public:
 	static void SaveScene(Editor* e);
 
 	void DoCompile();
-
 };
 
 class xPossLerper {

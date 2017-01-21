@@ -55,7 +55,7 @@ int main(int argc, char **argv)
 	editor = new Editor();
 	editor->dataPath = path.substr(0, path.find_last_of('\\') + 1);
 
-	editor->ParseAsset("D:\\test.blend");
+	//editor->ParseAsset("D:\\test.blend");
 	//editor->Compile();
 
 	//*
@@ -75,14 +75,16 @@ int main(int argc, char **argv)
 	editor->xPoss.push_back(1);
 	editor->xPoss.push_back(0.75f);
 	editor->xPoss.push_back(0.63f);
+	editor->xPoss.push_back(0.4f);
 	editor->xLimits.push_back(Int2(0, 1));
 	editor->xLimits.push_back(Int2(0, 1));
 	editor->xLimits.push_back(Int2(0, 1));
 	editor->xLimits.push_back(Int2(0, 2));
+	editor->xLimits.push_back(Int2(2, 1));
 
 	editor->yPoss.push_back(0);
 	editor->yPoss.push_back(1);
-	editor->yPoss.push_back(0.7f);
+	editor->yPoss.push_back(0.65f);
 	editor->yLimits.push_back(Int2(0, 1));
 	editor->yLimits.push_back(Int2(0, 1));
 	editor->yLimits.push_back(Int2(0, 2));
@@ -157,10 +159,10 @@ int main(int argc, char **argv)
 	else {
 		Engine::Init(path);
 		editor->LoadDefaultAssets();
-		editor->blocks = vector<EditorBlock*>({ new EB_Inspector(editor, 2, 0, 1, 1), new EB_Browser(editor, 0, 2, 2, 1, "D:\\"), new EB_Viewer(editor, 0, 0, 3, 2), new EB_Hierarchy(editor, 3, 0, 2, 2) }); //path.substr(0, path.find_last_of('\\') + 1)
+		editor->blocks = vector<EditorBlock*>({ new EB_Inspector(editor, 2, 0, 1, 1), new EB_Browser(editor, 0, 2, 4, 1, editor->projectFolder + "Assets\\"), new EB_Debug(editor, 4, 2, 2, 1), new EB_Viewer(editor, 0, 0, 3, 2), new EB_Hierarchy(editor, 3, 0, 2, 2) }); //path.substr(0, path.find_last_of('\\') + 1)
 		font = editor->font;
+		editor->ReloadAssets(editor->projectFolder + "Assets\\", true);
 		editor->RefreshAssets();
-
 		//editor->activeScene.sky = new Background(editor->dataPath + "res\\bg_refl.hdr");
 
 		glEnable(GL_BLEND);

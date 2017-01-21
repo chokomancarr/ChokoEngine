@@ -39,6 +39,12 @@ Vec4 accent() {
 
 int GetShortcutInt(byte c, int m) { return c << 4 | m; }
 
+bool IsSupportedFormat(string ext) {
+	string formats[]{".blend", ".bmp"};
+	string* found = find(begin(formats), end(formats), ext);
+	return (found != end(formats));
+}
+
 bool DrawHeaders(Editor* e, EditorBlock* b, Vec4* v, string titleS, string titleB) {
 	//Engine::Button(v->r, v->g + EB_HEADER_SIZE + 1, v->b, v->a - EB_HEADER_SIZE - 2, black(), white(0.05f), white(0.05f));
 	Vec2 v2(v->b*0.1f, EB_HEADER_SIZE*0.1f);
@@ -48,16 +54,52 @@ bool DrawHeaders(Editor* e, EditorBlock* b, Vec4* v, string titleS, string title
 	return Rect(v->r, v->g + EB_HEADER_SIZE + 1, v->b, v->a - EB_HEADER_SIZE - 2).Inside(Input::mousePos);
 }
 
-//Texture SystemButtons::x = Texture("F:\\xbutton.bmp");
-//Texture SystemButtons::dash = Texture("F:\\dashbutton.bmp");
-
-void EB_Empty::Draw() {
-	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
+void CalcV(Vec4& v) {
 	v.a = round(v.a - v.g) - 1;
 	v.b = round(v.b - v.r) - 1;
 	v.g = round(v.g) + 1;
 	v.r = round(v.r) + 1;
+}
+
+void EB_Empty::Draw() {
+	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
+	CalcV(v);
 	DrawHeaders(editor, this, &v, "hatena header", "Hatena Title");
+}
+
+void EB_Debug::Draw() {
+	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
+	CalcV(v);
+	DrawHeaders(editor, this, &v, "log messages", "System");
+	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
+	//glDisable(GL_DEPTH_TEST);
+	for (int x = drawIds.size() - 1, y = 0; x >= 0; x--, y++) {
+		Engine::DrawQuad(v.r + 1, v.g + v.a - 36 - (y*15), v.b - 2, 14, Vec4(1, 1, 1, (x&1==1)? 0.2f : 0.1f));
+		Engine::Label(v.r + 3, v.g + v.a - 34 - y * 15, 12, editor->messages[drawIds[x]].first + " says: " + editor->messages[drawIds[x]].second, editor->font, white());
+	}
+	if (Engine::EButton((editor->editorLayer == 0), v.r + 1, v.g + v.a - 21, 80, 20, grey1(), "Messages", 12, editor->font, drawM ? white() : grey2()) == MOUSE_RELEASE) {
+		drawM = !drawM;
+		Refresh();
+	}
+	if (Engine::EButton((editor->editorLayer == 0), v.r + 82, v.g + v.a - 21, 80, 20, grey1(), "Warnings", 12, editor->font, drawW ? white() : grey2()) == MOUSE_RELEASE) {
+		drawW = !drawW;
+		Refresh();
+	}
+	if (Engine::EButton((editor->editorLayer == 0), v.r + 163, v.g + v.a - 21, 80, 20, grey1(), "Errors", 12, editor->font, drawE ? white() : grey2()) == MOUSE_RELEASE) {
+		drawE = !drawE;
+		Refresh();
+	}
+	Engine::EndStencil(); 
+}
+
+void EB_Debug::Refresh() {
+	drawIds.clear();
+	int q = 0;
+	for (int i : editor->messageTypes) {
+		if ((i == 0 && drawM) || (i == 1 && drawW) || (i == 2 && drawE))
+			drawIds.push_back(q);
+		q++;
+	}
 }
 
 void EBH_DrawItem(SceneObject* sc, Editor* e, Vec4* v, int& i, int indent) {
@@ -93,10 +135,7 @@ void EBH_DrawItem(SceneObject* sc, Editor* e, Vec4* v, int& i, int indent) {
 
 void EB_Hierarchy::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
-	v.a = round(v.a - v.g) - 1;
-	v.b = round(v.b - v.r) - 1;
-	v.g = round(v.g) + 1;
-	v.r = round(v.r) + 1;
+	CalcV(v);
 	DrawHeaders(editor, this, &v, "Scene objects", "Hierarchy");
 
 	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
@@ -174,10 +213,7 @@ bool DrawFileRect(float w, float h, float size, EB_Browser_File* file, EditorBlo
 
 void EB_Browser::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
-	v.a = round(v.a - v.g) - 1;
-	v.b = round(v.b - v.r) - 1;
-	v.g = round(v.g) + 1;
-	v.r = round(v.r) + 1;
+	CalcV(v);
 	bool in = DrawHeaders(editor, this, &v, currentDir, "Browser");
 
 	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
@@ -186,9 +222,13 @@ void EB_Browser::Draw() {
 	for (int y = dirs.size() - 1; y >= 0; y--) {
 		if (Engine::EButton((editor->editorLayer == 0), v.r, v.g + EB_HEADER_SIZE + 1 + (16 * y), 150, 15, grey1()) == MOUSE_RELEASE) {
 			if (dirs.at(y) != ".") {
-				if (dirs.at(y) == "..")
-					currentDir = currentDir.substr(0, currentDir.find_last_of('\\'));
-				else currentDir += "\\" + dirs.at(y);
+				if (dirs.at(y) == "..") {
+					if (currentDir.size() < (editor->projectFolder.size() + 7) || currentDir.substr(0, editor->projectFolder.size() + 7) != (editor->projectFolder + "Assets\\"))
+						currentDir = currentDir.substr(0, currentDir.find_last_of('\\'));
+					else
+						currentDir = editor->projectFolder + "Assets\\";
+				}
+				else currentDir += dirs.at(y) + "\\";
 				Refresh();
 				return;
 			}
@@ -217,9 +257,12 @@ void EB_Browser::Refresh() {
 	dirs.clear();
 	files.clear();
 	IO::GetFolders(currentDir, &dirs);
-	cout << dirs.size() << "folders from " << currentDir << endl;
 	files = IO::GetFilesE(editor, currentDir);
-	cout << files.size() << "files from " << currentDir << endl;
+	//editor->_Message("Browser", to_string(dirs.size()) + " folders and " + to_string(files.size()) + " files from " + currentDir);
+	if (dirs.size() == 0) {
+		dirs.push_back(".");
+		dirs.push_back("..");
+	}
 }
 
 EB_Viewer::EB_Viewer(Editor* e, int x1, int y1, int x2, int y2) : rz(45), rw(45), scale(1) {
@@ -278,10 +321,7 @@ Vec2 xy(Vec3 v) {
 
 void EB_Viewer::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
-	v.a = round(v.a - v.g) - 1;
-	v.b = round(v.b - v.r) - 1;
-	v.g = round(v.g) + 1;
-	v.r = round(v.r) + 1;
+	CalcV(v);
 	DrawHeaders(editor, this, &v, "scene ID here", "Viewer");
 
 	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
@@ -367,7 +407,7 @@ void EB_Viewer::Draw() {
 			else DrawSArrows(editor->selected->transform.position, 2);
 		}
 		else {
-			Engine::DrawLineW(editor->selected->transform.position + modAxisDir*-100000.0f, editor->selected->transform.position + modAxisDir*100000.0f, white(), 3);
+			Engine::DrawLineW(editor->selected->transform.position + modAxisDir*-100000.0f, editor->selected->transform.position + modAxisDir*100000.0f, white(), 2);
 		}
 	}
 
@@ -438,7 +478,7 @@ void EB_Viewer::Draw() {
 	}
 
 	if (drawDescLT > 0) {
-		Engine::DrawQuad(v.x + 28, v.y + EB_HEADER_SIZE + 10 + 22 * (drawDescLT - 1), 200, 20, white(1, 0.6f));
+		Engine::DrawQuad(v.x + 28, v.y + EB_HEADER_SIZE + 10 + 22 * (drawDescLT - 1), 282, 20, white(1, 0.6f));
 		Engine::Label(v.x + 30, v.y + EB_HEADER_SIZE + 15 + 22 * (drawDescLT - 1), 12, descLabelLT, editor->font, black());
 	}
 
@@ -516,7 +556,7 @@ void EB_Viewer::OnMouseM(Vec2 d) {
 		MakeMatrix();
 	}
 	else if (modifying > 0) {
-		cout << (int)(modifying & 0x0f) << endl;
+		//cout << (int)(modifying & 0x0f) << endl;
 		modVal += Vec2(d.x / Display::width, d.y / Display::height);
 		if (modifying >> 4 == 1) {
 			switch (modifying & 0x0f) {
@@ -588,10 +628,7 @@ void EB_Inspector::SelectAsset(EBI_Asset* e, string s) {
 
 void EB_Inspector::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
-	v.a = round(v.a - v.g) - 1;
-	v.b = round(v.b - v.r) - 1;
-	v.g = round(v.g) + 1;
-	v.r = round(v.r) + 1;
+	CalcV(v);
 	DrawHeaders(editor, this, &v, isAsset ? (loaded ? label : "No object selected") : ((editor->selected != nullptr ) ? editor->selected->name : editor->selectGlobal? "Scene settings" : "No object selected"), "Inspector");
 
 	if (isAsset) {
@@ -1001,13 +1038,86 @@ Texture* Editor::GetRes(string name, bool mipmap, bool nearest) {
 	return new Texture(dataPath + "res\\" + name + ".bmp", mipmap, nearest);
 }
 
+void Editor::_Message(string a, string b) {
+	messages.push_back(pair<string, string>(a, b));
+	messageTypes.push_back(0);
+	for (EditorBlock* eb : blocks) {
+		if (eb->editorType == 10)
+			eb->Refresh();
+	}
+}
+void Editor::_Warning(string a, string b) {
+	messages.push_back(pair<string, string>(a, b));
+	messageTypes.push_back(1);
+	for (EditorBlock* eb : blocks) {
+		if (eb->editorType == 10)
+			eb->Refresh();
+	}
+}
+void Editor::_Error(string a, string b) {
+	messages.push_back(pair<string, string>(a, b));
+	messageTypes.push_back(2);
+	for (EditorBlock* eb : blocks) {
+		if (eb->editorType == 10)
+			eb->Refresh();
+	}
+}
+
+void DoScanAssetsGet(Editor* e, vector<string>& list, string p, bool rec) {
+	vector<string> files = IO::GetFiles(p);
+	for (string w : files) {
+		if (IsSupportedFormat(w.substr(w.find_last_of("."), string::npos))) {
+			string ss = w + ".meta";//ss.substr(0, ss.size() - 5);
+			if (IO::HasFile(ss.c_str())) {
+				FILETIME metaTime, realTime;
+				HANDLE metaF = CreateFile(ss.c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+				HANDLE realF = CreateFile(w.c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+				GetFileTime(metaF, nullptr, nullptr, &metaTime);
+				GetFileTime(realF, nullptr, nullptr, &realTime);
+				CloseHandle(metaF);
+				CloseHandle(realF);
+				ULARGE_INTEGER metaT, realT;
+				metaT.HighPart = metaTime.dwHighDateTime;
+				metaT.LowPart = metaTime.dwHighDateTime;
+				realT.HighPart = realTime.dwHighDateTime;
+				realT.LowPart = realTime.dwLowDateTime;
+				if (realT.QuadPart < metaT.QuadPart) {
+					continue;
+				}
+			}
+			e->_Message("Asset Loader", "Reloading " + w);
+			list.push_back(w);
+		}
+	}
+	if (rec) {
+		vector<string> dirs;
+		IO::GetFolders(p, &dirs);
+		for (string d : dirs) {
+			if (d != "." && d != "..")
+			DoScanAssetsGet(e, list, p + d + "\\", true);
+		}
+	}
+}
+
+void Editor::ReloadAssets(string path, bool recursive) {
+	vector<string> files;
+	DoScanAssetsGet(this, files, path, recursive);
+	for (string f : files) {
+		ParseAsset(f);
+	}
+	for (EditorBlock* eb : blocks) {
+		if (eb->editorType == 1)
+			eb->Refresh();
+	}
+}
+
 bool Editor::ParseAsset(string path) {
-	ifstream stream(path.c_str());
-	string parsed = "";
+	ifstream stream(path.c_str(), ios::in | ios::binary);
 	if (!stream.good()) {
-		cout << "asset not found!" << endl;
+		_Message("Asset Parser", "asset not found! " + path);
 		return false;
 	}
+	string parsed = "";
 	string ext = path.substr(path.find_last_of('.') + 1, string::npos);
 	if (ext == "shade") {
 		parsed = ShaderBase::Parse(&stream);
@@ -1019,7 +1129,11 @@ bool Editor::ParseAsset(string path) {
 
 		return false;
 	}
-	else return false;
+	else {
+		_Message("Asset Parser", "format not supported!");
+		return false;
+	}
+	stream.close();
 	ofstream strm;
 	strm.open((path + ".meta"), ofstream::trunc | ofstream::out);
 	strm.write(parsed.c_str(), parsed.size());

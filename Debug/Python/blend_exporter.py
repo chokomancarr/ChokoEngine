@@ -18,19 +18,23 @@ class KTMExporter():
     scale = 1.0
     
     meta = "KTM123"
-    dir = args[0]
-    name = args[1]
+    arg = args[0]
     #meshOnly = args[2]
     path = None
 
     frame_offset = 0
 
     def execute(self):
-        if os.access(self.dir, os.W_OK) is False:
-            print("permission denied : " + self.dir)
+        pos0 = self.arg.index("?")
+        dirr = self.arg[:pos0]
+        print (dirr)
+        if os.access(dirr, os.W_OK) is False:
+            print("!permission denied : " + dirr)
             return False
-        self.path = os.path.join(self.dir, self.name)
-        print ("writing to: " + self.path)
+        name = self.arg[(pos0+1):]
+        print(name)
+        self.path = os.path.join(dirr, name)
+        print ("!writing to: " + self.path)
 
         with open(self.path, "wb") as file:
             self.write(file, self.meta + "\r\n")

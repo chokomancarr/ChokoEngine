@@ -383,7 +383,7 @@ byte Engine::EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4
 	byte b = EButton(a, x, y, w, h, normalVec4, LerpVec4(normalVec4, white(), 0.5f), LerpVec4(normalVec4, black(), 0.5f));
 	ALIGNMENT al = labelFont->alignment;
 	labelFont->alignment = ALIGN_MIDCENTER;
-	Label(x + 0.5f*w, y + 0.5f*h, labelSize, label, labelFont);
+	Label(x + 0.5f*w, y + 0.5f*h, labelSize, label, labelFont, labelVec4);
 	labelFont->alignment = al;
 	return b;
 }
@@ -702,6 +702,7 @@ void Debug::Error(string c, string s) {
 //-----------------io class-----------------------
 vector<string> IO::GetFiles(const string& folder)
 {
+	if (folder == "") return vector<string>();
 	vector<string> names;
 	string search_path = folder + "/*";
 	WIN32_FIND_DATA fd;
