@@ -39,10 +39,19 @@ Vec4 accent() {
 
 int GetShortcutInt(byte c, int m) { return c << 4 | m; }
 
-bool IsSupportedFormat(string ext) {
-	string formats[]{".blend", ".bmp"};
-	string* found = find(begin(formats), end(formats), ext);
-	return (found != end(formats));
+int GetFormatEnum(string ext) {
+	if (ext == ".blend")
+		return ASSETTYPE_MESH;
+	else if (ext == ".mat")
+		return ASSETTYPE_MATERIAL;
+	else if (ext == ".hdr")
+		return ASSETTYPE_HDRI;
+	else if (ext == ".bmp")
+		return ASSETTYPE_TEXTURE;
+	else if (ext == ".shade")
+		return ASSETTYPE_SHADER;
+	
+	else return ASSETTYPE_UNDEF;
 }
 
 bool DrawHeaders(Editor* e, EditorBlock* b, Vec4* v, string titleS, string titleB) {
@@ -124,7 +133,7 @@ void EBH_DrawItem(SceneObject* sc, Editor* e, Vec4* v, int& i, int indent) {
 	if (sc->childCount > 0 && sc->_expanded) {
 		//int oi = i - 1;
 		//int oii = i - 1;
-		for each (SceneObject* scc in sc->children)
+		for (SceneObject* scc : sc->children)
 		{
 			//oii = i - 1;
 			EBH_DrawItem(scc, e, v, i, indent + 1);
@@ -146,7 +155,7 @@ void EB_Hierarchy::Draw() {
 	}
 	Engine::Label(v.r + 19, v.g + EB_HEADER_SIZE + 4, 12, "Global", editor->font, white());
 	int i = 1;
-	for each (SceneObject* sc in editor->activeScene.objects)
+	for (SceneObject* sc : editor->activeScene.objects)
 	{
 		EBH_DrawItem(sc, editor, &v, i, 0);
 	}
@@ -360,17 +369,15 @@ void EB_Viewer::Draw() {
 	glClearDepth(1);
 
 	//draw scene
-	for each (SceneObject* sc in editor->activeScene.objects)
+	for (SceneObject* sc : editor->activeScene.objects)
 	{
 		glPushMatrix();
 		Vec3 v = sc->transform.position;
 		//rotation matrix here
 		glTranslatef(v.x, v.y, v.z);
-		for each (Component* com in sc->_components)
+		for (Component* com : sc->_components)
 		{
-			if (com->drawable) {
-				com->DrawEditor();
-			}
+			com->DrawEditor();
 		}
 		glPopMatrix();
 	}
@@ -629,13 +636,65 @@ void EB_Inspector::SelectAsset(EBI_Asset* e, string s) {
 void EB_Inspector::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	CalcV(v);
-	DrawHeaders(editor, this, &v, isAsset ? (loaded ? label : "No object selected") : ((editor->selected != nullptr ) ? editor->selected->name : editor->selectGlobal? "Scene settings" : "No object selected"), "Inspector");
+	string nm;
+	if (lock)
+		nm = (lockGlobal == 1) ? lockedObj->name : (lockGlobal == 2) ? "Scene settings" : "No object selected";
+	else
+		nm = (editor->selected != nullptr) ? editor->selected->name : editor->selectGlobal ? "Scene settings" : "No object selected";
+	DrawHeaders(editor, this, &v, isAsset ? (loaded ? label : "No object selected") : nm, "Inspector");
+	lock = Engine::DrawToggle(v.r + v.b - EB_HEADER_PADDING - 30, v.g + 4, 25, editor->keylock, lock, lock?Vec4(1, 1, 0, 1) : white(0.5f), ORIENT_HORIZONTAL);
 
-	if (isAsset) {
+	if (!lock) {
+		lockGlobal = 0;
+		lockedObj = nullptr;
+	}
+	if (lock) {
+		if (lockGlobal == 0) {
+			if (editor->selectGlobal)
+				lockGlobal = 2;
+			else if (editor->selected != nullptr) {
+				lockGlobal = 1;
+				lockedObj = editor->selected;
+			}
+			else Engine::Label(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 12, "Select object to inspect.", editor->font, white());
+		}
+		if (lockGlobal == 2) { //no else to prevent 1 frame blank
+			Engine::DrawQuad(v.r + 20, v.g + 2 + EB_HEADER_SIZE, v.b - 21, 18, grey1());
+			Engine::Label(v.r + 22, v.g + 6 + EB_HEADER_SIZE, 12, "Scene Settings", editor->font, white());
+
+			Engine::Label(v.r, v.g + 23 + EB_HEADER_SIZE, 12, "Sky", editor->font, white());
+		}
+		else if(lockGlobal == 1) {
+			Engine::DrawTexture(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 18, 18, editor->object);
+			Engine::EButton((editor->editorLayer == 0), v.r + 20, v.g + 2 + EB_HEADER_SIZE, v.b - 21, 18, grey2());
+			Engine::Label(v.r + 22, v.g + 6 + EB_HEADER_SIZE, 12, lockedObj->name, editor->font, white());
+
+			//TRS
+			DrawVector3(editor, v, 21, "Position", lockedObj->transform.position);
+			DrawVector3(editor, v, 38, "Rotation", lockedObj->transform.eulerRotation);
+			DrawVector3(editor, v, 55, "Scale", lockedObj->transform.scale);
+
+			//draw components
+			uint off = 74 + EB_HEADER_SIZE;
+			for (Component* c : lockedObj->_components)
+			{
+				c->DrawInspector(editor, c, v, off);
+			}
+		}
+	}
+	else if (isAsset) {
 		if (loaded)
 			obj->Draw(editor, this, &v);
 		else
 			Engine::Label(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 12, "Select object to inspect.", editor->font, white());
+	}
+	else if (editor->selectGlobal) {
+		//Engine::DrawTexture(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 18, 18, editor->object);
+		Engine::DrawQuad(v.r + 20, v.g + 2 + EB_HEADER_SIZE, v.b - 21, 18, grey1());
+		Engine::Label(v.r + 22, v.g + 6 + EB_HEADER_SIZE, 12, "Scene Settings", editor->font, white());
+
+		Engine::Label(v.r, v.g + 23 + EB_HEADER_SIZE, 12, "Sky", editor->font, white());
+
 	}
 	else if (editor->selected != nullptr){
 		Engine::DrawTexture(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 18, 18, editor->object);
@@ -649,18 +708,10 @@ void EB_Inspector::Draw() {
 		
 		//draw components
 		uint off = 74 + EB_HEADER_SIZE;
-		for each (Component* c in editor->selected->_components)
+		for (Component* c : editor->selected->_components)
 		{
 			c->DrawInspector(editor, c, v, off);
 		}
-	}
-	else if (editor->selectGlobal) {
-		//Engine::DrawTexture(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 18, 18, editor->object);
-		Engine::DrawQuad(v.r + 20, v.g + 2 + EB_HEADER_SIZE, v.b - 21, 18, grey1());
-		Engine::Label(v.r + 22, v.g + 6 + EB_HEADER_SIZE, 12, "Scene Settings", editor->font, white());
-
-		Engine::Label(v.r, v.g + 23 + EB_HEADER_SIZE, 12, "Sky", editor->font, white());
-
 	}
 	else
 		Engine::Label(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 12, "Select object to inspect.", editor->font, white());
@@ -685,6 +736,22 @@ void EB_Inspector::DrawAsset(Editor* e, Vec4 v, float dh, string label, ASSETTYP
 		e->browseSize = e->allAssets[type].size();
 	}
 	Engine::Label(v.r + v.b*0.19f + 2, v.g + dh + 2 + EB_HEADER_SIZE, 12, label, e->font, white());
+}
+
+void Editor::DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASSETTYPE type, float labelSize, Font* labelFont, int* tar) {
+	if (editorLayer == 0) {
+		if (Engine::Button(x, y, w, h, col, LerpVec4(col, white(), 0.5f), LerpVec4(col, black(), 0.5f)) == MOUSE_RELEASE) {
+			editorLayer = 3;
+			browseType = type;
+			browseTarget = tar;
+		}
+	}
+	else
+		Engine::DrawQuad(x, y, w, h, col);
+	ALIGNMENT al = labelFont->alignment;
+	labelFont->alignment = ALIGN_MIDLEFT;
+	Engine::Label((int)(x + 2), (int)(y + 0.5f*h), labelSize, (*tar == -1) ? "undefined" : normalAssets[type][*tar], labelFont, (*tar == -1) ? Vec4(0.7f, 0.4f, 0.4f, 1) : Vec4(0.4f, 0.4f, 0.7f, 1));
+	labelFont->alignment = al;
 }
 
 void Editor::LoadDefaultAssets() {
@@ -712,8 +779,9 @@ void Editor::LoadDefaultAssets() {
 	orientTexs.push_back(GetRes("orien_local"));
 	orientTexs.push_back(GetRes("orien_view"));
 
-	checkbox0 = GetRes("checkbox_false");
-	checkbox1 = GetRes("checkbox_true");
+	checkbox = GetRes("checkbox");
+
+	keylock = GetRes("keylock");
 	
 	assetIconsExt.push_back("h");
 	assetIconsExt.push_back("blend");
@@ -762,6 +830,7 @@ void Editor::LoadDefaultAssets() {
 	globalShorts.emplace(GetShortcutInt('b', GLUT_ACTIVE_CTRL), &Compile);
 	globalShorts.emplace(GetShortcutInt('u', GLUT_ACTIVE_CTRL), &ShowPrefs);
 	globalShorts.emplace(GetShortcutInt('s', GLUT_ACTIVE_CTRL), &SaveScene);
+	globalShorts.emplace(GetShortcutInt('x', GLUT_ACTIVE_CTRL), &DeleteActive);
 
 	assetTypes.emplace("scene", ASSETTYPE_SCENE);
 	assetTypes.emplace("blend", ASSETTYPE_MESH);
@@ -791,7 +860,7 @@ void AddH(Editor* e, string dir, vector<string>* h) {
 	}
 	vector<string> dirs;
 	IO::GetFolders(dir, &dirs);
-	for each (string ss in dirs) {
+	for (string ss : dirs) {
 		if (ss != "." && ss != "..")
 			AddH(e, dir + "\\" + ss, h);
 	}
@@ -804,12 +873,12 @@ void Editor::RefreshAssets() {
 }
 
 void Editor::GenerateScriptResolver() {
-	string h = "#include <unordered_map>\n#include \"Engine.h\"\ntypedef SceneScript(*sceneScriptInstantiator)();\nclass SceneScriptResolver {\npublic:\n\tSceneScriptResolver();\n\tstd::vector<sceneScriptInstantiator> map;\n};";
+	string h = "#include <unordered_map>\n#include \"Engine.h\"\ntypedef SceneScript*(*sceneScriptInstantiator)();\nclass SceneScriptResolver {\npublic:\n\tSceneScriptResolver();\n\tstd::vector<sceneScriptInstantiator> map;\n};";
 	string s = "#include \"SceneScriptResolver.h\"\n#include \"Engine.h\"\n\n";
 	for (int a = 0, b = headerAssets.size(); a < b; a++) {
 		s += "#include \"" + headerAssets[a] + "\"\n";
 		string ss = headerAssets[a].substr(0, headerAssets[a].size()-2);
-		s += ss + " _Inst" + to_string(a) + "() { return new " + ss + "(); }\n\n";
+		s += ss + "* _Inst" + to_string(a) + "() { return new " + ss + "(); }\n\n";
 	}
 	s += "\n\nusing namespace std;\r\nSceneScriptResolver::SceneScriptResolver() {\n";
 	for (int a = 0, b = headerAssets.size(); a < b; a++) {
@@ -846,7 +915,7 @@ void Editor::UpdateLerpers() {
 void Editor::DrawHandles() {
 	bool moused = false;
 	int r = 0;
-	for each (EditorBlock* b in blocks)
+	for (EditorBlock* b : blocks)
 	{
 		Vec4 v = Vec4(Display::width*xPoss[b->x1], Display::height*yPoss[b->y1], Display::width*xPoss[b->x2], Display::height*yPoss[b->y2]);
 
@@ -975,6 +1044,22 @@ void Editor::DrawHandles() {
 			if (Input::mouse0State == MOUSE_UP)
 				editorLayer = 0;
 		}
+		else if (editorLayer == 3) {
+			Engine::DrawQuad(0, 0, Display::width, Display::height, black(0.8f));
+			Engine::Label(Display::width*0.2f + 6, Display::height*0.2f + 2, 22, "Select Asset", font, white());
+			if (Engine::Button(Display::width*0.2f + 6, Display::height*0.2f + 26, Display::width*0.3f - 7, 14, grey2(), "undefined", 12, font, white()) == MOUSE_RELEASE) {
+				*browseTarget = -1;
+				editorLayer = 0;
+				return;
+			}
+			for (int r = 0, rr = normalAssets[browseType].size(); r < rr; r++) {
+				if (Engine::Button(Display::width*0.2f + 6 + (Display::width*0.3f - 5)*((r+1)&1), Display::height*0.2f + 41 + 15 * (((r+1)>>1)-1), Display::width*0.3f - 7, 14, grey2(), normalAssets[browseType][r], 12, font, white()) == MOUSE_RELEASE) {
+					*browseTarget = r;
+					editorLayer = 0;
+					return;
+				}
+			}
+		}
 		else if (editorLayer == 4) {
 			Engine::DrawQuad(0, 0, Display::width, Display::height, black(0.8f));
 			Engine::DrawProgressBar(50.0f, Display::height - 30.0f, Display::width - 100.0f, 20.0f, buildProgressValue, white(1, 0.2f), background, buildProgressVec4, 1, 2);
@@ -990,16 +1075,16 @@ void Editor::DrawHandles() {
 			int offy = 18;
 
 			Engine::Label(Display::width*0.1f + 10, Display::height*0.1f + offy, 21, "Viewer settings", font, white());
-			_showGrid = Engine::DrawToggle(Display::width*0.1f + 12, Display::height*0.1f + offy + 26, 14, _showGrid ? checkbox1 : checkbox0, _showGrid);
+			_showGrid = Engine::DrawToggle(Display::width*0.1f + 12, Display::height*0.1f + offy + 26, 14, checkbox, _showGrid, white(), ORIENT_HORIZONTAL);
 			Engine::Label(Display::width*0.1f + 30, Display::height*0.1f + offy + 28, 12, "Show grid", font, white());
-			_mouseJump = Engine::DrawToggle(Display::width*0.1f + 12, Display::height*0.1f + offy + 46, 14, _mouseJump ? checkbox1 : checkbox0, _mouseJump);
+			_mouseJump = Engine::DrawToggle(Display::width*0.1f + 12, Display::height*0.1f + offy + 46, 14, checkbox, _mouseJump, white(), ORIENT_HORIZONTAL);
 			Engine::Label(Display::width*0.1f + 30, Display::height*0.1f + offy + 48, 12, "Mouse stay inside window", font, white());
 
 			offy = 100;
 			Engine::Label(Display::width*0.1f + 10, Display::height*0.1f + offy, 21, "Build settings", font, white());
 			Engine::Label(Display::width*0.1f + 10, Display::height*0.1f + offy + 28, 12, "Data bundle size (x100Mb)", font, white());
 			Engine::Button(Display::width*0.1f + 200, Display::height*0.1f + offy + 25, 70, 16, grey2(), to_string(_assetDataSize), 12, font, white());
-			_cleanOnBuild = Engine::DrawToggle(Display::width*0.1f + 12, Display::height*0.1f + offy + 46, 14, _cleanOnBuild ? checkbox1 : checkbox0, _cleanOnBuild);
+			_cleanOnBuild = Engine::DrawToggle(Display::width*0.1f + 12, Display::height*0.1f + offy + 46, 14, checkbox, _cleanOnBuild, white(), ORIENT_HORIZONTAL);
 			Engine::Label(Display::width*0.1f + 30, Display::height*0.1f + offy + 48, 12, "Remove visual studio files on build", font, white());
 		}
 	}
@@ -1066,8 +1151,11 @@ void Editor::_Error(string a, string b) {
 void DoScanAssetsGet(Editor* e, vector<string>& list, string p, bool rec) {
 	vector<string> files = IO::GetFiles(p);
 	for (string w : files) {
-		if (IsSupportedFormat(w.substr(w.find_last_of("."), string::npos))) {
+		ASSETTYPE type = GetFormatEnum(w.substr(w.find_last_of("."), string::npos));
+		if (type != ASSETTYPE_UNDEF) {
 			string ss = w + ".meta";//ss.substr(0, ss.size() - 5);
+			string ww(w.substr(e->projectFolder.size() + 7, string::npos));
+			e->normalAssets[type].push_back(ww.substr(0, ww.find_last_of('\\')) + ww.substr(ww.find_last_of('\\') + 1, string::npos));
 			if (IO::HasFile(ss.c_str())) {
 				FILETIME metaTime, realTime;
 				HANDLE metaF = CreateFile(ss.c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -1100,6 +1188,10 @@ void DoScanAssetsGet(Editor* e, vector<string>& list, string p, bool rec) {
 }
 
 void Editor::ReloadAssets(string path, bool recursive) {
+	normalAssets[ASSETTYPE_TEXTURE] = vector<string>();
+	normalAssets[ASSETTYPE_HDRI] = vector<string>();
+	normalAssets[ASSETTYPE_MATERIAL] = vector<string>();
+	normalAssets[ASSETTYPE_MESH] = vector<string>();
 	vector<string> files;
 	DoScanAssetsGet(this, files, path, recursive);
 	for (string f : files) {
@@ -1135,18 +1227,18 @@ bool Editor::ParseAsset(string path) {
 	}
 	stream.close();
 	ofstream strm;
-	strm.open((path + ".meta"), ofstream::trunc | ofstream::out);
+	strm.open((path + ".meta"), ios::trunc | ios::out | ios::binary);
 	strm.write(parsed.c_str(), parsed.size());
 	strm.close();
 	SetFileAttributes((path + ".meta").c_str(), FILE_ATTRIBUTE_HIDDEN);
 	return true;
 }
 
-void Editor::AddBuildLog(Editor* e, string s) {
+void Editor::AddBuildLog(Editor* e, string s, bool forceE) {
 	buildLog.push_back(s);
 	bool a = s.find("error C") != string::npos;
 	buildLogErrors.push_back(a);
-	if (a && (buildErrorPath == "")) {
+	if (forceE || (!forceE && a && (buildErrorPath == ""))) {
 		while (s[0] == ' ' || s[0] == '\t')
 			s = s.substr(1, string::npos);
 		int i = s.find_first_of('(');
@@ -1154,7 +1246,6 @@ void Editor::AddBuildLog(Editor* e, string s) {
 		string ii = s.substr(i + 1, s.find_first_of(')') - i - 1);
 		buildErrorLine = stoi(ii);
 	}
-
 }
 
 bool Editor::GetCache(string& path, I_EBI_ValueCollection& vals) {
@@ -1175,15 +1266,70 @@ content(1+).data ->assets (index, data) (binary)
 bool MergeAssets(Editor* e) {
 	string ss = e->projectFolder + "Release\\data0";
 	ofstream file;
-	e->AddBuildLog(e, "Output to " + ss);
+	char null = 0, etx = 3;
+	e->AddBuildLog(e, "Writing to " + ss);
 	cout << ss << endl;
 	file.open(ss.c_str(), ios::out | ios::binary | ios::trunc);
 	if (!file.is_open())
 		return false;
 	//headers
-
+	file << "D0" << (byte)e->includedScenes.size();
+	for (string ss : e->includedScenes) {
+		ifstream f2(ss, ios::in | ios::binary);
+		if (!f2.is_open()) {
+			e->AddBuildLog(e, "Cannot open " + ss + "!", true);
+			return false;
+		}
+		e->AddBuildLog(e, "Including " + ss);
+		long pos = file.tellp();
+		file << "0000" << null << f2.rdbuf() << null;
+		long pos2 = file.tellp();
+		int size = pos2 - pos - 6;
+		file.seekp(pos);
+		_StreamWrite(&size, &file, 4);
+		file.seekp(pos2);
+		f2.close();
+	}
+	//file.close();
+	byte incre = 1;
+	string nm = e->projectFolder + "Release\\data" + to_string(incre);
+	e->AddBuildLog(e, "Writing to " + nm);
+	ofstream file2(nm.c_str(), ios::out | ios::binary | ios::trunc); 
+	if (!file2.is_open()) {
+		e->AddBuildLog(e, "Cannot open " + nm + "!", true);
+		return false;
+	}
+	for (auto it = e->normalAssets.begin(); it != e->normalAssets.end(); ++it) {
+		if (it->second.size() > 0) {
+			short i = 0;
+			for (string s : it->second) {
+				ifstream f2(e->projectFolder + "Assets\\" + s, ios::in | ios::binary);
+				_StreamWrite((void*)&it->first, &file2, 1);
+				_StreamWrite(&i, &file2, 2);
+				long pos = file2.tellp();
+				file2 << "0000XX" << f2.rdbuf() << null;
+				long pos2 = file2.tellp();
+				file2.seekp(pos);
+				int size = pos2 - pos - 6;
+				_StreamWrite(&size, &file2, 4);
+				file2.seekp(pos2);
+				file2 << null;
+				if (pos2 > e->_assetDataSize * 100000000) {
+					file2 << etx;
+					file2.close();
+					nm = e->projectFolder + "Release\\data" + to_string(++incre);
+					e->AddBuildLog(e, "Writing to " + nm);
+					file2.open(nm.c_str(), ios::out | ios::binary | ios::trunc);
+					if (!file2.is_open()) {
+						e->AddBuildLog(e, "Cannot open " + nm + "!", true);
+						return false;
+					}
+				}
+				i++;
+			}
+		}
+	}
 	file.close();
-	float totalSize = 0;
 	return true;
 }
 
@@ -1294,6 +1440,7 @@ void Editor::SaveScene(Editor* e) {
 	e->activeScene.Save(e);
 }
 
+
 void Editor::DoCompile() {
 	buildEnd = false;
 	buildErrorPath = "";
@@ -1303,12 +1450,12 @@ void Editor::DoCompile() {
 	buildLogErrors.clear();
 	buildLabel = "Build: copying files...";
 	buildProgressValue = 0;
-	//copy files
+	/*copy files
 	AddBuildLog(this, "Copying: dummy source directory -> dummy target directory");
 	AddBuildLog(this, "Copying: dummy source directory2 -> dummy target directory2");
 	AddBuildLog(this, "Copying: dummy source directory3 -> dummy target directory3");
 	this_thread::sleep_for(chrono::seconds(2));
-	//merge assets
+	*///merge assets
 	buildLabel = "Build: merging assets...";
 	AddBuildLog(this, "Creating data files");
 	buildProgressValue = 10;
@@ -1330,13 +1477,13 @@ void Editor::DoCompile() {
 			AddBuildLog(this, "Cleaning up...");
 			buildLabel = "Build: cleaning up...";
 			//tr2::sys::remove_all("F:\\TestProject\\Release\\TestProject.tlog");
-			for each (string s1 in IO::GetFiles("F:\\TestProject\\Release\\TestProject.tlog"))
+			for (string s1 : IO::GetFiles("F:\\TestProject\\Release\\TestProject.tlog"))
 			{
 				AddBuildLog(this, "deleting " + s1);
 				remove(s1.c_str());
 			}
 			RemoveDirectory("F:\\TestProject\\Release\\TestProject.tlog\\");
-			for each (string s2 in IO::GetFiles("F:\\TestProject\\Release"))
+			for (string s2 : IO::GetFiles("F:\\TestProject\\Release"))
 			{
 				string ss = s2.substr(s2.find_last_of('\\') + 1, string::npos);
 				string se = s2.substr(s2.size()-4, string::npos);

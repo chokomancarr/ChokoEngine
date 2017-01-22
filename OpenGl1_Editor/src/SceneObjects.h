@@ -13,13 +13,18 @@ public:
 };
 
 typedef unsigned char COMPONENT_TYPE;
+typedef unsigned char DRAWORDER;
+#define DRAWORDER_NOT 0x00
+#define DRAWORDER_SOLID 0x01
+#define DRAWORDER_TRANSPARENT 0x02
+#define DRAWORDER_OVERLAY 0x04
 class Component : public Object {
 public:
-	Component(COMPONENT_TYPE t, bool draw) : componentType(t), active(true), drawable(draw), _expanded(true) {}
+	Component(COMPONENT_TYPE t, DRAWORDER drawOrder = 0x00) : componentType(t), active(true), drawOrder(drawOrder), _expanded(true) {}
 	virtual  ~Component() {}
 
 	const COMPONENT_TYPE componentType = 0;
-	const bool drawable;
+	const DRAWORDER drawOrder;
 	bool active;
 	SceneObject* object;
 
@@ -29,9 +34,14 @@ public:
 	bool _expanded;
 
 	virtual void LoadDefaultValues() {} //also loads assets
-	virtual void DrawEditor() = 0; //trs matrix not applied, apply before calling
+	virtual void DrawEditor() {} //trs matrix not applied, apply before calling
 	virtual void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) = 0;
+	virtual void DrawGameCamera() {}
 	virtual void Serialize(Editor* e, ofstream* stream) {}
+
+	friend int main(int argc, char **argv);
+	friend void Serialize(Editor* e, SceneObject* o, ofstream* stream);
+	friend class Scene;
 };
 
 class Transform : public Object {
@@ -77,7 +87,7 @@ public:
 	Texture(const string& path);
 	Texture(const string& path, bool mipmap);
 	Texture(const string& path, bool mipmap, bool nearest);
-	Texture(HBITMAP bmp, int width, int height);
+	Texture(ifstream& stream, long pos);
 	~Texture(){ glDeleteTextures(1, &pointer); }
 	bool loaded;
 	unsigned int width, height;
@@ -110,7 +120,6 @@ class Camera : public Component {
 public:
 	Camera();
 
-
 	bool ortographic;
 	float fov, orthoSize;
 	Rect screenPos;
@@ -119,9 +128,15 @@ public:
 	static int camVertsIds[19];
 	
 	void UpdateCamVerts();
-	void DrawEditor();
+	void DrawEditor() override;
 	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos);
 	void Serialize(Editor* e, ofstream* stream) override;
+
+	friend int main(int argc, char **argv);
+	friend void Serialize(Editor* e, SceneObject* o, ofstream* stream);
+	friend void Deserialize(ifstream& stream, SceneObject* obj);
+protected:
+	Camera(ifstream& stream, long pos);
 };
 
 #define COMP_MFT 0x02
@@ -132,7 +147,6 @@ public:
 
 	//void LoadDefaultValues() override;
 
-	void DrawEditor() {}
 	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos);
 	void Serialize(Editor* e, ofstream* stream) override;
 };
@@ -142,8 +156,25 @@ class MeshRenderer : public Component {
 public:
 	MeshRenderer();
 
-	void DrawEditor() {}
+	void DrawEditor() override {}
 	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos);
+};
+
+#define COMP_TRD 0x10
+class TextureRenderer : public Component {
+public:
+	TextureRenderer(): _texture(-1), Component(COMP_TRD, DRAWORDER_OVERLAY) {}
+
+
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos);
+	void Serialize(Editor* e, ofstream* stream) override;
+
+	friend int main(int argc, char **argv);
+	friend void Serialize(Editor* e, SceneObject* o, ofstream* stream);
+	friend void Deserialize(ifstream& stream, SceneObject* obj);
+protected:
+	int _texture;
+	TextureRenderer(ifstream& stream, long pos);
 };
 
 #define COMP_SCR 0xff
@@ -153,14 +184,13 @@ public:
 	SceneScript(Editor* e, string name);
 
 	string name;
-
+	
 
 	virtual void Start() {}
 	virtual void Update() {}
 	virtual void LateUpdate() {}
 	virtual void Paint() {}
 
-	void DrawEditor() {} //nothing
 	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos);
 	void Serialize(Editor* e, ofstream* stream) override;
 

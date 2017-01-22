@@ -55,7 +55,7 @@ public:
 
 struct Rect {
 public:
-	Rect();
+	Rect(): x(0), y(0), w(1), h(1) {}
 	Rect(float x, float y, float w, float h) : x(x), y(y), w(w), h(h) {}
 	float x, y, w, h;
 
@@ -80,6 +80,11 @@ typedef unsigned char ALIGNMENT;
 #define ALIGN_TOPLEFT 0x20
 #define ALIGN_TOPCENTER 0x21
 #define ALIGN_TOPRIGHT 0x22
+
+typedef unsigned char ORIENTATION;
+#define ORIENT_NONE 0x00
+#define ORIENT_HORIZONTAL 0x01
+#define ORIENT_VERTICAL 0x02
 
 long long milliseconds();
 
@@ -113,9 +118,11 @@ typedef unsigned char ASSETTYPE;
 #define ASSETTYPE_UNDEF 0x00
 
 #define ASSETTYPE_SCENE 0xf0
-#define ASSETTYPE_MESH 0x20
 #define ASSETTYPE_TEXTURE 0x01
 #define ASSETTYPE_HDRI 0x02
+#define ASSETTYPE_SHADER 0x05
+#define ASSETTYPE_MATERIAL 0x10
+#define ASSETTYPE_MESH 0x20
 #define ASSETTYPE_SCRIPT_H 0xfe
 #define ASSETTYPE_SCRIPT_CPP 0xff
 class AssetObject;
@@ -195,7 +202,6 @@ public:
 	static glm::mat3 uiMatrix;
 };
 
-#define ASSETTYPE_SHADER 0x05
 #define SHADER_INT 0x00
 #define SHADER_FLOAT 0x01
 #define SHADER_SAMPLER 0x10
@@ -221,7 +227,6 @@ public:
 	static bool LoadShader(GLenum shaderType, string source, GLuint& shader);
 };
 
-#define ASSETTYPE_MATERIAL 0x10
 class Material {
 public:
 	ShaderBase* shader;
@@ -246,7 +251,6 @@ public:
 
 class Engine {
 public:
-	static void Init(string path);
 
 	static void BeginStencil(float x, float y, float w, float h);
 	static void EndStencil();
@@ -263,7 +267,7 @@ public:
 	static byte Button(float x, float y, float w, float h, Vec4 normalVec4);
 	static byte Button(float x, float y, float w, float h, Vec4 normalVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4);
 	static byte Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4);
-	static byte Button(float x, float y, float w, float h, Texture* texture, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4);
+	static byte Button(float x, float y, float w, float h, Texture* texture, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, float uvx = 0, float uvy = 0, float uvw = 1, float uvh = 1);
 	static byte Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4);
 	static byte EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4);
 	static byte EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4);
@@ -272,8 +276,7 @@ public:
 	static byte EButton(bool a, float x, float y, float w, float h, Texture* texture, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4);
 	static byte EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4);
 	static bool DrawToggle(float x, float y, float s, Vec4 col, bool t);
-	static bool DrawToggle(float x, float y, float s, Texture* texture, bool t);
-	static bool DrawToggle(float x, float y, float s, Texture* texture, Vec4 col, bool t);
+	static bool DrawToggle(float x, float y, float s, Texture* texture, bool t, Vec4 col=white(), ORIENTATION o = 0x00);
 	//scaleType: 0=scale, 1=clip, 2=tile
 	static void DrawProgressBar(float x, float y, float w, float h, float progress, Vec4 background, Texture* foreground, Vec4 tint, int padding, byte scaleType);
 	static void DrawSky(Background* sky, float forX, float forY, float angleW, float rot);
@@ -289,6 +292,10 @@ public:
 
 	static Texture* fallbackTex;
 
+	static vector<ifstream> dataFiles;
+	static unordered_map<ASSETTYPE, vector<pair<byte, long>>> dataPoss;
+	static unordered_map<ASSETTYPE, vector<void*>> dataPossCache;
+
 //private: //fk users
 	static void DrawQuad(float x, float y, float w, float h, uint texture);
 	static void DrawQuad(float x, float y, float w, float h, uint texture, Vec4 Vec4);
@@ -300,23 +307,27 @@ public:
 	static ulong idCounter;
 	static vector<Camera*> sceneCameras;
 	
-	unordered_map<byte, vector<string>> assetData;
-	unordered_map<string, byte[]> assetDataLoaded;
+	static vector<ifstream*> assetStreams;
+	static unordered_map<byte, vector<string>> assetData;
+	static unordered_map<string, byte[]> assetDataLoaded;
 	//byte GetAsset(string name);
-	
-
+	friend int main(int argc, char **argv);
+protected:
+	static void Init(string path);
+	static bool LoadDatas(string path);
 	void Render();
 };
 
 class Scene {
 public:
-	Scene() : sceneName(""), sky(nullptr) {}
-
+	friend int main(int argc, char **argv);
+	friend class Editor;
 	string sceneName;
-	//global parameters
-	Background* sky;
 	vector<SceneObject*> objects;
-
+	Background* sky;
+protected:
+	Scene() : sceneName(""), sky(nullptr) {}
+	Scene(ifstream& stream, long pos);
 	void Save(Editor* e);
 };
 

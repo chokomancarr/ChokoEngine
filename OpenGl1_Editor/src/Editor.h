@@ -229,8 +229,11 @@ public:
 	bool isAsset;
 	EBI_Asset* obj;
 	string label;
+
 	bool loaded = false, lock = false;
-	
+	SceneObject* lockedObj;
+	byte lockGlobal;
+
 	void SelectAsset(EBI_Asset* e, string s);
 	void Deselect();
 	void Draw();
@@ -281,10 +284,14 @@ public:
 	dataFunc menuFuncSingle;
 	vector<void*> menuFuncVals;
 	//edit = layer2
+	byte editingType; //0none 1int 2float 3string
+	string editingVal;
+
 	//select = layer3
 	ASSETTYPE browseType;
 	float browseOffset;
 	int browseSize;
+	int* browseTarget;
 	//progress = layer4
 	string progressName;
 	float progressValue;
@@ -293,7 +300,7 @@ public:
 	bool WAITINGBUILDSTARTFLAG = false;
 	//building - layer4: custom progress to look cool
 	vector<string> buildLog;
-	void AddBuildLog(Editor* e, string s);
+	void AddBuildLog(Editor* e, string s, bool forceE = false);
 	vector<bool> buildLogErrors;
 	string buildErrorPath;
 	int buildErrorLine;
@@ -337,7 +344,8 @@ public:
 	Texture* expand;
 	Texture* collapse;
 	Texture* object;
-	Texture *checkbox0, *checkbox1;
+	Texture *checkbox;
+	Texture* keylock;
 	vector<Texture*> tooltipTexs;
 	vector<Texture*> shadingTexs;
 	vector<Texture*> orientTexs;
@@ -346,9 +354,10 @@ public:
 	vector<Texture*> assetIcons;
 	//Texture buttonDash;
 	vector<string> headerAssets;
-	unordered_map<int, vector<void*>> normalAssets;
+	unordered_map<ASSETTYPE, vector<string>> normalAssets;
 
-	void CreateMetaAll();
+	void DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASSETTYPE type, float labelSize, Font* labelFont, int* tar);
+
 	void LoadDefaultAssets();
 	void RefreshAssets();
 	void GenerateScriptResolver();
@@ -378,6 +387,8 @@ public:
 	static void Compile(Editor* e);
 	static void ShowPrefs(Editor* e);
 	static void SaveScene(Editor* e);
+	static void DeleteActive(Editor* e);
+	static void DoDeleteActive(EditorBlock* b);
 
 	void DoCompile();
 };

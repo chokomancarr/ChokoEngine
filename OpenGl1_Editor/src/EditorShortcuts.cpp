@@ -53,22 +53,22 @@ void EB_Viewer::_Z(EditorBlock* b) {
 }
 
 void EB_Viewer::_OpenMenuAdd(EditorBlock* b) {
-	b->editor->RegisterMenu(b, "Add Scene Object", vector<string>({ "Empty", "Camera", "Audio Source" }), vector<shortcutFunc>({ _AddObjectE, _AddObjectCam, _AddObjectAud }), 3);
+	b->editor->RegisterMenu(b, "Add Scene Object", { "Empty", "Camera", "Audio Source" }, { _AddObjectE, _AddObjectCam, _AddObjectAud }, 3);
 }
 void EB_Viewer::_OpenMenuCom(EditorBlock* b) {
 	if (b->editor->selected != nullptr)
-		b->editor->RegisterMenu(b, "Add Component", vector<string>({ "Script", "Audio", "Mesh", "Rendering" }), vector<shortcutFunc>({ _AddComScr, _AddComAud, _AddComMesh, _AddComRend }), 3);
+		b->editor->RegisterMenu(b, "Add Component", { "Script", "Audio", "Mesh", "Rendering" }, { _AddComScr, _AddComAud, _AddComMesh, _AddComRend }, 3);
 }
 void EB_Viewer::_OpenMenuW(EditorBlock* b) {
-	b->editor->RegisterMenu(b, "Special Commands", vector<string>({ "(De)Select All (A)", "Dummy", "Dummy" }), vector<shortcutFunc>({ _SelectAll, nullptr, nullptr }), 2);
+	b->editor->RegisterMenu(b, "Special Commands", { "(De)Select All (A)", "Dummy", "Dummy" }, { _SelectAll, nullptr, nullptr }, 2);
 }
 
 void EB_Viewer::_OpenMenuChgMani(EditorBlock* b) {
-	b->editor->RegisterMenu(b, "Change Manipulator Type", vector<string>({ "Transform", "Rotate", "Scale" }), vector<shortcutFunc>({ _TooltipT, _TooltipR, _TooltipS }), 0);
+	b->editor->RegisterMenu(b, "Change Manipulator Type", { "Transform", "Rotate", "Scale" }, { _TooltipT, _TooltipR, _TooltipS }, 0);
 }
 
 void EB_Viewer::_OpenMenuChgOrient(EditorBlock* b) {
-	b->editor->RegisterMenu(b, "Change Manipulator Orientation", vector<string>({ "Global", "Local", "View" }), vector<shortcutFunc>({ _OrientG, _OrientL, _OrientV }), 0);
+	b->editor->RegisterMenu(b, "Change Manipulator Orientation", { "Global", "Local", "View" }, { _OrientG, _OrientL, _OrientV }, 0);
 }
 
 void DoPreAdd(EditorBlock* b) {
@@ -200,4 +200,13 @@ void EB_Viewer::_ViewBottom(EditorBlock* b) {
 	((EB_Viewer*)b)->rw = -90;
 	((EB_Viewer*)b)->rz = 0;
 	((EB_Viewer*)b)->MakeMatrix();
+}
+
+
+void Editor::DeleteActive(Editor* e) {
+	if (e->selected)
+		e->RegisterMenu(e->blocks[0], "Confirm?", { "Delete" }, { &DoDeleteActive }, 0);
+}
+void Editor::DoDeleteActive(EditorBlock* b) {
+
 }

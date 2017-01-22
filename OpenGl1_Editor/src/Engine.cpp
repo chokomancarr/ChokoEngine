@@ -159,6 +159,25 @@ void Engine::Init(string path) {
 	}
 }
 
+vector<ifstream*> Engine::assetStreams = vector<ifstream*>();
+unordered_map<byte, vector<string>> Engine::assetData = unordered_map<byte, vector<string>>();
+unordered_map<string, byte[]> Engine::assetDataLoaded = unordered_map<string, byte[]>();
+
+bool Engine::LoadDatas(string path) {
+	ifstream* d0 = new ifstream(path + "\\data0");
+	assetStreams.push_back(d0);
+	if (!d0->is_open())
+		return false;
+	char header[2];
+	char levelCount;
+	(*d0) >> header[0] >> header[1] >> levelCount;
+	if (header[0] != 'D' || header[1] != '0' || levelCount <= 0)
+		return false;
+
+
+	return true;
+}
+
 float Dw(float f) {
 	return (f / Display::width);
 }
@@ -307,16 +326,16 @@ byte Engine::Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 hi
 	}
 	return inside ? (MOUSE_HOVER_FLAG | Input::mouse0State) : 0;
 }
-byte Engine::Button(float x, float y, float w, float h, Texture* texture, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4) {
+byte Engine::Button(float x, float y, float w, float h, Texture* texture, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, float uvx, float uvy, float uvw, float uvh) {
 	bool inside = Rect(x, y, w, h).Inside(Input::mousePos);
 	switch (Input::mouse0State) {
 	case 0:
 	case MOUSE_UP:
-		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, inside ? highlightVec4 : normalVec4);
+		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(uvx, 1 - uvy), Vec2(uvx + uvw, 1 - uvy), Vec2(uvx, 1 - uvy - uvh), Vec2(uvx + uvw, 1 - uvy - uvh), false, inside ? highlightVec4 : normalVec4);
 		break;
 	case MOUSE_DOWN:
 	case MOUSE_HOLD:
-		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, inside ? pressVec4 : normalVec4);
+		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(uvx, 1 - uvy), Vec2(uvx + uvw, 1 - uvy), Vec2(uvx, 1 - uvy - uvh), Vec2(uvx + uvw, 1 - uvy - uvh), false, inside ? pressVec4 : normalVec4);
 		break;
 	}
 	return inside ? (MOUSE_HOVER_FLAG | Input::mouse0State) : 0;
@@ -394,14 +413,14 @@ bool Engine::DrawToggle(float x, float y, float s, Vec4 col, bool t) {
 		t = !t;
 	return t;
 }
-bool Engine::DrawToggle(float x, float y, float s, Texture* texture, bool t) {
-	byte b = Button(x, y, s, s, texture, white(1, 0.7f), white(), white(1, 0.4f));
-	if (b == MOUSE_RELEASE)
-		t = !t;
-	return t;
-}
-bool Engine::DrawToggle(float x, float y, float s, Texture* texture, Vec4 col, bool t) {
-	byte b = Button(x, y, s, s, texture, col, LerpVec4(col, white(), 0.5f), LerpVec4(col, black(), 0.5f));
+bool Engine::DrawToggle(float x, float y, float s, Texture* texture, bool t, Vec4 col, ORIENTATION o) {
+	byte b;
+	if (o == 0)
+		b = Button(x, y, s, s, texture, col, LerpVec4(col, white(), 0.5f), LerpVec4(col, black(), 0.5f));
+	else if (o == 1)
+		b = Button(x, y, s, s, texture, col, LerpVec4(col, white(), 0.5f), LerpVec4(col, black(), 0.5f), t ? 0.5f : 0, 0, 0.5f, 1);
+	else if (o == 2)
+		b = Button(x, y, s, s, texture, col, LerpVec4(col, white(), 0.5f), LerpVec4(col, black(), 0.5f), 0, t ? 0.5f : 0, 1, 0.5f);
 	if (b == MOUSE_RELEASE)
 		t = !t;
 	return t;
@@ -861,10 +880,11 @@ Texture::Texture(const string& path, bool mipmap, bool nearest) {
 		return;
 	}
 	cout << "opening image at " << path << endl;
-	unsigned char header[54]; // Each BMP file begins by a 54-bytes header
+	char header[54]; // Each BMP file begins by a 54-bytes header
 	unsigned int dataPos;     // Position in the file where the actual data begins
 	unsigned int imageSize;   // = width*height*3
 	unsigned char *data;
+	unsigned short bpi;
 
 	FILE *file;
 
@@ -886,6 +906,9 @@ Texture::Texture(const string& path, bool mipmap, bool nearest) {
 	imageSize = *(int*)&(header[0x22]);
 	width = *(int*)&(header[0x12]);
 	height = *(int*)&(header[0x16]);
+	bpi = *(short*)&(header[0x1c]);
+	if (bpi != 24 && bpi != 32)
+		return;
 	// Some BMP files are misformatted, guess missing information
 	if (imageSize == 0)    imageSize = width*height * 3; // 3 : one byte for each Red, Green and Blue component
 	if (dataPos == 0)      dataPos = 54; // The BMP header is done that way
@@ -896,7 +919,10 @@ Texture::Texture(const string& path, bool mipmap, bool nearest) {
 	fclose(file);
 	glGenTextures(1, &pointer);
 	glBindTexture(GL_TEXTURE_2D, pointer);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_BGR, GL_UNSIGNED_BYTE, data);
+	if (bpi == 24)
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_BGR, GL_UNSIGNED_BYTE, data);
+	else
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_BGRA, GL_UNSIGNED_BYTE, data);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (nearest) ? GL_NEAREST : GL_LINEAR);
 	if (mipmap) glGenerateMipmap(GL_TEXTURE_2D);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (mipmap) ? GL_LINEAR_MIPMAP_LINEAR : (nearest)? GL_NEAREST : GL_LINEAR);
@@ -904,27 +930,51 @@ Texture::Texture(const string& path, bool mipmap, bool nearest) {
 	loaded = true;
 	cout << "image loaded: " << width << "x" << height << endl;
 }
+Texture::Texture(ifstream& stream, long pos) {
+	
+	char header[54]; // Each BMP file begins by a 54-bytes header
+	unsigned int dataPos;     // Position in the file where the actual data begins
+	unsigned int imageSize;   // = width*height*3
+	char *data;
+	unsigned short bpi;
 
-Texture::Texture(HBITMAP bmp, int width, int height) {
-	cout << "reading image from hbitmap not implemented" << endl;
-	return;
-	/*
-	unsigned char data = 0;
-	if (GetDIBits(dc_mem, hbitmap, 0, 0, nullptr, &bmi, DIB_RGB_Vec4S) == 0) {
-		cout << "image load from hbitmap failed" << endl;
+	stream.seekg(pos);
+
+	stream.get((char*)&header[0], 54);
+	if (header[0] != 'B' || header[1] != 'M'){
+		printf("Not a correct BMP file\n");
 		return;
 	}
+	dataPos = *(int*)&(header[0x0A]);
+	imageSize = *(int*)&(header[0x22]);
+	width = *(int*)&(header[0x12]);
+	height = *(int*)&(header[0x16]);
+	bpi = *(short*)&(header[0x1c]);
+	if (bpi != 24 && bpi != 32)
+		return;
+	// Some BMP files are misformatted, guess missing information
+	if (imageSize == 0)    imageSize = width*height * 3; // 3 : one byte for each Red, Green and Blue component
+	if (dataPos == 0)      dataPos = 54; // The BMP header is done that way
+	data = new char[imageSize];
+	// Read the actual data from the file into the buffer
+	stream.get(data, imageSize);
+
+	stream.seekg(pos-1);
+	byte header1;
+	stream >> header1;
 
 	glGenTextures(1, &pointer);
 	glBindTexture(GL_TEXTURE_2D, pointer);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_BGR, GL_UNSIGNED_BYTE, &data);
-	glGenerateMipmap(GL_TEXTURE_2D);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	if (bpi == 24)
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_BGR, GL_UNSIGNED_BYTE, data);
+	else
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_BGRA, GL_UNSIGNED_BYTE, data);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (header1 & 1 == 1) ? GL_NEAREST : GL_LINEAR);
+	if (header1 & 2 == 2) glGenerateMipmap(GL_TEXTURE_2D);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (header1 & 2 == 2) ? GL_LINEAR_MIPMAP_LINEAR : (header1 & 1 == 1) ? GL_NEAREST : GL_LINEAR);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	loaded = true;
-	cout << "image loaded from hbitmap: " << width << "x" << height << endl;
-	*/
+	cout << "image loaded: " << width << "x" << height << endl;
 }
 
 Background::Background(const string& path) : width(0), height(0), AssetObject(ASSETTYPE_HDRI) {
@@ -1125,6 +1175,8 @@ void Serialize(Editor* e, SceneObject* o, ofstream* stream) {
 	o
 	*/
 	stream->write("O", 1);
+	_StreamWrite(&o->name, stream, o->name.size());
+	*stream << "\n";
 	_StreamWrite(&o->transform.position.x, stream, 4);
 	_StreamWrite(&o->transform.position.y, stream, 4);
 	_StreamWrite(&o->transform.position.z, stream, 4);
@@ -1134,7 +1186,7 @@ void Serialize(Editor* e, SceneObject* o, ofstream* stream) {
 	_StreamWrite(&o->transform.scale.x, stream, 4);
 	_StreamWrite(&o->transform.scale.y, stream, 4);
 	_StreamWrite(&o->transform.scale.z, stream, 4);
-	for each (Component* c in o->_components)
+	for (Component* c : o->_components)
 	{
 		stream->write("C", 1);
 		byte t = c->componentType;
@@ -1142,17 +1194,67 @@ void Serialize(Editor* e, SceneObject* o, ofstream* stream) {
 		c->Serialize(e, stream);
 		stream->write("c", 1);
 	}
-	for each (SceneObject* oo in o->children)
+	for (SceneObject* oo : o->children)
 	{
 		Serialize(e, oo, stream);
 	}
 	stream->write("o", 1);
 }
 
+void Deserialize(ifstream& stream, SceneObject* obj) {
+	char c;
+	stream >> c;
+	while (c != '\n') {
+		obj->name += c;
+		stream >> c;
+	}
+	stream >> obj->transform.position.x;
+	stream >> obj->transform.position.y;
+	stream >> obj->transform.position.z;
+	stream >> obj->transform.eulerRotation.x;
+	stream >> obj->transform.eulerRotation.y;
+	stream >> obj->transform.eulerRotation.z;
+	stream >> obj->transform.scale.x;
+	stream >> obj->transform.scale.y;
+	stream >> obj->transform.scale.z;
+	stream >> c;
+	if (c == 'o')
+		return;
+	if (c != 'C')
+		throw runtime_error("scene data corrupted(2)");
+	stream >> c; //component type
+	switch (c) {
+	case COMP_CAM:
+		obj->AddComponent(new Camera(stream, -1));
+	case COMP_TRD:
+		obj->AddComponent(new TextureRenderer(stream, -1));
+	}
+}
+
+Scene::Scene(ifstream& stream, long pos) : sceneName(""), sky(nullptr) {
+	stream.seekg(pos);
+	char h1, h2;
+	stream >> h1 >> h2;
+	if (h1 != 'S' && h2 != 'N')
+		throw runtime_error("scene data corrupted");
+	char o;
+	stream >> o;
+	while (o == 'O') {
+		SceneObject* sc = new SceneObject();
+		objects.push_back(sc);
+		Deserialize(stream, sc);
+	}
+}
+
 void Scene::Save(Editor* e) {
 	ofstream sw(e->projectFolder + "Assets\\test.scene", ios::out);
-	for each (SceneObject* sc in objects) {
+	sw << "SN";
+	for (SceneObject* sc : objects) {
 		Serialize(e, sc, &sw);
 	}
 	sw.close();
+
+	//
+	e->includedScenes.clear();
+	e->includedScenes.push_back(e->projectFolder + "Assets\\test.scene");
 }

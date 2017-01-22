@@ -196,7 +196,6 @@ bool KTMModel::Parse(Editor* e, string s) {
 	string cmd1(e->_blenderInstallationPath.substr(0, 2) + "\n"); //root
 	string cmd2("cd " + e->_blenderInstallationPath.substr(0, e->_blenderInstallationPath.find_last_of("\\")) + "\n");
 	string cmd3("blender \"" + s + "\" --background --python \"" + e->dataPath + "\\Python\\blend_exporter.py\" -- \"" + s.substr(0, s.find_last_of("\\")) + "?" + s.substr(s.find_last_of("\\") + 1, string::npos) + ".meta\"\n");
-	string cmdDie("exit\n");
 	if (CreateProcess("C:\\Windows\\System32\\cmd.exe", 0, NULL, NULL, true, CREATE_NO_WINDOW, NULL, "F:\\TestProject\\", &startInfo, &processInfo) != 0) {
 		cout << "executing Blender..." << endl;
 		bool bSuccess = false;
@@ -244,7 +243,8 @@ bool KTMModel::Parse(Editor* e, string s) {
 				}
 			}
 		} while (w == WAIT_TIMEOUT && !finish);
-		return (!failed);
+		if (failed)
+			return false;
 	}
 	else {
 		cout << "Cannot start Blender!" << endl;
@@ -256,5 +256,6 @@ bool KTMModel::Parse(Editor* e, string s) {
 	}
 	CloseHandle(stdOutR);
 	CloseHandle(stdOutW);
+	SetFileAttributes((s + ".meta").c_str(), FILE_ATTRIBUTE_HIDDEN);
 	return true;
 }

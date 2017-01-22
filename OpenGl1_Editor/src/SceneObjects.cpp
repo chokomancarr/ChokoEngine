@@ -19,7 +19,7 @@ bool DrawComponentHeader(Editor* e, string name, Vec4 v, float pos, bool expand,
 
 int Camera::camVertsIds[19] = { 0, 1, 0, 2, 0, 3, 0, 4, 1, 2, 2, 4, 4, 3, 3, 1, 1, 2, 5 };
 
-Camera::Camera() : Component(COMP_CAM, true), ortographic(false), fov(60), orthoSize(10), screenPos(0.3f, 0.1f, 0.6f, 0.4f) {
+Camera::Camera() : Component(COMP_CAM, DRAWORDER_NOT), ortographic(false), fov(60), orthoSize(10), screenPos(0.3f, 0.1f, 0.6f, 0.4f) {
 	camVerts[0] = Vec3();
 	UpdateCamVerts();
 }
@@ -76,7 +76,17 @@ void Camera::Serialize(Editor* e, ofstream* stream) {
 	_StreamWrite(&screenPos.h, stream, 4);
 }
 
-MeshFilter::MeshFilter() : Component(COMP_MFT, false) {
+Camera::Camera(ifstream& stream, long pos) : Component(COMP_CAM, DRAWORDER_NOT), ortographic(false), orthoSize(10) {
+	if (pos >= 0)
+		stream.seekg(pos);
+	stream >> fov;
+	stream >> screenPos.x;
+	stream >> screenPos.y;
+	stream >> screenPos.w;
+	stream >> screenPos.h;
+}
+
+MeshFilter::MeshFilter() : Component(COMP_MFT, DRAWORDER_NOT) {
 
 }
 
@@ -93,7 +103,7 @@ void MeshFilter::Serialize(Editor* e, ofstream* stream) {
 
 }
 
-MeshRenderer::MeshRenderer() : Component(COMP_MRD, true) {
+MeshRenderer::MeshRenderer() : Component(COMP_MRD, DRAWORDER_SOLID | DRAWORDER_TRANSPARENT) {
 
 }
 
@@ -106,7 +116,27 @@ void MeshRenderer::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 	else pos += 17;
 }
 
-SceneScript::SceneScript(Editor* e, string name) : name(name), Component(COMP_SCR, false) {
+void TextureRenderer::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
+	//MeshRenderer* mrd = (MeshRenderer*)c;
+	if (DrawComponentHeader(e, "Texture Renderer", v, pos, c->_expanded, COMP_TRD)) {
+		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Texture", e->font, white());
+		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 17, v.b*0.7f, 16, grey1(), ASSETTYPE_TEXTURE, 12, e->font, &_texture);
+		pos += 34;
+	}
+	else pos += 17;
+}
+
+void TextureRenderer::Serialize(Editor* e, ofstream* stream) {
+	_StreamWrite(&_texture, stream, 4);
+}
+
+TextureRenderer::TextureRenderer(ifstream& stream, long pos) : Component(COMP_TRD, DRAWORDER_OVERLAY) {
+	if (pos >= 0)
+		stream.seekg(pos);
+	stream >> _texture;
+}
+
+SceneScript::SceneScript(Editor* e, string name) : name(name), Component(COMP_SCR, DRAWORDER_NOT) {
 
 }
 void SceneScript::Serialize(Editor* e, ofstream* stream) {
@@ -143,7 +173,7 @@ void SceneObject::Enable(bool enableAll) {
 }
 
 Component* SceneObject::AddComponent(Component* c) {
-	for each (Component* cc in _components)
+	for (Component* cc : _components)
 	{
 		if (cc->componentType == c->componentType) {
 			cout << "same component already exists!" << endl;

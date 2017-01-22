@@ -44,6 +44,8 @@ class KTMExporter():
                 print ("obj " + obj.name)
                 
                 self.write(file, "  obj " + obj.name + " [\r\n")
+                if obj.parent:
+                    self.write(file, "    prt " + obj.parent.name + "\r\n")
                 poss = obj.location
                 self.write(file, "    pos {:f} {:f} {:f}\r\n".format(poss[0], poss[1], poss[2]))
                 rott = obj.rotation_euler

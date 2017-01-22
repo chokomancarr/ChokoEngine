@@ -51,7 +51,6 @@ int main(int argc, char **argv)
 {
 	path = argv[0];
 	hwnd = GetForegroundWindow();
-
 	editor = new Editor();
 	editor->dataPath = path.substr(0, path.find_last_of('\\') + 1);
 
@@ -85,9 +84,11 @@ int main(int argc, char **argv)
 	editor->yPoss.push_back(0);
 	editor->yPoss.push_back(1);
 	editor->yPoss.push_back(0.65f);
+	editor->yPoss.push_back(0.5f);
 	editor->yLimits.push_back(Int2(0, 1));
 	editor->yLimits.push_back(Int2(0, 1));
 	editor->yLimits.push_back(Int2(0, 2));
+	editor->yLimits.push_back(Int2(2, 1));
 	
 	editor->NewScene();
 	editor->activeScene.objects.push_back(new SceneObject("Main Camera"));
@@ -98,6 +99,7 @@ int main(int argc, char **argv)
 		->AddChild(new SceneObject("Particles"))
 		->transform.Translate(0, 3, -5)
 		->object->AddComponent(new Camera())
+		->object->AddComponent(new TextureRenderer())
 		->object->GetChild(1)
 		->AddChild(new SceneObject("Child"));
 	editor->activeScene.objects[1]
@@ -159,7 +161,7 @@ int main(int argc, char **argv)
 	else {
 		Engine::Init(path);
 		editor->LoadDefaultAssets();
-		editor->blocks = vector<EditorBlock*>({ new EB_Inspector(editor, 2, 0, 1, 1), new EB_Browser(editor, 0, 2, 4, 1, editor->projectFolder + "Assets\\"), new EB_Debug(editor, 4, 2, 2, 1), new EB_Viewer(editor, 0, 0, 3, 2), new EB_Hierarchy(editor, 3, 0, 2, 2) }); //path.substr(0, path.find_last_of('\\') + 1)
+		editor->blocks = vector<EditorBlock*>({ new EB_Inspector(editor, 2, 0, 1, 3), new EB_Inspector(editor, 2, 3, 1, 1), new EB_Browser(editor, 0, 2, 4, 1, editor->projectFolder + "Assets\\"), new EB_Debug(editor, 4, 2, 2, 1), new EB_Viewer(editor, 0, 0, 3, 2), new EB_Hierarchy(editor, 3, 0, 2, 2) }); //path.substr(0, path.find_last_of('\\') + 1)
 		font = editor->font;
 		editor->ReloadAssets(editor->projectFolder + "Assets\\", true);
 		editor->RefreshAssets();
@@ -207,7 +209,7 @@ void DoUpdate() {
 	}
 	int i = -1, k = 0;
 	editor->mouseOn = 0;
-	for each (EditorBlock* e in editor->blocks) {
+	for (EditorBlock* e : editor->blocks) {
 		Vec4 v = Vec4(Display::width*editor->xPoss[e->x1], Display::height*editor->yPoss[e->y1], Display::width*editor->xPoss[e->x2], Display::height*editor->yPoss[e->y2]);
 		v.a = round(v.a - v.g) - 1;
 		v.b = round(v.b - v.r) - 1;
@@ -323,7 +325,7 @@ void KeyboardGL(unsigned char c, int x, int y) {
 			(*got->second)(editor);
 			return;
 		}
-		for each (EditorBlock* e in editor->blocks) {
+		for (EditorBlock* e : editor->blocks) {
 			Vec4 v = Vec4(Display::width*editor->xPoss[e->x1], Display::height*editor->yPoss[e->y1], Display::width*editor->xPoss[e->x2], Display::height*editor->yPoss[e->y2]);
 			v.a = round(v.a - v.g) - 1;
 			v.b = round(v.b - v.r) - 1;
