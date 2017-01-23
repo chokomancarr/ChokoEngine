@@ -201,13 +201,6 @@ void InitGL(int i) {
 
 void CheckShortcuts() {
 	if (editor->editorLayer == 0) {
-		/*
-		ShortcutMapGlobal::const_iterator got = editor->globalShorts.find(GetShortcutInt(c, mods));
-		if (got != editor->globalShorts.end()) {
-			(*got->second)(editor);
-			return;
-		}
-		*/
 		for (auto g = editor->globalShorts.begin(); g != editor->globalShorts.end(); g++) {
 			if (Input::KeyDown(InputKey((g->first & 0xff0000) >> 16)) && ((g->first & 0xff00 == 0) || Input::KeyHold(InputKey((g->first & 0xff00) >> 8))) && ((g->first & 0xff == 0) || Input::KeyHold(InputKey(g->first & 0xff)))) {
 				g->second(editor);

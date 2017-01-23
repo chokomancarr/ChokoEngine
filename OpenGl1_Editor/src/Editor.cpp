@@ -215,8 +215,8 @@ bool DrawFileRect(float w, float h, float size, EB_Browser_File* file, EditorBlo
 		else
 			Engine::DrawQuad(w + 1, h + 1, size - 2, size - 2, grey2());
 	}
-	Engine::DrawQuad(w + 1, h + 1 + size*0.6f, size - 2, size*0.4f - 2, grey2()*0.7f);
-	Engine::Label(w + 2, h + 1 + size*0.7f, 12, file->name, e->editor->font, white(), size);
+	Engine::DrawQuad(w + 1, h + 1 + size - 25, size - 2, 23, grey2()*0.7f);
+	Engine::Label(w + 2, h + 1 + size - 20, 12, file->name, e->editor->font, white(), size);
 	return b;
 }
 
@@ -788,11 +788,13 @@ void Editor::LoadDefaultAssets() {
 	assetIconsExt.push_back("cpp");
 	assetIconsExt.push_back("shade");
 	assetIconsExt.push_back("txt");
+	assetIconsExt.push_back("mesh");
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_header.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_blend.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_cpp.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_shade.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_txt.bmp", false));
+	assetIcons.push_back(new Texture(dataPath + "res\\asset_mesh.bmp", false));
 	//assetIcons.push_back(GetRes("asset_blend"));
 	//assetIcons.push_back(GetRes("asset_cpp"));
 	//assetIcons.push_back(GetRes("asset_shade"));
@@ -923,7 +925,7 @@ void Editor::DrawHandles() {
 		if (Engine::EButton((b->editor->editorLayer == 0), v.r + 1, v.g + 1, EB_HEADER_PADDING, EB_HEADER_PADDING, buttonExt, white(1, 0.8f), white(), white(1, 0.3f)) == MOUSE_RELEASE) { //splitter top left
 			if (b->headerStatus == 1)
 				b->headerStatus = 0;
-			else b->headerStatus = (b->headerStatus == 0 ? 1 : 0);
+			//else b->headerStatus = (b->headerStatus == 0 ? 1 : 0);
 		}
 		if (b->headerStatus == 1) {
 			Engine::RotateUI(90, Vec2(v.r + 2 + 1.5f*EB_HEADER_PADDING, v.g + 1 + 0.5f*EB_HEADER_PADDING));
@@ -957,9 +959,9 @@ void Editor::DrawHandles() {
 		}
 		Engine::DrawQuad(v.b - EB_HEADER_PADDING, v.a - EB_HEADER_PADDING - 1, EB_HEADER_PADDING, EB_HEADER_PADDING, buttonExt->pointer); //splitter bot right
 		if (Engine::EButton((editorLayer == 0), v.b - EB_HEADER_PADDING, v.g + 1, EB_HEADER_PADDING, EB_HEADER_PADDING, buttonX, white(0.7f, 0.8f), white(), white(1, 0.3f)) == MOUSE_RELEASE) {//window mod
-			blocks.erase(blocks.begin() + r);
-			delete(b);
-			break;
+			//blocks.erase(blocks.begin() + r);
+			//delete(b);
+			//break;
 		}
 		Engine::DrawQuad(v.b - EB_HEADER_PADDING, v.g + 2 + EB_HEADER_PADDING, EB_HEADER_PADDING, EB_HEADER_SIZE - 1 - EB_HEADER_PADDING, grey1());
 		r++;
