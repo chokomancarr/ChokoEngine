@@ -27,7 +27,7 @@ typedef pair<string, shortcutFunc> funcMapGlobal;
 typedef unordered_map<int, shortcutFunc> ShortcutMap;
 typedef unordered_map<int, shortcutFuncGlobal> ShortcutMapGlobal;
 typedef unordered_map<int, funcMap[]> CommandsMap;
-int GetShortcutInt(byte c, int m);
+int GetShortcutInt(InputKey k, InputKey m1, InputKey m2=Key_None);
 
 Vec4 grey1(), grey2(), accent();
 

@@ -188,12 +188,38 @@ public:
 	Font* Align(ALIGNMENT a);
 };
 
+enum InputKey {
+	Key_None = 0x00,
+	Key_Backspace = 0x08,
+	Key_Tab = 0x09,
+	Key_Enter = 0x0D,
+	Key_Shift = 0x10,
+	Key_Control = 0x11,
+	Key_Alt = 0x12,
+	Key_CapsLock = 0x14,
+	Key_Escape = 0x1B,
+	Key_Space = 0x20,
+	Key_LeftArrow = 0x25, Key_UpArrow, Key_RightArrow, Key_DownArrow,
+	Key_Delete = 0x2E, 
+	Key_0 = 0x30, Key_1, Key_2, Key_3, Key_4, Key_5, Key_6, Key_7, Key_8, Key_9,
+	Key_A = 0x41, Key_B, Key_C, Key_D, Key_E, Key_F, Key_G, Key_H, Key_I, Key_J, Key_K, Key_L, Key_M, Key_N, Key_O, Key_P, Key_Q, Key_R, Key_S, Key_T, Key_U, Key_V, Key_W, Key_X, Key_Y, Key_Z,
+	Key_NumPad0 = 0x60, Key_NumPad1, Key_NumPad2, Key_NumPad3, Key_NumPad4, Key_NumPad5, Key_NumPad6, Key_NumPad7, Key_NumPad8, Key_NumPad9
+};
+
 class Input {
 public:
 	static Vec2 mousePos, mousePosRelative;
 	static bool mouse0, mouse1, mouse2;
 	static byte mouse0State, mouse1State, mouse2State;
-	static void UpdateMouse();
+	static void UpdateMouseNKeyboard();
+
+	static bool KeyDown(InputKey key), KeyHold(InputKey key), KeyUp(InputKey key);
+
+protected:
+	static bool keyStatusOld[256], keyStatusNew[256];
+private:
+	Input(Input const &); //deliberately not defined
+	Input& operator= (Input const &);
 };
 
 class Display {

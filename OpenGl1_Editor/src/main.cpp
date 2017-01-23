@@ -21,7 +21,6 @@ void InitGL(int argc, char* argv[]);
 void DisplayGL();
 void InitGL(int i);
 void TimerGL(int i);
-void KeyboardGL(unsigned char c, int x, int y);
 void MouseGL(int button, int state, int x, int y);
 void MotionGL(int x, int y);
 void MotionGLP(int x, int y);
@@ -172,7 +171,6 @@ int main(int argc, char **argv)
 		glutDisplayFunc(renderScene);
 		//glutTimerFunc(10, InitGL, 0);
 		glutTimerFunc(1000, TimerGL, 0);
-		glutKeyboardFunc(KeyboardGL);
 		glutMouseFunc(MouseGL);
 		glutReshapeFunc(ReshapeGL);
 		glutMotionFunc(MotionGL);
@@ -201,12 +199,59 @@ void InitGL(int i) {
 	
 }
 
+void CheckShortcuts() {
+	if (editor->editorLayer == 0) {
+		/*
+		ShortcutMapGlobal::const_iterator got = editor->globalShorts.find(GetShortcutInt(c, mods));
+		if (got != editor->globalShorts.end()) {
+			(*got->second)(editor);
+			return;
+		}
+		*/
+		for (auto g = editor->globalShorts.begin(); g != editor->globalShorts.end(); g++) {
+			if (Input::KeyDown(InputKey((g->first & 0xff0000) >> 16)) && ((g->first & 0xff00 == 0) || Input::KeyHold(InputKey((g->first & 0xff00) >> 8))) && ((g->first & 0xff == 0) || Input::KeyHold(InputKey(g->first & 0xff)))) {
+				g->second(editor);
+				return;
+			}
+			if (g->first & 0xff00 == 0) {
+				cout << hex << g->first;
+			}
+		}
+		for (EditorBlock* e : editor->blocks) {
+			Vec4 v = Vec4(Display::width*editor->xPoss[e->x1], Display::height*editor->yPoss[e->y1], Display::width*editor->xPoss[e->x2], Display::height*editor->yPoss[e->y2]);
+			v.a = round(v.a - v.g) - 1;
+			v.b = round(v.b - v.r) - 1;
+			v.g = round(v.g) + 1;
+			v.r = round(v.r) + 1;
+			if (Engine::Button(v.r, v.g, v.b, v.a) && MOUSE_HOVER_FLAG) {
+				for (auto g2 = e->shortcuts.begin(); g2 != e->shortcuts.end(); g2++) {
+					if (Input::KeyDown(InputKey((g2->first & 0xff0000) >> 16)) && (((g2->first & 0xff00) == 0) || Input::KeyHold(InputKey((g2->first & 0xff00) >> 8))) && (((g2->first & 0xff) == 0) || Input::KeyHold(InputKey(g2->first & 0xff)))) {
+						g2->second(e);
+						return;
+					}
+				}
+				break;
+			}
+		}
+	}
+	else if (Input::KeyDown(Key_Escape)) {
+		if (editor->editorLayer != 4 || editor->buildEnd) {
+			editor->editorLayer = 0;
+		}
+	}
+	else if (Input::KeyDown(Key_Enter) && editor->editorLayer == 4 && editor->buildEnd && editor->buildErrorPath != "") { //enter
+		string cmd = " " + editor->buildErrorPath + " -n" + to_string(editor->buildErrorLine);
+		ShellExecute(NULL, "open", "C:\\Program Files (x86)\\Notepad++\\Notepad++.exe", cmd.c_str(), NULL, SW_SHOW);
+	}
+}
+
 void DoUpdate() {
 	if (editor->WAITINGBUILDSTARTFLAG) {
 		editor->WAITINGBUILDSTARTFLAG = false;
 		editor->DoCompile();
 		return;
 	}
+	CheckShortcuts();
 	int i = -1, k = 0;
 	editor->mouseOn = 0;
 	for (EditorBlock* e : editor->blocks) {
@@ -257,7 +302,7 @@ void UpdateLoop() {
 		Time::delta = (millis - Time::millis)*0.001f;
 		Time::time = (millis - Time::startMillis)*0.001;
 		Time::millis = millis;
-		Input::UpdateMouse();
+		Input::UpdateMouseNKeyboard();
 		if (Input::mouse0State == MOUSE_DOWN)
 			editor->blocks[editor->mouseOnP]->OnMousePress(0);
 		if (Input::mouse1State == MOUSE_DOWN)
@@ -308,48 +353,6 @@ void TimerGL(int i)
 	t = 0;
 	glutTimerFunc(1000, TimerGL, 1);
 	//glutPostRedisplay();
-}
-
-
-void KeyboardGL(unsigned char c, int x, int y) {
-	int mods = glutGetModifiers();
-	if ((mods & 2) == 2 && c != 32) {
-		c = (c | (3 << 5));
-	}
-	if (mods == 1 && c > 64)
-		c += 32;
-
-	if (editor->editorLayer == 0) {
-		ShortcutMapGlobal::const_iterator got = editor->globalShorts.find(GetShortcutInt(c, mods));
-		if (got != editor->globalShorts.end()) {
-			(*got->second)(editor);
-			return;
-		}
-		for (EditorBlock* e : editor->blocks) {
-			Vec4 v = Vec4(Display::width*editor->xPoss[e->x1], Display::height*editor->yPoss[e->y1], Display::width*editor->xPoss[e->x2], Display::height*editor->yPoss[e->y2]);
-			v.a = round(v.a - v.g) - 1;
-			v.b = round(v.b - v.r) - 1;
-			v.g = round(v.g) + 1;
-			v.r = round(v.r) + 1;
-			if (Engine::Button(v.r, v.g, v.b, v.a) && MOUSE_HOVER_FLAG) {
-				ShortcutMap::const_iterator got = e->shortcuts.find(GetShortcutInt(c, mods));
-
-				if (got != e->shortcuts.end())
-					(*got->second)(e);
-				//e->OnKey(c, glutGetModifiers());
-				break;
-			}
-		}
-	}
-	else if (c == 27) {//escape key
-		if (editor->editorLayer != 4 || editor->buildEnd) {
-			editor->editorLayer = 0;
-		}
-	}
-	else if (c == 13 && editor->editorLayer == 4 && editor->buildEnd && editor->buildErrorPath != "") { //enter
-		string cmd = " " + editor->buildErrorPath + " -n" + to_string(editor->buildErrorLine);
-		ShellExecute(NULL, "open", "C:\\Program Files (x86)\\Notepad++\\Notepad++.exe", cmd.c_str(), NULL, SW_SHOW);
-	}
 }
 
 void MouseGL(int button, int state, int x, int y) {

@@ -37,7 +37,7 @@ Vec4 accent() {
 	return Vec4(223.0f / 255, 119.0f / 255, 4.0f / 255, 1);
 }
 
-int GetShortcutInt(byte c, int m) { return c << 4 | m; }
+int GetShortcutInt(InputKey key, InputKey mod1, InputKey mod2) { return (byte)key << 16 | (byte)mod1 << 8 | (byte)mod2; }
 
 int GetFormatEnum(string ext) {
 	if (ext == ".blend")
@@ -283,30 +283,30 @@ EB_Viewer::EB_Viewer(Editor* e, int x1, int y1, int x2, int y2) : rz(45), rw(45)
 	this->y2 = y2;
 	MakeMatrix();
 
-	shortcuts.emplace(GetShortcutInt('a', GLUT_ACTIVE_SHIFT), &_OpenMenuAdd);
-	shortcuts.emplace(GetShortcutInt('c', GLUT_ACTIVE_SHIFT), &_OpenMenuCom);
-	shortcuts.emplace(GetShortcutInt('w', 0), &_OpenMenuW);
-	shortcuts.emplace(GetShortcutInt(' ', GLUT_ACTIVE_CTRL), &_OpenMenuChgMani);
-	shortcuts.emplace(GetShortcutInt(' ', GLUT_ACTIVE_ALT), &_OpenMenuChgOrient);
+	shortcuts.emplace(GetShortcutInt(Key_A, Key_Shift), &_OpenMenuAdd);
+	shortcuts.emplace(GetShortcutInt(Key_C, Key_Shift), &_OpenMenuCom);
+	shortcuts.emplace(GetShortcutInt(Key_W, Key_None), &_OpenMenuW);
+	shortcuts.emplace(GetShortcutInt(Key_Space, Key_Control), &_OpenMenuChgMani);
+	shortcuts.emplace(GetShortcutInt(Key_Space, Key_Alt), &_OpenMenuChgOrient);
 
-	shortcuts.emplace(GetShortcutInt('x', 0), &_X);
-	shortcuts.emplace(GetShortcutInt('y', 0), &_Y);
-	shortcuts.emplace(GetShortcutInt('z', 0), &_Z);
+	shortcuts.emplace(GetShortcutInt(Key_X, Key_None), &_X);
+	shortcuts.emplace(GetShortcutInt(Key_Y, Key_None), &_Y);
+	shortcuts.emplace(GetShortcutInt(Key_Z, Key_None), &_Z);
 
-	shortcuts.emplace(GetShortcutInt('a', 0), &_SelectAll);
-	shortcuts.emplace(GetShortcutInt('z', 0), &_ViewInvis);
-	shortcuts.emplace(GetShortcutInt('5', 0), &_ViewPersp);
+	shortcuts.emplace(GetShortcutInt(Key_A, Key_None), &_SelectAll);
+	shortcuts.emplace(GetShortcutInt(Key_Z, Key_None), &_ViewInvis);
+	shortcuts.emplace(GetShortcutInt(Key_5, Key_None), &_ViewPersp);
 
-	shortcuts.emplace(GetShortcutInt('g', 0), &_Grab);
-	shortcuts.emplace(GetShortcutInt('r', 0), &_Rotate);
-	shortcuts.emplace(GetShortcutInt('s', 0), &_Scale);
+	shortcuts.emplace(GetShortcutInt(Key_G, Key_None), &_Grab);
+	shortcuts.emplace(GetShortcutInt(Key_R, Key_None), &_Rotate);
+	shortcuts.emplace(GetShortcutInt(Key_S, Key_None), &_Scale);
 
-	shortcuts.emplace(GetShortcutInt('1', 0), &_ViewFront);
-	shortcuts.emplace(GetShortcutInt('1', GLUT_ACTIVE_ALT), &_ViewBack);
-	shortcuts.emplace(GetShortcutInt('3', 0), &_ViewRight);
-	shortcuts.emplace(GetShortcutInt('3', GLUT_ACTIVE_ALT), &_ViewLeft);
-	shortcuts.emplace(GetShortcutInt('7', 0), &_ViewTop);
-	shortcuts.emplace(GetShortcutInt('7', GLUT_ACTIVE_ALT), &_ViewBottom);
+	shortcuts.emplace(GetShortcutInt(Key_NumPad1, Key_None), &_ViewFront);
+	shortcuts.emplace(GetShortcutInt(Key_NumPad1, Key_Alt), &_ViewBack);
+	shortcuts.emplace(GetShortcutInt(Key_NumPad3, Key_None), &_ViewRight);
+	shortcuts.emplace(GetShortcutInt(Key_NumPad3, Key_Alt), &_ViewLeft);
+	shortcuts.emplace(GetShortcutInt(Key_NumPad7, Key_None), &_ViewTop);
+	shortcuts.emplace(GetShortcutInt(Key_NumPad7, Key_Alt), &_ViewBottom);
 }
 
 void EB_Viewer::MakeMatrix() {
@@ -827,10 +827,10 @@ void Editor::LoadDefaultAssets() {
 	gridId[66] = 62;
 	gridId[67] = 63;
 
-	globalShorts.emplace(GetShortcutInt('b', GLUT_ACTIVE_CTRL), &Compile);
-	globalShorts.emplace(GetShortcutInt('u', GLUT_ACTIVE_CTRL), &ShowPrefs);
-	globalShorts.emplace(GetShortcutInt('s', GLUT_ACTIVE_CTRL), &SaveScene);
-	globalShorts.emplace(GetShortcutInt('x', GLUT_ACTIVE_CTRL), &DeleteActive);
+	globalShorts.emplace(GetShortcutInt(Key_B, Key_Control), &Compile);
+	globalShorts.emplace(GetShortcutInt(Key_U, Key_Control, Key_Alt), &ShowPrefs);
+	globalShorts.emplace(GetShortcutInt(Key_S, Key_Control), &SaveScene);
+	globalShorts.emplace(GetShortcutInt(Key_X, Key_Control), &DeleteActive);
 
 	assetTypes.emplace("scene", ASSETTYPE_SCENE);
 	assetTypes.emplace("blend", ASSETTYPE_MESH);

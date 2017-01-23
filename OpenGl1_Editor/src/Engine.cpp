@@ -682,7 +682,27 @@ void Engine::DrawLineW(Vec3 v1, Vec3 v2, Vec4 col, float width) {
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
-void Input::UpdateMouse() {
+bool Input::keyStatusOld[] = {};
+bool Input::keyStatusNew[] = {};
+
+bool Input::KeyDown(InputKey k) {
+	return keyStatusNew[k] && !keyStatusOld[k];
+}
+
+bool Input::KeyHold(InputKey k) {
+	return keyStatusNew[k];
+}
+
+bool Input::KeyUp(InputKey k) {
+	return !keyStatusNew[k] && keyStatusOld[k];
+}
+
+void Input::UpdateMouseNKeyboard() {
+	std::swap(keyStatusOld, keyStatusNew);
+	for (int a = 1; a < 106; a++) {
+		keyStatusNew[a] = ((GetAsyncKeyState(a) >> 8) == -128);
+	}
+
 	if (mouse0)
 		mouse0State = min(mouse0State+1, MOUSE_HOLD);
 	else
