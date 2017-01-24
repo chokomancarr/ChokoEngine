@@ -12,6 +12,8 @@
 #include <shellapi.h>
 #include <Windows.h>
 #include <math.h>
+#include <jpeglib.h>    
+#include <jerror.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/transform.hpp>
@@ -892,57 +894,125 @@ glm::mat4 Quat2Mat(Quat q) {
 }
 
 //-----------------texture class---------------------
-Texture::Texture(const string& path) : Texture(path, true, false) {}
-Texture::Texture(const string& path, bool mipmap) : Texture(path, mipmap, false) {}
-Texture::Texture(const string& path, bool mipmap, bool nearest) {
-	if (path.size() < 5 || path.substr(path.size() - 4, string::npos) != ".bmp") {
-		printf("Image path invalid!");
-		return;
+bool LoadJPEG(string fileN, uint &x, uint &y, byte& channels, byte** data)
+{
+	unsigned int texture_id;
+	unsigned long data_size;     // length of the file
+	unsigned char * rowptr[1];
+	struct jpeg_decompress_struct info; //for our jpeg info
+	struct jpeg_error_mgr err;          //the error handler
+
+	FILE* file;
+	fopen_s(&file, fileN.c_str(), "rb");  //open the file
+
+	info.err = jpeg_std_error(&err);
+	jpeg_create_decompress(&info);   //fills info structure
+
+	//if the jpeg file doesn't load
+	if (!file) {
+		return false;
 	}
-	cout << "opening image at " << path << endl;
+
+	jpeg_stdio_src(&info, file);
+	jpeg_read_header(&info, TRUE);   // read jpeg file header
+
+	jpeg_start_decompress(&info);    // decompress the file
+
+	x = info.output_width;
+	y = info.output_height;
+	channels = info.num_components;
+
+	data_size = x * y * 3;
+
+	*data = (unsigned char *)malloc(data_size);
+	while (info.output_scanline < y) // loop
+	{
+		// Enable jpeg_read_scanlines() to fill our jdata array
+		rowptr[0] = (unsigned char *)*data + (3 * x * (y - info.output_scanline - 1));
+
+		jpeg_read_scanlines(&info, rowptr, 1);
+	}
+	//---------------------------------------------------
+
+	jpeg_finish_decompress(&info);   //finish decompressing
+	jpeg_destroy_decompress(&info);
+	fclose(file);
+	return true;
+}
+
+bool LoadBMP(string fileN, uint &x, uint &y, byte& channels, byte** data) {
+
 	char header[54]; // Each BMP file begins by a 54-bytes header
 	unsigned int dataPos;     // Position in the file where the actual data begins
 	unsigned int imageSize;   // = width*height*3
-	unsigned char *data;
 	unsigned short bpi;
 
 	FILE *file;
 
-	fopen_s(&file, path.c_str(), "rb");
+	fopen_s(&file, fileN.c_str(), "rb");
 
 	if (!file){
 		printf("Image could not be opened\n");
-		return;
+		return false;
 	}
 	if (fread(header, 1, 54, file) != 54){ // If not 54 bytes read : problem
 		printf("Not a correct BMP file\n");
-		return;
+		return false;
 	}
 	if (header[0] != 'B' || header[1] != 'M'){
 		printf("Not a correct BMP file\n");
-		return;
+		return false;
 	}
 	dataPos = *(int*)&(header[0x0A]);
 	imageSize = *(int*)&(header[0x22]);
-	width = *(int*)&(header[0x12]);
-	height = *(int*)&(header[0x16]);
+	x = *(int*)&(header[0x12]);
+	y = *(int*)&(header[0x16]);
 	bpi = *(short*)&(header[0x1c]);
 	if (bpi != 24 && bpi != 32)
-		return;
+		return false;
+	else channels = (bpi == 24) ? 3 : 4;
 	// Some BMP files are misformatted, guess missing information
-	if (imageSize == 0)    imageSize = width*height * 3; // 3 : one byte for each Red, Green and Blue component
+	if (imageSize == 0)    imageSize = x * y * 3; // 3 : one byte for each Red, Green and Blue component
 	if (dataPos == 0)      dataPos = 54; // The BMP header is done that way
-	data = new unsigned char[imageSize];
+	*data = new unsigned char[imageSize];
 	// Read the actual data from the file into the buffer
-	fread(data, 1, imageSize, file);
+	fread(*data, 1, imageSize, file);
 	//Everything is in memory now, the file can be closed
 	fclose(file);
+	return true;
+}
+
+Texture::Texture(const string& path) : Texture(path, true, false) {}
+Texture::Texture(const string& path, bool mipmap) : Texture(path, mipmap, false) {}
+Texture::Texture(const string& path, bool mipmap, bool nearest) {
+	string sss = path.substr(path.find_last_of('.'), string::npos);
+	byte *data;
+	byte chn;
+	cout << "opening image at " << path << endl;
+	GLenum rgb = GL_RGB, rgba = GL_RGBA;
+	if (sss == ".bmp") {
+		if (!LoadBMP(path, width, height, chn, &data)) {
+			cout << "load bmp failed!" << endl;
+			return;
+		}
+		rgb = GL_BGR;
+		rgba = GL_BGRA;
+	}
+	else if (sss == ".jpg") {
+		if (!LoadJPEG(path, width, height, chn, &data)) {
+			cout << "load jpg failed!" << endl;
+			return;
+		}
+	}
+	else  {
+		printf("Image extension invalid!");
+		return;
+	}
+
 	glGenTextures(1, &pointer);
 	glBindTexture(GL_TEXTURE_2D, pointer);
-	if (bpi == 24)
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_BGR, GL_UNSIGNED_BYTE, data);
-	else
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_BGRA, GL_UNSIGNED_BYTE, data);
+	if (chn == 3) glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, rgb, GL_UNSIGNED_BYTE, data);
+	else glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, rgba, GL_UNSIGNED_BYTE, data);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (nearest) ? GL_NEAREST : GL_LINEAR);
 	if (mipmap) glGenerateMipmap(GL_TEXTURE_2D);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (mipmap) ? GL_LINEAR_MIPMAP_LINEAR : (nearest)? GL_NEAREST : GL_LINEAR);
