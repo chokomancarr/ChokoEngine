@@ -286,6 +286,10 @@ public:
 	//edit = layer2
 	byte editingType; //0none 1int 2float 3string
 	string editingVal;
+	Vec4 editingArea;
+	Vec4 editingBoxCol;
+	Vec4 editingTxtCol;
+	void SetEditing(byte t, string val, Vec4 a, Vec4 c1, Vec4 c2);
 
 	//select = layer3
 	ASSETTYPE browseType;

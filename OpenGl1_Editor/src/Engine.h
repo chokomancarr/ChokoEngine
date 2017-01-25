@@ -203,7 +203,8 @@ enum InputKey {
 	Key_Delete = 0x2E, 
 	Key_0 = 0x30, Key_1, Key_2, Key_3, Key_4, Key_5, Key_6, Key_7, Key_8, Key_9,
 	Key_A = 0x41, Key_B, Key_C, Key_D, Key_E, Key_F, Key_G, Key_H, Key_I, Key_J, Key_K, Key_L, Key_M, Key_N, Key_O, Key_P, Key_Q, Key_R, Key_S, Key_T, Key_U, Key_V, Key_W, Key_X, Key_Y, Key_Z,
-	Key_NumPad0 = 0x60, Key_NumPad1, Key_NumPad2, Key_NumPad3, Key_NumPad4, Key_NumPad5, Key_NumPad6, Key_NumPad7, Key_NumPad8, Key_NumPad9
+	Key_NumPad0 = 0x60, Key_NumPad1, Key_NumPad2, Key_NumPad3, Key_NumPad4, Key_NumPad5, Key_NumPad6, Key_NumPad7, Key_NumPad8, Key_NumPad9,
+	Key_Plus = 0xBB, Key_Comma, Key_Minus, Key_Dot
 };
 
 class Input {
@@ -211,6 +212,7 @@ public:
 	static Vec2 mousePos, mousePosRelative;
 	static bool mouse0, mouse1, mouse2;
 	static byte mouse0State, mouse1State, mouse2State;
+	static string inputString;
 	static void UpdateMouseNKeyboard();
 
 	static bool KeyDown(InputKey key), KeyHold(InputKey key), KeyUp(InputKey key);

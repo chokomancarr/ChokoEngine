@@ -46,8 +46,6 @@ string path;
 Editor* editor;
 HWND hwnd;
 
-Texture* tex;
-
 int main(int argc, char **argv)
 {
 	path = argv[0];
@@ -168,7 +166,6 @@ int main(int argc, char **argv)
 		editor->RefreshAssets();
 		//editor->activeScene.sky = new Background(editor->dataPath + "res\\bg_refl.hdr");
 
-		tex = new Texture("D:\\lambo.jpg");
 
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -322,7 +319,6 @@ void DrawOverlay() {
 		editor->blocks[i]->Draw();
 	}
 	editor->DrawHandles();
-	Engine::DrawTexture(20, 20, Display::width - 40, Display::height-40, tex);
 }
 
 void renderScene()

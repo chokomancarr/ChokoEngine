@@ -52,6 +52,7 @@ bool Input::mouse2 = false;
 byte Input::mouse0State = 0;
 byte Input::mouse1State = 0;
 byte Input::mouse2State = 0;
+string Input::inputString = "";
 
 void Engine::Init(string path) {
 	fallbackTex = new Texture(path.substr(0, path.find_last_of('\\') + 1) + "fallback.bmp");
@@ -701,8 +702,21 @@ bool Input::KeyUp(InputKey k) {
 
 void Input::UpdateMouseNKeyboard() {
 	std::swap(keyStatusOld, keyStatusNew);
-	for (int a = 1; a < 106; a++) {
+	for (byte a = 1; a < 106; a++) {
 		keyStatusNew[a] = ((GetAsyncKeyState(a) >> 8) == -128);
+	}
+
+	inputString = "";
+	bool shift = KeyDown(Key_Shift);
+	for (byte c = Key_0; c <= Key_9; c++) {
+		if (KeyDown((InputKey)c)) {
+			inputString += char(c);
+		}
+	}
+	for (byte b = Key_A; b <= Key_Z; b++) {
+		if (KeyDown((InputKey)b)) {
+			inputString += shift ? char(b + 32) : char(b);
+		}
 	}
 
 	if (mouse0)
@@ -897,7 +911,7 @@ glm::mat4 Quat2Mat(Quat q) {
 bool LoadJPEG(string fileN, uint &x, uint &y, byte& channels, byte** data)
 {
 	unsigned int texture_id;
-	unsigned long data_size;     // length of the file
+	unsigned long data_size;     // length of the 
 	unsigned char * rowptr[1];
 	struct jpeg_decompress_struct info; //for our jpeg info
 	struct jpeg_error_mgr err;          //the error handler
