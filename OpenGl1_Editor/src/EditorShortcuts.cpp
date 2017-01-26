@@ -53,7 +53,7 @@ void EB_Viewer::_Z(EditorBlock* b) {
 }
 
 void EB_Viewer::_OpenMenuAdd(EditorBlock* b) {
-	b->editor->RegisterMenu(b, "Add Scene Object", { "Empty", "Camera", "Audio Source" }, { _AddObjectE, _AddObjectCam, _AddObjectAud }, 3);
+	b->editor->RegisterMenu(b, "Add Scene Object", { "Empty", "Blender Object", "Camera", "Audio Source" }, { _AddObjectE, _AddObjectBl, _AddObjectCam, _AddObjectAud }, 3);
 }
 void EB_Viewer::_OpenMenuCom(EditorBlock* b) {
 	if (b->editor->selected != nullptr)
@@ -111,6 +111,13 @@ void EB_Viewer::_D2AddComMrd(EditorBlock* b) {
 void EB_Viewer::_AddObjectE(EditorBlock* b) {
 	preAddType = 0;
 	DoPreAdd(b);
+}
+void EB_Viewer::_AddObjectBl(EditorBlock* b) {
+	vector<void*> vals;
+	for (int a = 0; a < b->editor->normalAssets[ASSETTYPE_MESH].size(); a++) {
+		vals.push_back(&b->editor->normalAssets[ASSETTYPE_MESH][a]);
+	}
+	b->editor->RegisterMenu(b, "Add Script", b->editor->headerAssets, ((EB_Viewer*)b)->_DoAddComScr, vals, 0);
 }
 void EB_Viewer::_AddObjectCam(EditorBlock* b) {
 	preAddType = 5;

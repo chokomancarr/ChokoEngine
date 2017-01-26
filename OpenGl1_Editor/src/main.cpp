@@ -5,6 +5,7 @@
 #include <string>
 #include <ctime>
 #include <Windows.h>
+#include <Psapi.h>
 #include <GL/glew.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
@@ -15,6 +16,7 @@
 #include "SceneObjects.h"
 #include <gl/GLUT.h>
 #include <thread>
+#include <mutex>
 using namespace std;
 
 void InitGL(int argc, char* argv[]);
@@ -44,7 +46,8 @@ int q = 0;
 
 string path;
 Editor* editor;
-HWND hwnd;
+HWND hwnd, hwnd2;
+mutex lockMutex;
 
 int main(int argc, char **argv)
 {
@@ -52,6 +55,7 @@ int main(int argc, char **argv)
 	hwnd = GetForegroundWindow();
 	editor = new Editor();
 	editor->dataPath = path.substr(0, path.find_last_of('\\') + 1);
+	editor->lockMutex = &lockMutex;
 
 	//editor->ParseAsset("D:\\test.blend");
 	//editor->Compile();
@@ -117,7 +121,7 @@ int main(int argc, char **argv)
 
 	//TestScript* ts = new TestScript();
 
-	string p;
+	/*
 	string ip = editor->dataPath + "1.ico";
 	LPARAM hIcon = (LPARAM)LoadImage(NULL, ip.c_str(), IMAGE_ICON, 16, 16, LR_LOADFROMFILE);
 	SendMessage(hwnd, WM_SETICON, ICON_SMALL, hIcon);
@@ -125,7 +129,6 @@ int main(int argc, char **argv)
 	SendMessage(GetWindow(hwnd, GW_OWNER), WM_SETICON, ICON_SMALL, hIcon);
 	SendMessage(GetWindow(hwnd, GW_OWNER), WM_SETICON, ICON_BIG, hIcon);
 
-	/*
 	long style = GetWindowLong(hwnd, GWL_STYLE);
 	style &= ~(WS_VISIBLE);    // this works - window become invisible 
 
@@ -142,14 +145,17 @@ int main(int argc, char **argv)
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
 	glutInitWindowSize(1366, 768);
-	glutCreateWindow("Application");
-	HWND hwnd2 = GetActiveWindow();
+	glutCreateWindow("Engine (loading...)");
+	hwnd2 = GetActiveWindow();
 	ShowWindow(hwnd2, SW_MAXIMIZE);
+	/*
 	SendMessage(hwnd2, WM_SETICON, ICON_SMALL, hIcon);
 	SendMessage(hwnd2, WM_SETICON, ICON_BIG, hIcon);
 	SendMessage(GetWindow(hwnd2, GW_OWNER), WM_SETICON, ICON_SMALL, hIcon);
 	SendMessage(GetWindow(hwnd2, GW_OWNER), WM_SETICON, ICON_BIG, hIcon);
+	*/
 
+	string p;
 	GLint GlewInitResult = glewInit();
 	if (GLEW_OK != GlewInitResult)
 	{
@@ -165,7 +171,7 @@ int main(int argc, char **argv)
 		editor->ReloadAssets(editor->projectFolder + "Assets\\", true);
 		editor->RefreshAssets();
 		//editor->activeScene.sky = new Background(editor->dataPath + "res\\bg_refl.hdr");
-
+		editor->SetBackground(editor->dataPath + "res\\bg.jpg", 0.3f);
 
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -202,12 +208,15 @@ void InitGL(int i) {
 
 void CheckShortcuts() {
 	if (editor->editorLayer == 0) {
+		bool cDn = Input::KeyHold(Key_Control);
+		bool aDn = Input::KeyHold(Key_Alt);
+		bool sDn = Input::KeyHold(Key_Shift);
 		for (auto g = editor->globalShorts.begin(); g != editor->globalShorts.end(); g++) {
-			if (Input::KeyDown(InputKey((g->first & 0xff0000) >> 16)) && ((g->first & 0xff00 == 0) || Input::KeyHold(InputKey((g->first & 0xff00) >> 8))) && ((g->first & 0xff == 0) || Input::KeyHold(InputKey(g->first & 0xff)))) {
+			if (ShortcutTriggered(g->first, cDn, aDn, sDn)) {
 				g->second(editor);
 				return;
 			}
-			if (g->first & 0xff00 == 0) {
+			if ((g->first & 0xff00) == 0) {
 				cout << hex << g->first;
 			}
 		}
@@ -219,9 +228,9 @@ void CheckShortcuts() {
 			v.r = round(v.r) + 1;
 			if (Engine::Button(v.r, v.g, v.b, v.a) && MOUSE_HOVER_FLAG) {
 				for (auto g2 = e->shortcuts.begin(); g2 != e->shortcuts.end(); g2++) {
-					if (Input::KeyDown(InputKey((g2->first & 0xff0000) >> 16)) && (((g2->first & 0xff00) == 0) || Input::KeyHold(InputKey((g2->first & 0xff00) >> 8))) && (((g2->first & 0xff) == 0) || Input::KeyHold(InputKey(g2->first & 0xff)))) {
+					if (ShortcutTriggered(g2->first, cDn, aDn, sDn)) {
 						g2->second(e);
-						return;
+						//return;
 					}
 				}
 				break;
@@ -290,20 +299,23 @@ void UpdateLoop() {
 	while (!die) {
 		while (!redrawn)
 			Sleep(1);
-		t++;
-		redrawn = false; 
-		long long millis = milliseconds();
-		Time::delta = (millis - Time::millis)*0.001f;
-		Time::time = (millis - Time::startMillis)*0.001;
-		Time::millis = millis;
-		Input::UpdateMouseNKeyboard();
-		if (Input::mouse0State == MOUSE_DOWN)
-			editor->blocks[editor->mouseOnP]->OnMousePress(0);
-		if (Input::mouse1State == MOUSE_DOWN)
-			editor->blocks[editor->mouseOnP]->OnMousePress(1);
-		if (Input::mouse2State == MOUSE_DOWN)
-			editor->blocks[editor->mouseOnP]->OnMousePress(2);
-		DoUpdate();
+		{
+			lock_guard<mutex> lock(lockMutex);
+			t++;
+			redrawn = false;
+			long long millis = milliseconds();
+			Time::delta = (millis - Time::millis)*0.001f;
+			Time::time = (millis - Time::startMillis)*0.001;
+			Time::millis = millis;
+			Input::UpdateMouseNKeyboard();
+			if (Input::mouse0State == MOUSE_DOWN)
+				editor->blocks[editor->mouseOnP]->OnMousePress(0);
+			if (Input::mouse1State == MOUSE_DOWN)
+				editor->blocks[editor->mouseOnP]->OnMousePress(1);
+			if (Input::mouse2State == MOUSE_DOWN)
+				editor->blocks[editor->mouseOnP]->OnMousePress(2);
+			DoUpdate(); 
+		}
 	}
 }
 
@@ -315,6 +327,8 @@ void OnDie() {
 bool hi;
 void DrawOverlay() {
 	editor->UpdateLerpers();
+	if (editor->backgroundTex != nullptr)
+		Engine::DrawTexture(0, 0, Display::width, Display::height, editor->backgroundTex, editor->backgroundAlpha*0.01f);
 	for (int i = editor->blocks.size() - 1; i >= 0; i--) {
 		editor->blocks[i]->Draw();
 	}
@@ -346,6 +360,11 @@ void TimerGL(int i)
 	fps = t;
 	t = 0;
 	glutTimerFunc(1000, TimerGL, 1);
+	PROCESS_MEMORY_COUNTERS pmc;
+	GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc));
+	SIZE_T virtualMemUsedByMe = pmc.WorkingSetSize;
+	string str("Engine (about " + to_string((byte)round(virtualMemUsedByMe*0.000001f)) + "Mb used, " + to_string(fps) + "fps)");
+	SetWindowText(hwnd2, str.c_str());
 	//glutPostRedisplay();
 }
 

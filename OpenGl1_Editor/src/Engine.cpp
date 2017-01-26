@@ -807,7 +807,7 @@ void IO::GetFolders(const string& folder, vector<string>* names)
 	HANDLE hFind = ::FindFirstFile(search_path.c_str(), &fd);
 	if (hFind != INVALID_HANDLE_VALUE) {
 		do {
-			if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+			if ((fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && !(fd.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN)) {
 				names->push_back(fd.cFileName);
 			}
 		} while (::FindNextFile(hFind, &fd));

@@ -1,4 +1,4 @@
-#include "Editor.h"
+﻿#include "Editor.h"
 #include "Engine.h"
 #include "KTMModel.h"
 #include <GL/glew.h>
@@ -15,6 +15,7 @@
 #include <Windows.h>
 #include <Thumbcache.h>
 #include <math.h>
+#include <mutex>
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -37,7 +38,35 @@ Vec4 accent() {
 	return Vec4(223.0f / 255, 119.0f / 255, 4.0f / 255, 1);
 }
 
-int GetShortcutInt(InputKey key, InputKey mod1, InputKey mod2) { return (byte)key << 16 | (byte)mod1 << 8 | (byte)mod2; }
+int GetShortcutInt(InputKey key, InputKey mod1, InputKey mod2, InputKey mod3) {
+	int i = (byte)key << 4; //kkkkmcas (m=usemod?)
+	if (mod1 == Key_None)
+		return i;
+	else {
+		i |= 8;
+		if ((mod1 == Key_Control) || (mod2 == Key_Control) || (mod3 == Key_Control)) {
+			i |= 4;
+		}
+		if ((mod1 == Key_Alt) || (mod2 == Key_Alt) || (mod3 == Key_Alt)) {
+			i |= 2;
+		}
+		if ((mod1 == Key_Shift) || (mod2 == Key_Shift) || (mod3 == Key_Shift)) {
+			i |= 1;
+		}
+		return i;
+	}
+}
+
+bool ShortcutTriggered(int i, bool c, bool a, bool s) {
+	if (!Input::KeyDown((InputKey)((i&(0xff << 4)) >> 4))) {
+		return false;
+	}
+	else if (i & 8 == 0)
+		return true;
+	else {
+		return ((c == ((i & 4) == 4)) && (a == ((i & 2) == 2)) && (s == ((i & 1) == 1)));
+	}
+}
 
 int GetFormatEnum(string ext) {
 	if (ext == ".blend")
@@ -182,13 +211,18 @@ HICON GetHighResolutionIcon(LPTSTR pszPath)
 	else return nullptr;
 }
 
-EB_Browser_File::EB_Browser_File(Editor* e, string path, string nm) : path(path), thumbnail(-1) {
+EB_Browser_File::EB_Browser_File(Editor* e, string path, string nm) : path(path), thumbnail(-1), expanded(false) {
 	name = nm;
 	string ext = name.substr(name.find_last_of('.') + 1, string::npos);
+	canExpand = false;
 	for (int a = e->assetIcons.size() - 1; a >= 0; a--) {
 		if (ext == e->assetIconsExt[a]) {
 			thumbnail = a;
 			name = name.substr(0, name.find_last_of('.'));
+			if (ext == "blend") {
+				canExpand = true;
+				children = IO::GetFilesE(e, path + name + "_blend\\");
+			}
 			break;
 		}
 	}
@@ -206,10 +240,17 @@ EB_Browser::EB_Browser(Editor* e, int x1, int y1, int x2, int y2, string dir) : 
 
 bool DrawFileRect(float w, float h, float size, EB_Browser_File* file, EditorBlock* e) {
 	bool b = false;
-	if (e->editor->editorLayer == 0)
-		b = ((file->thumbnail >= 0) ? Engine::Button(w + 1, h + 1, size - 2, size - 2, e->editor->assetIcons[file->thumbnail], white(1, 0.8f), white(), white(1, 0.5f)) : Engine::Button(w + 1, h + 1, size - 2, size - 2, grey2())) == MOUSE_RELEASE;
+	if (e->editor->editorLayer == 0) {
+		byte bb = ((file->thumbnail >= 0) ? Engine::Button(w + 1, h + 1, size - 2, size - 2, e->editor->assetIcons[file->thumbnail], white(1, 0.8f), white(), white(1, 0.5f)) : Engine::Button(w + 1, h + 1, size - 2, size - 2, grey2()));
+		b = bb == MOUSE_RELEASE;
+
+		if (file->canExpand) {
+			if (Engine::Button(w + size*0.5f, h + 1, size*0.5f-1, size - 2, file->expanded? e->editor->assetCollapse : e->editor->assetExpand, white((bb & MOUSE_HOVER_FLAG)>0? 1 : 0.5f, 0.8f), white(), white(1, 0.5f)) == MOUSE_RELEASE) {
+				file->expanded = !file->expanded;
+			}
+		}
+	}
 	else {
-		b = false;
 		if (file->thumbnail >= 0)
 			Engine::DrawTexture(w + 1, h + 1, size - 2, size - 2, e->editor->assetIcons[file->thumbnail]);
 		else
@@ -250,12 +291,26 @@ void EB_Browser::Draw() {
 		if (DrawFileRect(v.r + 151 + ww, v.g + EB_HEADER_SIZE + 101 * hh, 100, &files[ff], this)) {
 			editor->selectedFile = files[ff].path + "\\" + files[ff].name;
 		}
+		
 		ww += 101;
 		if (ww > (v.b - 252)) {
 			ww = 0;
 			hh++;
 			if (v.g + EB_HEADER_SIZE + 101 * hh > Display::height)
 				break;
+		}
+		if (files[ff].expanded) {
+			for (int fff = files[ff].children.size() - 1; fff >= 0; fff--) {
+				Engine::DrawQuad(v.r + 149 + ww, v.g + EB_HEADER_SIZE + 101 * hh + 1, 101, 98, Vec4(1, 0.494f, 0.176f, 0.3f));
+				DrawFileRect(v.r + 153 + ww, v.g + EB_HEADER_SIZE + 101 * hh + 2, 96, &files[ff].children[fff], this);
+				ww += 101;
+				if (ww > (v.b - 252)) {
+					ww = 0;
+					hh++;
+					if (v.g + EB_HEADER_SIZE + 101 * hh > Display::height)
+						break;
+				}
+			}
 		}
 	}
 
@@ -780,8 +835,10 @@ void Editor::LoadDefaultAssets() {
 	orientTexs.push_back(GetRes("orien_view"));
 
 	checkbox = GetRes("checkbox");
-
 	keylock = GetRes("keylock");
+
+	assetExpand = GetRes("asset_expand");
+	assetCollapse = GetRes("asset_collapse");
 	
 	assetIconsExt.push_back("h");
 	assetIconsExt.push_back("blend");
@@ -1046,6 +1103,11 @@ void Editor::DrawHandles() {
 			if (Input::mouse0State == MOUSE_UP)
 				editorLayer = 0;
 		}
+		else if (editorLayer == 2) {
+			Engine::DrawQuad(0, 0, Display::width, Display::height, black(0.4f));
+			Engine::DrawQuad(editingArea.x, editingArea.y, editingArea.w, editingArea.h, grey2());
+			Engine::Label(editingArea.x + 2, editingArea.y + 2, 12, editingVal, font, editingCol);
+		}
 		else if (editorLayer == 3) {
 			Engine::DrawQuad(0, 0, Display::width, Display::height, black(0.8f));
 			Engine::Label(Display::width*0.2f + 6, Display::height*0.2f + 2, 22, "Select Asset", font, white());
@@ -1064,12 +1126,9 @@ void Editor::DrawHandles() {
 		}
 		else if (editorLayer == 4) {
 			Engine::DrawQuad(0, 0, Display::width, Display::height, black(0.8f));
-			Engine::DrawProgressBar(50.0f, Display::height - 30.0f, Display::width - 100.0f, 20.0f, buildProgressValue, white(1, 0.2f), background, buildProgressVec4, 1, 2);
-			Engine::Label(55.0f, Display::height - 26.0f, 12, buildLabel, font, white());
-			for (int i = buildLog.size() - 1, dy = 0; i >= 0; i--) {
-				Engine::Label(30.0f, Display::height - 50.0f - 15.0f*dy, 12, buildLog[i], font, buildLogErrors[i]? red() : white(0.7f), Display::width - 50);
-				dy++;
-			}
+			Engine::DrawProgressBar(Display::width*0.5f - 300, Display::height*0.5f - 10.0f, 600.0f, 20.0f, progressValue, white(1, 0.2f), background, Vec4(0.43f, 0.57f, 0.14f, 1), 1, 2);
+			Engine::Label(Display::width*0.5f - 298, Display::height*0.5f - 25.0f, 12, progressName, font, white());
+			Engine::Label(Display::width*0.5f - 296, Display::height*0.5f - 6.0f, 12, progressDesc, font, white(0.7f));
 		}
 		else if (editorLayer == 5) {
 			Engine::DrawQuad(0, 0, Display::width, Display::height, black(0.6f));
@@ -1083,11 +1142,31 @@ void Editor::DrawHandles() {
 			Engine::Label(Display::width*0.1f + 30, Display::height*0.1f + offy + 48, 12, "Mouse stay inside window", font, white());
 
 			offy = 100;
+			Engine::Label(Display::width*0.1f + 10, Display::height*0.1f + offy, 21, "Editor settings", font, white());
+			Engine::Label(Display::width*0.1f + 10, Display::height*0.1f + offy + 28, 12, "Background Image", font, white());
+			Engine::Button(Display::width*0.1f + 200, Display::height*0.1f + offy + 25, 500, 16, grey2(), backgroundPath, 12, font, white());
+			if (backgroundTex != nullptr) {
+				Engine::Button(Display::width*0.1f + 702, Display::height*0.1f + offy + 25, 16, 16, buttonX, white(0.8f), white(), white(0.4f));
+
+				Engine::Label(Display::width*0.1f + 10, Display::height*0.1f + offy + 48, 12, "Background Brightness", font, white());
+				Engine::Button(Display::width*0.1f + 200, Display::height*0.1f + offy + 46, 70, 16, grey2(), to_string(backgroundAlpha), 12, font, white());
+			}
+
+			offy = 190;
 			Engine::Label(Display::width*0.1f + 10, Display::height*0.1f + offy, 21, "Build settings", font, white());
 			Engine::Label(Display::width*0.1f + 10, Display::height*0.1f + offy + 28, 12, "Data bundle size (x100Mb)", font, white());
 			Engine::Button(Display::width*0.1f + 200, Display::height*0.1f + offy + 25, 70, 16, grey2(), to_string(_assetDataSize), 12, font, white());
 			_cleanOnBuild = Engine::DrawToggle(Display::width*0.1f + 12, Display::height*0.1f + offy + 46, 14, checkbox, _cleanOnBuild, white(), ORIENT_HORIZONTAL);
 			Engine::Label(Display::width*0.1f + 30, Display::height*0.1f + offy + 48, 12, "Remove visual studio files on build", font, white());
+		}
+		else if (editorLayer == 6) {
+			Engine::DrawQuad(0, 0, Display::width, Display::height, black(0.8f));
+			Engine::DrawProgressBar(50.0f, Display::height - 30.0f, Display::width - 100.0f, 20.0f, buildProgressValue, white(1, 0.2f), background, buildProgressVec4, 1, 2);
+			Engine::Label(55.0f, Display::height - 26.0f, 12, buildLabel, font, white());
+			for (int i = buildLog.size() - 1, dy = 0; i >= 0; i--) {
+				Engine::Label(30.0f, Display::height - 50.0f - 15.0f*dy, 12, buildLog[i], font, buildLogErrors[i] ? red() : white(0.7f), Display::width - 50);
+				dy++;
+			}
 		}
 	}
 }
@@ -1189,11 +1268,40 @@ void DoScanAssetsGet(Editor* e, vector<string>& list, string p, bool rec) {
 	}
 }
 
+void DoReloadAssets(Editor* e, string path, bool recursive, mutex* l) {
+	vector<string> files;
+	DoScanAssetsGet(e, files, path, recursive);
+	int r = files.size(), i = 0;
+	for (string f : files) {
+		{
+			lock_guard<mutex> lock(*l);
+			e->progressDesc = f;
+		}
+		e->ParseAsset(f);
+		i++;
+		e->progressValue = i*100.0f / r;
+	}
+	{
+		lock_guard<mutex> lock(*l);
+		for (EditorBlock* eb : e->blocks) {
+			if (eb->editorType == 1)
+				eb->Refresh();
+		}
+	}
+	e->editorLayer = 0;
+}
+
 void Editor::ReloadAssets(string path, bool recursive) {
 	normalAssets[ASSETTYPE_TEXTURE] = vector<string>();
 	normalAssets[ASSETTYPE_HDRI] = vector<string>();
 	normalAssets[ASSETTYPE_MATERIAL] = vector<string>();
 	normalAssets[ASSETTYPE_MESH] = vector<string>();
+	editorLayer = 4;
+	progressName = "Loading assets...";
+	progressValue = 0;
+	thread t(DoReloadAssets, this, path, recursive, lockMutex);
+	t.detach();
+	/*
 	vector<string> files;
 	DoScanAssetsGet(this, files, path, recursive);
 	for (string f : files) {
@@ -1203,6 +1311,7 @@ void Editor::ReloadAssets(string path, bool recursive) {
 		if (eb->editorType == 1)
 			eb->Refresh();
 	}
+	*/
 }
 
 bool Editor::ParseAsset(string path) {
@@ -1234,6 +1343,23 @@ bool Editor::ParseAsset(string path) {
 	strm.close();
 	SetFileAttributes((path + ".meta").c_str(), FILE_ATTRIBUTE_HIDDEN);
 	return true;
+}
+
+void Editor::SetEditing(byte t, string val, Rect a, Vec4 c) {
+	editorLayer = 2;
+	editingType = t;
+	editingVal = val;
+	editingArea = a;
+	editingCol = c;
+}
+
+void Editor::SetBackground(string s, float a) {
+	backgroundPath = s;
+	if (backgroundTex)
+		delete(backgroundTex); //ごめんなさいpandaman先生
+	backgroundTex = new Texture(s);
+	if (a >= 0)
+		backgroundAlpha = (int)(a*100);
 }
 
 void Editor::AddBuildLog(Editor* e, string s, bool forceE) {
@@ -1447,7 +1573,7 @@ void Editor::DoCompile() {
 	buildEnd = false;
 	buildErrorPath = "";
 	buildProgressVec4 = white(1, 0.35f);
-	editorLayer = 4;
+	editorLayer = 6;
 	buildLog.clear();
 	buildLogErrors.clear();
 	buildLabel = "Build: copying files...";

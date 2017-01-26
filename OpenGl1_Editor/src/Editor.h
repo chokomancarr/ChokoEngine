@@ -8,6 +8,7 @@ Editor functions
 
 #include <string>
 #include <vector>
+#include <mutex>
 #include <unordered_map>
 
 using namespace std;
@@ -27,7 +28,8 @@ typedef pair<string, shortcutFunc> funcMapGlobal;
 typedef unordered_map<int, shortcutFunc> ShortcutMap;
 typedef unordered_map<int, shortcutFuncGlobal> ShortcutMapGlobal;
 typedef unordered_map<int, funcMap[]> CommandsMap;
-int GetShortcutInt(InputKey k, InputKey m1, InputKey m2=Key_None);
+int GetShortcutInt(InputKey k, InputKey m1, InputKey m2 = Key_None, InputKey m3 = Key_None);
+bool ShortcutTriggered(int i, bool c, bool a, bool s);
 
 Vec4 grey1(), grey2(), accent();
 
@@ -111,6 +113,8 @@ public:
 	string path;
 	string name;
 	int thumbnail;
+	bool canExpand, expanded;
+	vector<EB_Browser_File> children;
 };
 
 class EB_Browser_SubPath {
@@ -125,6 +129,7 @@ public:
 	//~EB_Browser();
 
 	string currentDir;
+	int selectFile; //for options
 	vector<string> dirs;
 	vector<EB_Browser_File> files;
 
@@ -171,7 +176,7 @@ public:
 	static void _OpenMenuChgMani(EditorBlock*), _OpenMenuChgOrient(EditorBlock*);
 
 	static byte preAddType;
-	static void _AddObjectE(EditorBlock*), _AddObjectCam(EditorBlock*), _AddObjectAud(EditorBlock*);
+	static void _AddObjectE(EditorBlock*), _AddObjectBl(EditorBlock*), _AddObjectCam(EditorBlock*), _AddObjectAud(EditorBlock*);
 	static void _AddComScr(EditorBlock*), _AddComAud(EditorBlock*), _AddComRend(EditorBlock*), _AddComMesh(EditorBlock*);
 	
 	static void _DoAddComScr(EditorBlock* b, void* v), _DoAddComRend(EditorBlock* b, void* v);
@@ -255,6 +260,7 @@ class yPossMerger;
 
 class Editor {
 public:
+	Editor() {}
 	//prefs
 	bool _showDebugInfo = true;
 	bool _showGrid = true;
@@ -266,7 +272,7 @@ public:
 	string projectFolder;
 
 	static string dataPath;
-	int activeX=-1, activeY=-1;
+	int activeX = -1, activeY = -1;
 	float amin, amax;
 	float dw, dh;
 	vector<float> xPoss, yPoss;
@@ -286,10 +292,14 @@ public:
 	//edit = layer2
 	byte editingType; //0none 1int 2float 3string
 	string editingVal;
-	Vec4 editingArea;
-	Vec4 editingBoxCol;
-	Vec4 editingTxtCol;
-	void SetEditing(byte t, string val, Vec4 a, Vec4 c1, Vec4 c2);
+	Rect editingArea;
+	Vec4 editingCol;
+	void SetEditing(byte t, string val, Rect a, Vec4 c2 = white());
+
+	string backgroundPath;
+	Texture* backgroundTex;
+	byte backgroundAlpha;
+	void SetBackground(string s, float a = -1);
 
 	//select = layer3
 	ASSETTYPE browseType;
@@ -299,10 +309,13 @@ public:
 	//progress = layer4
 	string progressName;
 	float progressValue;
+	string progressDesc;
+	void BeginProgress(string n);
 	//prefs = layer5
 
 	bool WAITINGBUILDSTARTFLAG = false;
-	//building - layer4: custom progress to look cool
+	mutex* lockMutex;
+	//building - layer6: custom progress to look cool
 	vector<string> buildLog;
 	void AddBuildLog(Editor* e, string s, bool forceE = false);
 	vector<bool> buildLogErrors;
@@ -339,17 +352,8 @@ public:
 
 	ShortcutMapGlobal globalShorts;
 
-	Texture* buttonX;
-	Texture* buttonExt; 
-	Texture* buttonExtArrow;
-	Texture* background;
-	Texture* placeholder;
-	Texture* checkers;
-	Texture* expand;
-	Texture* collapse;
-	Texture* object;
-	Texture *checkbox;
-	Texture* keylock;
+	Texture* buttonX, *buttonExt, *buttonExtArrow, *background, *placeholder, *checkers, *expand;
+	Texture* collapse, *object, *checkbox, *keylock, *assetExpand, *assetCollapse;
 	vector<Texture*> tooltipTexs;
 	vector<Texture*> shadingTexs;
 	vector<Texture*> orientTexs;
@@ -395,6 +399,10 @@ public:
 	static void DoDeleteActive(EditorBlock* b);
 
 	void DoCompile();
+
+private:
+	Editor(Editor const &);
+	Editor& operator= (Editor const &);
 };
 
 class xPossLerper {
