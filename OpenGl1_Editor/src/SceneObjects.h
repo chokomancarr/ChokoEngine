@@ -108,6 +108,7 @@ public:
 	unsigned int width, height;
 	GLuint pointer;
 	friend int main(int argc, char **argv);
+	static bool Parse(string path);
 
 private:
 	Background(int i);

@@ -252,7 +252,7 @@ public:
 	void* Get(byte type, GLint id) { return values[type][id]; }
 	
 	//removes macros, insert include files
-	static string Parse(ifstream* text);
+	static bool Parse(ifstream* text, string path);
 	static bool LoadShader(GLenum shaderType, string source, GLuint& shader);
 };
 
@@ -354,8 +354,9 @@ public:
 	string sceneName;
 	vector<SceneObject*> objects;
 	Background* sky;
+	int skyId;
 protected:
-	Scene() : sceneName(""), sky(nullptr) {}
+	Scene() : sceneName(""), sky(nullptr), skyId(-1) {}
 	Scene(ifstream& stream, long pos);
 	void Save(Editor* e);
 };

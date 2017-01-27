@@ -295,27 +295,28 @@ void EB_Browser::Draw() {
 	}
 	float ww = 0;
 	int hh = 0;
+	byte fileSize = 70;
 	for (int ff = files.size() - 1; ff >= 0; ff--) {
-		if (DrawFileRect(v.r + 151 + ww, v.g + EB_HEADER_SIZE + 101 * hh, 100, &files[ff], this)) {
+		if (DrawFileRect(v.r + 151 + ww, v.g + EB_HEADER_SIZE + (fileSize+1)* hh, fileSize, &files[ff], this)) {
 			editor->selectedFile = files[ff].path + "\\" + files[ff].name;
 		}
 		
-		ww += 101;
+		ww += fileSize+1;
 		if (ww > (v.b - 252)) {
 			ww = 0;
 			hh++;
-			if (v.g + EB_HEADER_SIZE + 101 * hh > Display::height)
+			if (v.g + EB_HEADER_SIZE + (fileSize+1)* hh > Display::height)
 				break;
 		}
 		if (files[ff].expanded) {
 			for (int fff = files[ff].children.size() - 1; fff >= 0; fff--) {
-				Engine::DrawQuad(v.r + 149 + ww, v.g + EB_HEADER_SIZE + 101 * hh + 1, 101, 98, Vec4(1, 0.494f, 0.176f, 0.3f));
-				DrawFileRect(v.r + 153 + ww, v.g + EB_HEADER_SIZE + 101 * hh + 2, 96, &files[ff].children[fff], this);
-				ww += 101;
+				Engine::DrawQuad(v.r + 149 + ww, v.g + EB_HEADER_SIZE + (fileSize + 1)* hh + 1, fileSize + 1, fileSize-2, Vec4(1, 0.494f, 0.176f, 0.3f));
+				DrawFileRect(v.r + 153 + ww, v.g + EB_HEADER_SIZE + (fileSize+1)* hh + 2, fileSize - 4, &files[ff].children[fff], this);
+				ww += fileSize+1;
 				if (ww > (v.b - 252)) {
 					ww = 0;
 					hh++;
-					if (v.g + EB_HEADER_SIZE + 101 * hh > Display::height)
+					if (v.g + EB_HEADER_SIZE + (fileSize+1)* hh > Display::height)
 						break;
 				}
 			}
@@ -726,6 +727,7 @@ void EB_Inspector::Draw() {
 			Engine::Label(v.r + 22, v.g + 6 + EB_HEADER_SIZE, 12, "Scene Settings", editor->font, white());
 
 			Engine::Label(v.r, v.g + 23 + EB_HEADER_SIZE, 12, "Sky", editor->font, white());
+			editor->DrawAssetSelector(v.r + v.b*0.3f, v.g + 21 + EB_HEADER_SIZE, v.b*0.7f - 1, 14, grey2(), ASSETTYPE_HDRI, 12, editor->font, &editor->activeScene.skyId);
 		}
 		else if(lockGlobal == 1) {
 			Engine::DrawTexture(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 18, 18, editor->object);
@@ -759,6 +761,7 @@ void EB_Inspector::Draw() {
 		Engine::Label(v.r + 22, v.g + 6 + EB_HEADER_SIZE, 12, "Scene Settings", editor->font, white());
 
 		Engine::Label(v.r, v.g + 23 + EB_HEADER_SIZE, 12, "Sky", editor->font, white());
+		editor->DrawAssetSelector(v.r + v.b*0.3f, v.g + 21 + EB_HEADER_SIZE, v.b*0.7f - 1, 14, grey2(), ASSETTYPE_HDRI, 12, editor->font, &editor->activeScene.skyId);
 
 	}
 	else if (editor->selected != nullptr){
@@ -1361,33 +1364,35 @@ void Editor::ReloadAssets(string path, bool recursive) {
 
 bool Editor::ParseAsset(string path) {
 	ifstream stream(path.c_str(), ios::in | ios::binary);
+	bool ok;
 	if (!stream.good()) {
 		_Message("Asset Parser", "asset not found! " + path);
 		return false;
 	}
-	string parsed = "";
 	string ext = path.substr(path.find_last_of('.') + 1, string::npos);
 	if (ext == "shade") {
-		parsed = ShaderBase::Parse(&stream);
+		ok = ShaderBase::Parse(&stream, path + ".meta");
 	}
 	else if (ext == "blend"){
-		return KTMModel::Parse(this, path); //blender will output to path
+		ok = KTMModel::Parse(this, path); //blender will output to path
 	}
 	else if (ext == "bmp" || ext == "png" || ext == "jpg" || ext == "jpeg") {
 
 		return false;
+	}
+	else if (ext == "hdr") {
+		ok = Background::Parse(path);
 	}
 	else {
 		_Message("Asset Parser", "format not supported!");
 		return false;
 	}
 	stream.close();
-	ofstream strm;
-	strm.open((path + ".meta"), ios::trunc | ios::out | ios::binary);
-	strm.write(parsed.c_str(), parsed.size());
-	strm.close();
-	SetFileAttributes((path + ".meta").c_str(), FILE_ATTRIBUTE_HIDDEN);
-	return true;
+	if (ok) {
+		SetFileAttributes((path + ".meta").c_str(), FILE_ATTRIBUTE_HIDDEN);
+		return true;
+	}
+	else return false;
 }
 
 void Editor::SetEditing(byte t, string val, Rect a, Vec4 c) {

@@ -170,7 +170,7 @@ ShaderBase::ShaderBase(string vertex_shader_code, string fragment_shader_code) {
 	loaded = true;
 }
 
-string ShaderBase::Parse(ifstream* stream) {
+bool ShaderBase::Parse(ifstream* stream, string path) {
 	string a, aa = "";
 	vector<string> included;
 	byte readingType = 0;
@@ -222,7 +222,13 @@ string ShaderBase::Parse(ifstream* stream) {
 			}
 		}
 	}
-	return aa;
+	ofstream strm;
+	strm.open(path, ios::trunc | ios::out | ios::binary);
+	if (!strm.is_open())
+		return false;
+	strm.write(aa.c_str(), aa.size());
+	strm.close();
+	return true;
 }
 
 /*old shader class

@@ -1,5 +1,7 @@
 #ifndef HDR_H
 #define HDR_H
+#include <iostream>
+#include <fstream>
 
 class hdr {
 public:

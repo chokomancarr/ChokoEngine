@@ -1108,6 +1108,20 @@ Background::Background(const string& path) : width(0), height(0), AssetObject(AS
 	cout << "HDR Image loaded: " << width << "x" << height << endl;
 }
 
+bool Background::Parse(string path) {
+	uint width, height;
+	byte* data = hdr::read_hdr(path.c_str(), &width, &height);
+	if (data == NULL)
+		return;
+	string ss(path + ".meta");
+	ofstream str(ss, ios::out | ios::trunc | ios::binary);
+	str << "IMG";
+	str << "\x4";
+	_StreamWrite(&width, &str, 4);
+	_StreamWrite(&height, &str, 4);
+	str.close();
+}
+
 //-----------------font class---------------------
 Font::Font(const string& path) : Font("", path, -1) {}
 Font::Font(const string& paths, const string& pathb, int size) : loaded(false), alignment(ALIGN_TOPLEFT), sizeToggle(size) {
@@ -1338,7 +1352,7 @@ void Deserialize(ifstream& stream, SceneObject* obj) {
 	}
 }
 
-Scene::Scene(ifstream& stream, long pos) : sceneName(""), sky(nullptr) {
+Scene::Scene(ifstream& stream, long pos) : sceneName(""), sky(nullptr), skyId(-1) {
 	stream.seekg(pos);
 	char h1, h2;
 	stream >> h1 >> h2;
