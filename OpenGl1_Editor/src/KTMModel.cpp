@@ -200,6 +200,8 @@ bool KTMModel::Parse(Editor* e, string s) {
 			DeleteFile(file.c_str());
 	}
 	SetFileAttributes(sss.c_str(), FILE_ATTRIBUTE_HIDDEN);
+	string ms(s + ".meta");
+	DeleteFile(ms.c_str());
 
 	bool failed = true;
 	string cmd1(e->_blenderInstallationPath.substr(0, 2) + "\n"); //root
@@ -266,6 +268,6 @@ bool KTMModel::Parse(Editor* e, string s) {
 	}
 	CloseHandle(stdOutR);
 	CloseHandle(stdOutW);
-	SetFileAttributes((s + ".meta").c_str(), FILE_ATTRIBUTE_HIDDEN);
+	SetFileAttributes(ms.c_str(), FILE_ATTRIBUTE_HIDDEN);
 	return true;
 }

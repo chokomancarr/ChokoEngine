@@ -799,7 +799,7 @@ vector<EB_Browser_File> IO::GetFilesE (Editor* e, const string& folder)
 	return names;
 }
 
-void IO::GetFolders(const string& folder, vector<string>* names)
+void IO::GetFolders(const string& folder, vector<string>* names, bool hidden)
 {
 	//vector<string> names;
 	string search_path = folder + "/*";
@@ -807,7 +807,7 @@ void IO::GetFolders(const string& folder, vector<string>* names)
 	HANDLE hFind = ::FindFirstFile(search_path.c_str(), &fd);
 	if (hFind != INVALID_HANDLE_VALUE) {
 		do {
-			if ((fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && !(fd.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN)) {
+			if ((fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (hidden || !(fd.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN))) {
 				names->push_back(fd.cFileName);
 			}
 		} while (::FindNextFile(hFind, &fd));
@@ -867,6 +867,7 @@ Vec4 red() { return red(1, 1); }
 Vec4 green() { return green(1, 1); }
 Vec4 blue() { return blue(1, 1); }
 Vec4 cyan() { return cyan(1, 1); }
+Vec4 yellow() { return yellow(1, 1); }
 Vec4 black() { return black(1); }
 Vec4 white() { return white(1, 1); }
 
@@ -874,6 +875,7 @@ Vec4 red(float f) { return red(f, 1); }
 Vec4 green(float f) { return green(f, 1); }
 Vec4 blue(float f) { return blue(f, 1); }
 Vec4 cyan(float f) { return cyan(f, 1); }
+Vec4 yellow(float f) { return yellow(f, 1); }
 Vec4 black(float f) { return Vec4(0, 0, 0, f); }
 Vec4 white(float f) { return white(f, 1); }
 
@@ -881,6 +883,7 @@ Vec4 red(float f, float i) { return Vec4(i, 0, 0, f); }
 Vec4 green(float f, float i) { return Vec4(0, i, 0, f); }
 Vec4 blue(float f, float i) { return Vec4(0, 0, i, f); }
 Vec4 cyan(float f, float i) { return Vec4(i*0.09f, i*0.706f, i, f); }
+Vec4 yellow(float f, float i) { return Vec4(i, i, 0, f); }
 Vec4 white(float f, float i) { return Vec4(i, i, i, f); }
 Vec4 LerpVec4(Vec4 a, Vec4 b, float f) {
 	if (f > 1)

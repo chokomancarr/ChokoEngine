@@ -94,6 +94,149 @@ void EB_Viewer::_AddComMesh(EditorBlock* b) {
 void EB_Viewer::_AddComRend(EditorBlock* b) {
 	b->editor->RegisterMenu(b, "Add Rendering", vector<string>({ "Camera", "Mesh Renderer" }), vector<shortcutFunc>({ _D2AddComCam, _D2AddComMrd }), 0);
 }
+
+void AsCh(SceneObject* sc, const string& nm, vector<SceneObject*>& os, bool& found) {
+	for (SceneObject* oo : os) {
+		if (oo->name == nm) {
+			oo->AddChild(sc);
+			found = true;
+			return;
+		}
+		else {
+			AsCh(sc, nm, oo->children, found);
+		}
+	}
+}
+void LoadMeshMeta(vector<SceneObject*>& os, string& path) {
+	for (SceneObject* o : os) {
+		string nn(path.substr(Editor::instance->projectFolder.size() + 7, string::npos));
+		int r = 0;
+		for (string ss : Editor::instance->normalAssets[ASSETTYPE_MESH]) {
+			if (ss == (nn + o->name)) {
+				MeshFilter* mft = new MeshFilter();
+				mft->_mesh = r;
+				o->AddComponent(mft)->object->AddComponent(new MeshRenderer());
+				break;
+			}
+			r++;
+		}
+		LoadMeshMeta(o->children, path);
+	}
+}
+void EB_Viewer::_DoAddObjectBl(EditorBlock* b, void* v) {
+	string name = *((string*)v);
+	string path = b->editor->projectFolder + "Assets\\" + name + ".meta";
+	name = name.substr(name.find_last_of('\\') + 1, string::npos).substr(0, name.find_last_of('.'));
+	SceneObject* o = new SceneObject(name);
+	b->editor->activeScene.objects.push_back(o);
+	ifstream file(path.c_str(), ios::in | ios::binary);
+	if (file.is_open()) {
+		char * c = new char[8];
+		file.read(c, 7);
+		c[7] = '\0';
+		string s(c);
+		if (string(c) != "KTM123\n") {
+			b->editor->_Error("Add Object", *((string*)v) + " meta data corrupted!0");
+			return;
+		}
+		string d;
+		file >> d;
+		while (d == "obj") {
+			string nm;
+			string prt;
+			file >> nm;
+			if (nm == "") break;
+			cout << nm << endl;
+			char * cc = new char[7];
+			cc[6] = '\0';
+			file.read(cc, 6);
+			string ss;
+			Vec3 tr, sc;
+			Quat rt;
+			if (*(cc + 1) == '\0') {
+				ss = string(cc+2);
+			}
+			else {
+				b->editor->_Error("Add Object", *((string*)v) + " meta data corrupted!1");
+				return;
+			}
+			if (ss == "prt ") {
+				file >> prt;
+				file.read(cc, 6);
+				if (*(cc + 1) == '\0') {
+					ss = string(cc + 2);
+				}
+				else {
+					b->editor->_Error("Add Object", *((string*)v) + " meta data corrupted!2");
+					return;
+				}
+			}
+			if (ss != "pos ") {
+				b->editor->_Error("Add Object", *((string*)v) + " meta data corrupted!3");
+				return;
+			}
+			file >> ss;
+			tr.x = stof(ss);
+			file >> ss;
+			tr.y = stof(ss);
+			file >> ss;
+			tr.z = stof(ss);
+
+			file.read(cc, 6);
+			if (*(cc + 1) == '\0') {
+				ss = string(cc + 2);
+			}
+			else {
+				b->editor->_Error("Add Object", *((string*)v) + " meta data corrupted!4");
+				return;
+			}
+			if (ss != "rot ") {
+				b->editor->_Error("Add Object", *((string*)v) + " meta data corrupted!5");
+				return;
+			}
+			file >> ss;
+			rt.w = stof(ss);
+			file >> ss;
+			rt.x = stof(ss);
+			file >> ss;
+			rt.y = stof(ss);
+			file >> ss;
+			rt.z = stof(ss);
+
+			file.read(cc, 6);
+			if (*(cc + 1) == '\0') {
+				ss = string(cc + 2);
+			}
+			else {
+				b->editor->_Error("Add Object", *((string*)v) + " meta data corrupted!6");
+				return;
+			}
+			if (ss != "scl ") {
+				b->editor->_Error("Add Object", *((string*)v) + " meta data corrupted!7");
+				return;
+			}
+			file >> ss;
+			sc.x = stof(ss);
+			file >> ss;
+			sc.y = stof(ss);
+			file >> ss;
+			sc.z = stof(ss);
+			if (prt == "")
+				o->AddChild(new SceneObject(nm, tr, rt, sc));
+			else {
+				bool found;
+				AsCh(new SceneObject(nm, tr, rt, sc), prt, o->children, found);
+			}
+			file >> d;
+		}
+		file.close();
+
+		LoadMeshMeta(o->children, path.substr(0, path.size()-11) + "_blend\\");
+	}
+	else {
+		b->editor->_Error("Add Object", "failed to open " + *((string*)v) + " meta file!");
+	}
+}
 void EB_Viewer::_DoAddComScr(EditorBlock* b, void* v) {
 	b->editor->selected->AddComponent(new SceneScript(b->editor, *((string*)v)));
 }
@@ -114,10 +257,10 @@ void EB_Viewer::_AddObjectE(EditorBlock* b) {
 }
 void EB_Viewer::_AddObjectBl(EditorBlock* b) {
 	vector<void*> vals;
-	for (int a = 0; a < b->editor->normalAssets[ASSETTYPE_MESH].size(); a++) {
-		vals.push_back(&b->editor->normalAssets[ASSETTYPE_MESH][a]);
+	for (int a = 0; a < b->editor->blendAssets.size(); a++) {
+		vals.push_back(&b->editor->blendAssets[a]);
 	}
-	b->editor->RegisterMenu(b, "Add Script", b->editor->headerAssets, ((EB_Viewer*)b)->_DoAddComScr, vals, 0);
+	b->editor->RegisterMenu(b, "Add Blender Object", b->editor->blendAssets, ((EB_Viewer*)b)->_DoAddObjectBl, vals, 0);
 }
 void EB_Viewer::_AddObjectCam(EditorBlock* b) {
 	preAddType = 5;

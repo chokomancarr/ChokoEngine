@@ -179,6 +179,7 @@ public:
 	static void _AddObjectE(EditorBlock*), _AddObjectBl(EditorBlock*), _AddObjectCam(EditorBlock*), _AddObjectAud(EditorBlock*);
 	static void _AddComScr(EditorBlock*), _AddComAud(EditorBlock*), _AddComRend(EditorBlock*), _AddComMesh(EditorBlock*);
 	
+	static void _DoAddObjectBl(EditorBlock* b, void* v);
 	static void _DoAddComScr(EditorBlock* b, void* v), _DoAddComRend(EditorBlock* b, void* v);
 	static void _D2AddComCam(EditorBlock*), _D2AddComMrd(EditorBlock*), _D2AddComMft(EditorBlock*);
 	
@@ -260,7 +261,8 @@ class yPossMerger;
 
 class Editor {
 public:
-	Editor() {}
+	Editor() {instance = this;}
+	static Editor* instance;
 	//prefs
 	bool _showDebugInfo = true;
 	bool _showGrid = true;
@@ -313,7 +315,7 @@ public:
 	void BeginProgress(string n);
 	//prefs = layer5
 
-	bool WAITINGBUILDSTARTFLAG = false;
+	bool WAITINGBUILDSTARTFLAG = false, WAITINGREFRESHFLAG = false;
 	mutex* lockMutex;
 	//building - layer6: custom progress to look cool
 	vector<string> buildLog;
@@ -361,7 +363,7 @@ public:
 	vector<string> assetIconsExt;
 	vector<Texture*> assetIcons;
 	//Texture buttonDash;
-	vector<string> headerAssets;
+	vector<string> headerAssets, blendAssets;
 	unordered_map<ASSETTYPE, vector<string>> normalAssets;
 
 	void DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASSETTYPE type, float labelSize, Font* labelFont, int* tar);
@@ -386,6 +388,7 @@ public:
 	void _Message(string c, string s);
 	void _Warning(string c, string s);
 	void _Error(string c, string s);
+	void ClearLogs();
 
 	void ReloadAssets(string path, bool recursive);
 	bool ParseAsset(string path);

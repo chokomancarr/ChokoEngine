@@ -5,7 +5,7 @@
 
 class Object {
 public:
-	Object() : id(Engine::GetNewId()) {}
+	Object(string nm = "") : id(Engine::GetNewId()), name(nm) {}
 	ulong id;
 	string name;
 
@@ -20,10 +20,11 @@ typedef unsigned char DRAWORDER;
 #define DRAWORDER_OVERLAY 0x04
 class Component : public Object {
 public:
-	Component(COMPONENT_TYPE t, DRAWORDER drawOrder = 0x00) : componentType(t), active(true), drawOrder(drawOrder), _expanded(true) {}
+	Component(string name, COMPONENT_TYPE t, DRAWORDER drawOrder = 0x00, vector<COMPONENT_TYPE> dep = {}) : Object(name), componentType(t), active(true), drawOrder(drawOrder), _expanded(true), dependancies(dep) {}
 	virtual  ~Component() {}
 
 	const COMPONENT_TYPE componentType = 0;
+	const vector<COMPONENT_TYPE> dependancies;
 	const DRAWORDER drawOrder;
 	bool active;
 	SceneObject* object;
@@ -35,7 +36,7 @@ public:
 
 	virtual void LoadDefaultValues() {} //also loads assets
 	virtual void DrawEditor() {} //trs matrix not applied, apply before calling
-	virtual void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) = 0;
+	virtual void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) = 0;
 	virtual void DrawGameCamera() {}
 	virtual void Serialize(Editor* e, ofstream* stream) {}
 
@@ -129,7 +130,7 @@ public:
 	
 	void UpdateCamVerts();
 	void DrawEditor() override;
-	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos);
+	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos);
 	void Serialize(Editor* e, ofstream* stream) override;
 
 	friend int main(int argc, char **argv);
@@ -144,10 +145,10 @@ class MeshFilter : public Component {
 public:
 	MeshFilter();
 	
-
+	int _mesh;
 	//void LoadDefaultValues() override;
 
-	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos);
+	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos);
 	void Serialize(Editor* e, ofstream* stream) override;
 };
 
@@ -157,16 +158,16 @@ public:
 	MeshRenderer();
 
 	void DrawEditor() override {}
-	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos);
+	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos);
 };
 
 #define COMP_TRD 0x10
 class TextureRenderer : public Component {
 public:
-	TextureRenderer(): _texture(-1), Component(COMP_TRD, DRAWORDER_OVERLAY) {}
+	TextureRenderer(): _texture(-1), Component("Texture Renderer", COMP_TRD, DRAWORDER_OVERLAY) {}
 
 
-	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos);
+	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos);
 	void Serialize(Editor* e, ofstream* stream) override;
 
 	friend int main(int argc, char **argv);
@@ -183,15 +184,12 @@ public:
 	//called in editor
 	SceneScript(Editor* e, string name);
 
-	string name;
-	
-
 	virtual void Start() {}
 	virtual void Update() {}
 	virtual void LateUpdate() {}
 	virtual void Paint() {}
 
-	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos);
+	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos); //we want c to be null if deleted
 	void Serialize(Editor* e, ofstream* stream) override;
 
 	//bool ReferencingObject(Object* o) override;
@@ -217,7 +215,7 @@ public:
 	SceneObject* GetChild(int i) { return children[i]; }
 	Component* AddComponent(Component* c);
 	Component* GetComponent(COMPONENT_TYPE type);
-	void RemoveComponent(Component* c);
+	void RemoveComponent(Component*& c);
 
 	bool _expanded;
 	int _componentCount;

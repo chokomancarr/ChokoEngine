@@ -26,6 +26,7 @@
 #include <filesystem>
 
 HWND Editor::hwnd = 0;
+Editor* Editor::instance = nullptr;
 string Editor::dataPath = "";
 
 Vec4 grey1() {
@@ -69,8 +70,10 @@ bool ShortcutTriggered(int i, bool c, bool a, bool s) {
 }
 
 int GetFormatEnum(string ext) {
-	if (ext == ".blend")
+	if (ext == ".mesh")
 		return ASSETTYPE_MESH;
+	else if (ext == ".blend")
+		return ASSETTYPE_BLEND;
 	else if (ext == ".mat")
 		return ASSETTYPE_MATERIAL;
 	else if (ext == ".hdr")
@@ -112,8 +115,10 @@ void EB_Debug::Draw() {
 	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
 	//glDisable(GL_DEPTH_TEST);
 	for (int x = drawIds.size() - 1, y = 0; x >= 0; x--, y++) {
+		byte t = editor->messageTypes[drawIds[x]];
+		Vec4 col = (t == 0) ? white() : ((t==1)? yellow() : red());
 		Engine::DrawQuad(v.r + 1, v.g + v.a - 36 - (y*15), v.b - 2, 14, Vec4(1, 1, 1, (x&1==1)? 0.2f : 0.1f));
-		Engine::Label(v.r + 3, v.g + v.a - 34 - y * 15, 12, editor->messages[drawIds[x]].first + " says: " + editor->messages[drawIds[x]].second, editor->font, white());
+		Engine::Label(v.r + 3, v.g + v.a - 34 - y * 15, 12, editor->messages[drawIds[x]].first + " says: " + editor->messages[drawIds[x]].second, editor->font, col);
 	}
 	if (Engine::EButton((editor->editorLayer == 0), v.r + 1, v.g + v.a - 21, 80, 20, grey1(), "Messages", 12, editor->font, drawM ? white() : grey2()) == MOUSE_RELEASE) {
 		drawM = !drawM;
@@ -126,6 +131,9 @@ void EB_Debug::Draw() {
 	if (Engine::EButton((editor->editorLayer == 0), v.r + 163, v.g + v.a - 21, 80, 20, grey1(), "Errors", 12, editor->font, drawE ? white() : grey2()) == MOUSE_RELEASE) {
 		drawE = !drawE;
 		Refresh();
+	}
+	if (Engine::EButton((editor->editorLayer == 0), v.r + v.b - 100, v.g + v.a - 21, 80, 20, grey1(), "Clear", 12, editor->font, white()) == MOUSE_RELEASE) {
+		editor->ClearLogs();
 	}
 	Engine::EndStencil(); 
 }
@@ -734,6 +742,8 @@ void EB_Inspector::Draw() {
 			for (Component* c : lockedObj->_components)
 			{
 				c->DrawInspector(editor, c, v, off);
+				if (editor->WAITINGREFRESHFLAG) //deleted
+					return;
 			}
 		}
 	}
@@ -766,6 +776,8 @@ void EB_Inspector::Draw() {
 		for (Component* c : editor->selected->_components)
 		{
 			c->DrawInspector(editor, c, v, off);
+			if (editor->WAITINGREFRESHFLAG) //deleted
+				return;
 		}
 	}
 	else
@@ -892,7 +904,7 @@ void Editor::LoadDefaultAssets() {
 	globalShorts.emplace(GetShortcutInt(Key_X, Key_Control), &DeleteActive);
 
 	assetTypes.emplace("scene", ASSETTYPE_SCENE);
-	assetTypes.emplace("blend", ASSETTYPE_MESH);
+	assetTypes.emplace("mesh", ASSETTYPE_MESH);
 	assetTypes.emplace("bmp", ASSETTYPE_TEXTURE);
 	assetTypes.emplace("hdr", ASSETTYPE_HDRI);
 	
@@ -1236,7 +1248,10 @@ void DoScanAssetsGet(Editor* e, vector<string>& list, string p, bool rec) {
 		if (type != ASSETTYPE_UNDEF) {
 			string ss = w + ".meta";//ss.substr(0, ss.size() - 5);
 			string ww(w.substr(e->projectFolder.size() + 7, string::npos));
-			e->normalAssets[type].push_back(ww.substr(0, ww.find_last_of('\\')) + ww.substr(ww.find_last_of('\\') + 1, string::npos));
+			if (type == ASSETTYPE_BLEND)
+				e->blendAssets.push_back(ww.substr(0, ww.find_last_of('\\')) + ww.substr(ww.find_last_of('\\') + 1, string::npos));
+			else
+				e->normalAssets[type].push_back(ww.substr(0, ww.find_last_of('\\')) + ww.substr(ww.find_last_of('\\') + 1, string::npos));
 			if (IO::HasFile(ss.c_str())) {
 				FILETIME metaTime, realTime;
 				HANDLE metaF = CreateFile(ss.c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -1268,6 +1283,25 @@ void DoScanAssetsGet(Editor* e, vector<string>& list, string p, bool rec) {
 	}
 }
 
+void DoScanMeshesGet(Editor* e, vector<string>& list, string p, bool rec) {
+	vector<string> files = IO::GetFiles(p);
+	for (string w : files) {
+		if ((w.size() > 10) && ((w.substr(w.size() - 10, string::npos)) == ".mesh.meta")) {
+			string ww(w.substr(e->projectFolder.size() + 7, string::npos));
+			ww = ww.substr(0, ww.find_last_of('\\')) + ww.substr(ww.find_last_of('\\') + 1, string::npos);
+			e->normalAssets[ASSETTYPE_MESH].push_back(ww.substr(0, ww.size()-10));
+		}
+	}
+	if (rec) {
+		vector<string> dirs;
+		IO::GetFolders(p, &dirs, true);
+		for (string d : dirs) {
+			if (d != "." && d != "..")
+				DoScanMeshesGet(e, list, p + d + "\\", true);
+		}
+	}
+}
+
 void DoReloadAssets(Editor* e, string path, bool recursive, mutex* l) {
 	vector<string> files;
 	DoScanAssetsGet(e, files, path, recursive);
@@ -1281,6 +1315,7 @@ void DoReloadAssets(Editor* e, string path, bool recursive, mutex* l) {
 		i++;
 		e->progressValue = i*100.0f / r;
 	}
+	DoScanMeshesGet(e, files, path, true);
 	{
 		lock_guard<mutex> lock(*l);
 		for (EditorBlock* eb : e->blocks) {
@@ -1291,11 +1326,21 @@ void DoReloadAssets(Editor* e, string path, bool recursive, mutex* l) {
 	e->editorLayer = 0;
 }
 
+void Editor::ClearLogs() {
+	messages.clear();
+	messageTypes.clear();
+	for (EditorBlock* eb : blocks) {
+		if (eb->editorType == 10)
+			eb->Refresh();
+	}
+}
+
 void Editor::ReloadAssets(string path, bool recursive) {
 	normalAssets[ASSETTYPE_TEXTURE] = vector<string>();
 	normalAssets[ASSETTYPE_HDRI] = vector<string>();
 	normalAssets[ASSETTYPE_MATERIAL] = vector<string>();
 	normalAssets[ASSETTYPE_MESH] = vector<string>();
+	blendAssets.clear();
 	editorLayer = 4;
 	progressName = "Loading assets...";
 	progressValue = 0;

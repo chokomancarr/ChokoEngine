@@ -36,28 +36,26 @@ class KTMExporter():
         
         #write mesh list to main .meta
         file2 = open(dirr + name + ".blend.meta", "wb")
-        self.write(file2, "KTM123\r\n")
+        self.write(file2, "KTM123\n")
         for obj in self.scene.objects:
             if obj.type != 'MESH':
                 continue
             print ("obj " + obj.name)
             self.write(file2, "obj " + obj.name)
             if obj.parent:
-                self.write(file2, " \x00prt " + obj.parent.name + "\r\n")
-            else:
-                self.write(file2, "\r\n")
+                self.write(file2, " \x00prt " + obj.parent.name)
+            poss = obj.location
+            self.write(file2, " \x00pos {:f} {:f} {:f}".format(poss[0], poss[1], poss[2]))
+            rott = obj.rotation_quaternion
+            self.write(file2, " \x00rot {:f} {:f} {:f} {:f}".format(rott[0], rott[1], rott[2], rott[3]))
+            scll = obj.scale
+            self.write(file2, " \x00scl {:f} {:f} {:f}\n".format(scll[0], scll[1], scll[2]))
                 
             print ("!writing to: " + dirr + name + "_blend\\" + obj.name + ".mesh.meta")
             file = open(dirr + name + "_blend\\" + obj.name + ".mesh.meta", "wb")
             self.write(file, "KTO123\r\n")
             
             self.write(file, "  obj " + obj.name + " [\r\n")
-            poss = obj.location
-            self.write(file, "    pos {:f} {:f} {:f}\r\n".format(poss[0], poss[1], poss[2]))
-            rott = obj.rotation_euler
-            self.write(file, "    rot {:f} {:f} {:f}\r\n".format(rott[0], rott[1], rott[2]))
-            scll = obj.scale
-            self.write(file, "    scl {:f} {:f} {:f}\r\n\r\n".format(scll[0], scll[1], scll[2]))
             for vert in obj.data.vertices:
                 self.write(file, "    vrt {} {:f} {:f} {:f}\r\n".format(vert.index, vert.co[0], vert.co[1], vert.co[2]))
             self.write(file, "\r\n")

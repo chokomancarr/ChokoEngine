@@ -2,25 +2,40 @@
 #include "Engine.h"
 #include "Editor.h"
 
-bool DrawComponentHeader(Editor* e, string name, Vec4 v, float pos, bool expand, byte texId) {
+bool DrawComponentHeader(Editor* e, Vec4 v, float pos, Component* c) {
 	Engine::DrawQuad(v.r, v.g + pos, v.b - 17, 16, grey2());
 	//bool hi = expand;
 	//if (Engine::EButton((e->editorLayer == 0), v.r, v.g + pos, v.b, 16, grey2(), white(1, 0.7f), grey1()) == MOUSE_RELEASE) {
 	//	hi = !expand;
 	//}
-	Engine::DrawTexture(v.r, v.g + pos, 16, 16, expand ? e->collapse : e->expand);
-	if (Engine::EButton(e->editorLayer == 0, v.r + v.b - 16, v.g + pos, 16, 16, e->buttonX, white(1, 0.7f))) {
+	Engine::DrawTexture(v.r, v.g + pos, 16, 16, c->_expanded ? e->collapse : e->expand);
+	if (Engine::EButton(e->editorLayer == 0, v.r + v.b - 16, v.g + pos, 16, 16, e->buttonX, white(1, 0.7f)) == MOUSE_RELEASE) {
 		//delete
-		
+		c->object->RemoveComponent(c);
+		if (c == nullptr)
+			e->WAITINGREFRESHFLAG = true;
+		return false;
 	}
-	Engine::Label(v.r + 20, v.g + pos + 3, 12, name, e->font, white());
+	Engine::Label(v.r + 20, v.g + pos + 3, 12, c->name, e->font, white());
 	return true;
 }
 
 int Camera::camVertsIds[19] = { 0, 1, 0, 2, 0, 3, 0, 4, 1, 2, 2, 4, 4, 3, 3, 1, 1, 2, 5 };
 
-Camera::Camera() : Component(COMP_CAM, DRAWORDER_NOT), ortographic(false), fov(60), orthoSize(10), screenPos(0.3f, 0.1f, 0.6f, 0.4f) {
-	camVerts[0] = Vec3();
+Camera::Camera() : Component("Camera", COMP_CAM, DRAWORDER_NOT), ortographic(false), fov(60), orthoSize(10), screenPos(0.3f, 0.1f, 0.6f, 0.4f) {
+	//camVerts[0] = Vec3();
+	UpdateCamVerts();
+}
+
+Camera::Camera(ifstream& stream, long pos) : Component("Camera", COMP_CAM, DRAWORDER_NOT), ortographic(false), orthoSize(10) {
+	if (pos >= 0)
+		stream.seekg(pos);
+	stream >> fov;
+	stream >> screenPos.x;
+	stream >> screenPos.y;
+	stream >> screenPos.w;
+	stream >> screenPos.h;
+	//camVerts[0] = Vec3();
 	UpdateCamVerts();
 }
 
@@ -45,9 +60,9 @@ void Camera::DrawEditor() {
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
-void Camera::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
+void Camera::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 	Camera* cam = (Camera*)c;
-	if (DrawComponentHeader(e, "Camera", v, pos, c->_expanded, COMP_CAM)) {
+	if (DrawComponentHeader(e, v, pos, this)) {
 		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Field of view", e->font, white());
 		Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos + 17, v.b*0.7f, 16, grey1());
 		Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 20, 12, to_string(cam->fov), e->font, white());
@@ -76,24 +91,15 @@ void Camera::Serialize(Editor* e, ofstream* stream) {
 	_StreamWrite(&screenPos.h, stream, 4);
 }
 
-Camera::Camera(ifstream& stream, long pos) : Component(COMP_CAM, DRAWORDER_NOT), ortographic(false), orthoSize(10) {
-	if (pos >= 0)
-		stream.seekg(pos);
-	stream >> fov;
-	stream >> screenPos.x;
-	stream >> screenPos.y;
-	stream >> screenPos.w;
-	stream >> screenPos.h;
-}
-
-MeshFilter::MeshFilter() : Component(COMP_MFT, DRAWORDER_NOT) {
+MeshFilter::MeshFilter() : Component("Mesh Filter", COMP_MFT, DRAWORDER_NOT), _mesh(-1) {
 
 }
 
-void MeshFilter::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
+void MeshFilter::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 	//MeshFilter* mft = (MeshFilter*)c;
-	if (DrawComponentHeader(e, "Mesh Filter", v, pos, c->_expanded, COMP_MFT)) {
+	if (DrawComponentHeader(e, v, pos, this)) {
 		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Mesh", e->font, white());
+		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 17, v.b*0.7f, 16, grey1(), ASSETTYPE_MESH, 12, e->font, &_mesh);
 		pos += 34;
 	}
 	else pos += 17;
@@ -103,22 +109,22 @@ void MeshFilter::Serialize(Editor* e, ofstream* stream) {
 
 }
 
-MeshRenderer::MeshRenderer() : Component(COMP_MRD, DRAWORDER_SOLID | DRAWORDER_TRANSPARENT) {
+MeshRenderer::MeshRenderer() : Component("Mesh Renderer", COMP_MRD, DRAWORDER_SOLID | DRAWORDER_TRANSPARENT, {COMP_MFT}) {
 
 }
 
-void MeshRenderer::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
+void MeshRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 	//MeshRenderer* mrd = (MeshRenderer*)c;
-	if (DrawComponentHeader(e, "Mesh Renderer", v, pos, c->_expanded, COMP_MRD)) {
+	if (DrawComponentHeader(e, v, pos, this)) {
 		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Materials", e->font, white());
 		pos += 34;
 	}
 	else pos += 17;
 }
 
-void TextureRenderer::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
+void TextureRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 	//MeshRenderer* mrd = (MeshRenderer*)c;
-	if (DrawComponentHeader(e, "Texture Renderer", v, pos, c->_expanded, COMP_TRD)) {
+	if (DrawComponentHeader(e, v, pos, this)) {
 		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Texture", e->font, white());
 		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 17, v.b*0.7f, 16, grey1(), ASSETTYPE_TEXTURE, 12, e->font, &_texture);
 		pos += 34;
@@ -130,13 +136,13 @@ void TextureRenderer::Serialize(Editor* e, ofstream* stream) {
 	_StreamWrite(&_texture, stream, 4);
 }
 
-TextureRenderer::TextureRenderer(ifstream& stream, long pos) : Component(COMP_TRD, DRAWORDER_OVERLAY) {
+TextureRenderer::TextureRenderer(ifstream& stream, long pos) : Component("Texture Renderer", COMP_TRD, DRAWORDER_OVERLAY) {
 	if (pos >= 0)
 		stream.seekg(pos);
 	stream >> _texture;
 }
 
-SceneScript::SceneScript(Editor* e, string name) : name(name), Component(COMP_SCR, DRAWORDER_NOT) {
+SceneScript::SceneScript(Editor* e, string name) : Component(name + " (Script)", COMP_SCR, DRAWORDER_NOT) {
 
 }
 void SceneScript::Serialize(Editor* e, ofstream* stream) {
@@ -147,9 +153,9 @@ void SceneScript::Serialize(Editor* e, ofstream* stream) {
 	}
 }
 
-void SceneScript::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
+void SceneScript::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 	SceneScript* scr = (SceneScript*)c;
-	if (DrawComponentHeader(e, scr->name + "(Script)", v, pos, c->_expanded, COMP_SCR)) {
+	if (DrawComponentHeader(e, v, pos, this)) {
 		pos += 100;
 	}
 	else pos += 17;
@@ -189,10 +195,19 @@ Component* SceneObject::GetComponent(COMPONENT_TYPE type) {
 	return nullptr;
 }
 
-void SceneObject::RemoveComponent(Component* c) {
-	for (int a = _components.size(); a >= 0; a--) {
+void SceneObject::RemoveComponent(Component*& c) {
+	for (int a = _components.size()-1; a >= 0; a--) {
 		if (_components[a] == c) {
+			for (int aa = _components.size()-1; aa >= 0; aa--) {
+				for (COMPONENT_TYPE t : _components[aa]->dependancies) {
+					if (t == c->componentType) {
+						Editor::instance->_Warning("Component Deleter", "Cannot delete " + c->name + " because other components depend on it!");
+						return;
+					}
+				}
+			}
 			_components.erase(_components.begin() + a);
+			c = nullptr;
 			return;
 		}
 	}

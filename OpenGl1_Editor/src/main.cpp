@@ -1,4 +1,5 @@
 #define _USE_MATH_DEFINES
+#define IS_EDITOR
 #include <math.h>
 #include <iostream>
 #include <vector>
@@ -48,6 +49,8 @@ string path;
 Editor* editor;
 HWND hwnd, hwnd2;
 mutex lockMutex;
+
+//PC loc: C:\Users\Pua Kai\Documents\GitHub\OpenGl_Engine\Debug
 
 int main(int argc, char **argv)
 {
@@ -104,7 +107,8 @@ int main(int argc, char **argv)
 		->object->AddComponent(new Camera())
 		->object->AddComponent(new TextureRenderer())
 		->object->GetChild(1)
-		->AddChild(new SceneObject("Child"));
+		->AddChild(new SceneObject("Child"))
+		->AddComponent(new MeshFilter());
 	editor->activeScene.objects[1]
 		->AddComponent(new MeshFilter())
 		->object->AddComponent(new MeshRenderer());
@@ -254,6 +258,7 @@ void DoUpdate() {
 		editor->DoCompile();
 		return;
 	}
+	editor->WAITINGREFRESHFLAG = false;
 	CheckShortcuts();
 	int i = -1, k = 0;
 	editor->mouseOn = 0;
@@ -269,6 +274,8 @@ void DoUpdate() {
 			break;
 		}
 		k++;
+		if (editor->WAITINGREFRESHFLAG) //deleted
+			return;
 	}
 	if (i != -1) {
 		if (editor->mousePressType == -1) {

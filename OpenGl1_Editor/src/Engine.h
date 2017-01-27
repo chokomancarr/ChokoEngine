@@ -91,9 +91,9 @@ long long milliseconds();
 class Editor;
 
 //shorthands
-Vec4 red(), green(), blue(), cyan(), black(), white();
-Vec4 red(float f), green(float f), blue(float f), cyan(float f), black(float f), white(float f);
-Vec4 red(float f, float i), green(float f, float i), blue(float f, float i), cyan(float f, float i), white(float f, float i);
+Vec4 red(), green(), blue(), cyan(), yellow(), black(), white();
+Vec4 red(float f), green(float f), blue(float f), cyan(float f), yellow(float f), black(float f), white(float f);
+Vec4 red(float f, float i), green(float f, float i), blue(float f, float i), cyan(float f, float i), yellow(float f, float i), white(float f, float i);
 Vec4 LerpVec4(Vec4 a, Vec4 b, float f);
 float clamp(float f, float a, float b);
 Vec3 rotate(Vec3 v, Quat q);
@@ -122,7 +122,8 @@ typedef unsigned char ASSETTYPE;
 #define ASSETTYPE_HDRI 0x02
 #define ASSETTYPE_SHADER 0x05
 #define ASSETTYPE_MATERIAL 0x10
-#define ASSETTYPE_MESH 0x20
+#define ASSETTYPE_BLEND 0x20
+#define ASSETTYPE_MESH 0x21
 #define ASSETTYPE_SCRIPT_H 0xfe
 #define ASSETTYPE_SCRIPT_CPP 0xff
 class AssetObject;
@@ -158,7 +159,7 @@ class IO {
 public:
 	static vector<string> GetFiles(const string& path);
 	static vector<EB_Browser_File> GetFilesE(Editor* e, const string& path);
-	static void GetFolders(const string& path, vector<string>* names);
+	static void GetFolders(const string& path, vector<string>* names, bool hidden = false);
 	static bool HasDirectory(LPCTSTR szPath);
 	static bool HasFile(LPCTSTR szPath);
 	static string ReadFile(const string& path);
