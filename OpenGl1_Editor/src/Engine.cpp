@@ -910,6 +910,93 @@ glm::mat4 Quat2Mat(Quat q) {
 	return glm::mat4(q.w, q.x, q.y, q.z, -q.x, q.w, q.z, -q.y, -q.y, -q.z, q.w, q.x, -q.z, q.y, -q.x, q.w);
 }
 
+//-----------------mesh class------------------------
+Mesh::Mesh(Editor* e, int i) : AssetObject(ASSETTYPE_MESH) {
+	Mesh* m2 = (Mesh*)e->GetCache(type, i);
+	vertices = m2->vertices;
+	vertexCount = m2->vertexCount;
+	normals = m2->normals;
+	triangles = m2->triangles;
+	triangleCount = m2->triangleCount;
+	loaded = m2->loaded;
+}
+
+Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false) {
+	ifstream stream(path.c_str());
+	if (!stream.good()) {
+		cout << "not found!" << endl;
+		return;
+	}
+	string a;
+	string junk;
+	int x;
+	stream >> a;
+	if (a != "KTO123") {
+		Editor::instance->_Error("Mesh Importer", "mesh metadata corrupted (wrong header)!");
+	}
+	stream >> a;
+	if (a == "obj") {
+		stream >> name >> junk;
+	}
+	else {
+		Editor::instance->_Error("Mesh Importer", "mesh metadata corrupted (obj tag not found)!");
+		return;
+	}
+	while (!stream.eof()) {
+		if (a == "vrt") {
+			Vec3 v;
+			stream >> x;
+			if (x != vertexCount) {
+				Editor::instance->_Error("Mesh Importer", "mesh metadata corrupted (vertex id not in order)!");
+				return;
+			}
+			vertexCount++;
+			stream >> v.x >> v.y >> v.z;
+			vertices.push_back(v);
+		}
+		else if (a == "nrm") {
+			stream >> x;
+			if (x >= vertexCount) {
+				Editor::instance->_Error("Mesh Importer", "mesh metadata corrupted (normal id exceed vertex id)!");
+				return;
+			}
+			Vec3 n;
+			stream >> n.x >> n.y >> n.z;
+			normals.push_back(n);
+			//cout << "vn" << x << " " << s(mesh.vertices[x].normal) << endl;
+		}
+		/*
+		else if (a == "vcl") {
+			stream >> x;
+			if (x >= vertCount) {
+				Editor::instance->_Error("Mesh Importer", "mesh metadata corrupted (vertex color id exceed vertex id)!");
+				return false;
+			}
+			stream >> mesh.vertices[x].Vec4.x >> mesh.vertices[x].Vec4.y >> mesh.vertices[x].Vec4.z;
+			//cout << "vc" << x << " " << s(mesh.vertices[x].normal) << endl;
+		}
+		*/
+		else if (a == "tri") {
+			int i;
+			stream >> i;
+			triangles.push_back(i+0);
+			stream >> i;
+			triangles.push_back(i+0);
+			stream >> i;
+			triangles.push_back(i+0);
+			//cout << "tri" << faceCount - 1 << endl;
+		}
+		else if (a == "]")
+			break;
+		else
+			cout << "what is this? " << a << endl;
+
+
+	}
+	loaded = true;
+	return;
+}
+
 //-----------------texture class---------------------
 bool LoadJPEG(string fileN, uint &x, uint &y, byte& channels, byte** data)
 {
@@ -1112,7 +1199,7 @@ bool Background::Parse(string path) {
 	uint width, height;
 	byte* data = hdr::read_hdr(path.c_str(), &width, &height);
 	if (data == NULL)
-		return;
+		return false;
 	string ss(path + ".meta");
 	ofstream str(ss, ios::out | ios::trunc | ios::binary);
 	str << "IMG";
@@ -1120,6 +1207,7 @@ bool Background::Parse(string path) {
 	_StreamWrite(&width, &str, 4);
 	_StreamWrite(&height, &str, 4);
 	str.close();
+	return true;
 }
 
 //-----------------font class---------------------

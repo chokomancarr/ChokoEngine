@@ -1253,8 +1253,10 @@ void DoScanAssetsGet(Editor* e, vector<string>& list, string p, bool rec) {
 			string ww(w.substr(e->projectFolder.size() + 7, string::npos));
 			if (type == ASSETTYPE_BLEND)
 				e->blendAssets.push_back(ww.substr(0, ww.find_last_of('\\')) + ww.substr(ww.find_last_of('\\') + 1, string::npos));
-			else
+			else {
 				e->normalAssets[type].push_back(ww.substr(0, ww.find_last_of('\\')) + ww.substr(ww.find_last_of('\\') + 1, string::npos));
+				e->normalAssetCaches[type].push_back(nullptr);
+			}
 			if (IO::HasFile(ss.c_str())) {
 				FILETIME metaTime, realTime;
 				HANDLE metaF = CreateFile(ss.c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -1343,6 +1345,13 @@ void Editor::ReloadAssets(string path, bool recursive) {
 	normalAssets[ASSETTYPE_HDRI] = vector<string>();
 	normalAssets[ASSETTYPE_MATERIAL] = vector<string>();
 	normalAssets[ASSETTYPE_MESH] = vector<string>();
+
+
+	normalAssetCaches[ASSETTYPE_TEXTURE] = vector<void*>(); //Texture*
+	normalAssetCaches[ASSETTYPE_HDRI] = vector<void*>(); //Background*
+	normalAssetCaches[ASSETTYPE_MATERIAL] = vector<void*>(); //Material*
+	normalAssetCaches[ASSETTYPE_MESH] = vector<void*>(); //Mesh*
+
 	blendAssets.clear();
 	editorLayer = 4;
 	progressName = "Loading assets...";
@@ -1426,14 +1435,17 @@ void Editor::AddBuildLog(Editor* e, string s, bool forceE) {
 	}
 }
 
-bool Editor::GetCache(string& path, I_EBI_ValueCollection& vals) {
-	
-	vals.vals.clear();
-	return false;
+void* Editor::GetCache(ASSETTYPE type, int i) {
+	void *data = normalAssetCaches[type][i];
+	if (data != nullptr)
+		return data;
+	else {
+		return GenCache(type, i);
+	}
 }
 
-bool Editor::SetCache(string& path, I_EBI_ValueCollection* vals) {
-	return false;
+void* Editor::GenCache(ASSETTYPE type, int i) {
+	return nullptr;
 }
 
 /*

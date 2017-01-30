@@ -62,25 +62,31 @@ public:
 
 class AssetObject : public Object {
 protected:
-	AssetObject(ASSETTYPE t) : type(t) {}
+	AssetObject(ASSETTYPE t) : type(t), Object() {}
 	virtual  ~AssetObject() {}
 
 	const ASSETTYPE type = 0;
-	uint id;
-	string name;
 
-	virtual void Load() = 0;
-
+	//virtual void Load() = 0;
 };
 
 class Mesh : public AssetObject {
 public:
-	Mesh();
+	//Mesh(); //until i figure out normal recalc algorithm
+	bool loaded;
+
+	vector<Vec3> vertices;
+	vector<Vec3> normals;
+	vector<int> triangles;
+
+	uint vertexCount, triangleCount;
 
 	friend int main(int argc, char **argv);
+	friend class Editor;
 private:
-	Mesh(int i);
-	void Load();
+	Mesh(Editor* e, int i);
+	Mesh(string path);
+	//void Load();
 };
 
 class Texture {
@@ -101,7 +107,7 @@ private:
 
 class Background : public AssetObject {
 public:
-	Background() : AssetObject(ASSETTYPE_HDRI){}
+	//Background() : AssetObject(ASSETTYPE_HDRI){}
 	Background(const string& path);
 
 	bool loaded;
@@ -112,7 +118,7 @@ public:
 
 private:
 	Background(int i);
-	void Load() {}
+	//void Load() {}
 };
 
 #define COMP_UNDEF 0x00
@@ -146,11 +152,17 @@ class MeshFilter : public Component {
 public:
 	MeshFilter();
 	
-	int _mesh;
+	Mesh* mesh;
 	//void LoadDefaultValues() override;
 
 	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos);
 	void Serialize(Editor* e, ofstream* stream) override;
+	
+	friend class Editor;
+	friend void LoadMeshMeta(vector<SceneObject*>& os, string& path);
+protected:
+	void SetMesh(int i);
+	int _mesh;
 };
 
 #define COMP_MRD 0x10

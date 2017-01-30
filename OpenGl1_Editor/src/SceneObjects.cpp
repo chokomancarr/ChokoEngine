@@ -109,6 +109,13 @@ void MeshFilter::Serialize(Editor* e, ofstream* stream) {
 
 }
 
+void MeshFilter::SetMesh(int i) {
+	_mesh = i;
+	if (i > 0) {
+		mesh = (Mesh*)Editor::instance->GetCache(ASSETTYPE_MESH, i);
+	}
+}
+
 MeshRenderer::MeshRenderer() : Component("Mesh Renderer", COMP_MRD, DRAWORDER_SOLID | DRAWORDER_TRANSPARENT, {COMP_MFT}) {
 
 }

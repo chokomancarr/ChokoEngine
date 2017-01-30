@@ -365,6 +365,7 @@ public:
 	//Texture buttonDash;
 	vector<string> headerAssets, blendAssets;
 	unordered_map<ASSETTYPE, vector<string>> normalAssets;
+	unordered_map<ASSETTYPE, vector<void*>> normalAssetCaches;
 
 	void DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASSETTYPE type, float labelSize, Font* labelFont, int* tar);
 
@@ -392,8 +393,8 @@ public:
 
 	void ReloadAssets(string path, bool recursive);
 	bool ParseAsset(string path);
-	static bool GetCache(string& path, I_EBI_ValueCollection& vals);
-	static bool SetCache(string& path, I_EBI_ValueCollection* vals);
+	void* GetCache(ASSETTYPE type, int id);
+	void* GenCache(ASSETTYPE type, int id);
 
 	static void Compile(Editor* e);
 	static void ShowPrefs(Editor* e);
