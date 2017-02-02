@@ -3,6 +3,7 @@
 #include "KTMModel.h"
 #include <GL/glew.h>
 #include <iostream>
+#include <sstream>
 #include <vector>
 #include <string>
 #include <shlobj.h>
@@ -78,7 +79,7 @@ int GetFormatEnum(string ext) {
 		return ASSETTYPE_MATERIAL;
 	else if (ext == ".hdr")
 		return ASSETTYPE_HDRI;
-	else if (ext == ".bmp")
+	else if (ext == ".bmp" || ext == ".jpg")
 		return ASSETTYPE_TEXTURE;
 	else if (ext == ".shade")
 		return ASSETTYPE_SHADER;
@@ -86,13 +87,13 @@ int GetFormatEnum(string ext) {
 	else return ASSETTYPE_UNDEF;
 }
 
-bool DrawHeaders(Editor* e, EditorBlock* b, Vec4* v, string titleS, string titleB) {
+void DrawHeaders(Editor* e, EditorBlock* b, Vec4* v, string title) {
 	//Engine::Button(v->r, v->g + EB_HEADER_SIZE + 1, v->b, v->a - EB_HEADER_SIZE - 2, black(), white(0.05f), white(0.05f));
 	Vec2 v2(v->b*0.1f, EB_HEADER_SIZE*0.1f);
 	Engine::DrawQuad(v->r + EB_HEADER_PADDING + 1, v->g, v->b - 3 - 2 * EB_HEADER_PADDING, EB_HEADER_SIZE, e->background->pointer, Vec2(), Vec2(v2.x, 0), Vec2(0, v2.y), v2, false, accent());
-	Engine::Label(round(v->r + 5 + EB_HEADER_PADDING), round(v->g + 2), 10, titleS, e->font, black(), Display::width);
-	Engine::Label(round(v->r + 8 + EB_HEADER_PADDING), round(v->g + 12), 22, titleB, e->font, black());
-	return Rect(v->r, v->g + EB_HEADER_SIZE + 1, v->b, v->a - EB_HEADER_SIZE - 2).Inside(Input::mousePos);
+	//Engine::Label(round(v->r + 5 + EB_HEADER_PADDING), round(v->g + 2), 10, titleS, e->font, black(), Display::width);
+	Engine::Label(round(v->r + 5 + EB_HEADER_PADDING), v->g + 2, 12, title, e->font, black());
+	//return Rect(v->r, v->g + EB_HEADER_SIZE + 1, v->b, v->a - EB_HEADER_SIZE - 2).Inside(Input::mousePos);
 }
 
 void CalcV(Vec4& v) {
@@ -105,13 +106,13 @@ void CalcV(Vec4& v) {
 void EB_Empty::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	CalcV(v);
-	DrawHeaders(editor, this, &v, "hatena header", "Hatena Title");
+	DrawHeaders(editor, this, &v, "Hatena Title");
 }
 
 void EB_Debug::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	CalcV(v);
-	DrawHeaders(editor, this, &v, "log messages", "System");
+	DrawHeaders(editor, this, &v, "System Log");
 	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
 	//glDisable(GL_DEPTH_TEST);
 	for (int x = drawIds.size() - 1, y = 0; x >= 0; x--, y++) {
@@ -182,7 +183,7 @@ void EBH_DrawItem(SceneObject* sc, Editor* e, Vec4* v, int& i, int indent) {
 void EB_Hierarchy::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	CalcV(v);
-	DrawHeaders(editor, this, &v, "Scene objects", "Hierarchy");
+	DrawHeaders(editor, this, &v, "Scene Hierarchy");
 
 	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
 	glDisable(GL_DEPTH_TEST);
@@ -224,14 +225,20 @@ EB_Browser_File::EB_Browser_File(Editor* e, string path, string nm) : path(path)
 	string ext = name.substr(name.find_last_of('.') + 1, string::npos);
 	canExpand = false;
 	for (int a = e->assetIcons.size() - 1; a >= 0; a--) {
-		if (ext == e->assetIconsExt[a]) {
-			thumbnail = a;
-			name = name.substr(0, name.find_last_of('.'));
-			if (ext == "blend") {
-				canExpand = true;
-				children = IO::GetFilesE(e, path + name + "_blend\\");
+		std::stringstream ss;
+		ss.str(e->assetIconsExt[a]);
+		string arr;
+		while (!ss.eof()) {
+			ss >> arr;
+			if (ext == arr) {
+				thumbnail = a;
+				name = name.substr(0, name.find_last_of('.'));
+				if (ext == "blend") {
+					canExpand = true;
+					children = IO::GetFilesE(e, path + name + "_blend\\");
+				}
+				return;
 			}
-			break;
 		}
 	}
 }
@@ -272,7 +279,7 @@ bool DrawFileRect(float w, float h, float size, EB_Browser_File* file, EditorBlo
 void EB_Browser::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	CalcV(v);
-	bool in = DrawHeaders(editor, this, &v, currentDir, "Browser");
+	DrawHeaders(editor, this, &v, "Browser: " + currentDir);
 
 	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
 	glDisable(GL_DEPTH_TEST);
@@ -392,10 +399,48 @@ Vec2 xy(Vec3 v) {
 	return Vec2(v.x, v.y);
 }
 
+void DrawSceneObjectsOpaque(EB_Viewer* ebv, vector<SceneObject*> oo) {
+	for (SceneObject* sc : oo)
+	{
+		glPushMatrix();
+		Vec3 v = sc->transform.position;
+		//rotation matrix here
+		glTranslatef(v.x, v.y, v.z);
+		for (Component* com : sc->_components)
+		{
+			if (com->componentType == COMP_MRD)
+				com->DrawEditor(ebv);
+		}
+		DrawSceneObjectsOpaque(ebv, sc->children);
+		glPopMatrix();
+	}
+}
+
+void DrawSceneObjectsGizmos(EB_Viewer* ebv, vector<SceneObject*> oo) {
+	for (SceneObject* sc : oo)
+	{
+		glPushMatrix();
+		Vec3 v = sc->transform.position;
+		//rotation matrix here
+		glTranslatef(v.x, v.y, v.z);
+		for (Component* com : sc->_components)
+		{
+			if (com->componentType != COMP_MRD)
+				com->DrawEditor(ebv);
+		}
+		DrawSceneObjectsGizmos(ebv, sc->children);
+		glPopMatrix();
+	}
+}
+
+void DrawSceneObjectsTrans(vector<SceneObject*> oo) {
+
+}
+
 void EB_Viewer::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	CalcV(v);
-	DrawHeaders(editor, this, &v, "scene ID here", "Viewer");
+	DrawHeaders(editor, this, &v, "Viewer: SceneNameHere");
 
 	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
 
@@ -433,20 +478,15 @@ void EB_Viewer::Draw() {
 	glClearDepth(1);
 
 	//draw scene
-	for (SceneObject* sc : editor->activeScene.objects)
-	{
-		glPushMatrix();
-		Vec3 v = sc->transform.position;
-		//rotation matrix here
-		glTranslatef(v.x, v.y, v.z);
-		for (Component* com : sc->_components)
-		{
-			com->DrawEditor();
-		}
-		glPopMatrix();
-	}
+	glDepthFunc(GL_LEQUAL);
+	glDepthMask(true);
+	DrawSceneObjectsOpaque(this, editor->activeScene.objects);
+	glDepthMask(false);
+	DrawSceneObjectsOpaque(this, editor->activeScene.objects);
+	DrawSceneObjectsOpaque(this, editor->activeScene.objects);
 
 	//draw background
+	glDepthFunc(GL_EQUAL);
 	if (editor->activeScene.sky != nullptr) {
 		Engine::DrawSky(v.x, v.y, v.z, v.w, editor->activeScene.sky, rz/360.0f, rw/180.0f, 60, 0);
 		//Engine::DrawQuad(v.x, v.y, v.z, v.w, editor->activeScene.sky->pointer, white());
@@ -705,7 +745,7 @@ void EB_Inspector::Draw() {
 		nm = (lockGlobal == 1) ? lockedObj->name : (lockGlobal == 2) ? "Scene settings" : "No object selected";
 	else
 		nm = (editor->selected != nullptr) ? editor->selected->name : editor->selectGlobal ? "Scene settings" : "No object selected";
-	DrawHeaders(editor, this, &v, isAsset ? (loaded ? label : "No object selected") : nm, "Inspector");
+	DrawHeaders(editor, this, &v, "Inspector");// isAsset ? (loaded ? label : "No object selected") : nm);
 	lock = Engine::DrawToggle(v.r + v.b - EB_HEADER_PADDING - 30, v.g + 4, 25, editor->keylock, lock, lock?Vec4(1, 1, 0, 1) : white(0.5f), ORIENT_HORIZONTAL);
 
 	if (!lock) {
@@ -808,12 +848,14 @@ void EB_Inspector::DrawAsset(Editor* e, Vec4 v, float dh, string label, ASSETTYP
 	Engine::Label(v.r + v.b*0.19f + 2, v.g + dh + 2 + EB_HEADER_SIZE, 12, label, e->font, white());
 }
 
-void Editor::DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASSETTYPE type, float labelSize, Font* labelFont, int* tar) {
+void Editor::DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASSETTYPE type, float labelSize, Font* labelFont, int* tar, callbackFunc func, void* param) {
 	if (editorLayer == 0) {
 		if (Engine::Button(x, y, w, h, col, LerpVec4(col, white(), 0.5f), LerpVec4(col, black(), 0.5f)) == MOUSE_RELEASE) {
 			editorLayer = 3;
 			browseType = type;
 			browseTarget = tar;
+			browseCallback = func;
+			browseCallbackParam = param;
 		}
 	}
 	else
@@ -861,15 +903,14 @@ void Editor::LoadDefaultAssets() {
 	assetIconsExt.push_back("shade");
 	assetIconsExt.push_back("txt");
 	assetIconsExt.push_back("mesh");
+	assetIconsExt.push_back("bmp jpg");
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_header.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_blend.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_cpp.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_shade.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_txt.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_mesh.bmp", false));
-	//assetIcons.push_back(GetRes("asset_blend"));
-	//assetIcons.push_back(GetRes("asset_cpp"));
-	//assetIcons.push_back(GetRes("asset_shade"));
+	assetIcons.push_back(new Texture(dataPath + "res\\asset_tex.bmp", false));
 
 	for (int x = 0; x < 16; x++) {
 		grid[x] = Vec3((x > 7) ? x - 7 : x - 8, 0, -8);
@@ -993,7 +1034,8 @@ void Editor::DrawHandles() {
 	{
 		Vec4 v = Vec4(Display::width*xPoss[b->x1], Display::height*yPoss[b->y1], Display::width*xPoss[b->x2], Display::height*yPoss[b->y2]);
 
-		Engine::DrawQuad(v.r + 1, v.g + 2 + EB_HEADER_PADDING, EB_HEADER_PADDING, EB_HEADER_SIZE - 1 - EB_HEADER_PADDING, grey1());
+		//Engine::DrawQuad(v.r + 1, v.g + 2 + EB_HEADER_PADDING, EB_HEADER_PADDING, EB_HEADER_SIZE - 1 - EB_HEADER_PADDING, grey1());
+		//Engine::DrawQuad(v.b - EB_HEADER_PADDING, v.g + 2 + EB_HEADER_PADDING, EB_HEADER_PADDING, EB_HEADER_SIZE - 1 - EB_HEADER_PADDING, grey1());
 		if (Engine::EButton((b->editor->editorLayer == 0), v.r + 1, v.g + 1, EB_HEADER_PADDING, EB_HEADER_PADDING, buttonExt, white(1, 0.8f), white(), white(1, 0.3f)) == MOUSE_RELEASE) { //splitter top left
 			if (b->headerStatus == 1)
 				b->headerStatus = 0;
@@ -1035,7 +1077,6 @@ void Editor::DrawHandles() {
 			//delete(b);
 			//break;
 		}
-		Engine::DrawQuad(v.b - EB_HEADER_PADDING, v.g + 2 + EB_HEADER_PADDING, EB_HEADER_PADDING, EB_HEADER_SIZE - 1 - EB_HEADER_PADDING, grey1());
 		r++;
 	}
 
@@ -1129,12 +1170,16 @@ void Editor::DrawHandles() {
 			if (Engine::Button(Display::width*0.2f + 6, Display::height*0.2f + 26, Display::width*0.3f - 7, 14, grey2(), "undefined", 12, font, white()) == MOUSE_RELEASE) {
 				*browseTarget = -1;
 				editorLayer = 0;
+				if (browseCallback != nullptr)
+					(*browseCallback)(browseCallbackParam);
 				return;
 			}
 			for (int r = 0, rr = normalAssets[browseType].size(); r < rr; r++) {
 				if (Engine::Button(Display::width*0.2f + 6 + (Display::width*0.3f - 5)*((r+1)&1), Display::height*0.2f + 41 + 15 * (((r+1)>>1)-1), Display::width*0.3f - 7, 14, grey2(), normalAssets[browseType][r], 12, font, white()) == MOUSE_RELEASE) {
 					*browseTarget = r;
 					editorLayer = 0;
+					if (browseCallback != nullptr)
+						(*browseCallback)(browseCallbackParam);
 					return;
 				}
 			}
@@ -1247,8 +1292,10 @@ void Editor::_Error(string a, string b) {
 void DoScanAssetsGet(Editor* e, vector<string>& list, string p, bool rec) {
 	vector<string> files = IO::GetFiles(p);
 	for (string w : files) {
-		ASSETTYPE type = GetFormatEnum(w.substr(w.find_last_of("."), string::npos));
+		string ww = w.substr(w.find_last_of("."), string::npos);
+		ASSETTYPE type = GetFormatEnum(ww);
 		if (type != ASSETTYPE_UNDEF) {
+			//cout << "file " << w << endl;
 			string ss = w + ".meta";//ss.substr(0, ss.size() - 5);
 			string ww(w.substr(e->projectFolder.size() + 7, string::npos));
 			if (type == ASSETTYPE_BLEND)
@@ -1280,10 +1327,10 @@ void DoScanAssetsGet(Editor* e, vector<string>& list, string p, bool rec) {
 	}
 	if (rec) {
 		vector<string> dirs;
-		IO::GetFolders(p, &dirs);
+		IO::GetFolders(p, &dirs, true);
 		for (string d : dirs) {
 			if (d != "." && d != "..")
-			DoScanAssetsGet(e, list, p + d + "\\", true);
+				DoScanAssetsGet(e, list, p + d + "\\", true);
 		}
 	}
 }
@@ -1295,6 +1342,7 @@ void DoScanMeshesGet(Editor* e, vector<string>& list, string p, bool rec) {
 			string ww(w.substr(e->projectFolder.size() + 7, string::npos));
 			ww = ww.substr(0, ww.find_last_of('\\')) + ww.substr(ww.find_last_of('\\') + 1, string::npos);
 			e->normalAssets[ASSETTYPE_MESH].push_back(ww.substr(0, ww.size()-10));
+			e->normalAssetCaches[ASSETTYPE_MESH].push_back(nullptr);
 		}
 	}
 	if (rec) {
@@ -1372,6 +1420,7 @@ void Editor::ReloadAssets(string path, bool recursive) {
 }
 
 bool Editor::ParseAsset(string path) {
+	cout << "parsing " << path << endl;
 	ifstream stream(path.c_str(), ios::in | ios::binary);
 	bool ok;
 	if (!stream.good()) {
@@ -1383,10 +1432,10 @@ bool Editor::ParseAsset(string path) {
 		ok = ShaderBase::Parse(&stream, path + ".meta");
 	}
 	else if (ext == "blend"){
-		ok = KTMModel::Parse(this, path); //blender will output to path
+		ok = KTMModel::Parse(this, path);
 	}
-	else if (ext == "bmp" || ext == "png" || ext == "jpg" || ext == "jpeg") {
-
+	else if (ext == "bmp" || ext == "jpg") {
+		ok = Texture::Parse(this, path);
 		return false;
 	}
 	else if (ext == "hdr") {
@@ -1445,7 +1494,12 @@ void* Editor::GetCache(ASSETTYPE type, int i) {
 }
 
 void* Editor::GenCache(ASSETTYPE type, int i) {
-	return nullptr;
+	switch (type) {
+	case ASSETTYPE_MESH:
+		normalAssetCaches[type][i] = new Mesh(normalAssets[type][i]);
+		break;
+	}
+	return normalAssetCaches[type][i];
 }
 
 /*

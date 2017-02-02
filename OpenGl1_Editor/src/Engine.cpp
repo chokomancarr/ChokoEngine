@@ -922,9 +922,10 @@ Mesh::Mesh(Editor* e, int i) : AssetObject(ASSETTYPE_MESH) {
 }
 
 Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false) {
-	ifstream stream(path.c_str());
+	string p = Editor::instance->projectFolder + "Assets\\" + path + ".mesh.meta";
+	ifstream stream(p.c_str());
 	if (!stream.good()) {
-		cout << "not found!" << endl;
+		cout << "mesh file not found!" << endl;
 		return;
 	}
 	string a;
@@ -942,6 +943,7 @@ Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false) {
 		Editor::instance->_Error("Mesh Importer", "mesh metadata corrupted (obj tag not found)!");
 		return;
 	}
+	stream >> a;
 	while (!stream.eof()) {
 		if (a == "vrt") {
 			Vec3 v;
@@ -979,6 +981,8 @@ Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false) {
 		else if (a == "tri") {
 			int i;
 			stream >> i;
+			//material id
+			stream >> i;
 			triangles.push_back(i+0);
 			stream >> i;
 			triangles.push_back(i+0);
@@ -988,10 +992,10 @@ Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false) {
 		}
 		else if (a == "]")
 			break;
-		else
-			cout << "what is this? " << a << endl;
-
-
+		else {
+			cout << "what is this? [" << a << "]" << endl;
+		}
+		stream >> a;
 	}
 	loaded = true;
 	return;
@@ -1092,11 +1096,11 @@ Texture::Texture(const string& path, bool mipmap, bool nearest) {
 	string sss = path.substr(path.find_last_of('.'), string::npos);
 	byte *data;
 	byte chn;
-	cout << "opening image at " << path << endl;
+	//cout << "opening image at " << path << endl;
 	GLenum rgb = GL_RGB, rgba = GL_RGBA;
 	if (sss == ".bmp") {
 		if (!LoadBMP(path, width, height, chn, &data)) {
-			cout << "load bmp failed!" << endl;
+			cout << "load bmp failed! " << path << endl;
 			return;
 		}
 		rgb = GL_BGR;
@@ -1104,12 +1108,12 @@ Texture::Texture(const string& path, bool mipmap, bool nearest) {
 	}
 	else if (sss == ".jpg") {
 		if (!LoadJPEG(path, width, height, chn, &data)) {
-			cout << "load jpg failed!" << endl;
+			cout << "load jpg failed! " << path << endl;
 			return;
 		}
 	}
 	else  {
-		printf("Image extension invalid!");
+		cout << "Image extension invalid! " << path << endl;
 		return;
 	}
 
@@ -1122,53 +1126,46 @@ Texture::Texture(const string& path, bool mipmap, bool nearest) {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (mipmap) ? GL_LINEAR_MIPMAP_LINEAR : (nearest)? GL_NEAREST : GL_LINEAR);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	loaded = true;
-	cout << "image loaded: " << width << "x" << height << endl;
+	//cout << "image loaded: " << width << "x" << height << endl;
 }
-Texture::Texture(ifstream& stream, long pos) {
-	
-	char header[54]; // Each BMP file begins by a 54-bytes header
-	unsigned int dataPos;     // Position in the file where the actual data begins
-	unsigned int imageSize;   // = width*height*3
-	char *data;
-	unsigned short bpi;
 
-	stream.seekg(pos);
-
-	stream.get((char*)&header[0], 54);
-	if (header[0] != 'B' || header[1] != 'M'){
-		printf("Not a correct BMP file\n");
-		return;
+bool Texture::Parse(Editor* e, string path) {
+	string sss = path.substr(path.find_last_of('.'), string::npos);
+	byte *data = nullptr;
+	byte chn;
+	uint width, height;
+	GLenum rgb = GL_RGB, rgba = GL_RGBA;
+	if (sss == ".bmp") {
+		if (!LoadBMP(path, width, height, chn, &data)) {
+			cout << "load bmp failed! " << path << endl;
+			return false;
+		}
+		rgb = GL_BGR;
+		rgba = GL_BGRA;
 	}
-	dataPos = *(int*)&(header[0x0A]);
-	imageSize = *(int*)&(header[0x22]);
-	width = *(int*)&(header[0x12]);
-	height = *(int*)&(header[0x16]);
-	bpi = *(short*)&(header[0x1c]);
-	if (bpi != 24 && bpi != 32)
-		return;
-	// Some BMP files are misformatted, guess missing information
-	if (imageSize == 0)    imageSize = width*height * 3; // 3 : one byte for each Red, Green and Blue component
-	if (dataPos == 0)      dataPos = 54; // The BMP header is done that way
-	data = new char[imageSize];
-	// Read the actual data from the file into the buffer
-	stream.get(data, imageSize);
-
-	stream.seekg(pos-1);
-	byte header1;
-	stream >> header1;
-
-	glGenTextures(1, &pointer);
-	glBindTexture(GL_TEXTURE_2D, pointer);
-	if (bpi == 24)
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_BGR, GL_UNSIGNED_BYTE, data);
-	else
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_BGRA, GL_UNSIGNED_BYTE, data);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (header1 & 1 == 1) ? GL_NEAREST : GL_LINEAR);
-	if (header1 & 2 == 2) glGenerateMipmap(GL_TEXTURE_2D);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (header1 & 2 == 2) ? GL_LINEAR_MIPMAP_LINEAR : (header1 & 1 == 1) ? GL_NEAREST : GL_LINEAR);
-	glBindTexture(GL_TEXTURE_2D, 0);
-	loaded = true;
-	cout << "image loaded: " << width << "x" << height << endl;
+	else if (sss == ".jpg") {
+		if (!LoadJPEG(path, width, height, chn, &data)) {
+			cout << "load jpg failed! " << path << endl;
+			return false;
+		}
+	}
+	else  {
+		cout << "Image extension invalid! " << path << endl;
+		return false;
+	}
+	if (data == nullptr)
+		return false;
+	string ss(path + ".meta");
+	ofstream str(ss, ios::out | ios::trunc | ios::binary);
+	str << "IMG";
+	str << chn;
+	_StreamWrite(&width, &str, 4);
+	_StreamWrite(&height, &str, 4);
+	str << (byte)((rgb == GL_RGB)? 0 : 1);
+	str << "DATA";
+	_StreamWrite(data, &str, width*height*chn);
+	str.close();
+	return true;
 }
 
 Background::Background(const string& path) : width(0), height(0), AssetObject(ASSETTYPE_HDRI) {
@@ -1176,7 +1173,7 @@ Background::Background(const string& path) : width(0), height(0), AssetObject(AS
 		printf("HDRI path invalid!");
 		return;
 	}
-	cout << "opening hdr image at " << path << endl;
+	//cout << "opening hdr image at " << path << endl;
 	
 	byte* data2 = hdr::read_hdr(path.c_str(), &width, &height);
 	if (data2 == NULL)
@@ -1192,7 +1189,7 @@ Background::Background(const string& path) : width(0), height(0), AssetObject(AS
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	loaded = true;
-	cout << "HDR Image loaded: " << width << "x" << height << endl;
+	//cout << "HDR Image loaded: " << width << "x" << height << endl;
 }
 
 bool Background::Parse(string path) {
@@ -1203,9 +1200,12 @@ bool Background::Parse(string path) {
 	string ss(path + ".meta");
 	ofstream str(ss, ios::out | ios::trunc | ios::binary);
 	str << "IMG";
-	str << "\x4";
+	str << (byte)4;
 	_StreamWrite(&width, &str, 4);
 	_StreamWrite(&height, &str, 4);
+	str << (byte)0;
+	str << "DATA";
+	_StreamWrite(data, &str, width*height*4);
 	str.close();
 	return true;
 }
@@ -1214,7 +1214,7 @@ bool Background::Parse(string path) {
 Font::Font(const string& path) : Font("", path, -1) {}
 Font::Font(const string& paths, const string& pathb, int size) : loaded(false), alignment(ALIGN_TOPLEFT), sizeToggle(size) {
 	if (paths != "") {
-		cout << "opening font at " << paths << endl;
+		//cout << "opening font at " << paths << endl;
 		unsigned char header[6];
 		//unsigned int charSize;
 		unsigned char *data;
@@ -1224,15 +1224,15 @@ Font::Font(const string& paths, const string& pathb, int size) : loaded(false), 
 		fopen_s(&file, paths.c_str(), "rb");
 
 		if (!file){
-			printf("Font could not be opened\n");
+			cout << "Font could not be opened! " << paths << endl;
 			return;
 		}
 		if (fread(header, 1, 6, file) != 6){
-			printf("font header wrong\n");
+			cout << "font header wrong! " << paths << endl;
 			return;
 		}
 		if (header[0] != 'f' || header[1] != 'o' || header[2] != 'n' || header[3] != 't'){
-			printf("Not a font file\n");
+			cout << "Not a font file! " << paths << endl;
 			return;
 		}
 		width = header[4];
@@ -1246,7 +1246,7 @@ Font::Font(const string& paths, const string& pathb, int size) : loaded(false), 
 		w2h = width * 1.0f / height;
 		data = new unsigned char[chars * width*height];
 		if (fread(data, 1, chars * width*height, file) != chars * width*height) {
-			printf("font data incomplete\n");
+			cout << "font data incomplete! " << paths << endl;
 			return;
 		}
 		fclose(file);
@@ -1257,10 +1257,10 @@ Font::Font(const string& paths, const string& pathb, int size) : loaded(false), 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glBindTexture(GL_TEXTURE_2D, 0);
-		cout << "font loaded: " << width << "x" << height << endl;
+		//cout << "font loaded: " << width << "x" << height << endl;
 		//loaded = true;
 	}
-	cout << "opening font at " << pathb << endl;
+	//cout << "opening font at " << pathb << endl;
 	unsigned char header[6];
 	//unsigned int charSize;
 	unsigned char *data;
@@ -1305,7 +1305,7 @@ Font::Font(const string& paths, const string& pathb, int size) : loaded(false), 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	loaded = true;
-	cout << "font loaded: " << width2 << "x" << height2 << endl;
+	//cout << "font loaded: " << width2 << "x" << height2 << endl;
 }
 
 Font* Font::Align(ALIGNMENT a) {

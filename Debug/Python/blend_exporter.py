@@ -57,7 +57,9 @@ class KTMExporter():
             
             self.write(file, "  obj " + obj.name + " [\r\n")
             obj.modifiers.new("tria", 'TRIANGULATE')
-            m = obj.to_mesh(bpy.context.scene, true, 'PREVIEW')
+            print ("1")
+            m = obj.to_mesh(bpy.context.scene, True, 'PREVIEW')
+            print ("2")
             for vert in m.vertices:
                 self.write(file, "    vrt {} {:f} {:f} {:f}\r\n".format(vert.index, vert.co[0], vert.co[1], vert.co[2]))
             self.write(file, "\r\n")
@@ -66,9 +68,9 @@ class KTMExporter():
                 for loop_index in poly.loop_indices:
                     self.write(file, " {}".format(m.loops[loop_index].vertex_index))
                 self.write(file, "\r\n")
-            if obj.type == 'MESH' and m.shape_keys:
-                for block in m.shape_keys.key_blocks:
-                    self.write(file, "    shp " + block.name + "\r\n")
+            #if obj.type == 'MESH' and m.shape_keys:
+            #    for block in m.shape_keys.key_blocks:
+            #        self.write(file, "    shp " + block.name + "\r\n")
             self.write(file, "\r\n  ]\r\n")
             file.close()
         file2.close()

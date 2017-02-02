@@ -25,7 +25,7 @@ KTMModel::KTMModel() {
 bool KTMModel::LoadModel(const string& path) {
 	ifstream stream(path.c_str());
 	if (!stream.good()) {
-		cout << "not found!" << endl;
+		cout << "model file not found!" << endl;
 		return false;
 	}
 	string a;

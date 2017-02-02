@@ -13,7 +13,7 @@ Editor functions
 
 using namespace std;
 
-#define EB_HEADER_SIZE 35
+#define EB_HEADER_SIZE 16
 #define EB_HEADER_PADDING 16
 
 //class Editor;
@@ -23,6 +23,7 @@ typedef unsigned char byte;
 typedef void(*dataFunc)(EditorBlock*, void*);
 typedef void(*shortcutFunc)(EditorBlock*);
 typedef void(*shortcutFuncGlobal)(Editor*);
+typedef void(*callbackFunc)(void*);
 typedef pair<string, shortcutFunc> funcMap;
 typedef pair<string, shortcutFunc> funcMapGlobal;
 typedef unordered_map<int, shortcutFunc> ShortcutMap;
@@ -308,6 +309,8 @@ public:
 	float browseOffset;
 	int browseSize;
 	int* browseTarget;
+	callbackFunc browseCallback;
+	void* browseCallbackParam;
 	//progress = layer4
 	string progressName;
 	float progressValue;
@@ -367,7 +370,7 @@ public:
 	unordered_map<ASSETTYPE, vector<string>> normalAssets;
 	unordered_map<ASSETTYPE, vector<void*>> normalAssetCaches;
 
-	void DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASSETTYPE type, float labelSize, Font* labelFont, int* tar);
+	void DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASSETTYPE type, float labelSize, Font* labelFont, int* tar, callbackFunc func = nullptr, void* param = nullptr);
 
 	void LoadDefaultAssets();
 	void RefreshAssets();

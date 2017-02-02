@@ -20,6 +20,12 @@ bool DrawComponentHeader(Editor* e, Vec4 v, float pos, Component* c) {
 	return true;
 }
 
+Component::Component(string name, COMPONENT_TYPE t, DRAWORDER drawOrder, vector<COMPONENT_TYPE> dep) : Object(name), componentType(t), active(true), drawOrder(drawOrder), _expanded(true), dependancies(dep) {
+	for (COMPONENT_TYPE t : dependancies) {
+		dependacyPointers.push_back(nullptr);
+	}
+}
+
 int Camera::camVertsIds[19] = { 0, 1, 0, 2, 0, 3, 0, 4, 1, 2, 2, 4, 4, 3, 3, 1, 1, 2, 5 };
 
 Camera::Camera() : Component("Camera", COMP_CAM, DRAWORDER_NOT), ortographic(false), fov(60), orthoSize(10), screenPos(0.3f, 0.1f, 0.6f, 0.4f) {
@@ -48,7 +54,7 @@ void Camera::UpdateCamVerts() {
 	camVerts[5] = Vec3(0, cst.y * 1.5f, 1 - cst.z) * 2.0f;
 }
 
-void Camera::DrawEditor() {
+void Camera::DrawEditor(EB_Viewer* ebv) {
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(3, GL_FLOAT, 0, &camVerts[0]);
 	glLineWidth(1);
@@ -99,7 +105,7 @@ void MeshFilter::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 	//MeshFilter* mft = (MeshFilter*)c;
 	if (DrawComponentHeader(e, v, pos, this)) {
 		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Mesh", e->font, white());
-		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 17, v.b*0.7f, 16, grey1(), ASSETTYPE_MESH, 12, e->font, &_mesh);
+		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 17, v.b*0.7f, 16, grey1(), ASSETTYPE_MESH, 12, e->font, &_mesh, &_UpdateMesh, this);
 		pos += 34;
 	}
 	else pos += 17;
@@ -111,19 +117,44 @@ void MeshFilter::Serialize(Editor* e, ofstream* stream) {
 
 void MeshFilter::SetMesh(int i) {
 	_mesh = i;
-	if (i > 0) {
+	if (i >= 0) {
 		mesh = (Mesh*)Editor::instance->GetCache(ASSETTYPE_MESH, i);
 	}
+	else
+		mesh = nullptr;
+}
+
+void MeshFilter::_UpdateMesh(void* i) {
+	MeshFilter* mf = (MeshFilter*)i;
+	if (mf->_mesh >= 0) {
+		mf->mesh = (Mesh*)Editor::instance->GetCache(ASSETTYPE_MESH, mf->_mesh);
+	}
+	else
+		mf->mesh = nullptr;
 }
 
 MeshRenderer::MeshRenderer() : Component("Mesh Renderer", COMP_MRD, DRAWORDER_SOLID | DRAWORDER_TRANSPARENT, {COMP_MFT}) {
+	_materials.push_back(-1);
+}
 
+void MeshRenderer::DrawEditor(EB_Viewer* ebv) {
+	MeshFilter* mf = (MeshFilter*)dependacyPointers[0];
+	if (mf == nullptr || mf->mesh == nullptr || !mf->mesh->loaded)
+		return;
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(3, GL_FLOAT, 0, &(mf->mesh->vertices[0]));
+	glPolygonMode(GL_FRONT_AND_BACK, (ebv->selectedShading == 0) ? GL_FILL : GL_LINE);
+	glColor4f(1, 1, 1, 1);
+	glLineWidth(1);
+	glDrawElements(GL_TRIANGLES, mf->mesh->triangles.size(), GL_UNSIGNED_INT, &(mf->mesh->triangles[0]));
+	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
 void MeshRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 	//MeshRenderer* mrd = (MeshRenderer*)c;
 	if (DrawComponentHeader(e, v, pos, this)) {
-		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Materials", e->font, white());
+		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Material0", e->font, white());
+		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 17, v.b*0.7f, 16, grey1(), ASSETTYPE_MATERIAL, 12, e->font, &_materials[0]);
 		pos += 34;
 	}
 	else pos += 17;
@@ -185,20 +216,44 @@ void SceneObject::Enable(bool enableAll) {
 	active = false;
 }
 
+Component* ComponentFromType (COMPONENT_TYPE t){
+	switch (t) {
+	case COMP_CAM:
+		return new Camera();
+	case COMP_MFT:
+		return new MeshFilter();
+	}
+}
+
 Component* SceneObject::AddComponent(Component* c) {
+	c->object = this;
+	int i = 0;
+	for (COMPONENT_TYPE t : c->dependancies) {
+		c->dependacyPointers[i] = GetComponent(t);
+		if (c->dependacyPointers[i] == nullptr) {
+			c->dependacyPointers[i] = AddComponent(ComponentFromType(t));
+		}
+		i++;
+	}
 	for (Component* cc : _components)
 	{
 		if (cc->componentType == c->componentType) {
 			cout << "same component already exists!" << endl;
-			return nullptr;
+			delete(c);
+			return cc;
 		}
 	}
 	_components.push_back(c);
-	c->object = this;
 	return c;
 }
 
 Component* SceneObject::GetComponent(COMPONENT_TYPE type) {
+	for (Component* cc : _components)
+	{
+		if (cc->componentType == type) {
+			return cc;
+		}
+	}
 	return nullptr;
 }
 

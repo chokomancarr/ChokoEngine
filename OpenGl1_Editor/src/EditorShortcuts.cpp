@@ -50,6 +50,9 @@ void EB_Viewer::_Z(EditorBlock* b) {
 		v->modAxisDir = Vec3(0, 0, 1);
 		v->OnMouseM(Vec2());
 	}
+	else {
+		v->selectedShading = 1 - v->selectedShading;
+	}
 }
 
 void EB_Viewer::_OpenMenuAdd(EditorBlock* b) {

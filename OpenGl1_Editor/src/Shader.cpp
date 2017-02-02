@@ -32,7 +32,7 @@ bool ShaderBase::LoadShader(GLenum shaderType, string source, GLuint& shader) {
 		shader = 0;
 		return false;
 	}
-	std::cout << "shader compiled" << endl;
+	//std::cout << "shader compiled" << endl;
 	return true;
 }
 
@@ -41,7 +41,7 @@ ShaderBase::ShaderBase(string path) {
 	string fragment_shader_code = "";
 	ifstream stream(path.c_str());
 	if (!stream.good()) {
-		cout << "not found!" << endl;
+		cout << "shader not found!" << endl;
 		return;
 	}
 	string a;
