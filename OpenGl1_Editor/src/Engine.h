@@ -231,10 +231,30 @@ public:
 	static glm::mat3 uiMatrix;
 };
 
+typedef byte SHADER_VARTYPE;
 #define SHADER_INT 0x00
 #define SHADER_FLOAT 0x01
+#define SHADER_VEC2 0x02
+#define SHADER_VEC3 0x03
 #define SHADER_SAMPLER 0x10
 #define SHADER_MATRIX 0x20
+
+class ShaderValue {
+public:
+	int i;
+	float x, y, z;
+	glm::quat m;
+};
+
+class ShaderVariable {
+public:
+	SHADER_VARTYPE type;
+	string name;
+	ShaderValue val;
+
+	float min, max;
+};
+
 class ShaderBase {
 public:
 	ShaderBase(string path);
@@ -245,6 +265,7 @@ public:
 
 	bool loaded;
 	GLuint pointer;
+	vector<ShaderVariable*> vars;
 	//values applied to program on drawing stage
 	unordered_map<byte, unordered_map <GLint, void*>> values;
 
@@ -262,12 +283,19 @@ public:
 
 	Material(void);
 	Material(ShaderBase* shad);
+	unordered_map<GLint, ShaderVariable> vals;
 	void SetTexture(string name, Texture* texture);
 	void SetTexture(GLint id, Texture* texture);
 	void SetFloat(string name, float val);
 	void SetFloat(GLint id, float val);
 	void SetInt(string name, int val);
 	void SetInt(GLint id, int val);
+
+	friend class Mesh;
+	friend class MeshRenderer;
+protected:
+
+	void ApplyGL();
 };
 
 class Time {

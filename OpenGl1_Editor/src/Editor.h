@@ -29,8 +29,10 @@ typedef pair<string, shortcutFunc> funcMapGlobal;
 typedef unordered_map<int, shortcutFunc> ShortcutMap;
 typedef unordered_map<int, shortcutFuncGlobal> ShortcutMapGlobal;
 typedef unordered_map<int, funcMap[]> CommandsMap;
-int GetShortcutInt(InputKey k, InputKey m1, InputKey m2 = Key_None, InputKey m3 = Key_None);
+int GetShortcutInt(InputKey k, InputKey m1 = Key_None, InputKey m2 = Key_None, InputKey m3 = Key_None);
 bool ShortcutTriggered(int i, bool c, bool a, bool s);
+
+typedef string ASSETPATH;
 
 Vec4 grey1(), grey2(), accent();
 
@@ -53,8 +55,8 @@ public:
 	virtual void OnMouseM(Vec2 d) {}
 	virtual void OnMousePress(int i) {}
 	virtual void OnMouseScr(bool up) {}
-protected:
-	void DrawControlButtons();
+//protected:
+	//void DrawControlButtons();
 	//EditorBlock(byte t, float x1, float y1, float x2, float y2) : type(t), x1(x1), x2(x2), y1(y1), y2(y2) {}
 };
 
@@ -136,14 +138,15 @@ public:
 
 	void Draw();
 	void Refresh();
+
+	static void _AddAsset(EditorBlock* b);
+	static void _DoAddAssetH(EditorBlock* b);
 };
 
 class EB_Viewer : public EditorBlock {
 public:
 	EB_Viewer(Editor* e, int x1, int y1, int x2, int y2);
-	~EB_Viewer() {
-
-	}
+	~EB_Viewer() {}
 
 	float rz, rw, scale;
 	Vec3 arrowVerts[15];
@@ -255,6 +258,25 @@ public:
 	//static void DrawTexture(Editor* e, Vec4 v, string label, Texture* tex, Vec4& uv);
 };
 
+class EB_ColorPicker : public EditorBlock {
+public:
+	EB_ColorPicker(Editor* e, int x1, int y1, int x2, int y2, Color* tar): target(tar) {
+		if (tar == nullptr)
+			runtime_error("Color Picker with no color target!");
+		editorType = 100;
+		editor = e;
+		this->x1 = x1;
+		this->y1 = y1;
+		this->x2 = x2;
+		this->y2 = y2;
+	}
+
+	Color* target;
+
+	void Draw();
+	void Refresh(){}
+};
+
 class xPossLerper;
 class yPossLerper;
 class xPossMerger;
@@ -284,14 +306,18 @@ public:
 	vector<Int2> xLimits, yLimits; //not include 0 1
 	vector<EditorBlock*> blocks;
 	Vec2 popupPos;
-	EditorBlock* menuBlock;
+
+	EditorBlock* dialogBlock;
+
+	EditorBlock* menuBlock; //menu = layer1
 	int menuPadding;
 	string menuTitle;
-	vector<string> menuNames; //menu = layer1
+	vector<string> menuNames;
 	bool menuFuncIsSingle;
 	vector<shortcutFunc> menuFuncs;
 	dataFunc menuFuncSingle;
 	vector<void*> menuFuncVals;
+
 	//edit = layer2
 	byte editingType; //0none 1int 2float 3string
 	string editingVal;

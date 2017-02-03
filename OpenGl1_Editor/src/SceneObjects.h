@@ -88,13 +88,18 @@ public:
 	vector<Vec3> normals;
 	vector<int> triangles;
 
-	uint vertexCount, triangleCount;
+	uint vertexCount, triangleCount, materialCount;
 
 	friend int main(int argc, char **argv);
 	friend class Editor;
-private:
+	friend class MeshFilter;
+	friend class MeshRenderer;
+protected:
 	Mesh(Editor* e, int i);
 	Mesh(string path);
+
+	vector<vector<int>> _matTriangles;
+	void Draw(Material* mat);
 	//void Load();
 };
 

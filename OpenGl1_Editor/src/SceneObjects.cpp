@@ -142,20 +142,33 @@ void MeshRenderer::DrawEditor(EB_Viewer* ebv) {
 	if (mf == nullptr || mf->mesh == nullptr || !mf->mesh->loaded)
 		return;
 	glEnableClientState(GL_VERTEX_ARRAY);
-	glVertexPointer(3, GL_FLOAT, 0, &(mf->mesh->vertices[0]));
 	glPolygonMode(GL_FRONT_AND_BACK, (ebv->selectedShading == 0) ? GL_FILL : GL_LINE);
-	glColor4f(1, 1, 1, 1);
+	glVertexPointer(3, GL_FLOAT, 0, &(mf->mesh->vertices[0]));
 	glLineWidth(1);
-	glDrawElements(GL_TRIANGLES, mf->mesh->triangles.size(), GL_UNSIGNED_INT, &(mf->mesh->triangles[0]));
+	for (int m = 0; m < mf->mesh->materialCount; m++) {
+		glColor4f(m, 1, 1, 1);
+		glDrawElements(GL_TRIANGLES, mf->mesh->_matTriangles[m].size(), GL_UNSIGNED_INT, &(mf->mesh->_matTriangles[m][0]));
+	}
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
 void MeshRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 	//MeshRenderer* mrd = (MeshRenderer*)c;
 	if (DrawComponentHeader(e, v, pos, this)) {
-		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Material0", e->font, white());
-		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 17, v.b*0.7f, 16, grey1(), ASSETTYPE_MATERIAL, 12, e->font, &_materials[0]);
-		pos += 34;
+		MeshFilter* mft = (MeshFilter*)dependacyPointers[0];
+		if (mft->mesh == nullptr) {
+			Engine::Label(v.r + 2, v.g + pos + 20, 12, "No Mesh Assigned!", e->font, white());
+			pos += 34;
+		}
+		else {
+			Engine::Label(v.r + 2, v.g + pos + 20, 12, "Materials: " + to_string(mft->mesh->materialCount), e->font, white());
+			for (uint a = 0; a < mft->mesh->materialCount; a++) {
+				Engine::Label(v.r + 2, v.g + pos + 37, 12, "Material " + to_string(a), e->font, white());
+				e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 34, v.b*0.7f, 16, grey1(), ASSETTYPE_MATERIAL, 12, e->font, &_materials[0]);
+				pos += 17;
+			}
+			pos += 34;
+		}
 	}
 	else pos += 17;
 }
@@ -222,6 +235,8 @@ Component* ComponentFromType (COMPONENT_TYPE t){
 		return new Camera();
 	case COMP_MFT:
 		return new MeshFilter();
+	default:
+		return nullptr;
 	}
 }
 

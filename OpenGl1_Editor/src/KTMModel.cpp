@@ -212,17 +212,17 @@ bool KTMModel::Parse(Editor* e, string s) {
 		cout << "executing Blender..." << endl;
 		bool bSuccess = false;
 		DWORD dwWrite;
-		bSuccess = WriteFile(stdInW, cmd1.c_str(), cmd1.size(), &dwWrite, NULL);
+		bSuccess = WriteFile(stdInW, cmd1.c_str(), cmd1.size(), &dwWrite, NULL) != 0;
 		if (!bSuccess || dwWrite == 0) {
 			cout << "can't get to root!" << endl;
 			return false;
 		}
-		bSuccess = WriteFile(stdInW, cmd2.c_str(), cmd2.size(), &dwWrite, NULL);
+		bSuccess = WriteFile(stdInW, cmd2.c_str(), cmd2.size(), &dwWrite, NULL) != 0;
 		if (!bSuccess || dwWrite == 0) {
 			cout << "can't navigate to blender dir!" << endl;
 			return false;
 		}
-		bSuccess = WriteFile(stdInW, cmd3.c_str(), cmd3.size(), &dwWrite, NULL);
+		bSuccess = WriteFile(stdInW, cmd3.c_str(), cmd3.size(), &dwWrite, NULL) != 0;
 		if (!bSuccess || dwWrite == 0) {
 			cout << "can't execute blender!" << endl;
 			return false;
@@ -230,16 +230,16 @@ bool KTMModel::Parse(Editor* e, string s) {
 		DWORD w;
 		bool finish = false;
 		do {
-			w = WaitForSingleObject(processInfo.hProcess, 0.5f);
+			w = WaitForSingleObject(processInfo.hProcess, 0.5);
 			DWORD dwRead;
 			CHAR chBuf[4096];
 			string out = "";
-			bSuccess = ReadFile(stdOutR, chBuf, 4096, &dwRead, NULL);
+			bSuccess = ReadFile(stdOutR, chBuf, 4096, &dwRead, NULL) != 0;
 			if (bSuccess && dwRead > 0) {
 				string s(chBuf, dwRead);
 				out += s;
 			}
-			for (int r = 0; r < out.size();) {
+			for (uint r = 0; r < out.size();) {
 				int rr = out.find_first_of('\n', r);
 				if (rr == string::npos)
 					rr = out.size() - 1;

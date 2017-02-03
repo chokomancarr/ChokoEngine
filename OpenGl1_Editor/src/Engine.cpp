@@ -280,6 +280,8 @@ void Engine::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4, 
 			//DrawQuad(x + a*s*font->gw2h(s)*w - (s*font->gw2h(s)*w*st.size()*(font->alignment & 0x0f)*0.5f), y - s*(1 - ((font->alignment & 0xf0) >> 4)*0.5f), s*font->gw2h(s)*w, s, font->getpointer(s), Vec2(0, h + (1.0f / font->gchars(s))), Vec2(w, h + (1.0f / font->gchars(s))), Vec2(0, h), Vec2(w, h), true, Vec4);//Vec2(0, 0.49), Vec2(1, 0.49));//(1.0f / font->chars)), Vec2(1, h - (1.0f / font->chars)));
 			AddQuad(x0, (int)(y - s*(1 - ((font->alignment & 0xf0) >> 4)*0.5f)), s*font->gw2h(s)*w, s, Vec2(0, h + (1.0f / font->gchars(s))), Vec2(w, h + (1.0f / font->gchars(s))), Vec2(0, h), Vec2(w, h), &quadPoss, &indexes, &uvs, a * 4);
 		}
+		if (quadPoss.size() == 0) //happens if click showdesktop
+			return;
 		for (int y = quadPoss.size()-1; y >= 0; y--) {
 			quadPoss[y] = Ds(Display::uiMatrix*quadPoss[y]);
 		}
@@ -981,13 +983,21 @@ Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false) {
 		else if (a == "tri") {
 			int i;
 			stream >> i;
-			//material id
+			int mati = i+0;
+			while (_matTriangles.size() <= i) {
+				_matTriangles.push_back({});
+				materialCount++;
+			}
 			stream >> i;
 			triangles.push_back(i+0);
+			_matTriangles[mati].push_back(i + 0);
 			stream >> i;
-			triangles.push_back(i+0);
+			triangles.push_back(i + 0);
+			_matTriangles[mati].push_back(i + 0);
 			stream >> i;
-			triangles.push_back(i+0);
+			triangles.push_back(i + 0);
+			_matTriangles[mati].push_back(i + 0);
+			triangleCount++;
 			//cout << "tri" << faceCount - 1 << endl;
 		}
 		else if (a == "]")
@@ -999,6 +1009,14 @@ Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false) {
 	}
 	loaded = true;
 	return;
+}
+
+void Mesh::Draw(Material* mat) {
+	if (mat == nullptr)
+		glUseProgram(0);
+	else {
+		mat->ApplyGL();
+	}
 }
 
 //-----------------texture class---------------------
@@ -1340,6 +1358,33 @@ void Material::SetTexture(string name, Texture * texture) {
 }
 void Material::SetTexture(GLint id, Texture * texture) {
 	shader->Set(SHADER_SAMPLER, id, texture);
+}
+
+void Material::ApplyGL() {
+	if (shader == nullptr) {
+		glUseProgram(0);
+		return;
+	}
+	else {
+		glUseProgram(shader->pointer);
+		for (auto a = vals.begin(); a != vals.end(); a++) {
+			switch (a->second.type) {
+			case SHADER_INT:
+			case SHADER_SAMPLER:
+				glUniform1i(a->first, a->second.val.i);
+				break;
+			case SHADER_FLOAT:
+				glUniform1f(a->first, a->second.val.x);
+				break;
+			case SHADER_VEC2:
+				glUniform2f(a->first, a->second.val.x, a->second.val.y);
+				break;
+			case SHADER_VEC3:
+				glUniform3f(a->first, a->second.val.x, a->second.val.y, a->second.val.z);
+				break;
+			}
+		}
+	}
 }
 
 void _StreamWrite(void* val, ofstream* stream, int size) {

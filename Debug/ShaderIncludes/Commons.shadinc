@@ -1,16 +1,16 @@
-//INSTART
-//layout0 in vec3 pos;
-//layout1 in vec2 texCoord;
-//INEND
+INSTART
+layout(position=0) in vec3 pos;
+layout(position=1) in vec2 texCoord;
+INEND
 
-//V2FSTART
-//vec2 uv;
-//V2FEND
+V2FSTART
+vec2 uv;
+V2FEND
 
 COMMONSTART
-vec4 samplehdri (sampler2D sampler, Vec3 dir) {
-	
-}
+//vec4 samplehdri (sampler2D sampler, Vec3 dir) {
+//	
+//}
 vec4 hdr2float (vec4 in) {
 	float p = pow(2, in.a);
 	vec4 c;
@@ -20,13 +20,6 @@ vec4 hdr2float (vec4 in) {
 }
 COMMONEND
 
-VERTSTART
-layout0 in vec3 pos;
-layout1 in vec2 texCoord;
-out vec2 uv;
-VERTEND
-
 FRAGSTART
-in vec2 uv;
 out vec4 outColor;
 FRAGEND

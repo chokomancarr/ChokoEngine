@@ -1,6 +1,25 @@
 #include "Editor.h"
 #include "Engine.h"
 
+void EB_Browser::_AddAsset(EditorBlock* b) {
+	b->editor->RegisterMenu(b, "Add Asset", { "Script (Header)", "Script (Cpp)", "Shader", "Material" }, { &_DoAddAssetH, nullptr, nullptr, nullptr }, 0);
+}
+
+void EB_Browser::_DoAddAssetH(EditorBlock* b) {
+	EB_Browser* eb = (EB_Browser*)b;
+	int q = 0;
+	string p = eb->currentDir + "NewSceneScript" + to_string(q) + ".h";
+	while (IO::HasFile(p.c_str())) {
+		p = eb->currentDir + "NewSceneScript" + to_string(++q) + ".h";
+	}
+	ofstream strm(p, ios::out | ios::trunc);
+	strm << "#include \"Engine.h\"\r\n\r\nclass ";
+	strm << "NewSceneScript" + to_string(q);
+	strm << " : public SceneScript{\r\n\tvoid Start() override {}\r\n\tvoid Update() override {}\r\n};";
+	strm.close();
+	eb->Refresh();
+}
+
 byte EB_Viewer::preAddType = 0;
 
 void EB_Viewer::_Grab(EditorBlock* b) {

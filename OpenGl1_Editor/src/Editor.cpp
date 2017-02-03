@@ -63,7 +63,7 @@ bool ShortcutTriggered(int i, bool c, bool a, bool s) {
 	if (!Input::KeyDown((InputKey)((i&(0xff << 4)) >> 4))) {
 		return false;
 	}
-	else if (i & 8 == 0)
+	else if ((i & 8) == 0)
 		return true;
 	else {
 		return ((c == ((i & 4) == 4)) && (a == ((i & 2) == 2)) && (s == ((i & 1) == 1)));
@@ -118,7 +118,7 @@ void EB_Debug::Draw() {
 	for (int x = drawIds.size() - 1, y = 0; x >= 0; x--, y++) {
 		byte t = editor->messageTypes[drawIds[x]];
 		Vec4 col = (t == 0) ? white() : ((t==1)? yellow() : red());
-		Engine::DrawQuad(v.r + 1, v.g + v.a - 36 - (y*15), v.b - 2, 14, Vec4(1, 1, 1, (x&1==1)? 0.2f : 0.1f));
+		Engine::DrawQuad(v.r + 1, v.g + v.a - 36 - (y*15), v.b - 2, 14, Vec4(1, 1, 1, ((x&1)==1)? 0.2f : 0.1f));
 		Engine::Label(v.r + 3, v.g + v.a - 34 - y * 15, 12, editor->messages[drawIds[x]].first + " says: " + editor->messages[drawIds[x]].second, editor->font, col);
 	}
 	if (Engine::EButton((editor->editorLayer == 0), v.r + 1, v.g + v.a - 21, 80, 20, grey1(), "Messages", 12, editor->font, drawM ? white() : grey2()) == MOUSE_RELEASE) {
@@ -251,6 +251,8 @@ EB_Browser::EB_Browser(Editor* e, int x1, int y1, int x2, int y2, string dir) : 
 	this->x2 = x2;
 	this->y2 = y2;
 	Refresh();
+
+	shortcuts.emplace(GetShortcutInt(Key_A), &_AddAsset);
 }
 
 bool DrawFileRect(float w, float h, float size, EB_Browser_File* file, EditorBlock* e) {
@@ -356,28 +358,28 @@ EB_Viewer::EB_Viewer(Editor* e, int x1, int y1, int x2, int y2) : rz(45), rw(45)
 
 	shortcuts.emplace(GetShortcutInt(Key_A, Key_Shift), &_OpenMenuAdd);
 	shortcuts.emplace(GetShortcutInt(Key_C, Key_Shift), &_OpenMenuCom);
-	shortcuts.emplace(GetShortcutInt(Key_W, Key_None), &_OpenMenuW);
+	shortcuts.emplace(GetShortcutInt(Key_W), &_OpenMenuW);
 	shortcuts.emplace(GetShortcutInt(Key_Space, Key_Control), &_OpenMenuChgMani);
 	shortcuts.emplace(GetShortcutInt(Key_Space, Key_Alt), &_OpenMenuChgOrient);
 
-	shortcuts.emplace(GetShortcutInt(Key_X, Key_None), &_X);
-	shortcuts.emplace(GetShortcutInt(Key_Y, Key_None), &_Y);
-	shortcuts.emplace(GetShortcutInt(Key_Z, Key_None), &_Z);
+	shortcuts.emplace(GetShortcutInt(Key_X), &_X);
+	shortcuts.emplace(GetShortcutInt(Key_Y), &_Y);
+	shortcuts.emplace(GetShortcutInt(Key_Z), &_Z);
 
-	shortcuts.emplace(GetShortcutInt(Key_A, Key_None), &_SelectAll);
-	shortcuts.emplace(GetShortcutInt(Key_Z, Key_None), &_ViewInvis);
-	shortcuts.emplace(GetShortcutInt(Key_5, Key_None), &_ViewPersp);
+	shortcuts.emplace(GetShortcutInt(Key_A), &_SelectAll);
+	shortcuts.emplace(GetShortcutInt(Key_Z), &_ViewInvis);
+	shortcuts.emplace(GetShortcutInt(Key_5), &_ViewPersp);
 
-	shortcuts.emplace(GetShortcutInt(Key_G, Key_None), &_Grab);
-	shortcuts.emplace(GetShortcutInt(Key_R, Key_None), &_Rotate);
-	shortcuts.emplace(GetShortcutInt(Key_S, Key_None), &_Scale);
+	shortcuts.emplace(GetShortcutInt(Key_G), &_Grab);
+	shortcuts.emplace(GetShortcutInt(Key_R), &_Rotate);
+	shortcuts.emplace(GetShortcutInt(Key_S), &_Scale);
 
-	shortcuts.emplace(GetShortcutInt(Key_NumPad1, Key_None), &_ViewFront);
-	shortcuts.emplace(GetShortcutInt(Key_NumPad1, Key_Alt), &_ViewBack);
-	shortcuts.emplace(GetShortcutInt(Key_NumPad3, Key_None), &_ViewRight);
-	shortcuts.emplace(GetShortcutInt(Key_NumPad3, Key_Alt), &_ViewLeft);
-	shortcuts.emplace(GetShortcutInt(Key_NumPad7, Key_None), &_ViewTop);
-	shortcuts.emplace(GetShortcutInt(Key_NumPad7, Key_Alt), &_ViewBottom);
+	shortcuts.emplace(GetShortcutInt(Key_NumPad1), &_ViewFront);
+	shortcuts.emplace(GetShortcutInt(Key_NumPad1, Key_Control), &_ViewBack);
+	shortcuts.emplace(GetShortcutInt(Key_NumPad3), &_ViewRight);
+	shortcuts.emplace(GetShortcutInt(Key_NumPad3, Key_Control), &_ViewLeft);
+	shortcuts.emplace(GetShortcutInt(Key_NumPad7), &_ViewTop);
+	shortcuts.emplace(GetShortcutInt(Key_NumPad7, Key_Control), &_ViewBottom);
 }
 
 void EB_Viewer::MakeMatrix() {
@@ -408,7 +410,7 @@ void DrawSceneObjectsOpaque(EB_Viewer* ebv, vector<SceneObject*> oo) {
 		glTranslatef(v.x, v.y, v.z);
 		for (Component* com : sc->_components)
 		{
-			if (com->componentType == COMP_MRD)
+			if (com->componentType == COMP_MRD || com->componentType == COMP_CAM)
 				com->DrawEditor(ebv);
 		}
 		DrawSceneObjectsOpaque(ebv, sc->children);
@@ -425,7 +427,7 @@ void DrawSceneObjectsGizmos(EB_Viewer* ebv, vector<SceneObject*> oo) {
 		glTranslatef(v.x, v.y, v.z);
 		for (Component* com : sc->_components)
 		{
-			if (com->componentType != COMP_MRD)
+			if (com->componentType != COMP_MRD && com->componentType != COMP_CAM)
 				com->DrawEditor(ebv);
 		}
 		DrawSceneObjectsGizmos(ebv, sc->children);
@@ -433,7 +435,7 @@ void DrawSceneObjectsGizmos(EB_Viewer* ebv, vector<SceneObject*> oo) {
 	}
 }
 
-void DrawSceneObjectsTrans(vector<SceneObject*> oo) {
+void DrawSceneObjectsTrans(EB_Viewer* ebv, vector<SceneObject*> oo) {
 
 }
 
@@ -482,8 +484,8 @@ void EB_Viewer::Draw() {
 	glDepthMask(true);
 	DrawSceneObjectsOpaque(this, editor->activeScene.objects);
 	glDepthMask(false);
-	DrawSceneObjectsOpaque(this, editor->activeScene.objects);
-	DrawSceneObjectsOpaque(this, editor->activeScene.objects);
+	DrawSceneObjectsGizmos(this, editor->activeScene.objects);
+	DrawSceneObjectsTrans(this, editor->activeScene.objects);
 
 	//draw background
 	glDepthFunc(GL_EQUAL);
@@ -594,8 +596,8 @@ void EB_Viewer::Draw() {
 	}
 
 	if (editor->_showDebugInfo) {
-		Engine::Label(v.x + 100, v.y + 10, 12, "z=" + to_string(rz) + " w = " + to_string(rw), editor->font, white());
-		Engine::Label(v.x + 100, v.y + 25, 12, "scale=" + to_string(scale), editor->font, white());
+		Engine::Label(v.x + 50, v.y + 30, 12, "z=" + to_string(rz) + " w = " + to_string(rw), editor->font, white());
+		Engine::Label(v.x + 50, v.y + 55, 12, "scale=" + to_string(scale), editor->font, white());
 	}
 }
 
@@ -746,7 +748,7 @@ void EB_Inspector::Draw() {
 	else
 		nm = (editor->selected != nullptr) ? editor->selected->name : editor->selectGlobal ? "Scene settings" : "No object selected";
 	DrawHeaders(editor, this, &v, "Inspector");// isAsset ? (loaded ? label : "No object selected") : nm);
-	lock = Engine::DrawToggle(v.r + v.b - EB_HEADER_PADDING - 30, v.g + 4, 25, editor->keylock, lock, lock?Vec4(1, 1, 0, 1) : white(0.5f), ORIENT_HORIZONTAL);
+	lock = Engine::DrawToggle(v.r + v.b - EB_HEADER_PADDING - EB_HEADER_SIZE - 2, v.g, EB_HEADER_SIZE, editor->keylock, lock, lock ? Vec4(1, 1, 0, 1) : white(0.5f), ORIENT_HORIZONTAL);
 
 	if (!lock) {
 		lockGlobal = 0;
@@ -846,6 +848,12 @@ void EB_Inspector::DrawAsset(Editor* e, Vec4 v, float dh, string label, ASSETTYP
 		e->browseSize = e->allAssets[type].size();
 	}
 	Engine::Label(v.r + v.b*0.19f + 2, v.g + dh + 2 + EB_HEADER_SIZE, 12, label, e->font, white());
+}
+
+void EB_ColorPicker::Draw() {
+	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
+	CalcV(v);
+	DrawHeaders(editor, this, &v, "Color Picker");
 }
 
 void Editor::DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASSETTYPE type, float labelSize, Font* labelFont, int* tar, callbackFunc func, void* param) {
@@ -1525,10 +1533,10 @@ bool MergeAssets(Editor* e) {
 			return false;
 		}
 		e->AddBuildLog(e, "Including " + ss);
-		long pos = file.tellp();
+		long long pos = file.tellp();
 		file << "0000" << null << f2.rdbuf() << null;
-		long pos2 = file.tellp();
-		int size = pos2 - pos - 6;
+		long long pos2 = file.tellp();
+		long long size = pos2 - pos - 6;
 		file.seekp(pos);
 		_StreamWrite(&size, &file, 4);
 		file.seekp(pos2);
@@ -1550,11 +1558,11 @@ bool MergeAssets(Editor* e) {
 				ifstream f2(e->projectFolder + "Assets\\" + s, ios::in | ios::binary);
 				_StreamWrite((void*)&it->first, &file2, 1);
 				_StreamWrite(&i, &file2, 2);
-				long pos = file2.tellp();
+				long long pos = file2.tellp();
 				file2 << "0000XX" << f2.rdbuf() << null;
-				long pos2 = file2.tellp();
+				long long pos2 = file2.tellp();
 				file2.seekp(pos);
-				int size = pos2 - pos - 6;
+				long long size = pos2 - pos - 6;
 				_StreamWrite(&size, &file2, 4);
 				file2.seekp(pos2);
 				file2 << null;
@@ -1578,7 +1586,6 @@ bool MergeAssets(Editor* e) {
 }
 
 bool DoMsBuild(Editor* e) {
-	LPDWORD word;
 	char s[255];
 	DWORD i = 255;
 	if (RegGetValue(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\MSBuild\\ToolsVersions\\4.0", "MSBuildToolsPath", RRF_RT_ANY, nullptr, &s, &i) == ERROR_SUCCESS) {
@@ -1623,17 +1630,17 @@ bool DoMsBuild(Editor* e) {
 			cout << "compiling" << endl;
 			DWORD w;
 			do {
-				w = WaitForSingleObject(processInfo.hProcess, 0.5f);
+				w = WaitForSingleObject(processInfo.hProcess, 0.5);
 				DWORD dwRead;
 				CHAR chBuf[4096];
 				bool bSuccess = FALSE;
 				string out = "";
-				bSuccess = ReadFile(stdOutR, chBuf, 4096, &dwRead, NULL);
+				bSuccess = ReadFile(stdOutR, chBuf, 4096, &dwRead, NULL) != 0;
 				if (bSuccess && dwRead > 0) {
 					string s(chBuf, dwRead);
 					out += s;
 				}
-				for (int r = 0; r < out.size();) {
+				for (uint r = 0; r < out.size();) {
 					int rr = out.find_first_of('\n', r);
 					if (rr == string::npos)
 						rr = out.size() - 1;

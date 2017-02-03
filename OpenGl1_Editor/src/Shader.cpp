@@ -4,7 +4,9 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <sstream>
 #include <fstream>
+#include <limits>
 
 using namespace std;
 
@@ -170,63 +172,267 @@ ShaderBase::ShaderBase(string vertex_shader_code, string fragment_shader_code) {
 	loaded = true;
 }
 
+/* shader meta format, (x) = x bytes
+SHD
+//params
+[type(1)]{[min(4)][max(4)][default(4)](optional)}[name]\0
+
+VARSTART
+int range(0, 100) foo = 1;
+float range(-20.0, 200.0) boo = 2.5;
+texture mytex;
+VAREND
+
+//code
+VRT
+[size(4)][codestring]\0
+FRG
+[size(4)][codestring]\0
+*/
 bool ShaderBase::Parse(ifstream* stream, string path) {
-	string a, aa = "";
+	string a, text;
 	vector<string> included;
 	byte readingType = 0;
+
+	//resolve includes
 	while (!(*stream).eof()) {
 		getline(*stream, a);
-		if (readingType == 0) {
-			if (a == "INSTART")
-				readingType = 1;
-			else {
-				if (a.size() > 10 && a.substr(0, 9) == "#include ") {
-					string nmm = "", nm = a.substr(9, string::npos);
-					for (uint r = 0; r < nm.size(); r++) {
-						char c = nm[r];
-						if (c != ' ' && c != '\t' && c != '\r' && c != '\n')
-							nmm += c;
-					}
-					if (find(included.begin(), included.end(), a) >= included.begin() + included.size()) {
-						included.push_back(a);
-						string path(Editor::dataPath + "ShaderIncludes\\" + nmm + ".shadinc");
-						string in = IO::ReadFile(path);
-						if (in != "") {
-							cout << nmm << ".shadinc included" << endl;
-							aa += "//Included from " + nmm + ".shadinc\n";
-							aa += in + "\n";
-							aa += "//end of " + nmm + ".shadinc\n";
-						}
-						else {
-							aa += "//" + a + " (not found!)\n";
-						}
-					}
+		if (a.size() > 9 && a.substr(0, 9) == "#include ") {
+			string nmm = "", nm = a.substr(9, string::npos);
+			for (uint r = 0; r < nm.size(); r++) {
+				char c = nm[r];
+				if (c != ' ' && c != '\t' && c != '\r' && c != '\n')
+					nmm += c;
+			}
+			if (find(included.begin(), included.end(), a) >= included.begin() + included.size()) {
+				included.push_back(a);
+				string path(Editor::dataPath + "ShaderIncludes\\" + nmm + ".shadinc");
+				string in = IO::ReadFile(path);
+				if (in != "") {
+					cout << nmm << ".shadinc included" << endl;
+					//text += "//Included from " + nmm + ".shadinc\n";
+					text += in + "\n";
+					//text += "//end of " + nmm + ".shadinc\n";
 				}
-				else aa += a + "\n";
+				else {
+					//text += "//" + a + " (not found!)\n";
+				}
+			}
+		}
+		else text += a + "\n";
+	}
+
+	string t2(text);
+	text = "";
+	bool wasn = false;
+	for (char c : t2) {
+		if (c != '\r' && c != '\t' && !(wasn && (c == ' ' || c == '\n'))) {
+			text += c;
+			wasn = (c == '\n');
+		}
+	}
+	text += char(0);
+
+	stringstream sstream;
+	sstream.str(text);
+
+	//VAR (vars), IN (in @ vert), V2F (out @ vert, in @ frag), COMMON (copy to both), VERT, FRAG
+	string in, v2f, common, vert, frag;
+	vector<ShaderVariable*> vrs;
+	int vrSize = -1;
+	string vertCode, fragCode;
+
+	while (!sstream.eof()) {
+		cout << to_string(readingType) << endl;
+		if (readingType == 0) {
+			getline(sstream, a);
+			if (a == "VARSTART")
+				readingType = 1;
+			else if (a == "INSTART")
+				readingType = 2;
+			else if (a == "V2FSTART")
+				readingType = 3;
+			else if (a == "COMMONSTART")
+				readingType = 4;
+			else if (a == "VERTSTART")
+				readingType = 5;
+			else if (a == "FRAGSTART")
+				readingType = 6;
+			else {
+				Editor::instance->_Warning("Shader Importer", "Unscoped code found in shader. They will be ignored.");
 			}
 		}
 		else if (readingType == 1) {
+			string x;
+			sstream >> x;
+			if (x == "VAREND")
+				readingType = 0;
+			else {
+				/*VARSTART
+				int range(0, 100) foo = 1;
+				float range(-20.0, 200.0) boo = 2.5;
+				texture mytex;
+				*/
+				bool nr = false;
+				byte vt = 0; //i, f
+				vrs.push_back(new ShaderVariable());
+				vrSize++;
+				vrs[vrSize]->val = ShaderValue();
+				vrs[vrSize]->min = numeric_limits<float>::lowest();
+				vrs[vrSize]->max = numeric_limits<float>::infinity();
+				if (x == "int") {
+					vrs[vrSize]->type = SHADER_INT;
+				}
+				else if (x == "float") {
+					vrs[vrSize]->type = SHADER_FLOAT;
+					vt = 1;
+				}
+				else if (x == "texture") {
+					vrs[vrSize]->type = SHADER_SAMPLER;
+					vrs[vrSize]->val.i = -1;
+					nr = true;
+				}
+
+				sstream >> x;
+				if (x.find("range(") == 0) {
+					if (nr) {
+						Editor::instance->_Error("Shader Importer", "Range not allowed on this variable!");
+						return false;
+					}
+					if (x.size() > 6) {
+						x = x.substr(6, string::npos);
+					}
+					else
+						sstream >> x;
+					int c = x.find(',');
+					if (c != string::npos) {
+						try {
+							vrs[vrSize]->min = stof(x.substr(0, c));
+							string r;
+							while (x.find(')') == string::npos) {
+								sstream >> r;
+								x += r;
+							}
+							vrs[vrSize]->max = stof(x.substr(c + 1, x.find(')') - c - 1));
+							if (x.find(')') != x.size() - 1) {
+								x = x.substr(x.find(')') + 1);
+							}
+							else
+								sstream >> x;
+						}
+						catch (exception e) {
+							Editor::instance->_Error("Shader Importer", "Range syntax error in shader!");
+							return false;
+						}
+					}
+				}
+				string r;
+				while (x.find(';') == string::npos) {
+					sstream >> r;
+					x += r;
+
+				}
+				int y = x.find('=');
+				if (y != string::npos) {
+					vrs[vrSize]->name = x.substr(0, y);
+
+				}
+				else 
+					vrs[vrSize]->name = x.substr(0, x.find(';'));
+			}
+		}
+		else if (readingType == 2) {
+			getline(sstream, a);
 			if (a == "INEND")
 				readingType = 0;
 			else {
 				if (a.substr(0, 6) == "layout" && a.size() > 6 && a[6] != '(') {
 					try {
+						int rr = stoi(a.substr(6, 1));
 						string ss = a.substr(6, string::npos);
 						int r = stoi(ss, nullptr);
-						aa += "layout(position=" + to_string(r) + ")" + ss + "\n";
+						in += "layout(position=" + to_string(r) + ")" + ss + "\n";
 					}
-					catch (invalid_argument a) {
-						cout << "shader syntax error" << endl;
+					catch (exception e) {
+						in += a + "\n";
 					}
 				}
+				else
+					in += a + "\n";
+			}
+		}
+		else {
+			getline(sstream, a);
+			if (readingType == 3) {
+				if (a == "V2FEND")
+					readingType = 0;
+				else
+					v2f += a + "\n";
+			}
+			else if (readingType == 4) {
+				if (a == "COMMONEND")
+					readingType = 0;
+				else
+					common += a + "\n";
+			}
+			else if (readingType == 5) {
+				if (a == "VERTEND")
+					readingType = 0;
+				else
+					vert += a + "\n";
+			}
+			else if (readingType == 6) {
+				if (a == "FRAGEND")
+					readingType = 0;
+				else
+					frag += a + "\n";
 			}
 		}
 	}
+
+	//combine everything
+	vertCode = in + "\n\n" + common + "\n\n";
+	fragCode = common + "\n\n";
+	stringstream v2fStream;
+	v2fStream.str(v2f);
+	while (!v2fStream.eof()) {
+		getline(v2fStream, a);
+		vertCode += "out " + a + "\n";
+		fragCode += "in" + a + "\n";
+	}
+	vertCode += vert;
+	fragCode += frag;
+
+	if (IO::HasFile(path.c_str())) {
+		remove(path.c_str());
+	}
 	ofstream strm;
-	strm.open(path, ios::trunc | ios::out | ios::binary);
-	if (!strm.is_open())
+	strm.open(path, ios::out | ios::binary | ios::trunc);
+	if (!strm.is_open()) {
+		Editor::instance->_Error("Shader Importer", "Cannot write to " + path);
 		return false;
-	strm.write(aa.c_str(), aa.size());
+	}
+
+	for (ShaderVariable* sv : vrs) {
+		strm << sv->type;
+		if (sv->type == SHADER_FLOAT || sv->type == SHADER_INT) {
+			_StreamWrite(&sv->min, &strm, 4);
+			_StreamWrite(&sv->max, &strm, 4);
+			if (sv->type == SHADER_FLOAT)
+				_StreamWrite(&sv->val.x, &strm, 4);
+			else
+				_StreamWrite(&sv->val.i, &strm, 4);
+		}
+		strm << sv->name << (char)0;
+	}
+	strm << (char)255;
+	int s = vertCode.size();
+	_StreamWrite(&s, &strm, 4);
+	strm << vertCode << (char)0;
+	s = fragCode.size();
+	_StreamWrite(&s, &strm, 4);
+	strm << fragCode << (char)0;
+
 	strm.close();
 	return true;
 }

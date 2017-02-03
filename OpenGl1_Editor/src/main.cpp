@@ -339,6 +339,9 @@ void DrawOverlay() {
 	for (int i = editor->blocks.size() - 1; i >= 0; i--) {
 		editor->blocks[i]->Draw();
 	}
+	if (editor->dialogBlock) {
+		editor->dialogBlock->Draw();
+	}
 	editor->DrawHandles();
 }
 
