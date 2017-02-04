@@ -111,10 +111,6 @@ void MeshFilter::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 	else pos += 17;
 }
 
-void MeshFilter::Serialize(Editor* e, ofstream* stream) {
-
-}
-
 void MeshFilter::SetMesh(int i) {
 	_mesh = i;
 	if (i >= 0) {
@@ -131,6 +127,10 @@ void MeshFilter::_UpdateMesh(void* i) {
 	}
 	else
 		mf->mesh = nullptr;
+}
+
+void MeshFilter::Serialize(Editor* e, ofstream* stream) {
+	_StreamWriteAsset(e, stream, ASSETTYPE_MESH, _mesh);
 }
 
 MeshRenderer::MeshRenderer() : Component("Mesh Renderer", COMP_MRD, DRAWORDER_SOLID | DRAWORDER_TRANSPARENT, {COMP_MFT}) {
@@ -164,13 +164,20 @@ void MeshRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 			Engine::Label(v.r + 2, v.g + pos + 20, 12, "Materials: " + to_string(mft->mesh->materialCount), e->font, white());
 			for (uint a = 0; a < mft->mesh->materialCount; a++) {
 				Engine::Label(v.r + 2, v.g + pos + 37, 12, "Material " + to_string(a), e->font, white());
-				e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 34, v.b*0.7f, 16, grey1(), ASSETTYPE_MATERIAL, 12, e->font, &_materials[0]);
+				e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 34, v.b*0.7f, 16, grey1(), ASSETTYPE_MATERIAL, 12, e->font, &_materials[a]);
 				pos += 17;
 			}
 			pos += 34;
 		}
 	}
 	else pos += 17;
+}
+
+void MeshRenderer::Serialize(Editor* e, ofstream* stream) {
+	int s = _materials.size();
+	_StreamWrite(&s, stream, 4);
+	for (ASSETID i : _materials)
+		_StreamWriteAsset(e, stream, ASSETTYPE_MATERIAL, i);
 }
 
 void TextureRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {

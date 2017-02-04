@@ -35,6 +35,7 @@ public:
 	friend class EB_Viewer;
 	friend class EB_Inspector;
 	friend class SceneObject;
+	friend void EBI_DrawObj(Vec4 v, Editor* editor, EB_Inspector* b, SceneObject* o);
 	friend bool DrawComponentHeader(Editor* e, Vec4 v, float pos, Component* c);
 	friend void DrawSceneObjectsOpaque(EB_Viewer* ebv, vector<SceneObject*> oo), DrawSceneObjectsGizmos(EB_Viewer* ebv, vector<SceneObject*> oo), DrawSceneObjectsTrans(EB_Viewer* ebv, vector<SceneObject*> oo);
 
@@ -179,7 +180,7 @@ public:
 protected:
 	void SetMesh(int i);
 	static void _UpdateMesh(void* i);
-	int _mesh;
+	ASSETID _mesh;
 };
 
 #define COMP_MRD 0x10
@@ -187,10 +188,12 @@ class MeshRenderer : public Component {
 public:
 	MeshRenderer();
 
-	vector<int> _materials;
+	vector<ASSETID> _materials;
 
 	void DrawEditor(EB_Viewer* ebv) override;
 	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos);
+
+	void Serialize(Editor* e, ofstream* stream) override;
 };
 
 #define COMP_TRD 0x11

@@ -32,8 +32,6 @@ typedef unordered_map<int, funcMap[]> CommandsMap;
 int GetShortcutInt(InputKey k, InputKey m1 = Key_None, InputKey m2 = Key_None, InputKey m3 = Key_None);
 bool ShortcutTriggered(int i, bool c, bool a, bool s);
 
-typedef string ASSETPATH;
-
 Vec4 grey1(), grey2(), accent();
 
 class EditorBlock {
@@ -112,9 +110,8 @@ public:
 
 class EB_Browser_File {
 public:
-	EB_Browser_File(Editor* e, string path, string name);
-	string path;
-	string name;
+	EB_Browser_File(Editor* e, string path, string name, string fN);
+	string path, name, fullName;
 	int thumbnail;
 	bool canExpand, expanded;
 	vector<EB_Browser_File> children;
@@ -373,10 +370,9 @@ public:
 	SceneObject* selected;
 	bool selectGlobal;
 	vector<string> includedScenes;
-	unordered_map<string, ASSETTYPE> assetTypes;
-	unordered_map<ASSETTYPE, vector<string>> allAssets;
 
-	string selectedFile = "";
+	ASSETTYPE selectedFileType;
+	ASSETID selectedFile;
 
 	glm::mat4 viewMatrix;
 	bool persp;
@@ -392,14 +388,19 @@ public:
 	vector<string> assetIconsExt;
 	vector<Texture*> assetIcons;
 	//Texture buttonDash;
-	vector<string> headerAssets, blendAssets;
-	unordered_map<ASSETTYPE, vector<string>> normalAssets;
+	unordered_map<string, ASSETTYPE> assetTypes;
+	unordered_map<ASSETTYPE, vector<string>> allAssets;
+	vector<string> headerAssets, blendAssets, headerAssetsOld, blendAssetsOld;
+	unordered_map<ASSETTYPE, vector<string>> normalAssets, normalAssetsOld;
 	unordered_map<ASSETTYPE, vector<void*>> normalAssetCaches;
 
+	void ResetAssetMap();
+
 	void DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASSETTYPE type, float labelSize, Font* labelFont, int* tar, callbackFunc func = nullptr, void* param = nullptr);
+	ASSETID GetAssetInfo(string p, ASSETTYPE &type, ASSETID& i);
+	ASSETID GetAssetId(void* p), GetAssetId(void* p, ASSETTYPE& t);
 
 	void LoadDefaultAssets();
-	void RefreshAssets();
 	void GenerateScriptResolver();
 	void NewScene();
 	void UpdateLerpers();
@@ -428,6 +429,7 @@ public:
 	static void Compile(Editor* e);
 	static void ShowPrefs(Editor* e);
 	static void SaveScene(Editor* e);
+	static void OpenScene(Editor* e);
 	static void DeleteActive(Editor* e);
 	static void DoDeleteActive(EditorBlock* b);
 

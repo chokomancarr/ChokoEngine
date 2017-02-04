@@ -173,9 +173,12 @@ int main(int argc, char **argv)
 		editor->blocks = vector<EditorBlock*>({ new EB_Inspector(editor, 2, 0, 1, 3), new EB_Inspector(editor, 2, 3, 1, 1), new EB_Browser(editor, 0, 2, 4, 1, editor->projectFolder + "Assets\\"), new EB_Debug(editor, 4, 2, 2, 1), new EB_Viewer(editor, 0, 0, 3, 2), new EB_Hierarchy(editor, 3, 0, 2, 2) }); //path.substr(0, path.find_last_of('\\') + 1)
 		font = editor->font;
 		editor->ReloadAssets(editor->projectFolder + "Assets\\", true);
-		editor->RefreshAssets();
 		//editor->activeScene.sky = new Background(editor->dataPath + "res\\bg_refl.hdr");
 		editor->SetBackground(editor->dataPath + "res\\bg.jpg", 0.3f);
+
+		ShaderBase b("F:\\TestProject\\Assets\\test.shade.meta");
+		Material m(&b);
+		m.Save("F:\\TestProject\\Assets\\test.material");
 
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -347,6 +350,7 @@ void DrawOverlay() {
 
 void renderScene()
 {
+	lock_guard<mutex> lock(lockMutex);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glClearColor(0, 0, 0, 1.0f);
 	glEnable(GL_DEPTH_TEST);

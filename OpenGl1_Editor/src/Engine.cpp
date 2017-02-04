@@ -789,11 +789,13 @@ vector<EB_Browser_File> IO::GetFilesE (Editor* e, const string& folder)
 			if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
 				string aa(fd.cFileName);
 				if ((aa.length() > 5 && aa.substr(aa.length() - 5, string::npos) == ".meta"))
-					names.push_back(EB_Browser_File(e, folder, aa.substr(0, aa.length() - 5)));
+					names.push_back(EB_Browser_File(e, folder, aa.substr(0, aa.length() - 5), aa));
 				else if ((aa.length() > 2 && aa.substr(aa.length() - 2, string::npos) == ".h"))
-					names.push_back(EB_Browser_File(e, folder, aa));
+					names.push_back(EB_Browser_File(e, folder, aa, aa));
 				else if ((aa.length() > 4 && aa.substr(aa.length() - 4, string::npos) == ".cpp"))
-					names.push_back(EB_Browser_File(e, folder, aa));
+					names.push_back(EB_Browser_File(e, folder, aa, aa));
+				else if ((aa.length() > 9 && aa.substr(aa.length() - 9, string::npos) == ".material"))
+					names.push_back(EB_Browser_File(e, folder, aa, aa));
 			}
 		} while (::FindNextFile(hFind, &fd));
 		::FindClose(hFind);
@@ -1345,19 +1347,133 @@ Vec2 Input::mousePos = Vec2(0, 0);
 Vec2 Input::mousePosRelative = Vec2(0, 0);
 
 //-------------------Material class--------------
-Material::Material() {
+Material::Material() : _shader(-1) {
 	shader = nullptr;// Engine::unlitProgram;
 }
 
-Material::Material(ShaderBase * shad) {
+Material::Material(ShaderBase * shad) : _shader(-1) {
 	shader = shad;
+	if (shad == nullptr)
+		return;
+	ResetVals();
+	if (Editor::instance != nullptr)
+		_shader = Editor::instance->GetAssetId(shader);
+	for (ShaderVariable* v : shad->vars) {
+		void* l = nullptr;
+		if (v->type == SHADER_INT)
+			l = new int();
+		else if (v->type == SHADER_FLOAT)
+			l = new float();
+		else if (v->type == SHADER_SAMPLER)
+			l = new int(-1);
+		valNames[v->type].push_back(v->name);
+		vals[v->type].emplace(glGetUniformLocation(shad->pointer, v->name.c_str()), l);
+	}
+}
+
+Material::Material(string path) {
+	ifstream stream(path.c_str());
+	if (!stream.good()) {
+		cout << "material not found!" << endl;
+		return;
+	}
+	char* c = new char[4];
+	stream.read(c, 3);
+	c[3] = (char)0;
+	string ss(c);
+	if (string(c) != "KTC") {
+		cerr << "file not supported" << endl;
+		return;
+	}
+
+	char* nmm = new char[100];
+	stream.getline(nmm, 100, (char)0);
+	string shp(nmm);
+	if (shp == "")
+		return;
+	_shader = Editor::instance->GetAssetId(shader);
+	shader = (ShaderBase*)Editor::instance->GetCache(ASSETTYPE_SHADER, _shader);
+	if (shader == nullptr)
+		return;
+
+	ResetVals();
+	int vs;
+	_Strm2Int(stream, vs);
+	for (int r = 0; r < vs; r++) {
+		int ii;
+		_Strm2Int(stream, ii);
+		switch (ii) {
+		case SHADER_FLOAT:
+			//vals[SHADER_FLOAT].emplace();
+			break;
+		}
+	}
+	stream.close();
+}
+
+Material::~Material() {
+	for (auto a : vals) {
+		for (auto b : a.second)
+			free(b.second);
+	}
+}
+
+void Material::ResetVals() {
+	vals[SHADER_INT] = unordered_map <GLint, void*>();
+	vals[SHADER_FLOAT] = unordered_map <GLint, void*>();
+	vals[SHADER_VEC2] = unordered_map <GLint, void*>();
+	vals[SHADER_VEC3] = unordered_map <GLint, void*>();
+	vals[SHADER_SAMPLER] = unordered_map <GLint, void*>();
+	vals[SHADER_MATRIX] = unordered_map <GLint, void*>();
+	valNames[SHADER_INT] = vector<string>();
+	valNames[SHADER_FLOAT] = vector<string>();
+	valNames[SHADER_VEC2] = vector<string>();
+	valNames[SHADER_VEC3] = vector<string>();
+	valNames[SHADER_SAMPLER] = vector<string>();
+	valNames[SHADER_MATRIX] = vector<string>();
 }
 
 void Material::SetTexture(string name, Texture * texture) {
 	SetTexture(glGetUniformLocation(shader->pointer, name.c_str()), texture);
 }
 void Material::SetTexture(GLint id, Texture * texture) {
-	shader->Set(SHADER_SAMPLER, id, texture);
+	vals[SHADER_SAMPLER][id] = texture;
+}
+
+void Material::Save(string path) {
+	ofstream strm(path, ios::out | ios::binary | ios::trunc);
+	strm << "KTC";
+	ASSETTYPE st;
+	ASSETID si = Editor::instance->GetAssetId(shader, st);
+	_StreamWriteAsset(Editor::instance, &strm, ASSETTYPE_SHADER, si);
+	int i = 0;
+	SHADER_VARTYPE t = 0;
+	long long p1 = strm.tellp();
+	strm << "0000";
+	//_StreamWrite(&i, &strm, 4);
+	for (auto v : vals[SHADER_INT]) {
+		t = SHADER_INT;
+		strm << t;
+		int ii(*(int*)v.second);
+		_StreamWrite(&ii, &strm, 4);
+		i++;
+	}
+	for (auto v : vals[SHADER_FLOAT]) {
+		t = SHADER_FLOAT;
+		strm << t;
+		float ff(*(float*)v.second);
+		_StreamWrite(&ff, &strm, 4);
+		i++;
+	}
+	for (auto v : vals[SHADER_SAMPLER]) {
+		t = SHADER_SAMPLER;
+		strm << t;
+		_StreamWriteAsset(Editor::instance, &strm, t, *(ASSETID*)v.second);
+		i++;
+	}
+	strm.seekp(p1);
+	_StreamWrite(&i, &strm, 4);
+	strm.close();
 }
 
 void Material::ApplyGL() {
@@ -1367,28 +1483,49 @@ void Material::ApplyGL() {
 	}
 	else {
 		glUseProgram(shader->pointer);
-		for (auto a = vals.begin(); a != vals.end(); a++) {
-			switch (a->second.type) {
-			case SHADER_INT:
-			case SHADER_SAMPLER:
-				glUniform1i(a->first, a->second.val.i);
-				break;
-			case SHADER_FLOAT:
-				glUniform1f(a->first, a->second.val.x);
-				break;
-			case SHADER_VEC2:
-				glUniform2f(a->first, a->second.val.x, a->second.val.y);
-				break;
-			case SHADER_VEC3:
-				glUniform3f(a->first, a->second.val.x, a->second.val.y, a->second.val.z);
-				break;
-			}
+		for (auto a : vals[SHADER_INT])
+			if (a.second != nullptr)
+				glUniform1i(a.first, *(int*)a.second);
+		for (auto a : vals[SHADER_FLOAT])
+			if (a.second != nullptr)
+				glUniform1i(a.first, *(float*)a.second);
+		for (auto a : vals[SHADER_VEC2]) {
+			if (a.second == nullptr)
+				continue;
+			Vec2* v2 = (Vec2*)a.second;
+			glUniform2i(a.first, v2->x, v2->y);
 		}
 	}
 }
 
-void _StreamWrite(void* val, ofstream* stream, int size) {
+void _StreamWrite(const void* val, ofstream* stream, int size) {
 	stream->write(reinterpret_cast<char const *>(val), size);
+}
+
+void _StreamWriteAsset(Editor* e, ofstream* stream, ASSETTYPE t, ASSETID i) {
+	if (i < 0) {
+		(*stream) << (char)0;
+		return;
+	}
+	string p;
+	if (t == ASSETTYPE_SCRIPT_H)
+		p = e->headerAssets[i];
+	else
+		p = e->normalAssets[t][i];
+	(*stream) << p << (char)0;
+}
+
+void _Strm2Int(ifstream& strm, int& i) {
+	char c[4];
+	strm.read(c, 4);
+	int rr(*(int*)c);
+	i = 0 + *(int*)c;
+}
+
+void _Strm2Float(ifstream& strm, float& f) {
+	char c[4];
+	strm.read(c, 4);
+	f = 0 + *(float*)c;
 }
 
 float* hdr2float(byte imagergbe[], int w, int h) {
@@ -1501,7 +1638,7 @@ Scene::Scene(ifstream& stream, long pos) : sceneName(""), sky(nullptr), skyId(-1
 }
 
 void Scene::Save(Editor* e) {
-	ofstream sw(e->projectFolder + "Assets\\test.scene", ios::out);
+	ofstream sw(e->projectFolder + "Assets\\" + sceneName + ".scene", ios::out);
 	sw << "SN";
 	for (SceneObject* sc : objects) {
 		Serialize(e, sc, &sw);

@@ -75,7 +75,7 @@ int GetFormatEnum(string ext) {
 		return ASSETTYPE_MESH;
 	else if (ext == ".blend")
 		return ASSETTYPE_BLEND;
-	else if (ext == ".mat")
+	else if (ext == ".material")
 		return ASSETTYPE_MATERIAL;
 	else if (ext == ".hdr")
 		return ASSETTYPE_HDRI;
@@ -220,8 +220,7 @@ HICON GetHighResolutionIcon(LPTSTR pszPath)
 	else return nullptr;
 }
 
-EB_Browser_File::EB_Browser_File(Editor* e, string path, string nm) : path(path), thumbnail(-1), expanded(false) {
-	name = nm;
+EB_Browser_File::EB_Browser_File(Editor* e, string path, string nm, string fn) : path(path), thumbnail(-1), expanded(false), name(nm), fullName(path + fn) {
 	string ext = name.substr(name.find_last_of('.') + 1, string::npos);
 	canExpand = false;
 	for (int a = e->assetIcons.size() - 1; a >= 0; a--) {
@@ -307,7 +306,9 @@ void EB_Browser::Draw() {
 	byte fileSize = 70;
 	for (int ff = files.size() - 1; ff >= 0; ff--) {
 		if (DrawFileRect(v.r + 151 + ww, v.g + EB_HEADER_SIZE + (fileSize+1)* hh, fileSize, &files[ff], this)) {
-			editor->selectedFile = files[ff].path + "\\" + files[ff].name;
+			//editor->_Message("1", files[ff].fullName);
+			editor->GetAssetInfo(files[ff].fullName, editor->selectedFileType, editor->selectedFile);
+			//editor->_Message("1", files[ff].fullName + " " + to_string(editor->selectedFileType) + ":" + to_string(editor->selectedFile));
 		}
 		
 		ww += fileSize+1;
@@ -739,6 +740,26 @@ void EB_Inspector::SelectAsset(EBI_Asset* e, string s) {
 		loaded = true;
 }
 
+void EBI_DrawObj(Vec4 v, Editor* editor, EB_Inspector* b, SceneObject* o) {
+	Engine::DrawTexture(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 18, 18, editor->object);
+	Engine::EButton((editor->editorLayer == 0), v.r + 20, v.g + 2 + EB_HEADER_SIZE, v.b - 21, 18, grey2());
+	Engine::Label(v.r + 22, v.g + 6 + EB_HEADER_SIZE, 12, o->name, editor->font, white());
+
+	//TRS
+	b->DrawVector3(editor, v, 21, "Position", o->transform.position);
+	b->DrawVector3(editor, v, 38, "Rotation", o->transform.eulerRotation);
+	b->DrawVector3(editor, v, 55, "Scale", o->transform.scale);
+
+	//draw components
+	uint off = 74 + EB_HEADER_SIZE;
+	for (Component* c : o->_components)
+	{
+		c->DrawInspector(editor, c, v, off);
+		if (editor->WAITINGREFRESHFLAG) //deleted
+			return;
+	}
+}
+
 void EB_Inspector::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	CalcV(v);
@@ -772,23 +793,7 @@ void EB_Inspector::Draw() {
 			editor->DrawAssetSelector(v.r + v.b*0.3f, v.g + 21 + EB_HEADER_SIZE, v.b*0.7f - 1, 14, grey2(), ASSETTYPE_HDRI, 12, editor->font, &editor->activeScene.skyId);
 		}
 		else if(lockGlobal == 1) {
-			Engine::DrawTexture(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 18, 18, editor->object);
-			Engine::EButton((editor->editorLayer == 0), v.r + 20, v.g + 2 + EB_HEADER_SIZE, v.b - 21, 18, grey2());
-			Engine::Label(v.r + 22, v.g + 6 + EB_HEADER_SIZE, 12, lockedObj->name, editor->font, white());
-
-			//TRS
-			DrawVector3(editor, v, 21, "Position", lockedObj->transform.position);
-			DrawVector3(editor, v, 38, "Rotation", lockedObj->transform.eulerRotation);
-			DrawVector3(editor, v, 55, "Scale", lockedObj->transform.scale);
-
-			//draw components
-			uint off = 74 + EB_HEADER_SIZE;
-			for (Component* c : lockedObj->_components)
-			{
-				c->DrawInspector(editor, c, v, off);
-				if (editor->WAITINGREFRESHFLAG) //deleted
-					return;
-			}
+			EBI_DrawObj(v, editor, this, lockedObj);
 		}
 	}
 	else if (isAsset) {
@@ -807,23 +812,7 @@ void EB_Inspector::Draw() {
 
 	}
 	else if (editor->selected != nullptr){
-		Engine::DrawTexture(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 18, 18, editor->object);
-		Engine::EButton((editor->editorLayer == 0), v.r + 20, v.g + 2 + EB_HEADER_SIZE, v.b - 21, 18, grey2());
-		Engine::Label(v.r + 22, v.g + 6 + EB_HEADER_SIZE, 12, editor->selected->name, editor->font, white());
-
-		//TRS
-		DrawVector3(editor, v, 21, "Position", editor->selected->transform.position);
-		DrawVector3(editor, v, 38, "Rotation", editor->selected->transform.eulerRotation);
-		DrawVector3(editor, v, 55, "Scale", editor->selected->transform.scale);
-		
-		//draw components
-		uint off = 74 + EB_HEADER_SIZE;
-		for (Component* c : editor->selected->_components)
-		{
-			c->DrawInspector(editor, c, v, off);
-			if (editor->WAITINGREFRESHFLAG) //deleted
-				return;
-		}
+		EBI_DrawObj(v, editor, this, editor->selected);
 	}
 	else
 		Engine::Label(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 12, "Select object to inspect.", editor->font, white());
@@ -874,6 +863,49 @@ void Editor::DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASS
 	labelFont->alignment = al;
 }
 
+ASSETID Editor::GetAssetInfo(string p, ASSETTYPE &type, ASSETID& i) {
+	for (auto t : normalAssets) {
+		int x = 0;
+		for (auto u : t.second) {
+			string uu;
+			if (t.first == ASSETTYPE_MATERIAL)
+				u = projectFolder + "Assets\\" + u;
+			//if (t.first == ASSETTYPE_MESH)
+			//	u = projectFolder + "Assets\\" + u + ".mesh.meta";
+			else
+				u = projectFolder + "Assets\\" + u + ".meta";
+			if (u == p) {
+				type = t.first;
+				i = x;
+				GetCache(type, i);
+				return x;
+			}
+			x++;
+		}
+	}
+	type = -1;
+	i = -1;
+	return -1;
+}
+
+ASSETID Editor::GetAssetId(void* i) {
+	ASSETTYPE t;
+	return GetAssetId(i, t);
+}
+ASSETID Editor::GetAssetId(void* i, ASSETTYPE&) {
+	if (i == nullptr)
+		return -1;
+	else {
+		for (auto a : normalAssetCaches) {
+			for (int b = a.second.size()-1; b >= 0; b--) {
+				if (a.second[b] == i){
+					return b;
+				}
+			}
+		}
+	}
+}
+
 void Editor::LoadDefaultAssets() {
 	font = new Font(dataPath + "res\\default_s.font", dataPath + "res\\default_l.font", 17);
 
@@ -908,6 +940,7 @@ void Editor::LoadDefaultAssets() {
 	assetIconsExt.push_back("h");
 	assetIconsExt.push_back("blend");
 	assetIconsExt.push_back("cpp");
+	assetIconsExt.push_back("material");
 	assetIconsExt.push_back("shade");
 	assetIconsExt.push_back("txt");
 	assetIconsExt.push_back("mesh");
@@ -915,6 +948,7 @@ void Editor::LoadDefaultAssets() {
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_header.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_blend.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_cpp.bmp", false));
+	assetIcons.push_back(new Texture(dataPath + "res\\asset_mat.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_shade.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_txt.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_mesh.bmp", false));
@@ -953,15 +987,19 @@ void Editor::LoadDefaultAssets() {
 	globalShorts.emplace(GetShortcutInt(Key_B, Key_Control), &Compile);
 	globalShorts.emplace(GetShortcutInt(Key_U, Key_Control, Key_Alt), &ShowPrefs);
 	globalShorts.emplace(GetShortcutInt(Key_S, Key_Control), &SaveScene);
+	globalShorts.emplace(GetShortcutInt(Key_O, Key_Control), &OpenScene);
 	globalShorts.emplace(GetShortcutInt(Key_X, Key_Control), &DeleteActive);
 
 	assetTypes.emplace("scene", ASSETTYPE_SCENE);
 	assetTypes.emplace("mesh", ASSETTYPE_MESH);
+	assetTypes.emplace("shade", ASSETTYPE_SHADER);
+	assetTypes.emplace("material", ASSETTYPE_MATERIAL);
 	assetTypes.emplace("bmp", ASSETTYPE_TEXTURE);
 	assetTypes.emplace("hdr", ASSETTYPE_HDRI);
 	
 	allAssets.emplace(ASSETTYPE_SCENE, vector<string>());
 	allAssets.emplace(ASSETTYPE_MESH, vector<string>());
+	allAssets.emplace(ASSETTYPE_MATERIAL, vector<string>());
 	allAssets.emplace(ASSETTYPE_TEXTURE, vector<string>());
 	allAssets.emplace(ASSETTYPE_HDRI, vector<string>());
 }
@@ -970,29 +1008,27 @@ void AddH(Editor* e, string dir, vector<string>* h) {
 	for (string s : IO::GetFiles(dir)) {
 		if (s.size() > 3 && s.substr(s.size() - 2, string::npos) == ".h")
 			h->push_back(s.substr(s.find_last_of('\\') + 1, string::npos));
-		if (s.size() > 7 && s.substr(s.size() - 6, string::npos) == ".scene")
+		else if (s.size() > 7 && s.substr(s.size() - 6, string::npos) == ".scene")
 			e->allAssets[ASSETTYPE_SCENE].push_back(s);
+		else if (s.size() > 10 && s.substr(s.size() - 9, string::npos) == ".material")
+			e->allAssets[ASSETTYPE_MATERIAL].push_back(s);
 		else {
 			if (s.size() < 7) continue;
-			string s2 = s.substr(0, s.size()-5);
+			string s2 = s.substr(0, s.size() - 5);
+			//cout << ">" << s2 << endl;
 			unordered_map<string, ASSETTYPE>::const_iterator got = e->assetTypes.find(s2.substr(s2.find_last_of('.') + 1));
 			if (got != e->assetTypes.end()) {
+				//cout << s << endl;
 				e->allAssets[(got->second)].push_back(s);
 			}
 		}
 	}
 	vector<string> dirs;
-	IO::GetFolders(dir, &dirs);
+	IO::GetFolders(dir, &dirs, true);
 	for (string ss : dirs) {
 		if (ss != "." && ss != "..")
 			AddH(e, dir + "\\" + ss, h);
 	}
-}
-
-void Editor::RefreshAssets() {
-	headerAssets.clear();
-	AddH(this, projectFolder + "Assets", &headerAssets);
-	GenerateScriptResolver();
 }
 
 void Editor::GenerateScriptResolver() {
@@ -1305,13 +1341,16 @@ void DoScanAssetsGet(Editor* e, vector<string>& list, string p, bool rec) {
 		if (type != ASSETTYPE_UNDEF) {
 			//cout << "file " << w << endl;
 			string ss = w + ".meta";//ss.substr(0, ss.size() - 5);
-			string ww(w.substr(e->projectFolder.size() + 7, string::npos));
+			ww = (w.substr(e->projectFolder.size() + 7, string::npos));
+			//string ww2 = ww.substr(0, ww.size()-5);
 			if (type == ASSETTYPE_BLEND)
 				e->blendAssets.push_back(ww.substr(0, ww.find_last_of('\\')) + ww.substr(ww.find_last_of('\\') + 1, string::npos));
 			else {
 				e->normalAssets[type].push_back(ww.substr(0, ww.find_last_of('\\')) + ww.substr(ww.find_last_of('\\') + 1, string::npos));
 				e->normalAssetCaches[type].push_back(nullptr);
 			}
+			if (type == ASSETTYPE_MATERIAL || type == ASSETTYPE_SCENE)
+				continue;
 			if (IO::HasFile(ss.c_str())) {
 				FILETIME metaTime, realTime;
 				HANDLE metaF = CreateFile(ss.c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -1379,6 +1418,9 @@ void DoReloadAssets(Editor* e, string path, bool recursive, mutex* l) {
 	DoScanMeshesGet(e, files, path, true);
 	{
 		lock_guard<mutex> lock(*l);
+		e->headerAssets.clear();
+		AddH(e, e->projectFolder + "Assets", &e->headerAssets);
+		e->GenerateScriptResolver();
 		for (EditorBlock* eb : e->blocks) {
 			if (eb->editorType == 1)
 				eb->Refresh();
@@ -1396,17 +1438,24 @@ void Editor::ClearLogs() {
 	}
 }
 
-void Editor::ReloadAssets(string path, bool recursive) {
+void Editor::ResetAssetMap() {
 	normalAssets[ASSETTYPE_TEXTURE] = vector<string>();
 	normalAssets[ASSETTYPE_HDRI] = vector<string>();
 	normalAssets[ASSETTYPE_MATERIAL] = vector<string>();
 	normalAssets[ASSETTYPE_MESH] = vector<string>();
-
+	normalAssets[ASSETTYPE_BLEND] = vector<string>();
 
 	normalAssetCaches[ASSETTYPE_TEXTURE] = vector<void*>(); //Texture*
 	normalAssetCaches[ASSETTYPE_HDRI] = vector<void*>(); //Background*
 	normalAssetCaches[ASSETTYPE_MATERIAL] = vector<void*>(); //Material*
 	normalAssetCaches[ASSETTYPE_MESH] = vector<void*>(); //Mesh*
+}
+
+void Editor::ReloadAssets(string path, bool recursive) {
+
+	normalAssetsOld = unordered_map<ASSETTYPE, vector<string>>(normalAssets);
+
+	ResetAssetMap();
 
 	blendAssets.clear();
 	editorLayer = 4;
@@ -1414,17 +1463,6 @@ void Editor::ReloadAssets(string path, bool recursive) {
 	progressValue = 0;
 	thread t(DoReloadAssets, this, path, recursive, lockMutex);
 	t.detach();
-	/*
-	vector<string> files;
-	DoScanAssetsGet(this, files, path, recursive);
-	for (string f : files) {
-		ParseAsset(f);
-	}
-	for (EditorBlock* eb : blocks) {
-		if (eb->editorType == 1)
-			eb->Refresh();
-	}
-	*/
 }
 
 bool Editor::ParseAsset(string path) {
@@ -1506,6 +1544,14 @@ void* Editor::GenCache(ASSETTYPE type, int i) {
 	case ASSETTYPE_MESH:
 		normalAssetCaches[type][i] = new Mesh(normalAssets[type][i]);
 		break;
+	case ASSETTYPE_SHADER:
+		normalAssetCaches[type][i] = new ShaderBase(normalAssets[type][i]);
+		break;
+	case ASSETTYPE_MATERIAL:
+		normalAssetCaches[type][i] = new Material(normalAssets[type][i]);
+		break;
+	default:
+		return nullptr;
 	}
 	return normalAssetCaches[type][i];
 }
@@ -1551,12 +1597,12 @@ bool MergeAssets(Editor* e) {
 		e->AddBuildLog(e, "Cannot open " + nm + "!", true);
 		return false;
 	}
-	for (auto it = e->normalAssets.begin(); it != e->normalAssets.end(); ++it) {
-		if (it->second.size() > 0) {
+	for (auto it : e->normalAssets) {
+		if (it.second.size() > 0) {
 			short i = 0;
-			for (string s : it->second) {
+			for (string s : it.second) {
 				ifstream f2(e->projectFolder + "Assets\\" + s, ios::in | ios::binary);
-				_StreamWrite((void*)&it->first, &file2, 1);
+				_StreamWrite((void*)&it.first, &file2, 1);
 				_StreamWrite(&i, &file2, 2);
 				long long pos = file2.tellp();
 				file2 << "0000XX" << f2.rdbuf() << null;
@@ -1688,6 +1734,10 @@ void Editor::ShowPrefs(Editor* e) {
 }
 
 void Editor::SaveScene(Editor* e) {
+	e->activeScene.Save(e);
+}
+
+void Editor::OpenScene(Editor* e) {
 	e->activeScene.Save(e);
 }
 

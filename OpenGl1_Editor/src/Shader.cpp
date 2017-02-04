@@ -46,46 +46,70 @@ ShaderBase::ShaderBase(string path) {
 		cout << "shader not found!" << endl;
 		return;
 	}
-	string a;
-	bool hasData;
-	stream >> a;
-	if (a != "KTS123") {
+	char* c = new char[4];
+	stream.read(c, 3);
+	c[3] = (char)0;
+	string ss(c);
+	if (string(c) != "KTS") {
 		cerr << "file not supported" << endl;
 		return;
 	}
-	int readingType = 0;
-	while (!stream.eof()) {
-		getline(stream, a);
-		if (readingType == 0) {
-			if (a == "VERTEXBEGIN") {
-				readingType = 1;
-			}
-			else if (a == "FRAGMENTBEGIN") {
-				readingType = 2;
-			}
-		}
-		else if (readingType == 1) {
-			if (a == "VERTEXEND") {
-				readingType = 0;
-			}
-			else if (a != ""){
-				vertex_shader_code += a + "\n";
-				hasData = true;
-			}
-		}
-		else if (readingType == 2) {
-			if (a == "FRAGMENTEND") {
-				readingType = 0;
-			}
-			else if (a != ""){
-				fragment_shader_code += a + "\n";
-				hasData = true;
-			}
+
+	int vs;
+	_Strm2Int(stream, vs);
+
+	char type;
+	char* nmm = new char[100];
+	for (int r = 0; r < vs; r++) {
+		stream.get(type);
+		byte bb = type;
+		vars.push_back(new ShaderVariable());
+		vars[r]->type = bb;
+		switch (bb) {
+		case SHADER_INT:
+			_Strm2Float(stream, vars[r]->min);
+			_Strm2Float(stream, vars[r]->max);
+			_Strm2Int(stream, vars[r]->val.i);
+			stream.getline(nmm, 100, (char)0);
+			vars[r]->name += string(nmm);
+			break;
+		case SHADER_FLOAT:
+			_Strm2Float(stream, vars[r]->min);
+			_Strm2Float(stream, vars[r]->max);
+			_Strm2Float(stream, vars[r]->val.x);
+			stream.getline(nmm, 100, (char)0);
+			vars[r]->name += string(nmm);
+			break;
+		case SHADER_SAMPLER:
+			vars[r]->val.i = -1;
+			stream.getline(nmm, 100, (char)0);
+			vars[r]->name += string(nmm);
+			break;
 		}
 	}
-
-	if (!hasData)
+	stream.get(type);
+	if ((byte)type != 0xff)
 		return;
+
+	int i;
+	_Strm2Int(stream, i);
+	char* cc = new char[i+1];
+	stream.read(cc, i);
+	cc[i] = (char)0;
+	vertex_shader_code = string(cc);
+	free(cc);
+
+	stream.get(type);
+	if ((byte)type != 0x00)
+		return;
+
+	_Strm2Int(stream, i);
+	cc = new char[i + 1];
+	stream.read(cc, i);
+	cc[i] = (char)0;
+	fragment_shader_code = string(cc);
+	free(cc);
+	stream.close();
 
 	GLuint vertex_shader, fragment_shader;
 	if (vertex_shader_code != "") {
@@ -243,7 +267,7 @@ bool ShaderBase::Parse(ifstream* stream, string path) {
 	string vertCode, fragCode;
 
 	while (!sstream.eof()) {
-		cout << to_string(readingType) << endl;
+		//cout << to_string(readingType) << endl;
 		if (readingType == 0) {
 			getline(sstream, a);
 			if (a == "VARSTART")
@@ -258,9 +282,10 @@ bool ShaderBase::Parse(ifstream* stream, string path) {
 				readingType = 5;
 			else if (a == "FRAGSTART")
 				readingType = 6;
-			else {
-				Editor::instance->_Warning("Shader Importer", "Unscoped code found in shader. They will be ignored.");
-			}
+			//else if (a != ""){
+				//Editor::instance->_Warning("Shader Importer", "Unscoped code found in shader. They will be ignored.");
+				//cout << ">" << a << endl;
+			//}
 		}
 		else if (readingType == 1) {
 			string x;
@@ -391,14 +416,16 @@ bool ShaderBase::Parse(ifstream* stream, string path) {
 	}
 
 	//combine everything
-	vertCode = in + "\n\n" + common + "\n\n";
-	fragCode = common + "\n\n";
+	vertCode = "#version 330 core\n" + in + "\n\n" + common + "\n\n";
+	fragCode = "#version 330 core\n" + common + "\n\n";
 	stringstream v2fStream;
 	v2fStream.str(v2f);
 	while (!v2fStream.eof()) {
 		getline(v2fStream, a);
+		if (a == "")
+			continue;
 		vertCode += "out " + a + "\n";
-		fragCode += "in" + a + "\n";
+		fragCode += "in " + a + "\n";
 	}
 	vertCode += vert;
 	fragCode += frag;
@@ -412,7 +439,9 @@ bool ShaderBase::Parse(ifstream* stream, string path) {
 		Editor::instance->_Error("Shader Importer", "Cannot write to " + path);
 		return false;
 	}
-
+	strm << "KTS";
+	int ii = vrs.size();
+	_StreamWrite(&ii, &strm, 4);
 	for (ShaderVariable* sv : vrs) {
 		strm << sv->type;
 		if (sv->type == SHADER_FLOAT || sv->type == SHADER_INT) {

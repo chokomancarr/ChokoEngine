@@ -90,6 +90,9 @@ long long milliseconds();
 
 class Editor;
 
+typedef unsigned char ASSETTYPE;
+typedef int ASSETID;
+
 //shorthands
 Vec4 red(), green(), blue(), cyan(), yellow(), black(), white();
 Vec4 red(float f), green(float f), blue(float f), cyan(float f), yellow(float f), black(float f), white(float f);
@@ -98,7 +101,9 @@ Vec4 LerpVec4(Vec4 a, Vec4 b, float f);
 float clamp(float f, float a, float b);
 Vec3 rotate(Vec3 v, Quat q);
 glm::mat4 Quat2Mat(Quat q);
-void _StreamWrite(void* val, ofstream* stream, int size);
+void _StreamWrite(const void* val, ofstream* stream, int size);
+void _StreamWriteAsset(Editor* e, ofstream* stream, ASSETTYPE t, ASSETID i);
+void _Strm2Int(ifstream& strm, int& i), _Strm2Float(ifstream& strm, float& f);
 float* hdr2float(byte imagergbe[], int w, int h);
 
 //see SceneObjects.h
@@ -112,8 +117,6 @@ class MeshRenderer;
 //see Assetmanager
 class AssetItem;
 class AssetManager;
-
-typedef unsigned char ASSETTYPE;
 
 #define ASSETTYPE_UNDEF 0x00
 
@@ -241,6 +244,7 @@ typedef byte SHADER_VARTYPE;
 
 class ShaderValue {
 public:
+	ShaderValue() : i(0), x(0), y(0), z(0), m() {}
 	int i;
 	float x, y, z;
 	glm::quat m;
@@ -248,6 +252,8 @@ public:
 
 class ShaderVariable {
 public:
+	//ShaderVariable() : type(0), name(""), val(), min(0), max(0) {}
+
 	SHADER_VARTYPE type;
 	string name;
 	ShaderValue val;
@@ -261,16 +267,16 @@ public:
 	ShaderBase(string vert, string frag);
 	~ShaderBase() {
 		glDeleteProgram(pointer);
+		for (ShaderVariable* v : vars)
+			free(v);
 	}
 
 	bool loaded;
 	GLuint pointer;
 	vector<ShaderVariable*> vars;
-	//values applied to program on drawing stage
-	unordered_map<byte, unordered_map <GLint, void*>> values;
 
-	void Set(byte type, GLint id, void* val) { values[type][id] = val; }
-	void* Get(byte type, GLint id) { return values[type][id]; }
+	//void Set(byte type, GLint id, void* val) { values[type][id] = val; }
+	//void* Get(byte type, GLint id) { return values[type][id]; }
 	
 	//removes macros, insert include files
 	static bool Parse(ifstream* text, string path);
@@ -283,7 +289,11 @@ public:
 
 	Material(void);
 	Material(ShaderBase* shad);
-	unordered_map<GLint, ShaderVariable> vals;
+	~Material();
+	//values applied to program on drawing stage
+	unordered_map<SHADER_VARTYPE, unordered_map <GLint, void*>> vals;
+	unordered_map<SHADER_VARTYPE, vector<string>> valNames;
+	//unordered_map<GLint, ShaderVariable> vals;
 	void SetTexture(string name, Texture* texture);
 	void SetTexture(GLint id, Texture* texture);
 	void SetFloat(string name, float val);
@@ -291,11 +301,19 @@ public:
 	void SetInt(string name, int val);
 	void SetInt(GLint id, int val);
 
+	friend class Editor;
 	friend class Mesh;
 	friend class MeshRenderer;
+	friend int main(int argc, char **argv);
 protected:
+	Material(string s);
 
+	int _shader;
+
+	void Load();
+	void Save(string path);
 	void ApplyGL();
+	void ResetVals();
 };
 
 class Time {
@@ -384,7 +402,7 @@ public:
 	Background* sky;
 	int skyId;
 protected:
-	Scene() : sceneName(""), sky(nullptr), skyId(-1) {}
+	Scene() : sceneName("newScene"), sky(nullptr), skyId(-1) {}
 	Scene(ifstream& stream, long pos);
 	void Save(Editor* e);
 };
