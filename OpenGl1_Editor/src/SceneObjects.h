@@ -225,8 +225,7 @@ protected:
 #define COMP_SCR 0xff
 class SceneScript : public Component {
 public:
-	//called in editor
-	SceneScript(Editor* e, string name);
+	SceneScript() : Component("(Script)", COMP_SCR, DRAWORDER_NOT) {}
 
 	virtual void Start() {}
 	virtual void Update() {}
@@ -237,6 +236,11 @@ public:
 	void Serialize(Editor* e, ofstream* stream) override;
 
 	//bool ReferencingObject(Object* o) override;
+	friend class Editor;
+	friend class EB_Viewer;
+protected:
+	//called in editor
+	SceneScript(Editor* e, string name);
 };
 
 class SceneObject : public Object {

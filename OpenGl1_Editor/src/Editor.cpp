@@ -1071,26 +1071,41 @@ void Editor::GenerateScriptResolver() {
 		return;
 	}
 	vcxOut << vcx.substr(0, vcx.find('#'));
-	for (string cpp : cppAssets) {
-		vcxOut << "<ClCompile Include=\"Assets\\" + cpp + "\" />\r\n";
+	for (string cpp2 : IO::GetFiles(projectFolder + "System\\", ".cpp")) {
+		vcxOut << "<ClCompile Include=\"" + cpp2.substr(projectFolder.size(), string::npos) + "\" />" << endl;
 	}
-	vcxOut << "</ItemGroup>\r\n<ItemGroup>\r\n";
+	for (string cpp : cppAssets) {
+		vcxOut << "<ClCompile Include=\"Assets\\" + cpp + "\" />" << endl;
+	}
+	vcxOut << "</ItemGroup>\r\n<ItemGroup>" << endl;
+	for (string hd2 : IO::GetFiles(projectFolder + "System\\", ".h")) {
+		vcxOut << "<ClCompile Include=\"" + hd2.substr(projectFolder.size(), string::npos) + "\" />" << endl;
+	}
 	for (string hd : headerAssets) {
-		vcxOut << "<ClCompile Include=\"Assets\\" + hd + "\" />\r\n";
+		vcxOut << "<ClCompile Include=\"Assets\\" + hd + "\" />" << endl;
 	}
 	vcxOut << vcx.substr(vcx.find('#') + 1, string::npos);
 	vcxOut.close();
 
-	string h = "#include <vector>\n#include \"Engine.h\"\ntypedef SceneScript*(*sceneScriptInstantiator)();\nclass SceneScriptResolver {\npublic:\n\tSceneScriptResolver();\n\tstd::vector<sceneScriptInstantiator> map;\n};";
+	string h = "#include <vector>\n#include \"Engine.h\"\ntypedef SceneScript*(*sceneScriptInstantiator)();\nclass SceneScriptResolver {\npublic:\n\tSceneScriptResolver();\n\tstd::vector<sceneScriptInstantiator> map;\n";
+	h += "static SceneScript ";
+	for (int a = 0, b = headerAssets.size(); a < b; a++) {
+		h += "*_Inst" + to_string(a) + "()";
+		if (a == b - 1)
+			h += ";\n";
+		else
+			h += ", ";
+	}
+	h += "};";
 	string s = "#include \"SceneScriptResolver.h\"\n#include \"Engine.h\"\n\n";
 	for (int a = 0, b = headerAssets.size(); a < b; a++) {
-		s += "#include \"" + headerAssets[a] + "\"\n";
+		s += "#include \"..\\Assets\\" + headerAssets[a] + "\"\n";
 		string ss = headerAssets[a].substr(0, headerAssets[a].size()-2);
-		s += ss + "* _Inst" + to_string(a) + "() { return new " + ss + "(); }\n\n";
+		s += "SceneScript* SceneScriptResolver::_Inst" + to_string(a) + "() { return new " + ss + "(); }\n\n";
 	}
 	s += "\n\nusing namespace std;\r\nSceneScriptResolver::SceneScriptResolver() {\n";
 	for (int a = 0, b = headerAssets.size(); a < b; a++) {
-		s += "\tmap.push_back(&Inst" + to_string(a) + ");\n";
+		s += "\tmap.push_back(&_Inst" + to_string(a) + ");\n";
 	}
 	s += "}";
 	ofstream ofs (projectFolder + "\\System\\SceneScriptResolver.cpp");
@@ -1469,7 +1484,7 @@ void DoReloadAssets(Editor* e, string path, bool recursive, mutex* l) {
 		lock_guard<mutex> lock(*l);
 		e->headerAssets.clear();
 		AddH(e, e->projectFolder + "Assets", &e->headerAssets, &e->cppAssets);
-		e->GenerateScriptResolver();
+		//e->GenerateScriptResolver();
 		for (EditorBlock* eb : e->blocks) {
 			if (eb->editorType == 1)
 				eb->Refresh();
@@ -1793,6 +1808,7 @@ void Editor::SaveScene(Editor* e) {
 
 
 void Editor::DoCompile() {
+	GenerateScriptResolver();
 	buildEnd = false;
 	buildErrorPath = "";
 	buildProgressVec4 = white(1, 0.35f);

@@ -22,7 +22,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>./packages/glm;./packages/png;./packages/zlib;./packages/jpeg</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>./Assets:./System;./packages/glm;./packages/hdr;./packages/png;./packages/zlib;./packages/jpeg;./packages.jpg</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -31,9 +31,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>  
-	<ClCompile Include="System\SceneScriptResolver.cpp" />
+	<ClCompile Include="packages\hdr\hdr.cpp" />
     #
-	<ClCompile Include="System\SceneScriptResolver.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
