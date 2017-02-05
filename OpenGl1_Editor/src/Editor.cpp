@@ -1,6 +1,5 @@
 ﻿#include "Editor.h"
 #include "Engine.h"
-#include "KTMModel.h"
 #include <GL/glew.h>
 #include <iostream>
 #include <sstream>
@@ -516,12 +515,12 @@ void EB_Viewer::Draw() {
 	glDepthFunc(GL_ALWAYS);
 	if (editor->selected != nullptr) {
 		if (modifying == 0) {
-			if (selectedTooltip == 0) DrawTArrows(editor->selected->transform.position, 2);
-			else if (selectedTooltip == 1) DrawTArrows(editor->selected->transform.position, 2);
-			else DrawSArrows(editor->selected->transform.position, 2);
+			if (selectedTooltip == 0) DrawTArrows(editor->selected->transform.worldPosition(), 2);
+			else if (selectedTooltip == 1) DrawTArrows(editor->selected->transform.worldPosition(), 2);
+			else DrawSArrows(editor->selected->transform.worldPosition(), 2);
 		}
 		else {
-			Engine::DrawLineW(editor->selected->transform.position + modAxisDir*-100000.0f, editor->selected->transform.position + modAxisDir*100000.0f, white(), 2);
+			Engine::DrawLineW(editor->selected->transform.worldPosition() + modAxisDir*-100000.0f, editor->selected->transform.worldPosition() + modAxisDir*100000.0f, white(), 2);
 		}
 	}
 
@@ -1484,7 +1483,7 @@ bool Editor::ParseAsset(string path) {
 		ok = ShaderBase::Parse(&stream, path + ".meta");
 	}
 	else if (ext == "blend"){
-		ok = KTMModel::Parse(this, path);
+		ok = Mesh::ParseBlend(this, path);
 	}
 	else if (ext == "bmp" || ext == "jpg") {
 		ok = Texture::Parse(this, path);

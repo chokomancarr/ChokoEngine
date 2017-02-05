@@ -915,6 +915,26 @@ glm::mat4 Quat2Mat(Quat q) {
 	return glm::mat4(q.w, q.x, q.y, q.z, -q.x, q.w, q.z, -q.y, -q.y, -q.z, q.w, q.x, -q.z, q.y, -q.x, q.w);
 }
 
+//-----------------transform class-------------------
+Transform::Transform(SceneObject* sc, Vec3 pos, Quat rot, Vec3 scl) : object(sc), rotation(rot), scale(scl) {
+	Translate(pos);
+}
+
+Vec3 Transform::worldPosition() {
+	Vec3 w = position;
+	SceneObject* o = object;
+	while (o->parent != nullptr) {
+		o = o->parent;
+		w = w*o->transform.scale + o->transform.position;
+	}
+	return w;
+}
+
+Transform* Transform::Translate(Vec3 v) {
+	position += v;
+	return this;
+}
+
 //-----------------mesh class------------------------
 Mesh::Mesh(Editor* e, int i) : AssetObject(ASSETTYPE_MESH) {
 	Mesh* m2 = (Mesh*)e->GetCache(type, i);
@@ -1003,7 +1023,7 @@ Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false) {
 			triangleCount++;
 			//cout << "tri" << faceCount - 1 << endl;
 		}
-		if (a == "uv0") {
+		else if (a == "uv0") {
 			Vec2 v;
 			stream >> x;
 			if (x >= vertexCount) {
@@ -1014,7 +1034,7 @@ Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false) {
 			stream >> v.x >> v.y;
 			uv0.push_back(v);
 		}
-		if (a == "uv1") {
+		else if (a == "uv1") {
 			Vec2 v;
 			stream >> x;
 			if (x >= vertexCount) {
@@ -1045,6 +1065,117 @@ Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false) {
 	}
 	loaded = true;
 	return;
+}
+
+bool Mesh::ParseBlend(Editor* e, string s) {
+	SECURITY_ATTRIBUTES sa;
+	sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+	sa.bInheritHandle = TRUE;
+	sa.lpSecurityDescriptor = NULL;
+	HANDLE stdOutR, stdOutW, stdInR, stdInW;
+	if (!CreatePipe(&stdInR, &stdInW, &sa, 0)) {
+		cout << "failed to create pipe for stdin!";
+		return false;
+	}
+	if (!SetHandleInformation(stdInW, HANDLE_FLAG_INHERIT, 0)){
+		cout << "failed to set handle for stdin!";
+		return false;
+	}
+	if (!CreatePipe(&stdOutR, &stdOutW, &sa, 0)) {
+		cout << "failed to create pipe for stdout!";
+		return false;
+	}
+	if (!SetHandleInformation(stdOutR, HANDLE_FLAG_INHERIT, 0)){
+		cout << "failed to set handle for stdout!";
+		return false;
+	}
+	STARTUPINFO startInfo;
+	PROCESS_INFORMATION processInfo;
+	ZeroMemory(&startInfo, sizeof(STARTUPINFO));
+	ZeroMemory(&processInfo, sizeof(PROCESS_INFORMATION));
+	startInfo.cb = sizeof(STARTUPINFO);
+	startInfo.hStdInput = stdInR;
+	startInfo.hStdOutput = stdOutW;
+	startInfo.dwFlags |= STARTF_USESTDHANDLES;
+
+	//create meta directory
+	string ss = s.substr(0, s.find_last_of('.'));
+	string sss = ss + "_blend";
+	if (!CreateDirectory(sss.c_str(), NULL)) {
+		for (string file : IO::GetFiles(sss))
+			DeleteFile(file.c_str());
+	}
+	SetFileAttributes(sss.c_str(), FILE_ATTRIBUTE_HIDDEN);
+	string ms(s + ".meta");
+	DeleteFile(ms.c_str());
+
+	bool failed = true;
+	string cmd1(e->_blenderInstallationPath.substr(0, 2) + "\n"); //root
+	string cmd2("cd " + e->_blenderInstallationPath.substr(0, e->_blenderInstallationPath.find_last_of("\\")) + "\n");
+	string cmd3("blender \"" + s + "\" --background --python \"" + e->dataPath + "\\Python\\blend_exporter.py\" -- \"" + s.substr(0, s.find_last_of('\\')) + "?" + ss.substr(ss.find_last_of('\\') + 1, string::npos) + "\"\n");
+	//outputs object list, and meshes in subdir
+	if (CreateProcess("C:\\Windows\\System32\\cmd.exe", 0, NULL, NULL, true, CREATE_NO_WINDOW, NULL, "F:\\TestProject\\", &startInfo, &processInfo) != 0) {
+		cout << "executing Blender..." << endl;
+		bool bSuccess = false;
+		DWORD dwWrite;
+		bSuccess = WriteFile(stdInW, cmd1.c_str(), cmd1.size(), &dwWrite, NULL) != 0;
+		if (!bSuccess || dwWrite == 0) {
+			cout << "can't get to root!" << endl;
+			return false;
+		}
+		bSuccess = WriteFile(stdInW, cmd2.c_str(), cmd2.size(), &dwWrite, NULL) != 0;
+		if (!bSuccess || dwWrite == 0) {
+			cout << "can't navigate to blender dir!" << endl;
+			return false;
+		}
+		bSuccess = WriteFile(stdInW, cmd3.c_str(), cmd3.size(), &dwWrite, NULL) != 0;
+		if (!bSuccess || dwWrite == 0) {
+			cout << "can't execute blender!" << endl;
+			return false;
+		}
+		DWORD w;
+		bool finish = false;
+		do {
+			w = WaitForSingleObject(processInfo.hProcess, 0.5);
+			DWORD dwRead;
+			CHAR chBuf[4096];
+			string out = "";
+			bSuccess = ReadFile(stdOutR, chBuf, 4096, &dwRead, NULL) != 0;
+			if (bSuccess && dwRead > 0) {
+				string s(chBuf, dwRead);
+				out += s;
+			}
+			for (uint r = 0; r < out.size();) {
+				int rr = out.find_first_of('\n', r);
+				if (rr == string::npos)
+					rr = out.size() - 1;
+				string sss = out.substr(r, rr - r);
+				cout << sss << endl;
+				r = rr + 1;
+				if (sss.size() > 1 && sss[0] == '!')
+					e->_Message("Blender", sss.substr(1, string::npos));
+				if (sss.size() > 12 && sss.substr(0, 12) == "Blender quit"){
+					TerminateProcess(processInfo.hProcess, 0);
+					failed = false;
+					finish = true;
+				}
+			}
+		} while (w == WAIT_TIMEOUT && !finish);
+		if (failed)
+			return false;
+	}
+	else {
+		cout << "Cannot start Blender!" << endl;
+		CloseHandle(stdOutR);
+		CloseHandle(stdOutW);
+		CloseHandle(stdInR);
+		CloseHandle(stdInW);
+		return false;
+	}
+	CloseHandle(stdOutR);
+	CloseHandle(stdOutW);
+	SetFileAttributes(ms.c_str(), FILE_ATTRIBUTE_HIDDEN);
+	return true;
 }
 
 void Mesh::Draw(Material* mat) {

@@ -306,6 +306,13 @@ Component* ComponentFromType (COMPONENT_TYPE t){
 	}
 }
 
+SceneObject* SceneObject::AddChild(SceneObject* child) { 
+	childCount++; 
+	children.push_back(child); 
+	child->parent = this;
+	return this;
+}
+
 Component* SceneObject::AddComponent(Component* c) {
 	c->object = this;
 	int i = 0;

@@ -20,8 +20,19 @@ vec4 hdr2float (vec4 i) {
 }
 uniform mat4 _MV;
 uniform mat4 _P;
+uniform int _isForward;
 COMMONEND
 
 FRAGSTART
-out vec4 outColor;
+layout (location=0) out vec4 outColor;
+layout (location=1) out vec4 outNormal; 
+layout (location=2) out float outDepth;
+
+void Output(vec3 col, vec3 norm, float spec, float gloss, float z) {
+	outColor.rgb = col;
+	outColor.a = max(spec, _isForward);
+	outNormal.rgb = norm;
+	outNormal.a = gloss;
+	outDepth = z;
+}
 FRAGEND

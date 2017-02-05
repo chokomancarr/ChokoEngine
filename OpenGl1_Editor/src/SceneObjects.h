@@ -59,16 +59,16 @@ protected:
 class Transform : public Object {
 public:
 	//never call Transform constructor directly. Call SceneObject().transform instead.
-	Transform(SceneObject* sc, Vec3 pos, Quat rot, Vec3 scl) : object(sc), position(pos), rotation(rot), scale(scl) {}
+	Transform(SceneObject* sc, Vec3 pos, Quat rot, Vec3 scl);
 
 	SceneObject* object;
-	Vec3 position;
+	Vec3 position, worldPosition();
 	Quat rotation;
 	Vec3 eulerRotation;
 	Vec3 scale;
 
 	Transform* Translate(float x, float y, float z) { return Translate(Vec3(x, y, z)); }
-	Transform* Translate(Vec3 v) { position += v; return this; }
+	Transform* Translate(Vec3 v);
 };
 
 class AssetObject : public Object {
@@ -101,6 +101,7 @@ protected:
 	Mesh(Editor* e, int i);
 	Mesh(string path);
 
+	static bool ParseBlend(Editor* e, string s);
 	vector<vector<int>> _matTriangles;
 	void Draw(Material* mat);
 	//void Load();
@@ -252,9 +253,10 @@ public:
 	void Enable(), Disable();
 	void Enable(bool enableAll), Disable(bool disableAll);
 
+	SceneObject* parent;
 	vector<SceneObject*> children;
 
-	SceneObject* AddChild(SceneObject* child) { childCount++; children.push_back(child); return this; }
+	SceneObject* AddChild(SceneObject* child);
 	SceneObject* GetChild(int i) { return children[i]; }
 	Component* AddComponent(Component* c);
 	Component* GetComponent(COMPONENT_TYPE type);

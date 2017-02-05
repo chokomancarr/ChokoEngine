@@ -75,9 +75,6 @@
     <ClCompile Include="src\Editor.cpp" />
     <ClCompile Include="src\EditorShortcuts.cpp" />
     <ClCompile Include="src\Engine.cpp" />
-    <ClCompile Include="src\KTMModel.cpp">
-      <DeploymentContent>false</DeploymentContent>
-    </ClCompile>
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\RenderEngine.cpp" />
     <ClCompile Include="src\SceneObjects.cpp" />
@@ -91,7 +88,6 @@
     <ClInclude Include="src\AssetManager.h" />
     <ClInclude Include="src\Editor.h" />
     <ClInclude Include="src\Engine.h" />
-    <ClInclude Include="src\KTMModel.h" />
     <ClInclude Include="src\MaterialBase.h" />
     <ClInclude Include="src\SceneObjects.h" />
     <ClInclude Include="src\SceneScriptResolver.h" />

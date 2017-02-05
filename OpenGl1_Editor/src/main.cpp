@@ -307,12 +307,11 @@ void DoUpdate() {
 
 void UpdateLoop() {
 	while (!die) {
-		while (!redrawn)
-			Sleep(1);
+		while (!redrawn) {}
+			//Sleep(1);
 		{
 			lock_guard<mutex> lock(lockMutex);
 			t++;
-			redrawn = false;
 			long long millis = milliseconds();
 			Time::delta = (millis - Time::millis)*0.001f;
 			Time::time = (millis - Time::startMillis)*0.001;
@@ -324,7 +323,9 @@ void UpdateLoop() {
 				editor->blocks[editor->mouseOnP]->OnMousePress(1);
 			if (Input::mouse2State == MOUSE_DOWN)
 				editor->blocks[editor->mouseOnP]->OnMousePress(2);
-			DoUpdate(); 
+			DoUpdate();
+			redrawn = false;
+			//glutPostRedisplay();
 		}
 	}
 }

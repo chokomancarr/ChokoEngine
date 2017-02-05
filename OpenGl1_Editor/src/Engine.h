@@ -136,6 +136,14 @@ class Background;
 class SceneScript;
 class SceneObject;
 
+
+enum GBUFFERS {
+	GBUFFER_DIFFUSE_SPEC,
+	GBUFFER_NORMAL_GLOSS,
+	GBUFFER_Z,
+	GBUFFER_NUM_TEXTURES
+};
+
 struct Int2 {
 public:	
 	Int2(): x(0), y(0){}
