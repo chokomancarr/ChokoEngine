@@ -36,12 +36,11 @@ Camera::Camera() : Component("Camera", COMP_CAM, DRAWORDER_NOT), ortographic(fal
 Camera::Camera(ifstream& stream, long pos) : Component("Camera", COMP_CAM, DRAWORDER_NOT), ortographic(false), orthoSize(10) {
 	if (pos >= 0)
 		stream.seekg(pos);
-	stream >> fov;
-	stream >> screenPos.x;
-	stream >> screenPos.y;
-	stream >> screenPos.w;
-	stream >> screenPos.h;
-	//camVerts[0] = Vec3();
+	_Strm2Float(stream, fov);
+	_Strm2Float(stream, screenPos.x);
+	_Strm2Float(stream, screenPos.y);
+	_Strm2Float(stream, screenPos.w);
+	_Strm2Float(stream, screenPos.h);
 	UpdateCamVerts();
 }
 
@@ -256,7 +255,7 @@ void TextureRenderer::Serialize(Editor* e, ofstream* stream) {
 TextureRenderer::TextureRenderer(ifstream& stream, long pos) : Component("Texture Renderer", COMP_TRD, DRAWORDER_OVERLAY) {
 	if (pos >= 0)
 		stream.seekg(pos);
-	stream >> _texture;
+	_Strm2Int(stream, _texture);
 }
 
 SceneScript::SceneScript(Editor* e, string name) : Component(name + " (Script)", COMP_SCR, DRAWORDER_NOT) {

@@ -1,7 +1,6 @@
 #include "Engine.h"
 #include "Editor.h"
 #include "hdr.h"
-#include "KTMModel.h"
 #include <GL/glew.h>
 #include <vector>
 #include <string>
@@ -13,7 +12,7 @@
 #include <shellapi.h>
 #include <Windows.h>
 #include <math.h>
-#include <jpeglib.h>    
+#include <jpeglib.h>
 #include <jerror.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
@@ -758,11 +757,11 @@ void Debug::Error(string c, string s) {
 
 }
 //-----------------io class-----------------------
-vector<string> IO::GetFiles(const string& folder)
+vector<string> IO::GetFiles(const string& folder, string ext)
 {
 	if (folder == "") return vector<string>();
 	vector<string> names;
-	string search_path = folder + "/*";
+	string search_path = folder + "/*" + ext;
 	WIN32_FIND_DATA fd;
 	HANDLE hFind = ::FindFirstFile(search_path.c_str(), &fd);
 	if (hFind != INVALID_HANDLE_VALUE) {
@@ -1809,9 +1808,10 @@ void Serialize(Editor* e, SceneObject* o, ofstream* stream) {
 	(child objects...)
 	o
 	*/
-	stream->write("O", 1);
-	_StreamWrite(&o->name, stream, o->name.size());
-	*stream << "\n";
+	*stream << "O";
+	//_StreamWrite(&o->name, stream, o->name.size());
+	*stream << o->name;
+	*stream << (char)0;
 	_StreamWrite(&o->transform.position.x, stream, 4);
 	_StreamWrite(&o->transform.position.y, stream, 4);
 	_StreamWrite(&o->transform.position.z, stream, 4);
@@ -1833,40 +1833,60 @@ void Serialize(Editor* e, SceneObject* o, ofstream* stream) {
 	{
 		Serialize(e, oo, stream);
 	}
-	stream->write("o", 1);
+	*stream << "o";
 }
 
 void Deserialize(ifstream& stream, SceneObject* obj) {
+	char* cc = new char[100];
+	stream.getline(cc, 100, 0);
+	obj->name = string(cc);
 	char c;
+	_Strm2Float(stream, obj->transform.position.x);
+	_Strm2Float(stream, obj->transform.position.y);
+	_Strm2Float(stream, obj->transform.position.z);
+	_Strm2Float(stream, obj->transform.eulerRotation.x);
+	_Strm2Float(stream, obj->transform.eulerRotation.y);
+	_Strm2Float(stream, obj->transform.eulerRotation.z);
+	_Strm2Float(stream, obj->transform.scale.x);
+	_Strm2Float(stream, obj->transform.scale.y);
+	_Strm2Float(stream, obj->transform.scale.z);
 	stream >> c;
-	while (c != '\n') {
-		obj->name += c;
+	while (c != 'o') {
+		cout << "1 " << hex << stream.tellg() << endl;
+		if (c == 'O') {
+			SceneObject* sc = new SceneObject();
+			obj->AddChild(sc);
+			Deserialize(stream, sc);
+		}
+		else if (c == 'C') {
+			stream >> c; //component type
+			switch (c) {
+			case COMP_CAM:
+				obj->AddComponent(new Camera(stream, -1));
+				break;
+			case COMP_TRD:
+				obj->AddComponent(new TextureRenderer(stream, -1));
+				break;
+			default:
+				char cc;
+				stream >> cc;
+				while (cc != 'c')
+					stream >> cc;
+				long long ss = stream.tellg();
+				stream.seekg(ss-1);
+				break;
+			}
+			cout << "2 " << hex << stream.tellg() << endl;
+			stream >> c;
+			if (c != 'c')
+				throw runtime_error("scene data corrupted(component)");
+		}
+		else throw runtime_error("scene data corrupted(2)");
 		stream >> c;
-	}
-	stream >> obj->transform.position.x;
-	stream >> obj->transform.position.y;
-	stream >> obj->transform.position.z;
-	stream >> obj->transform.eulerRotation.x;
-	stream >> obj->transform.eulerRotation.y;
-	stream >> obj->transform.eulerRotation.z;
-	stream >> obj->transform.scale.x;
-	stream >> obj->transform.scale.y;
-	stream >> obj->transform.scale.z;
-	stream >> c;
-	if (c == 'o')
-		return;
-	if (c != 'C')
-		throw runtime_error("scene data corrupted(2)");
-	stream >> c; //component type
-	switch (c) {
-	case COMP_CAM:
-		obj->AddComponent(new Camera(stream, -1));
-	case COMP_TRD:
-		obj->AddComponent(new TextureRenderer(stream, -1));
 	}
 }
 
-Scene::Scene(ifstream& stream, long pos) : sceneName(""), sky(nullptr), skyId(-1) {
+Scene::Scene(ifstream& stream, long pos) : sceneName("loadedScene"), sky(nullptr), skyId(-1) {
 	stream.seekg(pos);
 	char h1, h2;
 	stream >> h1 >> h2;
@@ -1874,10 +1894,11 @@ Scene::Scene(ifstream& stream, long pos) : sceneName(""), sky(nullptr), skyId(-1
 		throw runtime_error("scene data corrupted");
 	char o;
 	stream >> o;
-	while (o == 'O') {
+	while (o == 'O' && !stream.eof()) {
 		SceneObject* sc = new SceneObject();
 		objects.push_back(sc);
 		Deserialize(stream, sc);
+		stream >> o;
 	}
 }
 

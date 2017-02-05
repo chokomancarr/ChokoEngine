@@ -96,6 +96,9 @@ int main(int argc, char **argv)
 	editor->yLimits.push_back(Int2(0, 2));
 	editor->yLimits.push_back(Int2(2, 1));
 	
+	ifstream strm(editor->projectFolder + "Assets\\newScene.scene", ios::in | ios::binary);
+	editor->activeScene = Scene(strm, 0);
+	/*
 	editor->NewScene();
 	editor->activeScene.objects.push_back(new SceneObject("Main Camera"));
 	editor->activeScene.objects.push_back(new SceneObject("Player"));
@@ -112,7 +115,7 @@ int main(int argc, char **argv)
 	editor->activeScene.objects[1]
 		->AddComponent(new MeshFilter())
 		->object->AddComponent(new MeshRenderer());
-
+		*/
 	HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
 	MONITORINFO info;
 	info.cbSize = sizeof(MONITORINFO);
@@ -261,6 +264,7 @@ void DoUpdate() {
 		editor->DoCompile();
 		return;
 	}
+	lock_guard<mutex> lock(lockMutex);
 	editor->WAITINGREFRESHFLAG = false;
 	CheckShortcuts();
 	int i = -1, k = 0;
@@ -310,7 +314,6 @@ void UpdateLoop() {
 		while (!redrawn) {}
 			//Sleep(1);
 		{
-			lock_guard<mutex> lock(lockMutex);
 			t++;
 			long long millis = milliseconds();
 			Time::delta = (millis - Time::millis)*0.001f;

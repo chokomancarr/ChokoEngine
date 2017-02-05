@@ -168,7 +168,7 @@ class EB_Browser_File;
 
 class IO {
 public:
-	static vector<string> GetFiles(const string& path);
+	static vector<string> GetFiles(const string& path, string ext = "");
 	static vector<EB_Browser_File> GetFilesE(Editor* e, const string& path);
 	static void GetFolders(const string& path, vector<string>* names, bool hidden = false);
 	static bool HasDirectory(LPCTSTR szPath);

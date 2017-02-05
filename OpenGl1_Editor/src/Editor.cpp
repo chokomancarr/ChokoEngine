@@ -368,7 +368,7 @@ EB_Viewer::EB_Viewer(Editor* e, int x1, int y1, int x2, int y2) : rz(45), rw(45)
 
 	shortcuts.emplace(GetShortcutInt(Key_A), &_SelectAll);
 	shortcuts.emplace(GetShortcutInt(Key_Z), &_ViewInvis);
-	shortcuts.emplace(GetShortcutInt(Key_5), &_ViewPersp);
+	//shortcuts.emplace(GetShortcutInt(Key_5), &_ViewPersp);
 
 	shortcuts.emplace(GetShortcutInt(Key_G), &_Grab);
 	shortcuts.emplace(GetShortcutInt(Key_R), &_Rotate);
@@ -380,6 +380,9 @@ EB_Viewer::EB_Viewer(Editor* e, int x1, int y1, int x2, int y2) : rz(45), rw(45)
 	shortcuts.emplace(GetShortcutInt(Key_NumPad3, Key_Control), &_ViewLeft);
 	shortcuts.emplace(GetShortcutInt(Key_NumPad7), &_ViewTop);
 	shortcuts.emplace(GetShortcutInt(Key_NumPad7, Key_Control), &_ViewBottom);
+	shortcuts.emplace(GetShortcutInt(Key_NumPad0), &_ViewCam);
+
+	shortcuts.emplace(GetShortcutInt(Key_Escape), &_Escape);
 }
 
 void EB_Viewer::MakeMatrix() {
@@ -457,9 +460,19 @@ void EB_Viewer::Draw() {
 	//if (!persp) {
 	float h40 = 40 * (hh*Display::height) / (ww*Display::width);
 	float mww = max(ww, 0.3f) * scale;
-	glMultMatrixf(glm::value_ptr(glm::ortho(-20 * ww, 40.0f - 20 * ww, -40.0f + 20 * hh, 20 * hh, 0.01f, 1000.0f)));
-	glScalef(-mww, mww*Display::width / Display::height, mww);
-	glTranslatef(0, 0, -30);
+	if (seeingCamera == nullptr) {
+		glMultMatrixf(glm::value_ptr(glm::ortho(-20 * ww, 40.0f - 20 * ww, -40.0f + 20 * hh, 20 * hh, 0.01f, 1000.0f)));
+		//glMultMatrixf(glm::value_ptr(glm::perspectiveFov(30.0f, 20*ww, 20*hh, 0.01f, 1000.0f)));
+		glScalef(-mww, mww*Display::width / Display::height, mww);
+		glTranslatef(0, 0, -30);
+	}
+	else {
+		glScalef(scale, -scale, 1);
+		glMultMatrixf(glm::value_ptr(glm::perspective(seeingCamera->fov*0.5f, Display::width*1.0f / Display::height, 0.01f, 1000.0f)));
+		glScalef(-1, 1, -1);
+		Vec3 pos = -seeingCamera->object->transform.worldPosition();
+		glTranslatef(pos.x, pos.y, pos.z);
+	}
 	//}
 	//else {
 		//glMultMatrixf(glm::value_ptr(glm::perspective(30.0f, 1.0f, 0.01f, 1000.0f)));
@@ -468,14 +481,16 @@ void EB_Viewer::Draw() {
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	//glPushMatrix();
-	float csz = cos(-rz*3.14159265f / 180.0f);
-	float snz = sin(-rz*3.14159265f / 180.0f);
-	float csw = cos(rw*3.14159265f / 180.0f);
-	float snw = sin(rw*3.14159265f / 180.0f);
-	glm::mat4 mMatrix = glm::mat4(1, 0, 0, 0, 0, csw, snw, 0, 0, -snw, csw, 0, 0, 0, 0, 1) * glm::mat4(csz, 0, -snz, 0, 0, 1, 0, 0, snz, 0, csz, 0, 0, 0, 0, 1);
-	//glMultMatrixf(glm::value_ptr(glm::mat4(1, 0, 0, 0, 0, csw, snw, 0, 0, -snw, csw, 0, 0, 0, 0, 1)));
-	//glMultMatrixf(glm::value_ptr(glm::mat4(csz, 0, -snz, 0, 0, 1, 0, 0, snz, 0, csz, 0, 0, 0, 0, 1)));
-	glMultMatrixf(glm::value_ptr(mMatrix));
+	if (seeingCamera == nullptr) {
+		float csz = cos(-rz*3.14159265f / 180.0f);
+		float snz = sin(-rz*3.14159265f / 180.0f);
+		float csw = cos(rw*3.14159265f / 180.0f);
+		float snw = sin(rw*3.14159265f / 180.0f);
+		glm::mat4 mMatrix = glm::mat4(1, 0, 0, 0, 0, csw, snw, 0, 0, -snw, csw, 0, 0, 0, 0, 1) * glm::mat4(csz, 0, -snz, 0, 0, 1, 0, 0, snz, 0, csz, 0, 0, 0, 0, 1);
+		//glMultMatrixf(glm::value_ptr(glm::mat4(1, 0, 0, 0, 0, csw, snw, 0, 0, -snw, csw, 0, 0, 0, 0, 1)));
+		//glMultMatrixf(glm::value_ptr(glm::mat4(csz, 0, -snz, 0, 0, 1, 0, 0, snz, 0, csz, 0, 0, 0, 0, 1)));
+		glMultMatrixf(glm::value_ptr(mMatrix));
+	}
 	glEnable(GL_DEPTH_TEST);
 	glClearDepth(1);
 
@@ -670,7 +685,7 @@ void EB_Viewer::OnMouseM(Vec2 d) {
 	}
 	else if (modifying > 0) {
 		//cout << (int)(modifying & 0x0f) << endl;
-		modVal += Vec2(d.x / Display::width, d.y / Display::height);
+		modVal -= Vec2(d.x / Display::width, d.y / Display::height);
 		if (modifying >> 4 == 1) {
 			switch (modifying & 0x0f) {
 				/*
@@ -1009,10 +1024,12 @@ void Editor::LoadDefaultAssets() {
 	allAssets.emplace(ASSETTYPE_HDRI, vector<string>());
 }
 
-void AddH(Editor* e, string dir, vector<string>* h) {
+void AddH(Editor* e, string dir, vector<string>* h, vector<string>* cpp) {
 	for (string s : IO::GetFiles(dir)) {
 		if (s.size() > 3 && s.substr(s.size() - 2, string::npos) == ".h")
-			h->push_back(s.substr(s.find_last_of('\\') + 1, string::npos));
+			h->push_back(s.substr(e->projectFolder.size() + 7, string::npos));
+		if (s.size() > 5 && s.substr(s.size() - 4, string::npos) == ".cpp")
+			cpp->push_back(s.substr(e->projectFolder.size() + 7, string::npos));
 		else if (s.size() > 7 && s.substr(s.size() - 6, string::npos) == ".scene")
 			e->allAssets[ASSETTYPE_SCENE].push_back(s);
 		else if (s.size() > 10 && s.substr(s.size() - 9, string::npos) == ".material")
@@ -1032,12 +1049,39 @@ void AddH(Editor* e, string dir, vector<string>* h) {
 	IO::GetFolders(dir, &dirs, true);
 	for (string ss : dirs) {
 		if (ss != "." && ss != "..")
-			AddH(e, dir + "\\" + ss, h);
+			AddH(e, dir + "\\" + ss, h, cpp);
 	}
 }
 
 void Editor::GenerateScriptResolver() {
-	string h = "#include <unordered_map>\n#include \"Engine.h\"\ntypedef SceneScript*(*sceneScriptInstantiator)();\nclass SceneScriptResolver {\npublic:\n\tSceneScriptResolver();\n\tstd::vector<sceneScriptInstantiator> map;\n};";
+	ifstream vcxIn(dataPath + "res\\vcxproj.txt", ios::in);
+	if (!vcxIn.is_open()){
+		_Error("Script Resolver", "Vcxproj template not found!");
+		return;
+	}
+	stringstream sstr;
+	sstr << vcxIn.rdbuf();
+	string vcx = sstr.str();
+	vcxIn.close();
+	//<ClCompile Include = "Assets/main.cpp" / >< / ItemGroup><ItemGroup>
+
+	ofstream vcxOut(projectFolder + "TestProject.vcxproj", ios::out | ios::trunc);
+	if (!vcxOut.is_open()) {
+		_Error("Script Resolver", "Cannot write to vcxproj!");
+		return;
+	}
+	vcxOut << vcx.substr(0, vcx.find('#'));
+	for (string cpp : cppAssets) {
+		vcxOut << "<ClCompile Include=\"Assets\\" + cpp + "\" />\r\n";
+	}
+	vcxOut << "</ItemGroup>\r\n<ItemGroup>\r\n";
+	for (string hd : headerAssets) {
+		vcxOut << "<ClCompile Include=\"Assets\\" + hd + "\" />\r\n";
+	}
+	vcxOut << vcx.substr(vcx.find('#') + 1, string::npos);
+	vcxOut.close();
+
+	string h = "#include <vector>\n#include \"Engine.h\"\ntypedef SceneScript*(*sceneScriptInstantiator)();\nclass SceneScriptResolver {\npublic:\n\tSceneScriptResolver();\n\tstd::vector<sceneScriptInstantiator> map;\n};";
 	string s = "#include \"SceneScriptResolver.h\"\n#include \"Engine.h\"\n\n";
 	for (int a = 0, b = headerAssets.size(); a < b; a++) {
 		s += "#include \"" + headerAssets[a] + "\"\n";
@@ -1424,7 +1468,7 @@ void DoReloadAssets(Editor* e, string path, bool recursive, mutex* l) {
 	{
 		lock_guard<mutex> lock(*l);
 		e->headerAssets.clear();
-		AddH(e, e->projectFolder + "Assets", &e->headerAssets);
+		AddH(e, e->projectFolder + "Assets", &e->headerAssets, &e->cppAssets);
 		e->GenerateScriptResolver();
 		for (EditorBlock* eb : e->blocks) {
 			if (eb->editorType == 1)
@@ -1458,7 +1502,7 @@ void Editor::ResetAssetMap() {
 
 void Editor::ReloadAssets(string path, bool recursive) {
 
-	normalAssetsOld = unordered_map<ASSETTYPE, vector<string>>(normalAssets);
+	//normalAssetsOld = unordered_map<ASSETTYPE, vector<string>>(normalAssets);
 
 	ResetAssetMap();
 
@@ -1747,10 +1791,6 @@ void Editor::SaveScene(Editor* e) {
 	e->activeScene.Save(e);
 }
 
-void Editor::OpenScene(Editor* e) {
-	e->activeScene.Save(e);
-}
-
 
 void Editor::DoCompile() {
 	buildEnd = false;
@@ -1759,7 +1799,7 @@ void Editor::DoCompile() {
 	editorLayer = 6;
 	buildLog.clear();
 	buildLogErrors.clear();
-	buildLabel = "Build: copying files...";
+	//buildLabel = "Build: copying files...";
 	buildProgressValue = 0;
 	/*copy files
 	AddBuildLog(this, "Copying: dummy source directory -> dummy target directory");

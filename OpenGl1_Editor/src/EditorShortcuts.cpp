@@ -373,6 +373,14 @@ void EB_Viewer::_ViewBottom(EditorBlock* b) {
 	((EB_Viewer*)b)->rz = 0;
 	((EB_Viewer*)b)->MakeMatrix();
 }
+void EB_Viewer::_ViewCam(EditorBlock* b) {
+	if (b->editor->selected != nullptr) {
+		((EB_Viewer*)b)->seeingCamera = (Camera*)b->editor->selected->GetComponent(COMP_CAM);
+	}
+}
+void EB_Viewer::_Escape(EditorBlock* b) {
+	((EB_Viewer*)b)->OnMousePress(1);
+}
 
 
 void Editor::DeleteActive(Editor* e) {
@@ -380,5 +388,32 @@ void Editor::DeleteActive(Editor* e) {
 		e->RegisterMenu(e->blocks[0], "Confirm?", { "Delete" }, { &DoDeleteActive }, 0);
 }
 void Editor::DoDeleteActive(EditorBlock* b) {
+
+}
+
+void GetSceneFiles(string path, string sub, vector<string>& list) {
+	for (string s : IO::GetFiles(path + sub, ".scene")) {
+		string ss(s.substr(path.size(), string::npos));
+		list.push_back(ss.substr(0, ss.find_last_of('\\')) + ss.substr(ss.find_last_of('\\')+1, string::npos));
+	}
+	vector<string> folders;
+	IO::GetFolders(path + sub, &folders);
+	for (string f : folders) {
+		if (f != "." && f != "..")
+		GetSceneFiles(path, sub + f + "\\", list);
+	}
+}
+
+void Editor::OpenScene(Editor* e) {
+	vector<string> scenes;
+	GetSceneFiles(e->projectFolder + "Assets\\", "", scenes);
+	vector<void*> v;
+	for (string s : scenes) {
+		v.push_back(&s);
+	}
+	e->RegisterMenu(nullptr, "Open Scene", scenes, &DoOpenScene, v, 0);
+}
+
+void Editor::DoOpenScene(EditorBlock* b, void* v) {
 
 }

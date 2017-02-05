@@ -159,6 +159,7 @@ public:
 	Vec2 modVal; //delta
 	byte modifying;//[type 1g 2r 3s][axis 0f, 1x 2y 3z]
 	Vec3 modAxisDir;
+	Camera* seeingCamera;
 
 	void MakeMatrix();
 
@@ -189,7 +190,8 @@ public:
 	static void _TooltipT(EditorBlock*), _TooltipR(EditorBlock*), _TooltipS(EditorBlock*);
 	static void _SelectAll(EditorBlock*), _ViewInvis(EditorBlock*), _ViewPersp(EditorBlock*);
 	static void _OrientG(EditorBlock*), _OrientL(EditorBlock*), _OrientV(EditorBlock*);
-	static void _ViewFront(EditorBlock*), _ViewBack(EditorBlock*), _ViewLeft(EditorBlock*), _ViewRight(EditorBlock*), _ViewTop(EditorBlock*), _ViewBottom(EditorBlock*);
+	static void _ViewFront(EditorBlock*), _ViewBack(EditorBlock*), _ViewLeft(EditorBlock*), _ViewRight(EditorBlock*), _ViewTop(EditorBlock*), _ViewBottom(EditorBlock*), _ViewCam(EditorBlock*);
+	static void _Escape(EditorBlock*);
 };
 
 class I_EBI_Value {
@@ -391,8 +393,8 @@ public:
 	//Texture buttonDash;
 	unordered_map<string, ASSETTYPE> assetTypes;
 	unordered_map<ASSETTYPE, vector<string>> allAssets;
-	vector<string> headerAssets, blendAssets, headerAssetsOld, blendAssetsOld;
-	unordered_map<ASSETTYPE, vector<string>> normalAssets, normalAssetsOld;
+	vector<string> headerAssets, cppAssets, blendAssets;
+	unordered_map<ASSETTYPE, vector<string>> normalAssets;
 	unordered_map<ASSETTYPE, vector<void*>> normalAssetCaches;
 
 	void ResetAssetMap();
@@ -431,6 +433,7 @@ public:
 	static void ShowPrefs(Editor* e);
 	static void SaveScene(Editor* e);
 	static void OpenScene(Editor* e);
+	static void DoOpenScene(EditorBlock* b, void* v);
 	static void DeleteActive(Editor* e);
 	static void DoDeleteActive(EditorBlock* b);
 

@@ -36,9 +36,6 @@
     <ClCompile Include="src\RenderEngine.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\SceneScriptResolver.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="hdr\hdr.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -54,12 +51,6 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="src\Editor.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\MaterialBase.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\AssetManager.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="src\SceneScriptResolver.h">

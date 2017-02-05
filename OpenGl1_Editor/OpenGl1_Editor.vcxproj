@@ -78,17 +78,14 @@
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\RenderEngine.cpp" />
     <ClCompile Include="src\SceneObjects.cpp" />
-    <ClCompile Include="src\SceneScriptResolver.cpp" />
     <ClCompile Include="src\Shader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\AssetManager.h" />
     <ClInclude Include="src\Editor.h" />
     <ClInclude Include="src\Engine.h" />
-    <ClInclude Include="src\MaterialBase.h" />
     <ClInclude Include="src\SceneObjects.h" />
     <ClInclude Include="src\SceneScriptResolver.h" />
   </ItemGroup>
