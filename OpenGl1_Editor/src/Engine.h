@@ -283,6 +283,16 @@ public:
 	static bool LoadShader(GLenum shaderType, string source, GLuint& shader);
 };
 
+class MatVal_Tex {
+	friend class Material;
+	friend class MeshRenderer;
+protected:
+	MatVal_Tex() : id(-1), tex(nullptr) {}
+
+	int id;
+	Texture* tex;
+};
+
 class Material {
 public:
 	ShaderBase* shader;

@@ -18,6 +18,8 @@ vec4 hdr2float (vec4 i) {
 	c.a = 1;
 	return c;
 }
+uniform mat4 _MV;
+uniform mat4 _P;
 COMMONEND
 
 FRAGSTART

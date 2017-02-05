@@ -118,6 +118,7 @@ void MeshFilter::SetMesh(int i) {
 	}
 	else
 		mesh = nullptr;
+	object->Refresh();
 }
 
 void MeshFilter::_UpdateMesh(void* i) {
@@ -127,6 +128,7 @@ void MeshFilter::_UpdateMesh(void* i) {
 	}
 	else
 		mf->mesh = nullptr;
+	mf->object->Refresh();
 }
 
 void MeshFilter::Serialize(Editor* e, ofstream* stream) {
@@ -146,9 +148,18 @@ void MeshRenderer::DrawEditor(EB_Viewer* ebv) {
 	glVertexPointer(3, GL_FLOAT, 0, &(mf->mesh->vertices[0]));
 	glLineWidth(1);
 	for (int m = 0; m < mf->mesh->materialCount; m++) {
-		glColor4f(m, 1, 1, 1);
+		if (materials[m] == nullptr)
+			continue;
+		materials[m]->ApplyGL();
+		glEnableVertexAttribArray(0);
+		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->vertices[0]));
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->uv0[0]));
 		glDrawElements(GL_TRIANGLES, mf->mesh->_matTriangles[m].size(), GL_UNSIGNED_INT, &(mf->mesh->_matTriangles[m][0]));
+		glDisableVertexAttribArray(0);
+		glDisableVertexAttribArray(1);
 	}
+	glUseProgram(0);
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
@@ -164,8 +175,32 @@ void MeshRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 			Engine::Label(v.r + 2, v.g + pos + 20, 12, "Materials: " + to_string(mft->mesh->materialCount), e->font, white());
 			for (uint a = 0; a < mft->mesh->materialCount; a++) {
 				Engine::Label(v.r + 2, v.g + pos + 37, 12, "Material " + to_string(a), e->font, white());
-				e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 34, v.b*0.7f, 16, grey1(), ASSETTYPE_MATERIAL, 12, e->font, &_materials[a]);
+				e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 34, v.b*0.7f, 16, grey1(), ASSETTYPE_MATERIAL, 12, e->font, &_materials[a], & _UpdateMat, this);
 				pos += 17;
+				if (materials[a] == nullptr)
+					continue;
+				for (auto aa : materials[a]->vals) {
+					int r = 0;
+					for (auto bb : aa.second) {
+						Engine::Label(v.r + 27, v.g + pos + 38, 12, materials[a]->valNames[aa.first][r], e->font, white());
+
+						Engine::DrawTexture(v.r + v.b * 0.3f, v.g + pos + 35, 16, 16, e->matVarTexs[aa.first]);
+						switch (aa.first) {
+						case SHADER_INT:
+							Engine::Button(v.r + v.b * 0.3f + 17, v.g + pos + 35, v.b*0.7f - 17, 16, grey1(), to_string(*(int*)bb.second), 12, e->font, white());
+							break;
+						case SHADER_FLOAT:
+							Engine::Button(v.r + v.b * 0.3f + 17, v.g + pos + 35, v.b*0.7f - 17, 16, grey1(), to_string(*(float*)bb.second), 12, e->font, white());
+							break;
+						case SHADER_SAMPLER:
+							e->DrawAssetSelector(v.r + v.b * 0.3f + 17, v.g + pos + 35, v.b*0.7f - 17, 16, grey1(), ASSETTYPE_TEXTURE, 12, e->font, &((MatVal_Tex*)bb.second)->id, _UpdateTex, bb.second);
+							break;
+						}
+						r++;
+						pos += 17;
+					}
+				}
+				pos += 1;
 			}
 			pos += 34;
 		}
@@ -173,11 +208,35 @@ void MeshRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 	else pos += 17;
 }
 
+void MeshRenderer::_UpdateMat(void* i) {
+	MeshRenderer* mf = (MeshRenderer*)i;
+	for (int q = mf->_materials.size() - 1; q >= 0; q--) {
+		mf->materials[q] = (Material*)Editor::instance->GetCache(ASSETTYPE_MATERIAL, mf->_materials[q]);
+	}
+}
+
+void MeshRenderer::_UpdateTex(void* i) {
+	MatVal_Tex* v = (MatVal_Tex*)i;
+	v->tex = (Texture*)Editor::instance->GetCache(ASSETTYPE_TEXTURE, v->id);
+}
+
 void MeshRenderer::Serialize(Editor* e, ofstream* stream) {
 	int s = _materials.size();
 	_StreamWrite(&s, stream, 4);
 	for (ASSETID i : _materials)
 		_StreamWriteAsset(e, stream, ASSETTYPE_MATERIAL, i);
+}
+
+void MeshRenderer::Refresh() {
+	MeshFilter* mf = (MeshFilter*)dependacyPointers[0];
+	if (mf == nullptr || mf->mesh == nullptr || !mf->mesh->loaded) {
+		materials.clear();
+		_materials.clear();
+	}
+	else {
+		materials.resize(mf->mesh->materialCount, nullptr);
+		_materials.resize(mf->mesh->materialCount, -1);
+	}
 }
 
 void TextureRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
@@ -296,4 +355,10 @@ void SceneObject::RemoveComponent(Component*& c) {
 		}
 	}
 	Debug::Warning("SceneObject", "component to delete is not found");
+}
+
+void SceneObject::Refresh() {
+	for (Component* c : _components) {
+		c->Refresh();
+	}
 }

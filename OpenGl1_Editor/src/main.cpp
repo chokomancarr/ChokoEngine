@@ -176,9 +176,9 @@ int main(int argc, char **argv)
 		//editor->activeScene.sky = new Background(editor->dataPath + "res\\bg_refl.hdr");
 		editor->SetBackground(editor->dataPath + "res\\bg.jpg", 0.3f);
 
-		ShaderBase b("F:\\TestProject\\Assets\\test.shade.meta");
-		Material m(&b);
-		m.Save("F:\\TestProject\\Assets\\test.material");
+		//ShaderBase b("F:\\TestProject\\Assets\\test.shade.meta");
+		//Material m(&b);
+		//m.Save("F:\\TestProject\\Assets\\test.material");
 
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

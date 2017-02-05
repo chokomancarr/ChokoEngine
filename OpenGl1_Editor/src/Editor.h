@@ -384,6 +384,7 @@ public:
 	vector<Texture*> tooltipTexs;
 	vector<Texture*> shadingTexs;
 	vector<Texture*> orientTexs;
+	unordered_map<SHADER_VARTYPE, Texture*> matVarTexs;
 
 	vector<string> assetIconsExt;
 	vector<Texture*> assetIcons;

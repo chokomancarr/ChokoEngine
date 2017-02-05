@@ -39,9 +39,10 @@ bool ShaderBase::LoadShader(GLenum shaderType, string source, GLuint& shader) {
 }
 
 ShaderBase::ShaderBase(string path) {
+	string p = Editor::instance->projectFolder + "Assets\\" + path + ".meta";
 	string vertex_shader_code = "";
 	string fragment_shader_code = "";
-	ifstream stream(path.c_str());
+	ifstream stream(p.c_str());
 	if (!stream.good()) {
 		cout << "shader not found!" << endl;
 		return;

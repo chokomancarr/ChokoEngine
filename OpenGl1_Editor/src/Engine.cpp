@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <algorithm>
 #include <fstream>
 #include <sstream>
 #include <climits>
@@ -1002,12 +1003,45 @@ Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false) {
 			triangleCount++;
 			//cout << "tri" << faceCount - 1 << endl;
 		}
+		if (a == "uv0") {
+			Vec2 v;
+			stream >> x;
+			if (x >= vertexCount) {
+				Editor::instance->_Error("Mesh Importer", "mesh metadata corrupted (uv id exceed vertex id)!");
+				return;
+			}
+			vertexCount++;
+			stream >> v.x >> v.y;
+			uv0.push_back(v);
+		}
+		if (a == "uv1") {
+			Vec2 v;
+			stream >> x;
+			if (x >= vertexCount) {
+				Editor::instance->_Error("Mesh Importer", "mesh metadata corrupted (uv id exceed vertex id)!");
+				return;
+			}
+			vertexCount++;
+			stream >> v.x >> v.y;
+			uv1.push_back(v);
+		}
 		else if (a == "]")
 			break;
 		else {
 			cout << "what is this? [" << a << "]" << endl;
 		}
 		stream >> a;
+	}
+	int vs = vertices.size();
+	if (vs > 0) {
+		if (normals.size() != vs)
+			Editor::instance->_Error("Mesh Importer", "mesh metadata corrupted (normals incomplete)!");
+		else if (uv0.size() == 0)
+			uv0.resize(vs);
+		else if (uv0.size() != vs)
+			Editor::instance->_Error("Mesh Importer", "mesh metadata corrupted (uv0 incomplete)!");
+		if (uv1.size() == 0)
+			uv1.resize(vs);
 	}
 	loaded = true;
 	return;
@@ -1365,14 +1399,15 @@ Material::Material(ShaderBase * shad) : _shader(-1) {
 		else if (v->type == SHADER_FLOAT)
 			l = new float();
 		else if (v->type == SHADER_SAMPLER)
-			l = new int(-1);
+			l = new MatVal_Tex();
 		valNames[v->type].push_back(v->name);
 		vals[v->type].emplace(glGetUniformLocation(shad->pointer, v->name.c_str()), l);
 	}
 }
 
 Material::Material(string path) {
-	ifstream stream(path.c_str());
+	string p = Editor::instance->projectFolder + "Assets\\" + path;
+	ifstream stream(p.c_str());
 	if (!stream.good()) {
 		cout << "material not found!" << endl;
 		return;
@@ -1391,20 +1426,71 @@ Material::Material(string path) {
 	string shp(nmm);
 	if (shp == "")
 		return;
-	_shader = Editor::instance->GetAssetId(shader);
+	ASSETTYPE t;
+	Editor::instance->GetAssetInfo(shp, t, _shader);
 	shader = (ShaderBase*)Editor::instance->GetCache(ASSETTYPE_SHADER, _shader);
+	
 	if (shader == nullptr)
 		return;
-
 	ResetVals();
+	unordered_map<string, GLint> nMap;
+	//if (Editor::instance != nullptr)
+		//_shader = Editor::instance->GetAssetId(shader);
+	for (ShaderVariable* v : shader->vars) {
+		void* l = nullptr;
+		if (v->type == SHADER_INT)
+			l = new int();
+		else if (v->type == SHADER_FLOAT)
+			l = new float();
+		else if (v->type == SHADER_SAMPLER)
+			l = new MatVal_Tex();
+		valNames[v->type].push_back(v->name);
+		GLint loc = glGetUniformLocation(shader->pointer, v->name.c_str());
+		vals[v->type].emplace(loc, l);
+		nMap.emplace(v->name, loc);
+	}
+
 	int vs;
 	_Strm2Int(stream, vs);
 	for (int r = 0; r < vs; r++) {
-		int ii;
-		_Strm2Int(stream, ii);
+		char ii;
+		stream >> ii;
+		char* nmm = new char[100];
+		stream.getline(nmm, 100, (char)0);
+		string nm(nmm);
 		switch (ii) {
 		case SHADER_FLOAT:
-			//vals[SHADER_FLOAT].emplace();
+			for (int x = vals[SHADER_FLOAT].size() - 1; x >= 0; x--) {
+				if (valNames[SHADER_FLOAT][x] == nm) {
+					float f;
+					_Strm2Float(stream, f);
+					(*(float*)vals[SHADER_FLOAT][nMap[nm]]) += f;
+					break;
+				}
+			}
+			break;
+		case SHADER_INT:
+			for (int x = vals[SHADER_INT].size() - 1; x >= 0; x--) {
+				if (valNames[SHADER_INT][x] == nm) {
+					int f;
+					_Strm2Int(stream, f);
+					(*(int*)vals[SHADER_INT][nMap[nm]]) += f;
+					break;
+				}
+			}
+			break;
+		case SHADER_SAMPLER:
+			for (int x = vals[SHADER_SAMPLER].size() - 1; x >= 0; x--) {
+				if (valNames[SHADER_SAMPLER][x] == nm) {
+					char* nmm2 = new char[100];
+					stream.getline(nmm2, 100, (char)0);
+					string nm2(nmm2);
+					ASSETTYPE t;
+					Editor::instance->GetAssetInfo(nm2, t, ((MatVal_Tex*)vals[SHADER_SAMPLER][nMap[nm]])->id);
+					((MatVal_Tex*)vals[SHADER_SAMPLER][nMap[nm]])->tex = (Texture*)Editor::instance->GetCache(ASSETTYPE_TEXTURE, ((MatVal_Tex*)vals[SHADER_SAMPLER][nMap[nm]])->id);
+					break;
+				}
+			}
 			break;
 		}
 	}
@@ -1446,7 +1532,7 @@ void Material::Save(string path) {
 	ASSETTYPE st;
 	ASSETID si = Editor::instance->GetAssetId(shader, st);
 	_StreamWriteAsset(Editor::instance, &strm, ASSETTYPE_SHADER, si);
-	int i = 0;
+	int i = 0, j = 0;
 	SHADER_VARTYPE t = 0;
 	long long p1 = strm.tellp();
 	strm << "0000";
@@ -1454,22 +1540,30 @@ void Material::Save(string path) {
 	for (auto v : vals[SHADER_INT]) {
 		t = SHADER_INT;
 		strm << t;
+		strm << valNames[SHADER_INT][j] << (char)0;
 		int ii(*(int*)v.second);
 		_StreamWrite(&ii, &strm, 4);
 		i++;
+		j++;
 	}
+	j = 0;
 	for (auto v : vals[SHADER_FLOAT]) {
 		t = SHADER_FLOAT;
 		strm << t;
+		strm << valNames[SHADER_FLOAT][j] << (char)0;
 		float ff(*(float*)v.second);
 		_StreamWrite(&ff, &strm, 4);
 		i++;
+		j++;
 	}
+	j = 0;
 	for (auto v : vals[SHADER_SAMPLER]) {
 		t = SHADER_SAMPLER;
 		strm << t;
+		strm << valNames[SHADER_SAMPLER][j] << (char)0;
 		_StreamWriteAsset(Editor::instance, &strm, t, *(ASSETID*)v.second);
 		i++;
+		j++;
 	}
 	strm.seekp(p1);
 	_StreamWrite(&i, &strm, 4);
@@ -1477,12 +1571,19 @@ void Material::Save(string path) {
 }
 
 void Material::ApplyGL() {
+	GLfloat matrix[16], matrix2[16];
+	glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
+	glGetFloatv(GL_PROJECTION_MATRIX, matrix2);
 	if (shader == nullptr) {
 		glUseProgram(0);
 		return;
 	}
 	else {
 		glUseProgram(shader->pointer);
+		GLint mv = glGetUniformLocation(shader->pointer, "_MV");
+		GLint p = glGetUniformLocation(shader->pointer, "_P");
+		glUniformMatrix4fv(mv, 1, GL_FALSE, matrix);
+		glUniformMatrix4fv(p, 1, GL_FALSE, matrix2);
 		for (auto a : vals[SHADER_INT])
 			if (a.second != nullptr)
 				glUniform1i(a.first, *(int*)a.second);
@@ -1495,6 +1596,18 @@ void Material::ApplyGL() {
 			Vec2* v2 = (Vec2*)a.second;
 			glUniform2i(a.first, v2->x, v2->y);
 		}
+		int ti = 0;
+		for (auto a : vals[SHADER_SAMPLER]) {
+			if (a.second == nullptr)
+				continue;
+			MatVal_Tex* tx = (MatVal_Tex*)a.second;
+			if (tx->tex == nullptr)
+				continue;
+			glUniform1i(a.first, ti);
+			glActiveTexture(GL_TEXTURE0 + ti);
+			glBindTexture(GL_TEXTURE_2D, tx->tex->pointer);
+		}
+
 	}
 }
 

@@ -53,6 +53,7 @@ protected:
 	virtual void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) = 0;
 	virtual void DrawGameCamera() {}
 	virtual void Serialize(Editor* e, ofstream* stream) {}
+	virtual void Refresh() {}
 };
 
 class Transform : public Object {
@@ -88,6 +89,7 @@ public:
 	vector<Vec3> vertices;
 	vector<Vec3> normals;
 	vector<int> triangles;
+	vector<Vec2> uv0, uv1;
 
 	uint vertexCount, triangleCount, materialCount;
 
@@ -187,13 +189,19 @@ protected:
 class MeshRenderer : public Component {
 public:
 	MeshRenderer();
-
-	vector<ASSETID> _materials;
+	vector<Material*> materials;
 
 	void DrawEditor(EB_Viewer* ebv) override;
 	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos);
 
 	void Serialize(Editor* e, ofstream* stream) override;
+	void Refresh() override;
+
+	friend class Editor;
+protected:
+	vector<ASSETID> _materials;
+	static void _UpdateMat(void* i);
+	static void _UpdateTex(void* i);
 };
 
 #define COMP_TRD 0x11
@@ -256,6 +264,9 @@ public:
 	int _componentCount;
 	vector<Component*> _components;
 
+	friend class MeshFilter;
+protected:
+	void Refresh();
 };
 
 #endif

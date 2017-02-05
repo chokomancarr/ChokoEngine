@@ -867,14 +867,16 @@ ASSETID Editor::GetAssetInfo(string p, ASSETTYPE &type, ASSETID& i) {
 	for (auto t : normalAssets) {
 		int x = 0;
 		for (auto u : t.second) {
+			if (u == p)
+				return x;
 			string uu;
 			if (t.first == ASSETTYPE_MATERIAL)
-				u = projectFolder + "Assets\\" + u;
+				uu = projectFolder + "Assets\\" + u;
 			//if (t.first == ASSETTYPE_MESH)
 			//	u = projectFolder + "Assets\\" + u + ".mesh.meta";
 			else
-				u = projectFolder + "Assets\\" + u + ".meta";
-			if (u == p) {
+				uu = projectFolder + "Assets\\" + u + ".meta";
+			if (uu == p) {
 				type = t.first;
 				i = x;
 				GetCache(type, i);
@@ -953,6 +955,10 @@ void Editor::LoadDefaultAssets() {
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_txt.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_mesh.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_tex.bmp", false));
+
+	matVarTexs.emplace(SHADER_INT, GetRes("mat_i"));
+	matVarTexs.emplace(SHADER_FLOAT, GetRes("mat_f"));
+	matVarTexs.emplace(SHADER_SAMPLER, GetRes("mat_tex"));
 
 	for (int x = 0; x < 16; x++) {
 		grid[x] = Vec3((x > 7) ? x - 7 : x - 8, 0, -8);
@@ -1531,6 +1537,8 @@ void Editor::AddBuildLog(Editor* e, string s, bool forceE) {
 }
 
 void* Editor::GetCache(ASSETTYPE type, int i) {
+	if (i < 0)
+		return nullptr;
 	void *data = normalAssetCaches[type][i];
 	if (data != nullptr)
 		return data;
@@ -1549,6 +1557,9 @@ void* Editor::GenCache(ASSETTYPE type, int i) {
 		break;
 	case ASSETTYPE_MATERIAL:
 		normalAssetCaches[type][i] = new Material(normalAssets[type][i]);
+		break;
+	case ASSETTYPE_TEXTURE:
+		normalAssetCaches[type][i] = new Texture(projectFolder + "Assets\\" + normalAssets[type][i]);
 		break;
 	default:
 		return nullptr;
