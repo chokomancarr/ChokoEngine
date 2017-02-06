@@ -290,7 +290,7 @@ public:
 	bool _showGrid = true;
 	bool _mouseJump = true;
 	int _assetDataSize = 10; //x100Mb
-	bool _cleanOnBuild = true;
+	bool _cleanOnBuild = false;
 	string _blenderInstallationPath = "C:\\Program Files\\Blender Foundation\\Blender\\blender.exe";
 
 	string projectFolder;
@@ -348,7 +348,7 @@ public:
 	//building - layer6: custom progress to look cool
 	vector<string> buildLog;
 	void AddBuildLog(Editor* e, string s, bool forceE = false);
-	vector<bool> buildLogErrors;
+	vector<bool> buildLogErrors, buildLogWarnings;
 	string buildErrorPath;
 	int buildErrorLine;
 	string buildLabel;

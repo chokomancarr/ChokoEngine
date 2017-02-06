@@ -36,7 +36,7 @@ public:
 	friend class EB_Inspector;
 	friend class SceneObject;
 	friend void EBI_DrawObj(Vec4 v, Editor* editor, EB_Inspector* b, SceneObject* o);
-	friend bool DrawComponentHeader(Editor* e, Vec4 v, float pos, Component* c);
+	friend bool DrawComponentHeader(Editor* e, Vec4 v, uint pos, Component* c);
 	friend void DrawSceneObjectsOpaque(EB_Viewer* ebv, vector<SceneObject*> oo), DrawSceneObjectsGizmos(EB_Viewer* ebv, vector<SceneObject*> oo), DrawSceneObjectsTrans(EB_Viewer* ebv, vector<SceneObject*> oo);
 
 protected:

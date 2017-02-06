@@ -102,7 +102,7 @@ void DoPreAdd(EditorBlock* b) {
 
 void EB_Viewer::_AddComScr(EditorBlock* b) {
 	vector<void*> vals;
-	for (int a = 0; a < b->editor->headerAssets.size(); a++) {
+	for (uint a = 0; a < b->editor->headerAssets.size(); a++) {
 		vals.push_back(&b->editor->headerAssets[a]);
 	}
 	b->editor->RegisterMenu(b, "Add Script", b->editor->headerAssets, ((EB_Viewer*)b)->_DoAddComScr, vals, 0);
@@ -279,7 +279,7 @@ void EB_Viewer::_AddObjectE(EditorBlock* b) {
 }
 void EB_Viewer::_AddObjectBl(EditorBlock* b) {
 	vector<void*> vals;
-	for (int a = 0; a < b->editor->blendAssets.size(); a++) {
+	for (uint a = 0; a < b->editor->blendAssets.size(); a++) {
 		vals.push_back(&b->editor->blendAssets[a]);
 	}
 	b->editor->RegisterMenu(b, "Add Blender Object", b->editor->blendAssets, ((EB_Viewer*)b)->_DoAddObjectBl, vals, 0);
@@ -298,16 +298,17 @@ SceneObject* DoAdd(EditorBlock* b) {
 	case 0:
 		b->editor->activeScene.objects.push_back(new SceneObject("Empty Object"));
 		b->editor->selected = b->editor->activeScene.objects[b->editor->activeScene.objects.size() - 1];
-		return b->editor->selected;
+		break;
 	case 5:
 		b->editor->activeScene.objects.push_back(new SceneObject("Camera"));
 		b->editor->selected = b->editor->activeScene.objects[b->editor->activeScene.objects.size() - 1]->AddComponent(new Camera())->object;
-		return b->editor->selected;
+		break;
 	case 10:
 		b->editor->activeScene.objects.push_back(new SceneObject("Audio Source"));
 		b->editor->selected = b->editor->activeScene.objects[b->editor->activeScene.objects.size() - 1]->AddComponent(new Camera())->object;
-		return b->editor->selected;
+		break;
 	}
+	return b->editor->selected;
 }
 
 void EB_Viewer::_AddObjAsI(EditorBlock* b) {

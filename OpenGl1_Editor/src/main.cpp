@@ -342,7 +342,7 @@ bool hi;
 void DrawOverlay() {
 	editor->UpdateLerpers();
 	if (editor->backgroundTex != nullptr)
-		Engine::DrawTexture(0, 0, Display::width, Display::height, editor->backgroundTex, editor->backgroundAlpha*0.01f);
+		Engine::DrawTexture(0, 0, (float)Display::width, (float)Display::height, editor->backgroundTex, editor->backgroundAlpha*0.01f);
 	for (int i = editor->blocks.size() - 1; i >= 0; i--) {
 		editor->blocks[i]->Draw();
 	}

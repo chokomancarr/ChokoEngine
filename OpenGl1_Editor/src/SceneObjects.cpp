@@ -2,7 +2,7 @@
 #include "Engine.h"
 #include "Editor.h"
 
-bool DrawComponentHeader(Editor* e, Vec4 v, float pos, Component* c) {
+bool DrawComponentHeader(Editor* e, Vec4 v, uint pos, Component* c) {
 	Engine::DrawQuad(v.r, v.g + pos, v.b - 17, 16, grey2());
 	//bool hi = expand;
 	//if (Engine::EButton((e->editorLayer == 0), v.r, v.g + pos, v.b, 16, grey2(), white(1, 0.7f), grey1()) == MOUSE_RELEASE) {
@@ -146,7 +146,7 @@ void MeshRenderer::DrawEditor(EB_Viewer* ebv) {
 	glPolygonMode(GL_FRONT_AND_BACK, (ebv->selectedShading == 0) ? GL_FILL : GL_LINE);
 	glVertexPointer(3, GL_FLOAT, 0, &(mf->mesh->vertices[0]));
 	glLineWidth(1);
-	for (int m = 0; m < mf->mesh->materialCount; m++) {
+	for (uint m = 0; m < mf->mesh->materialCount; m++) {
 		if (materials[m] == nullptr)
 			continue;
 		materials[m]->ApplyGL();

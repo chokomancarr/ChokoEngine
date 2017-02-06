@@ -60,8 +60,8 @@ void Engine::Init(string path) {
 		cout << "cannot load fallback texture!" << endl;
 
 	string vertcode = "#version 330 core\nlayout(location = 0) in vec3 pos;\nlayout(location = 1) in vec2 uv;\nout vec2 UV;\nvoid main(){ \ngl_Position.xyz = pos;\ngl_Position.w = 1.0;\nUV = uv;\n}";
-	string fragcode = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\color = texture(sampler, UV)*col;\n}"; //out vec3 Vec4;\n
-	string fragcode2 = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\color = vec4(1, 1, 1, texture(sampler, UV).r)*col;\n}"; //out vec3 Vec4;\n
+	string fragcode = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = texture(sampler, UV)*col;\n}"; //out vec3 Vec4;\n
+	string fragcode2 = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = vec4(1, 1, 1, texture(sampler, UV).r)*col;\n}"; //out vec3 Vec4;\n
 	string fragcode3 = "#version 330 core\nin vec2 UV;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = col;\n}"; //out vec3 Vec4;\n
 	//string fragcodeSky = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec2 dir;\nuniform float angle;\nout vec4 Vec4;\nvoid main(){\nvec4 col = texture(sampler, UV);\nVec4.rgb = col.rgb*pow(2, col.a*255-128);\nVec4.a = 1;\n}"; //(1.0f / 256.0f) * pow(2, (float)(exponent - 128));
 	//string fragcodeSky = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec2 dir;\nuniform float length;\nout vec4 Vec4;\nvoid main(){\nfloat ay = asin((dir.y + UV.y)/length);\nfloat l2 = length*cos(ay);\nfloat ax = asin((dir.x + UV.x)/l2);\nVec4 = texture(sampler, vec2(0.5, 0.5) + vec2(ax, ay));\nVec4.a = 1;\n}";
@@ -724,15 +724,15 @@ void Input::UpdateMouseNKeyboard() {
 	if (mouse0)
 		mouse0State = min(mouse0State+1, MOUSE_HOLD);
 	else
-		mouse0State = (mouse0State == MOUSE_UP | mouse0State == 0) ? 0 : MOUSE_UP;
+		mouse0State = ((mouse0State == MOUSE_UP) | (mouse0State == 0)) ? 0 : MOUSE_UP;
 	if (mouse1)
 		mouse1State = min(mouse1State + 1, MOUSE_HOLD);
 	else
-		mouse1State = (mouse1State == MOUSE_UP | mouse1State == 0) ? 0 : MOUSE_UP;
+		mouse1State = ((mouse1State == MOUSE_UP) | (mouse1State == 0)) ? 0 : MOUSE_UP;
 	if (mouse2)
 		mouse2State = min(mouse2State + 1, MOUSE_HOLD);
 	else
-		mouse2State = (mouse2State == MOUSE_UP | mouse2State == 0) ? 0 : MOUSE_UP;
+		mouse2State = ((mouse2State == MOUSE_UP) | (mouse2State == 0)) ? 0 : MOUSE_UP;
 }
 
 ulong Engine::idCounter = 0;
@@ -851,7 +851,7 @@ vector<string> IO::GetRegistryKeys(HKEY key) {
 
 	if (RegQueryInfoKey(key, achClass, &cchClassName, NULL, &size, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr) == ERROR_SUCCESS) {
 		DWORD cbName = 255;
-		for (int i = 0; i < size; i++) {
+		for (uint i = 0; i < size; i++) {
 			if (RegEnumKeyEx(key, i, achKey, &cbName, NULL, NULL, NULL, NULL) == ERROR_SUCCESS) {
 				res.push_back(achKey);
 			}
@@ -954,7 +954,7 @@ Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false) {
 	}
 	string a;
 	string junk;
-	int x;
+	uint x;
 	stream >> a;
 	if (a != "KTO123") {
 		Editor::instance->_Error("Mesh Importer", "mesh metadata corrupted (wrong header)!");
@@ -1003,7 +1003,7 @@ Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false) {
 		}
 		*/
 		else if (a == "tri") {
-			int i;
+			uint i;
 			stream >> i;
 			int mati = i+0;
 			while (_matTriangles.size() <= i) {
@@ -1135,7 +1135,7 @@ bool Mesh::ParseBlend(Editor* e, string s) {
 		DWORD w;
 		bool finish = false;
 		do {
-			w = WaitForSingleObject(processInfo.hProcess, 0.5);
+			w = WaitForSingleObject(processInfo.hProcess, DWORD(200));
 			DWORD dwRead;
 			CHAR chBuf[4096];
 			string out = "";
@@ -1188,7 +1188,7 @@ void Mesh::Draw(Material* mat) {
 //-----------------texture class---------------------
 bool LoadJPEG(string fileN, uint &x, uint &y, byte& channels, byte** data)
 {
-	unsigned int texture_id;
+	//unsigned int texture_id;
 	unsigned long data_size;     // length of the 
 	unsigned char * rowptr[1];
 	struct jpeg_decompress_struct info; //for our jpeg info
@@ -1781,7 +1781,7 @@ float* hdr2float(byte imagergbe[], int w, int h) {
 			image[i * 3 + 2] = 0.0f;
 		}
 		else {
-			float v = (1.0f / 256.0f) * pow(2, (float)(exponent - 128));
+			double v = (1.0f / 256.0f) * pow(2, (float)(exponent - 128));
 			image[i * 3 + 0] = (imagergbe[i * 4 + 0] + 0.5f) * v;
 			image[i * 3 + 1] = (imagergbe[i * 4 + 1] + 0.5f) * v;
 			image[i * 3 + 2] = (imagergbe[i * 4 + 2] + 0.5f) * v;

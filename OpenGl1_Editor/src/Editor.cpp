@@ -319,8 +319,8 @@ void EB_Browser::Draw() {
 		}
 		if (files[ff].expanded) {
 			for (int fff = files[ff].children.size() - 1; fff >= 0; fff--) {
-				Engine::DrawQuad(v.r + 149 + ww, v.g + EB_HEADER_SIZE + (fileSize + 1)* hh + 1, fileSize + 1, fileSize-2, Vec4(1, 0.494f, 0.176f, 0.3f));
-				DrawFileRect(v.r + 153 + ww, v.g + EB_HEADER_SIZE + (fileSize+1)* hh + 2, fileSize - 4, &files[ff].children[fff], this);
+				Engine::DrawQuad(v.r + 149 + ww, v.g + EB_HEADER_SIZE + (fileSize + 1)* hh + 1, fileSize + 1.0f, fileSize-2.0f, Vec4(1, 0.494f, 0.176f, 0.3f));
+				DrawFileRect(v.r + 153 + ww, v.g + EB_HEADER_SIZE + (fileSize+1)* hh + 2.0f, fileSize - 4.0f, &files[ff].children[fff], this);
 				ww += fileSize+1;
 				if (ww > (v.b - 252)) {
 					ww = 0;
@@ -450,7 +450,7 @@ void EB_Viewer::Draw() {
 	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
 
 	Vec2 v2 = Vec2(Display::width, Display::height)*0.03f;
-	Engine::DrawQuad(0, 0, Display::width, Display::height, white(1, 0.2f));//editor->checkers->pointer, Vec2(), Vec2(v2.x, 0), Vec2(0, v2.y), v2, true, white(0.05f));
+	Engine::DrawQuad(0, 0, (float)Display::width, (float)Display::height, white(1, 0.2f));//editor->checkers->pointer, Vec2(), Vec2(v2.x, 0), Vec2(0, v2.y), v2, true, white(0.05f));
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	float ww1 = editor->xPoss[x1];
@@ -873,7 +873,7 @@ void Editor::DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASS
 		Engine::DrawQuad(x, y, w, h, col);
 	ALIGNMENT al = labelFont->alignment;
 	labelFont->alignment = ALIGN_MIDLEFT;
-	Engine::Label((int)(x + 2), (int)(y + 0.5f*h), labelSize, (*tar == -1) ? "undefined" : normalAssets[type][*tar], labelFont, (*tar == -1) ? Vec4(0.7f, 0.4f, 0.4f, 1) : Vec4(0.4f, 0.4f, 0.7f, 1));
+	Engine::Label(round(x + 2), round(y + 0.5f*h), labelSize, (*tar == -1) ? "undefined" : normalAssets[type][*tar], labelFont, (*tar == -1) ? Vec4(0.7f, 0.4f, 0.4f, 1) : Vec4(0.4f, 0.4f, 0.7f, 1));
 	labelFont->alignment = al;
 }
 
@@ -920,6 +920,7 @@ ASSETID Editor::GetAssetId(void* i, ASSETTYPE&) {
 			}
 		}
 	}
+	return -1;
 }
 
 void Editor::LoadDefaultAssets() {
@@ -1079,10 +1080,10 @@ void Editor::GenerateScriptResolver() {
 	}
 	vcxOut << "</ItemGroup>\r\n<ItemGroup>" << endl;
 	for (string hd2 : IO::GetFiles(projectFolder + "System\\", ".h")) {
-		vcxOut << "<ClCompile Include=\"" + hd2.substr(projectFolder.size(), string::npos) + "\" />" << endl;
+		vcxOut << "<ClInclude Include=\"" + hd2.substr(projectFolder.size(), string::npos) + "\" />" << endl;
 	}
 	for (string hd : headerAssets) {
-		vcxOut << "<ClCompile Include=\"Assets\\" + hd + "\" />" << endl;
+		vcxOut << "<ClInclude Include=\"Assets\\" + hd + "\" />" << endl;
 	}
 	vcxOut << vcx.substr(vcx.find('#') + 1, string::npos);
 	vcxOut.close();
@@ -1108,12 +1109,16 @@ void Editor::GenerateScriptResolver() {
 		s += "\tmap.push_back(&_Inst" + to_string(a) + ");\n";
 	}
 	s += "}";
-	ofstream ofs (projectFolder + "\\System\\SceneScriptResolver.cpp");
+	string cppO = projectFolder + "\\System\\SceneScriptResolver.cpp";
+	string hO = projectFolder + "\\System\\SceneScriptResolver.h";
+	ofstream ofs (cppO);
 	ofs << s;
 	ofs.close();
-	ofs.open(projectFolder + "\\System\\SceneScriptResolver.h");
+	SetFileAttributes(cppO.c_str(), FILE_ATTRIBUTE_HIDDEN);
+	ofs.open(hO);
 	ofs << h;
 	ofs.close();
+	SetFileAttributes(hO.c_str(), FILE_ATTRIBUTE_HIDDEN);
 }
 
 void Editor::NewScene() {
@@ -1223,7 +1228,7 @@ void Editor::DrawHandles() {
 			activeX = -1;
 		}
 		else {
-			Engine::DrawQuad(Input::mousePosRelative.x*Display::width - 2, 0, 4, Display::height, white(0.7f, 1));
+			Engine::DrawQuad(Input::mousePosRelative.x*Display::width - 2, 0.0f, 4.0f, (float)Display::height, white(0.7f, 1));
 			xPoss[activeX] = clamp(Input::mousePosRelative.x, dw * 2, 1 - dw * 5);
 		}
 		moused = true;
@@ -1233,7 +1238,7 @@ void Editor::DrawHandles() {
 			activeY = -1;
 		}
 		else {
-			Engine::DrawQuad(0, Input::mousePosRelative.y*Display::height - 2, Display::width, 4, white(0.7f, 1));
+			Engine::DrawQuad(0.0f, Input::mousePosRelative.y*Display::height - 2, (float)Display::width, 4.0f, white(0.7f, 1));
 			yPoss[activeY] = clamp(Input::mousePosRelative.y, dh * 2, 1 - dh * 5);
 		}
 		moused = true;
@@ -1241,7 +1246,7 @@ void Editor::DrawHandles() {
 
 	if (editorLayer > 0) {
 		if (editorLayer == 1) {
-			Engine::DrawQuad(0, 0, Display::width, Display::height, black(0.3f));
+			Engine::DrawQuad(0.0f, 0.0f, (float)Display::width, (float)Display::height, black(0.3f));
 			Engine::Label(popupPos.x + 2, popupPos.y, 12, menuTitle, font, white());
 			int off = 14;
 			for (int r = 0, q = menuNames.size(); r < q; r++) {
@@ -1268,12 +1273,12 @@ void Editor::DrawHandles() {
 				editorLayer = 0;
 		}
 		else if (editorLayer == 2) {
-			Engine::DrawQuad(0, 0, Display::width, Display::height, black(0.4f));
+			Engine::DrawQuad(0, 0, (float)Display::width, (float)Display::height, black(0.4f));
 			Engine::DrawQuad(editingArea.x, editingArea.y, editingArea.w, editingArea.h, grey2());
 			Engine::Label(editingArea.x + 2, editingArea.y + 2, 12, editingVal, font, editingCol);
 		}
 		else if (editorLayer == 3) {
-			Engine::DrawQuad(0, 0, Display::width, Display::height, black(0.8f));
+			Engine::DrawQuad(0, 0, (float)Display::width, (float)Display::height, black(0.8f));
 			Engine::Label(Display::width*0.2f + 6, Display::height*0.2f + 2, 22, "Select Asset", font, white());
 			if (Engine::Button(Display::width*0.2f + 6, Display::height*0.2f + 26, Display::width*0.3f - 7, 14, grey2(), "undefined", 12, font, white()) == MOUSE_RELEASE) {
 				*browseTarget = -1;
@@ -1293,13 +1298,13 @@ void Editor::DrawHandles() {
 			}
 		}
 		else if (editorLayer == 4) {
-			Engine::DrawQuad(0, 0, Display::width, Display::height, black(0.8f));
+			Engine::DrawQuad(0, 0, (float)Display::width, (float)Display::height, black(0.8f));
 			Engine::DrawProgressBar(Display::width*0.5f - 300, Display::height*0.5f - 10.0f, 600.0f, 20.0f, progressValue, white(1, 0.2f), background, Vec4(0.43f, 0.57f, 0.14f, 1), 1, 2);
 			Engine::Label(Display::width*0.5f - 298, Display::height*0.5f - 25.0f, 12, progressName, font, white());
 			Engine::Label(Display::width*0.5f - 296, Display::height*0.5f - 6.0f, 12, progressDesc, font, white(0.7f));
 		}
 		else if (editorLayer == 5) {
-			Engine::DrawQuad(0, 0, Display::width, Display::height, black(0.6f));
+			Engine::DrawQuad(0, 0, (float)Display::width, (float)Display::height, black(0.6f));
 			Engine::DrawQuad(Display::width*0.1f, Display::height*0.1f, Display::width*0.8f, Display::height*0.8f, black(0.8f));
 			int offy = 18;
 
@@ -1328,11 +1333,11 @@ void Editor::DrawHandles() {
 			Engine::Label(Display::width*0.1f + 30, Display::height*0.1f + offy + 48, 12, "Remove visual studio files on build", font, white());
 		}
 		else if (editorLayer == 6) {
-			Engine::DrawQuad(0, 0, Display::width, Display::height, black(0.8f));
+			Engine::DrawQuad(0, 0, (float)Display::width, (float)Display::height, black(0.8f));
 			Engine::DrawProgressBar(50.0f, Display::height - 30.0f, Display::width - 100.0f, 20.0f, buildProgressValue, white(1, 0.2f), background, buildProgressVec4, 1, 2);
 			Engine::Label(55.0f, Display::height - 26.0f, 12, buildLabel, font, white());
 			for (int i = buildLog.size() - 1, dy = 0; i >= 0; i--) {
-				Engine::Label(30.0f, Display::height - 50.0f - 15.0f*dy, 12, buildLog[i], font, buildLogErrors[i] ? red() : white(0.7f), Display::width - 50);
+				Engine::Label(30.0f, Display::height - 50.0f - 15.0f*dy, 12.0f, buildLog[i], font, buildLogErrors[i] ? red() : (buildLogWarnings[i] ? yellow() : white(0.7f)), Display::width - 50.0f);
 				dy++;
 			}
 		}
@@ -1583,7 +1588,10 @@ void Editor::SetBackground(string s, float a) {
 void Editor::AddBuildLog(Editor* e, string s, bool forceE) {
 	buildLog.push_back(s);
 	bool a = s.find("error C") != string::npos;
-	buildLogErrors.push_back(a);
+	bool b = s.find("error LNK") != string::npos;
+	bool c = (s.find("warning C") != string::npos) || (s.find("warning LNK") != string::npos);
+	buildLogErrors.push_back(a || b);
+	buildLogWarnings.push_back(c);
 	if (forceE || (!forceE && a && (buildErrorPath == ""))) {
 		while (s[0] == ' ' || s[0] == '\t')
 			s = s.substr(1, string::npos);
@@ -1745,7 +1753,7 @@ bool DoMsBuild(Editor* e) {
 			cout << "compiling" << endl;
 			DWORD w;
 			do {
-				w = WaitForSingleObject(processInfo.hProcess, 0.5);
+				w = WaitForSingleObject(processInfo.hProcess, DWORD(200));
 				DWORD dwRead;
 				CHAR chBuf[4096];
 				bool bSuccess = FALSE;
@@ -1815,6 +1823,7 @@ void Editor::DoCompile() {
 	editorLayer = 6;
 	buildLog.clear();
 	buildLogErrors.clear();
+	buildLogWarnings.clear();
 	//buildLabel = "Build: copying files...";
 	buildProgressValue = 0;
 	/*copy files
