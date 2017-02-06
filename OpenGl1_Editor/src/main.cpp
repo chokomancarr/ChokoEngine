@@ -289,14 +289,17 @@ void DoUpdate() {
 			editor->mouseOnP = i;
 			if (Input::mouse0State == MOUSE_DOWN) {
 				editor->mousePressType = 0;
+				editor->blocks[editor->mouseOnP]->OnMousePress(0);
 				//editor->mouseOn = i;
 			}
-			else if (Input::mouse1State == MOUSE_DOWN) {
+			if (Input::mouse1State == MOUSE_DOWN) {
 				editor->mousePressType = 1;
+				editor->blocks[editor->mouseOnP]->OnMousePress(1);
 				//editor->mouseOn = i;
 			}
-			else if (Input::mouse2State == MOUSE_DOWN) {
+			if (Input::mouse2State == MOUSE_DOWN) {
 				editor->mousePressType = 2;
+				editor->blocks[editor->mouseOnP]->OnMousePress(2);
 				//editor->mouseOn = i;
 			}
 		}
@@ -320,15 +323,9 @@ void UpdateLoop() {
 			Time::time = (millis - Time::startMillis)*0.001;
 			Time::millis = millis;
 			Input::UpdateMouseNKeyboard();
-			if (Input::mouse0State == MOUSE_DOWN)
-				editor->blocks[editor->mouseOnP]->OnMousePress(0);
-			if (Input::mouse1State == MOUSE_DOWN)
-				editor->blocks[editor->mouseOnP]->OnMousePress(1);
-			if (Input::mouse2State == MOUSE_DOWN)
-				editor->blocks[editor->mouseOnP]->OnMousePress(2);
 			DoUpdate();
 			redrawn = false;
-			//glutPostRedisplay();
+			glutPostRedisplay();
 		}
 	}
 }
@@ -370,7 +367,6 @@ void renderScene()
 
 	glutSwapBuffers();
 	redrawn = true;
-	glutPostRedisplay();
 }
 
 void TimerGL(int i)

@@ -1600,6 +1600,7 @@ void Editor::AddBuildLog(Editor* e, string s, bool forceE) {
 		string ii = s.substr(i + 1, s.find_first_of(')') - i - 1);
 		buildErrorLine = stoi(ii);
 	}
+	glutPostRedisplay();
 }
 
 void* Editor::GetCache(ASSETTYPE type, int i) {
@@ -1816,7 +1817,7 @@ void Editor::SaveScene(Editor* e) {
 
 
 void Editor::DoCompile() {
-	GenerateScriptResolver();
+	glutPostRedisplay();
 	buildEnd = false;
 	buildErrorPath = "";
 	buildProgressVec4 = white(1, 0.35f);
@@ -1824,17 +1825,22 @@ void Editor::DoCompile() {
 	buildLog.clear();
 	buildLogErrors.clear();
 	buildLogWarnings.clear();
-	//buildLabel = "Build: copying files...";
+	buildLabel = "Build: rescanning assets...";
+	AddBuildLog(this, "Creating msbuild files");
 	buildProgressValue = 0;
+	GenerateScriptResolver();
+	//buildLabel = "Build: copying files...";
+	buildProgressValue = 10;
+	buildLabel = "Build: merging assets...";
+	AddBuildLog(this, "Creating data files");
+	glutPostRedisplay();
 	/*copy files
 	AddBuildLog(this, "Copying: dummy source directory -> dummy target directory");
 	AddBuildLog(this, "Copying: dummy source directory2 -> dummy target directory2");
 	AddBuildLog(this, "Copying: dummy source directory3 -> dummy target directory3");
 	this_thread::sleep_for(chrono::seconds(2));
 	*///merge assets
-	buildLabel = "Build: merging assets...";
-	AddBuildLog(this, "Creating data files");
-	buildProgressValue = 10;
+	//buildProgressValue = 10;
 	if (!MergeAssets(this)) {
 		buildLabel = "Build: failed.";
 		buildProgressVec4 = red(1, 0.7f);
