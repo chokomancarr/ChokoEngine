@@ -20,7 +20,7 @@ bool DrawComponentHeader(Editor* e, Vec4 v, uint pos, Component* c) {
 	return true;
 }
 
-Component::Component(string name, COMPONENT_TYPE t, DRAWORDER drawOrder, vector<COMPONENT_TYPE> dep) : Object(name), componentType(t), active(true), drawOrder(drawOrder), _expanded(true), dependancies(dep) {
+Component::Component(string name, COMPONENT_TYPE t, DRAWORDER drawOrder, SceneObject* o, vector<COMPONENT_TYPE> dep) : Object(name), componentType(t), active(true), drawOrder(drawOrder), _expanded(true), dependancies(dep), object(o) {
 	for (COMPONENT_TYPE t : dependancies) {
 		dependacyPointers.push_back(nullptr);
 	}
@@ -33,7 +33,7 @@ Camera::Camera() : Component("Camera", COMP_CAM, DRAWORDER_NOT), ortographic(fal
 	UpdateCamVerts();
 }
 
-Camera::Camera(ifstream& stream, long pos) : Component("Camera", COMP_CAM, DRAWORDER_NOT), ortographic(false), orthoSize(10) {
+Camera::Camera(ifstream& stream, SceneObject* o, long pos) : Component("Camera", COMP_CAM, DRAWORDER_NOT, o), ortographic(false), orthoSize(10) {
 	if (pos >= 0)
 		stream.seekg(pos);
 	_Strm2Float(stream, fov);
@@ -112,9 +112,8 @@ void MeshFilter::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 
 void MeshFilter::SetMesh(int i) {
 	_mesh = i;
-	if (i >= 0) {
+	if (i >= 0)
 		mesh = (Mesh*)Editor::instance->GetCache(ASSETTYPE_MESH, i);
-	}
 	else
 		mesh = nullptr;
 	object->Refresh();
@@ -134,8 +133,36 @@ void MeshFilter::Serialize(Editor* e, ofstream* stream) {
 	_StreamWriteAsset(e, stream, ASSETTYPE_MESH, _mesh);
 }
 
-MeshRenderer::MeshRenderer() : Component("Mesh Renderer", COMP_MRD, DRAWORDER_SOLID | DRAWORDER_TRANSPARENT, {COMP_MFT}) {
+MeshFilter::MeshFilter(ifstream& stream, SceneObject* o, long pos) : Component("Mesh Filter", COMP_MFT, DRAWORDER_NOT, o), _mesh(-1) {
+	if (pos >= 0)
+		stream.seekg(pos);
+	ASSETTYPE t;
+	_Strm2Asset(stream, Editor::instance, t, _mesh);
+	if (_mesh >= 0)
+		mesh = (Mesh*)Editor::instance->GetCache(ASSETTYPE_MESH, _mesh);
+	object->Refresh();
+}
+
+MeshRenderer::MeshRenderer() : Component("Mesh Renderer", COMP_MRD, DRAWORDER_SOLID | DRAWORDER_TRANSPARENT, nullptr, {COMP_MFT}) {
 	_materials.push_back(-1);
+}
+
+MeshRenderer::MeshRenderer(ifstream& stream, SceneObject* o, long pos) : Component("Mesh Renderer", COMP_MRD, DRAWORDER_SOLID | DRAWORDER_TRANSPARENT, o, { COMP_MFT }) {
+	_UpdateMat(this);
+	if (pos >= 0)
+		stream.seekg(pos);
+	ASSETTYPE t;
+	int s;
+	_Strm2Int(stream, s);
+	for (int q = 0; q < s; q++) {
+		Material* m;
+		ASSETID i;
+		_Strm2Asset(stream, Editor::instance, t, i);
+		m = (Material*)Editor::instance->GetCache(ASSETTYPE_MATERIAL, i);
+		materials.push_back(m);
+		_materials.push_back(i);
+	}
+	//_Strm2Asset(stream, Editor::instance, t, _mat);
 }
 
 void MeshRenderer::DrawEditor(EB_Viewer* ebv) {
@@ -249,24 +276,21 @@ void TextureRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos)
 }
 
 void TextureRenderer::Serialize(Editor* e, ofstream* stream) {
-	_StreamWrite(&_texture, stream, 4);
+	_StreamWriteAsset(e, stream, ASSETTYPE_TEXTURE, _texture);
 }
 
-TextureRenderer::TextureRenderer(ifstream& stream, long pos) : Component("Texture Renderer", COMP_TRD, DRAWORDER_OVERLAY) {
+TextureRenderer::TextureRenderer(ifstream& stream, SceneObject* o, long pos) : Component("Texture Renderer", COMP_TRD, DRAWORDER_OVERLAY, o) {
 	if (pos >= 0)
 		stream.seekg(pos);
-	_Strm2Int(stream, _texture);
+	ASSETTYPE t;
+	_Strm2Asset(stream, Editor::instance, t, _texture);
 }
 
-SceneScript::SceneScript(Editor* e, string name) : Component(name + " (Script)", COMP_SCR, DRAWORDER_NOT) {
-
+SceneScript::SceneScript(Editor* e, ASSETID id) : Component("script", COMP_SCR, DRAWORDER_NOT) {
+	e->GetCache(ASSETTYPE_SCRIPT_H, id);
 }
 void SceneScript::Serialize(Editor* e, ofstream* stream) {
-	for (int a = e->headerAssets.size() - 1; a >= 0; a--) {
-		if (e->headerAssets[a] == name) {
-			_StreamWrite(&a, stream, 4);
-		}
-	}
+	_StreamWriteAsset(e, stream, ASSETTYPE_SCRIPT_H, _script);
 }
 
 void SceneScript::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
@@ -279,10 +303,10 @@ void SceneScript::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 
 SceneObject::SceneObject() : SceneObject(Vec3(), Quat(), Vec3(1, 1, 1)) {}
 SceneObject::SceneObject(string s) : SceneObject(s, Vec3(), Quat(), Vec3(1, 1, 1)) {}
-SceneObject::SceneObject(Vec3 pos, Quat rot, Vec3 scale) : active(true), transform(this, pos, rot, scale), childCount(0), _expanded(true), name("New Object") {
+SceneObject::SceneObject(Vec3 pos, Quat rot, Vec3 scale) : active(true), transform(this, pos, rot, scale), childCount(0), _expanded(true), Object("New Object") {
 	id = Engine::GetNewId();
 }
-SceneObject::SceneObject(string s, Vec3 pos, Quat rot, Vec3 scale) : active(true), transform(this, pos, rot, scale), childCount(0), _expanded(true), name(s) {
+SceneObject::SceneObject(string s, Vec3 pos, Quat rot, Vec3 scale) : active(true), transform(this, pos, rot, scale), childCount(0), _expanded(true), Object(s) {
 	id = Engine::GetNewId();
 }
 

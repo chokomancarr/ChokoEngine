@@ -20,7 +20,7 @@ typedef unsigned char DRAWORDER;
 #define DRAWORDER_OVERLAY 0x04
 class Component : public Object {
 public:
-	Component(string name, COMPONENT_TYPE t, DRAWORDER drawOrder = 0x00, vector<COMPONENT_TYPE> dep = {});
+	Component(string name, COMPONENT_TYPE t, DRAWORDER drawOrder = 0x00, SceneObject* o = nullptr, vector<COMPONENT_TYPE> dep = {});
 	virtual  ~Component() {}
 
 	const COMPONENT_TYPE componentType = 0;
@@ -43,8 +43,8 @@ protected:
 	vector<COMPONENT_TYPE> dependancies;
 	vector<Component*> dependacyPointers;
 
-	bool serializable;
-	vector<pair<void*, void*>> serializedValues;
+	//bool serializable;
+	//vector<pair<void*, void*>> serializedValues;
 
 	bool _expanded;
 
@@ -52,7 +52,7 @@ protected:
 	virtual void DrawEditor(EB_Viewer* ebv) {} //trs matrix not applied, apply before calling
 	virtual void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) = 0;
 	virtual void DrawGameCamera() {}
-	virtual void Serialize(Editor* e, ofstream* stream) {}
+	virtual void Serialize(Editor* e, ofstream* stream) = 0;
 	virtual void Refresh() {}
 };
 
@@ -164,7 +164,7 @@ public:
 	friend void Serialize(Editor* e, SceneObject* o, ofstream* stream);
 	friend void Deserialize(ifstream& stream, SceneObject* obj);
 protected:
-	Camera(ifstream& stream, long pos);
+	Camera(ifstream& stream, SceneObject* o, long pos = -1);
 };
 
 #define COMP_MFT 0x02
@@ -180,7 +180,10 @@ public:
 	
 	friend class Editor;
 	friend void LoadMeshMeta(vector<SceneObject*>& os, string& path);
+	friend void Deserialize(ifstream& stream, SceneObject* obj);
 protected:
+	MeshFilter(ifstream& stream, SceneObject* o, long pos = -1);
+
 	void SetMesh(int i);
 	static void _UpdateMesh(void* i);
 	ASSETID _mesh;
@@ -199,7 +202,10 @@ public:
 	void Refresh() override;
 
 	friend class Editor;
+	friend void Deserialize(ifstream& stream, SceneObject* obj);
 protected:
+	MeshRenderer(ifstream& stream, SceneObject* o, long pos = -1);
+
 	vector<ASSETID> _materials;
 	static void _UpdateMat(void* i);
 	static void _UpdateTex(void* i);
@@ -209,7 +215,8 @@ protected:
 class TextureRenderer : public Component {
 public:
 	TextureRenderer(): _texture(-1), Component("Texture Renderer", COMP_TRD, DRAWORDER_OVERLAY) {}
-
+	
+	Texture* texture;
 
 	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos);
 	void Serialize(Editor* e, ofstream* stream) override;
@@ -219,7 +226,7 @@ public:
 	friend void Deserialize(ifstream& stream, SceneObject* obj);
 protected:
 	int _texture;
-	TextureRenderer(ifstream& stream, long pos);
+	TextureRenderer(ifstream& stream, SceneObject* o, long pos = -1);
 };
 
 #define COMP_SCR 0xff
@@ -239,8 +246,8 @@ public:
 	friend class Editor;
 	friend class EB_Viewer;
 protected:
-	//called in editor
-	SceneScript(Editor* e, string name);
+	ASSETID _script;
+	SceneScript(Editor* e, ASSETID id);
 };
 
 class SceneObject : public Object {
@@ -251,7 +258,6 @@ public:
 	SceneObject(string s, Vec3 pos, Quat rot, Vec3 scale);
 	bool active;
 	int childCount;
-	string name;
 	Transform transform;
 
 	void Enable(), Disable();
@@ -271,6 +277,7 @@ public:
 	vector<Component*> _components;
 
 	friend class MeshFilter;
+	friend class Scene;
 protected:
 	void Refresh();
 };

@@ -260,7 +260,9 @@ void EB_Viewer::_DoAddObjectBl(EditorBlock* b, void* v) {
 	}
 }
 void EB_Viewer::_DoAddComScr(EditorBlock* b, void* v) {
-	b->editor->selected->AddComponent(new SceneScript(b->editor, *((string*)v)));
+	ASSETTYPE t;
+	ASSETID id;
+	b->editor->selected->AddComponent(new SceneScript(b->editor, b->editor->GetAssetInfo(*(string*)v, t, id)));
 }
 
 void EB_Viewer::_D2AddComCam(EditorBlock* b) {

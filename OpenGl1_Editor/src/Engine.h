@@ -104,6 +104,7 @@ glm::mat4 Quat2Mat(Quat q);
 void _StreamWrite(const void* val, ofstream* stream, int size);
 void _StreamWriteAsset(Editor* e, ofstream* stream, ASSETTYPE t, ASSETID i);
 void _Strm2Int(ifstream& strm, int& i), _Strm2Float(ifstream& strm, float& f);
+string _Strm2Asset(ifstream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int maxL = 100);
 float* hdr2float(byte imagergbe[], int w, int h);
 
 //see SceneObjects.h

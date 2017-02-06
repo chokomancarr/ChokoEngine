@@ -1771,6 +1771,14 @@ void _Strm2Float(ifstream& strm, float& f) {
 	f = 0 + *(float*)c;
 }
 
+string _Strm2Asset(ifstream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int max) {
+	char* c = new char[max];
+	strm.getline(c, max, (char)0);
+	string s(c);
+	e->GetAssetInfo(s, t, i);
+	return s;
+}
+
 float* hdr2float(byte imagergbe[], int w, int h) {
 	float* image = (float *)malloc(w * h * 3 * sizeof(float));
 	for (int i = 0; i < w*h; i++) {
@@ -1862,10 +1870,16 @@ void Deserialize(ifstream& stream, SceneObject* obj) {
 			stream >> c; //component type
 			switch (c) {
 			case COMP_CAM:
-				obj->AddComponent(new Camera(stream, -1));
+				obj->AddComponent(new Camera(stream, obj));
+				break;
+			case COMP_MFT:
+				obj->AddComponent(new MeshFilter(stream, obj));
+				break;
+			case COMP_MRD:
+				obj->AddComponent(new MeshRenderer(stream, obj));
 				break;
 			case COMP_TRD:
-				obj->AddComponent(new TextureRenderer(stream, -1));
+				obj->AddComponent(new TextureRenderer(stream, obj));
 				break;
 			default:
 				char cc;
@@ -1898,6 +1912,7 @@ Scene::Scene(ifstream& stream, long pos) : sceneName("loadedScene"), sky(nullptr
 		SceneObject* sc = new SceneObject();
 		objects.push_back(sc);
 		Deserialize(stream, sc);
+		sc->Refresh();
 		stream >> o;
 	}
 }

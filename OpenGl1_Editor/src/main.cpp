@@ -96,8 +96,6 @@ int main(int argc, char **argv)
 	editor->yLimits.push_back(Int2(0, 2));
 	editor->yLimits.push_back(Int2(2, 1));
 	
-	ifstream strm(editor->projectFolder + "Assets\\newScene.scene", ios::in | ios::binary);
-	editor->activeScene = Scene(strm, 0);
 	/*
 	editor->NewScene();
 	editor->activeScene.objects.push_back(new SceneObject("Main Camera"));
@@ -179,9 +177,8 @@ int main(int argc, char **argv)
 		//editor->activeScene.sky = new Background(editor->dataPath + "res\\bg_refl.hdr");
 		editor->SetBackground(editor->dataPath + "res\\bg.jpg", 0.3f);
 
-		//ShaderBase b("F:\\TestProject\\Assets\\test.shade.meta");
-		//Material m(&b);
-		//m.Save("F:\\TestProject\\Assets\\test.material");
+		ifstream strm(editor->projectFolder + "Assets\\newScene.scene", ios::in | ios::binary);
+		editor->activeScene = Scene(strm, 0);
 
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

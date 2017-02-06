@@ -685,7 +685,7 @@ void EB_Viewer::OnMouseM(Vec2 d) {
 	}
 	else if (modifying > 0) {
 		//cout << (int)(modifying & 0x0f) << endl;
-		modVal -= Vec2(d.x / Display::width, d.y / Display::height);
+		modVal += Vec2(d.x / Display::width, -d.y / Display::height);
 		if (modifying >> 4 == 1) {
 			switch (modifying & 0x0f) {
 				/*
@@ -696,13 +696,13 @@ void EB_Viewer::OnMouseM(Vec2 d) {
 			}
 			*/
 			case 1:
-				editor->selected->transform.position = preModVals + Vec3((-modVal.x + modVal.y) * 40 / scale, 0, 0);
+				editor->selected->transform.position = preModVals + Vec3((modVal.x + modVal.y) * 40 / scale, 0, 0);
 				break;
 			case 2:
-				editor->selected->transform.position = preModVals + Vec3(0, (modVal.x - modVal.y) * 40 / scale, 0);
+				editor->selected->transform.position = preModVals + Vec3(0, (modVal.x + modVal.y) * 40 / scale, 0);
 				break;
 			case 3:
-				editor->selected->transform.position = preModVals + Vec3(0, 0, (modVal.x - modVal.y) * 40 / scale);
+				editor->selected->transform.position = preModVals + Vec3(0, 0, (modVal.x + modVal.y) * 40 / scale);
 				break;
 			}
 		}
@@ -881,8 +881,12 @@ ASSETID Editor::GetAssetInfo(string p, ASSETTYPE &type, ASSETID& i) {
 	for (auto t : normalAssets) {
 		int x = 0;
 		for (auto u : t.second) {
-			if (u == p)
+			if (u == p) {
+				type = t.first;
+				i = x;
+				GetCache(type, i);
 				return x;
+			}
 			string uu;
 			if (t.first == ASSETTYPE_MATERIAL)
 				uu = projectFolder + "Assets\\" + u;
