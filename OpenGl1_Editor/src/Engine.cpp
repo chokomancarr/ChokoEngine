@@ -1276,7 +1276,7 @@ bool LoadBMP(string fileN, uint &x, uint &y, byte& channels, byte** data) {
 
 Texture::Texture(const string& path) : Texture(path, true, false) {}
 Texture::Texture(const string& path, bool mipmap) : Texture(path, mipmap, false) {}
-Texture::Texture(const string& path, bool mipmap, bool nearest) {
+Texture::Texture(const string& path, bool mipmap, bool nearest) : AssetObject(ASSETTYPE_TEXTURE) {
 	string sss = path.substr(path.find_last_of('.'), string::npos);
 	byte *data;
 	byte chn;
@@ -1511,11 +1511,11 @@ Vec2 Input::mousePos = Vec2(0, 0);
 Vec2 Input::mousePosRelative = Vec2(0, 0);
 
 //-------------------Material class--------------
-Material::Material() : _shader(-1) {
+Material::Material() : _shader(-1), AssetObject(ASSETTYPE_MATERIAL) {
 	shader = nullptr;// Engine::unlitProgram;
 }
 
-Material::Material(ShaderBase * shad) : _shader(-1) {
+Material::Material(ShaderBase * shad) : _shader(-1), AssetObject(ASSETTYPE_MATERIAL) {
 	shader = shad;
 	if (shad == nullptr)
 		return;
@@ -1535,7 +1535,7 @@ Material::Material(ShaderBase * shad) : _shader(-1) {
 	}
 }
 
-Material::Material(string path) {
+Material::Material(string path) : AssetObject(ASSETTYPE_MATERIAL) {
 	string p = Editor::instance->projectFolder + "Assets\\" + path;
 	ifstream stream(p.c_str());
 	if (!stream.good()) {
@@ -1691,7 +1691,7 @@ void Material::Save(string path) {
 		t = SHADER_SAMPLER;
 		strm << t;
 		strm << valNames[SHADER_SAMPLER][j] << (char)0;
-		_StreamWriteAsset(Editor::instance, &strm, t, *(ASSETID*)v.second);
+		_StreamWriteAsset(Editor::instance, &strm, ASSETTYPE_TEXTURE, ((MatVal_Tex*)v.second)->id);
 		i++;
 		j++;
 	}
@@ -1924,7 +1924,16 @@ void Scene::Save(Editor* e) {
 		Serialize(e, sc, &sw);
 	}
 	sw.close();
-
+	int a = 0;
+	for (void* v : e->normalAssetCaches[ASSETTYPE_MATERIAL]) {
+		if (v != nullptr) {
+			Material* m = (Material*)v;
+			//if (m->_changed) {
+				m->Save(e->projectFolder + "Assets\\" + e->normalAssets[ASSETTYPE_MATERIAL][a]);
+			//}
+		}
+		a++;
+	}
 	//
 	e->includedScenes.clear();
 	e->includedScenes.push_back(e->projectFolder + "Assets\\test.scene");

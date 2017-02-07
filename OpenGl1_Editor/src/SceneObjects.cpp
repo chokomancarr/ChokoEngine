@@ -2,6 +2,8 @@
 #include "Engine.h"
 #include "Editor.h"
 
+Object::Object(string nm) : id(Engine::GetNewId()), name(nm) {}
+
 bool DrawComponentHeader(Editor* e, Vec4 v, uint pos, Component* c) {
 	Engine::DrawQuad(v.r, v.g + pos, v.b - 17, 16, grey2());
 	//bool hi = expand;

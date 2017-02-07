@@ -3,15 +3,6 @@
 
 #include "Engine.h"
 
-class Object {
-public:
-	Object(string nm = "") : id(Engine::GetNewId()), name(nm) {}
-	ulong id;
-	string name;
-
-	virtual bool ReferencingObject(Object* o) { return false; }
-};
-
 typedef unsigned char COMPONENT_TYPE;
 typedef unsigned char DRAWORDER;
 #define DRAWORDER_NOT 0x00
@@ -71,16 +62,6 @@ public:
 	Transform* Translate(Vec3 v);
 };
 
-class AssetObject : public Object {
-protected:
-	AssetObject(ASSETTYPE t) : type(t), Object() {}
-	virtual  ~AssetObject() {}
-
-	const ASSETTYPE type = 0;
-
-	//virtual void Load() = 0;
-};
-
 class Mesh : public AssetObject {
 public:
 	//Mesh(); //until i figure out normal recalc algorithm
@@ -107,7 +88,7 @@ protected:
 	//void Load();
 };
 
-class Texture {
+class Texture : public AssetObject {
 public:
 	Texture(const string& path);
 	Texture(const string& path, bool mipmap);

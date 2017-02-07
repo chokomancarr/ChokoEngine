@@ -177,6 +177,10 @@ int main(int argc, char **argv)
 		//editor->activeScene.sky = new Background(editor->dataPath + "res\\bg_refl.hdr");
 		editor->SetBackground(editor->dataPath + "res\\bg.jpg", 0.3f);
 
+		//ShaderBase* s = (ShaderBase*)editor->GetCache(ASSETTYPE_SHADER, 0);
+		//Material m(s);
+		//m.Save(editor->projectFolder + "Assets\\test.material");
+
 		ifstream strm(editor->projectFolder + "Assets\\newScene.scene", ios::in | ios::binary);
 		editor->activeScene = Scene(strm, 0);
 

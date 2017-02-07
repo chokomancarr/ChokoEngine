@@ -1555,7 +1555,6 @@ bool Editor::ParseAsset(string path) {
 	}
 	else if (ext == "bmp" || ext == "jpg") {
 		ok = Texture::Parse(this, path);
-		return false;
 	}
 	else if (ext == "hdr") {
 		ok = Background::Parse(path);
@@ -1566,7 +1565,8 @@ bool Editor::ParseAsset(string path) {
 	}
 	stream.close();
 	if (ok) {
-		SetFileAttributes((path + ".meta").c_str(), FILE_ATTRIBUTE_HIDDEN);
+		string p = (path + ".meta");
+		SetFileAttributes(p.c_str(), FILE_ATTRIBUTE_HIDDEN);
 		return true;
 	}
 	else return false;

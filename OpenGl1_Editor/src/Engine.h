@@ -243,6 +243,29 @@ public:
 	static glm::mat3 uiMatrix;
 };
 
+class Object {
+public:
+	Object(string nm = "");
+	ulong id;
+	string name;
+
+	virtual bool ReferencingObject(Object* o) { return false; }
+};
+
+class AssetObject : public Object {
+protected:
+	AssetObject(ASSETTYPE t) : type(t), Object(), _changed(false) {}
+	virtual  ~AssetObject() {}
+
+	const ASSETTYPE type = 0;
+
+	friend class Editor;
+protected:
+	bool _changed;
+
+	//virtual void Load() = 0;
+};
+
 typedef byte SHADER_VARTYPE;
 #define SHADER_INT 0x00
 #define SHADER_FLOAT 0x01
@@ -270,10 +293,10 @@ public:
 	float min, max;
 };
 
-class ShaderBase {
+class ShaderBase : public AssetObject {
 public:
 	ShaderBase(string path);
-	ShaderBase(string vert, string frag);
+	//ShaderBase(string vert, string frag);
 	~ShaderBase() {
 		glDeleteProgram(pointer);
 		for (ShaderVariable* v : vars)
@@ -302,7 +325,7 @@ protected:
 	Texture* tex;
 };
 
-class Material {
+class Material : AssetObject {
 public:
 	ShaderBase* shader;
 
@@ -323,6 +346,7 @@ public:
 	friend class Editor;
 	friend class Mesh;
 	friend class MeshRenderer;
+	friend class Scene;
 	friend int main(int argc, char **argv);
 protected:
 	Material(string s);

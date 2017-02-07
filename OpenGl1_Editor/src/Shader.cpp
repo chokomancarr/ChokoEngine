@@ -38,7 +38,7 @@ bool ShaderBase::LoadShader(GLenum shaderType, string source, GLuint& shader) {
 	return true;
 }
 
-ShaderBase::ShaderBase(string path) {
+ShaderBase::ShaderBase(string path) : AssetObject(ASSETTYPE_SHADER) {
 	string p = Editor::instance->projectFolder + "Assets\\" + path + ".meta";
 	string vertex_shader_code = "";
 	string fragment_shader_code = "";
@@ -154,7 +154,8 @@ ShaderBase::ShaderBase(string path) {
 	loaded = true;
 }
 
-ShaderBase::ShaderBase(string vertex_shader_code, string fragment_shader_code) {
+/*
+ShaderBase::ShaderBase(string vertex_shader_code, string fragment_shader_code) : AssetObject(ASSETTYPE_SHADER) {
 	GLuint vertex_shader, fragment_shader;
 	if (vertex_shader_code != "") {
 		cout << "Vertex Shader: " << endl << vertex_shader_code;
