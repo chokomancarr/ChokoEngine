@@ -513,6 +513,19 @@ protected:
 	void Save(Editor* e);
 };
 
+class AssetManager {
+	friend int main(int argc, char **argv);
+	friend class Engine;
+	friend class Scene;
+	friend class SceneObject;
+protected:
+	static unordered_map<ASSETTYPE, vector<string>> names;
+	static unordered_map<ASSETTYPE, vector<pair<byte, uint>>> dataLocs;
+	static vector<ifstream*> streams;
+
+	static void Init(string dpath);
+};
+
 #include "SceneObjects.h"
 
 #endif

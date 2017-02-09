@@ -1760,35 +1760,6 @@ void _StreamWriteAsset(Editor* e, ofstream* stream, ASSETTYPE t, ASSETID i) {
 	(*stream) << p << (char)0;
 }
 
-void _Strm2Int(ifstream& strm, int& i) {
-	char c[4];
-	strm.read(c, 4);
-	if (strm.fail()) {
-		Editor::instance->_Error("Strm2Int", "Fail bit raised! (probably eof reached)");
-	}
-	int rr(*(int*)c);
-	i = 0 + *(int*)c;
-}
-
-void _Strm2Float(ifstream& strm, float& f) {
-	char c[4];
-	strm.read(c, 4);
-	if (strm.fail()) {
-		Editor::instance->_Error("Strm2Float", "Fail bit raised! (probably eof reached)");
-	}
-	f = 0 + *(float*)c;
-}
-
-void _Strm2Short(ifstream& strm, short& i) {
-	char c[2];
-	strm.read(c, 2);
-	if (strm.fail()) {
-		Editor::instance->_Error("Strm2Short", "Fail bit raised! (probably eof reached)");
-	}
-	int rr(*(short*)c);
-	i = 0 + *(short*)c;
-}
-
 template<typename T> void _Strm2Val(ifstream& strm, T &val) {
 	byte size = sizeof(T);
 	char c[8];
@@ -1878,15 +1849,15 @@ void Deserialize(ifstream& stream, SceneObject* obj) {
 	stream.getline(cc, 100, 0);
 	obj->name = string(cc);
 	char c;
-	_Strm2Float(stream, obj->transform.position.x);
-	_Strm2Float(stream, obj->transform.position.y);
-	_Strm2Float(stream, obj->transform.position.z);
-	_Strm2Float(stream, obj->transform.eulerRotation.x);
-	_Strm2Float(stream, obj->transform.eulerRotation.y);
-	_Strm2Float(stream, obj->transform.eulerRotation.z);
-	_Strm2Float(stream, obj->transform.scale.x);
-	_Strm2Float(stream, obj->transform.scale.y);
-	_Strm2Float(stream, obj->transform.scale.z);
+	_Strm2Val(stream, obj->transform.position.x);
+	_Strm2Val(stream, obj->transform.position.y);
+	_Strm2Val(stream, obj->transform.position.z);
+	_Strm2Val(stream, obj->transform.eulerRotation.x);
+	_Strm2Val(stream, obj->transform.eulerRotation.y);
+	_Strm2Val(stream, obj->transform.eulerRotation.z);
+	_Strm2Val(stream, obj->transform.scale.x);
+	_Strm2Val(stream, obj->transform.scale.y);
+	_Strm2Val(stream, obj->transform.scale.z);
 	stream >> c;
 	while (c != 'o') {
 		cout << "1 " << hex << stream.tellg() << endl;
@@ -1933,7 +1904,6 @@ void Scene::ReadD0(ifstream& strm) {
 	ushort num;
 	_Strm2Val(strm, num);
 	for (ushort a = 0; a < num; a++) {
-
 	}
 }
 
@@ -1989,4 +1959,58 @@ void Scene::Save(Editor* e) {
 	//
 	e->includedScenes.clear();
 	e->includedScenes.push_back(e->projectFolder + "Assets\\test.scene");
+}
+
+unordered_map<ASSETTYPE, vector<string>> AssetManager::names = {};
+unordered_map<ASSETTYPE, vector<pair<byte, uint>>> AssetManager::dataLocs = {};
+vector<ifstream*> AssetManager::streams = {};
+void AssetManager::Init(string dpath) {
+	names.clear();
+	dataLocs.clear();
+	vector<ifstream*>().swap(streams);
+
+	string pp = dpath + "0";
+	ifstream strm(pp.c_str(), ios::in | ios::binary);
+	if (!strm.is_open()) {
+		Debug::Error("AssetManager", "Fatal: cannot open data file 0!");
+		return;
+	}
+
+	byte numDat = 0, id;
+	ushort num;
+	ASSETTYPE type;
+	uint pos;
+	char* c = new char[100];
+	strm >> c[0] >> c[1];
+	if (c[0] != 'D' || c[1] != '0') {
+		Debug::Error("AssetManager", "Fatal: file 0 has wrong signature!");
+		return;
+	}
+	_Strm2Val(strm, num);
+	for (ushort a = 0; a < num; a++) {
+		_Strm2Val(strm, type);
+		_Strm2Val(strm, id);
+		_Strm2Val(strm, pos);
+		strm.getline(c, 100, (char)0);
+		numDat = max(numDat, id);
+		dataLocs[type].push_back(pair<byte, uint>(id-1, pos));
+		names[type].push_back(c);
+	}
+
+	for (int a = 0; a < numDat; a++) {
+		string pp = dpath + to_string(a+1);
+		streams.push_back(new ifstream(pp.c_str(), ios::in | ios::binary));
+	}
+
+	for (auto aa : dataLocs) {
+		ushort s = 0;
+		for (auto bb : aa.second) {
+			streams[bb.first]->seekg(bb.second);
+			uint sz;
+			_Strm2Val(*streams[bb.first], sz);
+			cout << "Registered asset " + names[aa.first][s] + " (" << sz << " bytes)" << endl;
+			streams[bb.first]->seekg(0);
+			s++;
+		}
+	}
 }

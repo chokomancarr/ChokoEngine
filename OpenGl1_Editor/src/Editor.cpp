@@ -1815,16 +1815,20 @@ bool MergeAssets(Editor* e) {
 	file << "D0";
 
 	//asset data
+	//D0[NUM(2)]SUM([TYPE][IPOSS][NAME0])
+	vector<uint> dataPoss;
 	ushort xx = 0;
 	long long poss1 = file.tellp();
 	file << "00";
 	for (auto as : e->normalAssets) {
-		ushort ii = 0;
+		//ushort ii = 0;
 		for (auto as2 : as.second) {
 			file << (char)as.first;
-			_StreamWrite(&ii, &file, 2);
+			//_StreamWrite(&ii, &file, 2);
+			dataPoss.push_back((uint)file.tellp());
+			file << "IPOSS";
 			file << as2 << (char)0;
-			ii++;
+			//ii++;
 			xx++;
 		}
 	}
@@ -1861,7 +1865,6 @@ bool MergeAssets(Editor* e) {
 	poss2 = file.tellp();
 	file.seekp(poss1);
 	_StreamWrite(&q, &file, 2);
-	file.close();
 
 	byte incre = 1;
 	string nm = e->projectFolder + "Release\\data" + to_string(incre);
@@ -1871,23 +1874,42 @@ bool MergeAssets(Editor* e) {
 		e->AddBuildLog(e, "Cannot open " + nm + "!", true);
 		return false;
 	}
+	xx = 0;
 	for (auto it : e->normalAssets) {
 		if (it.second.size() > 0) {
 			ushort i = 0;
 			for (string s : it.second) {
-				ifstream f2(e->projectFolder + "Assets\\" + s, ios::in | ios::binary);
-				file2 << (char)it.first;
-				_StreamWrite(&i, &file2, 2);
-				long long pos = file2.tellp();
-				file2 << "0000XX" << f2.rdbuf() << null;
-				long long pos2 = file2.tellp();
+				string nmm;
+				if (it.first == ASSETTYPE_MESH)
+					nmm = e->projectFolder + "Assets\\" + s + ".mesh.meta";
+				else if (it.first == ASSETTYPE_MATERIAL)
+					nmm = e->projectFolder + "Assets\\" + s;
+				else
+					nmm = e->projectFolder + "Assets\\" + s + ".meta";
+				ifstream f2(nmm.c_str(), ios::in | ios::binary);
+				if (!f2.is_open()) {
+					e->_Error("Asset Compiler", "Asset not found! " + nmm);
+					continue;
+				}
+				//file2 << (char)it.first;
+				//_StreamWrite(&i, &file2, 2);
+				uint pos = (uint)file2.tellp();
+				file.seekp(dataPoss[xx]);
+				file << incre;
+				_StreamWrite(&pos, &file, 4);
+				file2 << "0000" << f2.rdbuf();
+				uint pos2 = (uint)file2.tellp();
+				uint sz = pos2 - pos - 4;
 				file2.seekp(pos);
-				uint size = (uint)(pos2 - pos - 6);
-				_StreamWrite(&size, &file2, 4);
+				_StreamWrite(&sz, &file2, 4);
 				file2.seekp(pos2);
-				file2 << null;
+				//file2 << "0000XX" << f2.rdbuf() << null;
+				//file2.seekp(pos);
+				//uint size = (uint)(pos2 - pos - 6);
+				//_StreamWrite(&size, &file2, 4);
+				//file2.seekp(pos2);
 				if (pos2 > e->_assetDataSize * 100000000) {
-					file2 << etx;
+					//file2 << etx;
 					file2.close();
 					nm = e->projectFolder + "Release\\data" + to_string(++incre);
 					e->AddBuildLog(e, "Writing to " + nm);
@@ -1898,10 +1920,12 @@ bool MergeAssets(Editor* e) {
 					}
 				}
 				i++;
+				xx++;
 			}
 		}
 	}
 	file2.close();
+	file.close();
 	return true;
 }
 

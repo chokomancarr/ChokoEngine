@@ -61,6 +61,8 @@ int main(int argc, char **argv)
 	editor->dataPath = path.substr(0, path.find_last_of('\\') + 1);
 	editor->lockMutex = &lockMutex;
 
+	//AssetManager::Init("F:\\TestProject\\Release\\data");
+
 	//editor->ParseAsset("D:\\test.blend");
 	//editor->Compile();
 
@@ -315,12 +317,10 @@ void DoUpdate() {
 
 void UpdateLoop() {
 	while (!die) {
-		while (!redrawn) {}
-			//Sleep(1);
+		if (redrawn)
 		{
 			//lock_guard<mutex> lock(lockMutex);
 			redrawn = false;
-			t++;
 			long long millis = milliseconds();
 			Time::delta = (millis - Time::millis)*0.001f;
 			Time::time = (millis - Time::startMillis)*0.001;
@@ -353,21 +353,23 @@ void DrawOverlay() {
 
 void renderScene()
 {
-	while (redrawn && editor->editorLayer != 6) {}
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glClearColor(0, 0, 0, 1.0f);
-	glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_LEQUAL);
+	if (!redrawn || editor->editorLayer == 6) {
+		t++;
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glClearColor(0, 0, 0, 1.0f);
+		glEnable(GL_DEPTH_TEST);
+		glDepthFunc(GL_LEQUAL);
 
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	//glMultMatrixf(glm::value_ptr(glm::perspective(60.0f, 1.0f, 0.1f, 100.0f))); //double fovy, double aspect, double zNear, double zFar
-	//glMultMatrixf(glm::value_ptr(glm::ortho(-1.0f, -1.0f, 1.0f, 1.0f, 0.1f, 100.0f)));
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+		//glMultMatrixf(glm::value_ptr(glm::perspective(60.0f, 1.0f, 0.1f, 100.0f))); //double fovy, double aspect, double zNear, double zFar
+		//glMultMatrixf(glm::value_ptr(glm::ortho(-1.0f, -1.0f, 1.0f, 1.0f, 0.1f, 100.0f)));
 
-	glDisable(GL_DEPTH_TEST);
-	DrawOverlay();
-	glutSwapBuffers();
-	redrawn = true;
+		glDisable(GL_DEPTH_TEST);
+		DrawOverlay();
+		glutSwapBuffers();
+		redrawn = true;
+	}
 	glutPostRedisplay();
 }
 
