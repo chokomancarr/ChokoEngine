@@ -55,9 +55,11 @@ byte Input::mouse2State = 0;
 string Input::inputString = "";
 
 void Engine::Init(string path) {
-	fallbackTex = new Texture(path.substr(0, path.find_last_of('\\') + 1) + "fallback.bmp");
-	if (!fallbackTex->loaded)
-		cout << "cannot load fallback texture!" << endl;
+	if (path != "") {
+		fallbackTex = new Texture(path.substr(0, path.find_last_of('\\') + 1) + "fallback.bmp");
+		if (!fallbackTex->loaded)
+			cout << "cannot load fallback texture!" << endl;
+	}
 
 	string vertcode = "#version 330 core\nlayout(location = 0) in vec3 pos;\nlayout(location = 1) in vec2 uv;\nout vec2 UV;\nvoid main(){ \ngl_Position.xyz = pos;\ngl_Position.w = 1.0;\nUV = uv;\n}";
 	string fragcode = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = texture(sampler, UV)*col;\n}"; //out vec3 Vec4;\n
@@ -1177,6 +1179,7 @@ bool Mesh::ParseBlend(Editor* e, string s) {
 	return true;
 }
 
+/*
 void Mesh::Draw(Material* mat) {
 	if (mat == nullptr)
 		glUseProgram(0);
@@ -1184,6 +1187,7 @@ void Mesh::Draw(Material* mat) {
 		mat->ApplyGL();
 	}
 }
+*/
 
 //-----------------texture class---------------------
 bool LoadJPEG(string fileN, uint &x, uint &y, byte& channels, byte** data)
@@ -1395,8 +1399,7 @@ bool Background::Parse(string path) {
 }
 
 //-----------------font class---------------------
-Font::Font(const string& path) : Font("", path, -1) {}
-Font::Font(const string& paths, const string& pathb, int size) : loaded(false), alignment(ALIGN_TOPLEFT), sizeToggle(size) {
+Font::Font(const string& pathb, const string& paths, int size) : loaded(false), alignment(ALIGN_TOPLEFT), sizeToggle(size) {
 	if (paths != "") {
 		//cout << "opening font at " << paths << endl;
 		unsigned char header[6];
@@ -1441,6 +1444,7 @@ Font::Font(const string& paths, const string& pathb, int size) : loaded(false), 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glBindTexture(GL_TEXTURE_2D, 0);
+		free(data);
 		//cout << "font loaded: " << width << "x" << height << endl;
 		//loaded = true;
 	}
@@ -1488,6 +1492,7 @@ Font::Font(const string& paths, const string& pathb, int size) : loaded(false), 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 	glBindTexture(GL_TEXTURE_2D, 0);
+	free(data);
 	loaded = true;
 	//cout << "font loaded: " << width2 << "x" << height2 << endl;
 }
@@ -1581,7 +1586,7 @@ Material::Material(string path) : AssetObject(ASSETTYPE_MATERIAL) {
 	}
 
 	int vs;
-	_Strm2Int(stream, vs);
+	_Strm2Val(stream, vs);
 	for (int r = 0; r < vs; r++) {
 		char ii;
 		stream >> ii;
@@ -1593,7 +1598,7 @@ Material::Material(string path) : AssetObject(ASSETTYPE_MATERIAL) {
 			for (int x = vals[SHADER_FLOAT].size() - 1; x >= 0; x--) {
 				if (valNames[SHADER_FLOAT][x] == nm) {
 					float f;
-					_Strm2Float(stream, f);
+					_Strm2Val(stream, f);
 					(*(float*)vals[SHADER_FLOAT][nMap[nm]]) += f;
 					break;
 				}
@@ -1603,7 +1608,7 @@ Material::Material(string path) : AssetObject(ASSETTYPE_MATERIAL) {
 			for (int x = vals[SHADER_INT].size() - 1; x >= 0; x--) {
 				if (valNames[SHADER_INT][x] == nm) {
 					int f;
-					_Strm2Int(stream, f);
+					_Strm2Val(stream, f);
 					(*(int*)vals[SHADER_INT][nMap[nm]]) += f;
 					break;
 				}
@@ -1700,20 +1705,17 @@ void Material::Save(string path) {
 	strm.close();
 }
 
-void Material::ApplyGL() {
-	GLfloat matrix[16], matrix2[16];
-	glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
-	glGetFloatv(GL_PROJECTION_MATRIX, matrix2);
+void Material::ApplyGL(glm::mat4& matrix) {
 	if (shader == nullptr) {
 		glUseProgram(0);
 		return;
 	}
 	else {
 		glUseProgram(shader->pointer);
-		GLint mv = glGetUniformLocation(shader->pointer, "_MV");
-		GLint p = glGetUniformLocation(shader->pointer, "_P");
-		glUniformMatrix4fv(mv, 1, GL_FALSE, matrix);
-		glUniformMatrix4fv(p, 1, GL_FALSE, matrix2);
+		GLint mvp = glGetUniformLocation(shader->pointer, "_MVP");
+		//GLint p = glGetUniformLocation(shader->pointer, "_P");
+		glUniformMatrix4fv(mvp, 1, GL_FALSE, glm::value_ptr(matrix));
+		//glUniformMatrix4fv(p, 1, GL_FALSE, matrix2);
 		for (auto a : vals[SHADER_INT])
 			if (a.second != nullptr)
 				glUniform1i(a.first, *(int*)a.second);
@@ -1761,6 +1763,9 @@ void _StreamWriteAsset(Editor* e, ofstream* stream, ASSETTYPE t, ASSETID i) {
 void _Strm2Int(ifstream& strm, int& i) {
 	char c[4];
 	strm.read(c, 4);
+	if (strm.fail()) {
+		Editor::instance->_Error("Strm2Int", "Fail bit raised! (probably eof reached)");
+	}
 	int rr(*(int*)c);
 	i = 0 + *(int*)c;
 }
@@ -1768,7 +1773,31 @@ void _Strm2Int(ifstream& strm, int& i) {
 void _Strm2Float(ifstream& strm, float& f) {
 	char c[4];
 	strm.read(c, 4);
+	if (strm.fail()) {
+		Editor::instance->_Error("Strm2Float", "Fail bit raised! (probably eof reached)");
+	}
 	f = 0 + *(float*)c;
+}
+
+void _Strm2Short(ifstream& strm, short& i) {
+	char c[2];
+	strm.read(c, 2);
+	if (strm.fail()) {
+		Editor::instance->_Error("Strm2Short", "Fail bit raised! (probably eof reached)");
+	}
+	int rr(*(short*)c);
+	i = 0 + *(short*)c;
+}
+
+template<typename T> void _Strm2Val(ifstream& strm, T &val) {
+	byte size = sizeof(T);
+	char c[8];
+	strm.read(c, size);
+	if (strm.fail()) {
+		Editor::instance->_Error("Strm2Val", "Fail bit raised! (probably eof reached)");
+	}
+	int rr(*(T*)c);
+	val = 0 + *(T*)c;
 }
 
 string _Strm2Asset(ifstream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int max) {
@@ -1900,7 +1929,16 @@ void Deserialize(ifstream& stream, SceneObject* obj) {
 	}
 }
 
-Scene::Scene(ifstream& stream, long pos) : sceneName("loadedScene"), sky(nullptr), skyId(-1) {
+void Scene::ReadD0(ifstream& strm) {
+	ushort num;
+	_Strm2Val(strm, num);
+	for (ushort a = 0; a < num; a++) {
+
+	}
+}
+
+Scene::Scene(ifstream& stream, long pos) : sceneName("loadedScene") {
+	vector<SceneObject*>().swap(objects);
 	stream.seekg(pos);
 	char h1, h2;
 	stream >> h1 >> h2;
@@ -1915,6 +1953,20 @@ Scene::Scene(ifstream& stream, long pos) : sceneName("loadedScene"), sky(nullptr
 		sc->Refresh();
 		stream >> o;
 	}
+}
+
+Scene* Scene::active = nullptr;
+ifstream* Scene::strm = nullptr;
+vector<long> Scene::scenePoss = {};
+
+void Scene::Load(int i) {
+	if (i >= scenePoss.size() || i < 0) {
+		Debug::Error("Scene Loader", "Scene ID (" + to_string(i) + ") out of range!");
+		return;
+	}
+	free(active);
+	active = new Scene(*strm, scenePoss[i]);
+	active->sceneId = i;
 }
 
 void Scene::Save(Editor* e) {

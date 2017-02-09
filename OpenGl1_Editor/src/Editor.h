@@ -355,6 +355,7 @@ public:
 	float buildProgressValue;
 	Vec4 buildProgressVec4;
 	bool buildEnd; //allow esc
+	//build settings = layer7
 
 	Font* font;
 	static HWND hwnd;
@@ -372,6 +373,8 @@ public:
 	SceneObject* selected;
 	bool selectGlobal;
 	vector<string> includedScenes;
+	vector<bool> includedScenesUse;
+	ushort savedIncludedScenes;
 
 	ASSETTYPE selectedFileType;
 	ASSETID selectedFile;
@@ -381,7 +384,7 @@ public:
 
 	ShortcutMapGlobal globalShorts;
 
-	Texture* buttonX, *buttonExt, *buttonExtArrow, *background, *placeholder, *checkers, *expand;
+	Texture* buttonX, *buttonExt, *buttonPlus, *buttonExtArrow, *background, *placeholder, *checkers, *expand;
 	Texture* collapse, *object, *checkbox, *keylock, *assetExpand, *assetCollapse;
 	vector<Texture*> tooltipTexs;
 	vector<Texture*> shadingTexs;
@@ -403,6 +406,7 @@ public:
 	ASSETID GetAssetInfo(string p, ASSETTYPE &type, ASSETID& i);
 	ASSETID GetAssetId(void* p), GetAssetId(void* p, ASSETTYPE& t);
 
+	void ReadPrefs(), SavePrefs();
 	void LoadDefaultAssets();
 	void GenerateScriptResolver();
 	void NewScene();
@@ -431,6 +435,7 @@ public:
 
 	static void Compile(Editor* e);
 	static void ShowPrefs(Editor* e);
+	static void ShowCompileSett(Editor* e);
 	static void SaveScene(Editor* e);
 	static void OpenScene(Editor* e);
 	static void DoOpenScene(EditorBlock* b, void* v);

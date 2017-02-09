@@ -57,7 +57,7 @@ ShaderBase::ShaderBase(string path) : AssetObject(ASSETTYPE_SHADER) {
 	}
 
 	int vs;
-	_Strm2Int(stream, vs);
+	_Strm2Val(stream, vs);
 
 	char type;
 	char* nmm = new char[100];
@@ -68,16 +68,16 @@ ShaderBase::ShaderBase(string path) : AssetObject(ASSETTYPE_SHADER) {
 		vars[r]->type = bb;
 		switch (bb) {
 		case SHADER_INT:
-			_Strm2Float(stream, vars[r]->min);
-			_Strm2Float(stream, vars[r]->max);
-			_Strm2Int(stream, vars[r]->val.i);
+			_Strm2Val(stream, vars[r]->min);
+			_Strm2Val(stream, vars[r]->max);
+			_Strm2Val(stream, vars[r]->val.i);
 			stream.getline(nmm, 100, (char)0);
 			vars[r]->name += string(nmm);
 			break;
 		case SHADER_FLOAT:
-			_Strm2Float(stream, vars[r]->min);
-			_Strm2Float(stream, vars[r]->max);
-			_Strm2Float(stream, vars[r]->val.x);
+			_Strm2Val(stream, vars[r]->min);
+			_Strm2Val(stream, vars[r]->max);
+			_Strm2Val(stream, vars[r]->val.x);
 			stream.getline(nmm, 100, (char)0);
 			vars[r]->name += string(nmm);
 			break;
@@ -93,7 +93,7 @@ ShaderBase::ShaderBase(string path) : AssetObject(ASSETTYPE_SHADER) {
 		return;
 
 	int i;
-	_Strm2Int(stream, i);
+	_Strm2Val(stream, i);
 	char* cc = new char[i+1];
 	stream.read(cc, i);
 	cc[i] = (char)0;
@@ -104,7 +104,7 @@ ShaderBase::ShaderBase(string path) : AssetObject(ASSETTYPE_SHADER) {
 	if ((byte)type != 0x00)
 		return;
 
-	_Strm2Int(stream, i);
+	_Strm2Val(stream, i);
 	cc = new char[i + 1];
 	stream.read(cc, i);
 	cc[i] = (char)0;

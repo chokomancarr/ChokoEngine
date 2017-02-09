@@ -136,8 +136,8 @@ void LoadMeshMeta(vector<SceneObject*>& os, string& path) {
 		for (string ss : Editor::instance->normalAssets[ASSETTYPE_MESH]) {
 			if (ss == (nn + o->name)) {
 				MeshFilter* mft = new MeshFilter();
-				mft->SetMesh(r);
 				o->AddComponent(mft)->object->AddComponent(new MeshRenderer());
+				mft->SetMesh(r);
 				break;
 			}
 			r++;

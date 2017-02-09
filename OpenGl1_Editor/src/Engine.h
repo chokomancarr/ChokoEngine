@@ -31,9 +31,10 @@ typedef glm::vec3 Vec3;
 typedef glm::vec4 Vec4;
 typedef glm::quat Quat;
 
-struct Color {
+class Color {
 public:
-	Color() {}
+	Color() : r(0), g(0), b(0), a(0) {}
+	Color(Vec4 v) : r(round(v.r * 255)), g(round(v.g * 255)), b(round(v.b * 255)), a(round(v.a * 255)) {}
 	
 	byte r, g, b, a;
 
@@ -42,14 +43,12 @@ public:
 		return "#" + chs[(r & 0xf0) >> 4] + chs[r & 0x0f] + chs[(g & 0xf0) >> 4] + chs[g & 0x0f] + chs[(b & 0xf0) >> 4] + chs[b & 0x0f] + chs[(a & 0xf0) >> 4] + chs[a & 0x0f];
 	}
 
-	void SetHex(string h) {
-
+	Vec4 vec4() {
+		return Vec4(r, g, b, a);
 	}
 
-	Color& operator=(const Vec4& rhs)
-	{
-		
-		return *this;
+	void SetHex(string h) {
+
 	}
 };
 
@@ -86,6 +85,13 @@ typedef unsigned char ORIENTATION;
 #define ORIENT_HORIZONTAL 0x01
 #define ORIENT_VERTICAL 0x02
 
+typedef unsigned char SCRTYPE;
+#define SCRTYPE_INT 0x01
+#define SCRTYPE_UINT 0x02
+#define SCRTYPE_FLOAT 0x03
+#define SCRTYPE_STRING 0x04
+#define SCRTYPE_TEXTURE 0x10
+
 long long milliseconds();
 
 class Editor;
@@ -103,7 +109,8 @@ Vec3 rotate(Vec3 v, Quat q);
 glm::mat4 Quat2Mat(Quat q);
 void _StreamWrite(const void* val, ofstream* stream, int size);
 void _StreamWriteAsset(Editor* e, ofstream* stream, ASSETTYPE t, ASSETID i);
-void _Strm2Int(ifstream& strm, int& i), _Strm2Float(ifstream& strm, float& f);
+//void _Strm2Int(ifstream& strm, int& i), _Strm2Float(ifstream& strm, float& f), _Strm2Short(ifstream& strm, short& i);
+template<typename T> void _Strm2Val(ifstream& strm, T &val);
 string _Strm2Asset(ifstream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int maxL = 100);
 float* hdr2float(byte imagergbe[], int w, int h);
 
@@ -163,6 +170,10 @@ public:
 	static void Message(string c, string s);
 	static void Warning(string c, string s);
 	static void Error(string c, string s);
+
+	friend int main(int argc, char **argv);
+protected:
+	static ofstream* stream;
 };
 
 class EB_Browser_File;
@@ -180,8 +191,7 @@ public:
 
 class Font {
 public:
-	Font(const string& path);
-	Font(const string& paths, const string& pathb, int size);
+	Font(const string& pathb, const string& paths = "", int size = 0);
 	bool loaded;
 	uint width, padding, height, chars;
 	float w2h;
@@ -282,6 +292,35 @@ public:
 	glm::quat m;
 };
 
+enum SHADER_TEST {
+	SHADER_TEST_NEVER,
+	SHADER_TEST_ALWAYS,
+	SHADER_TEST_LESS,
+	SHADER_TEST_LEQUAL,
+	SHADER_TEST_EQUAL,
+	SHADER_TEST_GEQUAL,
+	SHADER_TEST_GREATER,
+	SHADER_TEST_NOTEQUAL
+};
+
+enum SHADER_CULL {
+	SHADER_CULL_BACK,
+	SHADER_CULL_FRONT,
+	SHADER_CULL_NONE
+};
+
+class ShaderTags {
+public:
+	ShaderTags(): zTest(SHADER_TEST_LEQUAL), aTest(SHADER_TEST_ALWAYS), culling(SHADER_CULL_BACK), zWrite() {}
+	SHADER_TEST zTest, aTest;
+	SHADER_CULL culling;
+	bool zWrite;
+
+	void ApplyGL();
+
+	static void Reset();
+};
+
 class ShaderVariable {
 public:
 	//ShaderVariable() : type(0), name(""), val(), min(0), max(0) {}
@@ -305,6 +344,7 @@ public:
 
 	bool loaded;
 	GLuint pointer;
+	ShaderTags tags;
 	vector<ShaderVariable*> vars;
 
 	//void Set(byte type, GLint id, void* val) { values[type][id] = val; }
@@ -355,7 +395,7 @@ protected:
 
 	void Load();
 	void Save(string path);
-	void ApplyGL();
+	void ApplyGL(glm::mat4& matrix);
 	void ResetVals();
 };
 
@@ -431,21 +471,44 @@ public:
 	//byte GetAsset(string name);
 	friend int main(int argc, char **argv);
 protected:
-	static void Init(string path);
+	static void Init(string path = "");
 	static bool LoadDatas(string path);
 	void Render();
 };
 
+class SceneSettings {
+public:
+	SceneSettings(): sky(nullptr), skyId(-1) {}
+	
+	Background* sky;
+	Color ambientCol;
+
+	friend class Editor;
+	friend class EB_Inspector;
+protected:
+	int skyId;
+};
+
 class Scene {
 public:
+	static Scene* active; //for use in-game
+	static bool loaded() {
+		return active != nullptr;
+	}
+	string sceneName;
+	int sceneId;
+	vector<SceneObject*> objects;
+	SceneSettings settings;
+
+	static void Load(int i);
+
 	friend int main(int argc, char **argv);
 	friend class Editor;
-	string sceneName;
-	vector<SceneObject*> objects;
-	Background* sky;
-	int skyId;
 protected:
-	Scene() : sceneName("newScene"), sky(nullptr), skyId(-1) {}
+	static ifstream* strm;
+	static vector<long> scenePoss;
+	static void ReadD0(ifstream& strm);
+	Scene() : sceneName("newScene") {}
 	Scene(ifstream& stream, long pos);
 	void Save(Editor* e);
 };

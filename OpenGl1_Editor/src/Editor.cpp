@@ -468,7 +468,7 @@ void EB_Viewer::Draw() {
 	}
 	else {
 		glScalef(scale, -scale, 1);
-		glMultMatrixf(glm::value_ptr(glm::perspective(seeingCamera->fov*0.5f, Display::width*1.0f / Display::height, 0.01f, 1000.0f)));
+		glMultMatrixf(glm::value_ptr(glm::perspective(seeingCamera->fov*0.5f, Display::width*1.0f / Display::height, 0.01f, 500.0f)));
 		glScalef(-1, 1, -1);
 		Vec3 pos = -seeingCamera->object->transform.worldPosition();
 		glTranslatef(pos.x, pos.y, pos.z);
@@ -504,8 +504,8 @@ void EB_Viewer::Draw() {
 
 	//draw background
 	glDepthFunc(GL_EQUAL);
-	if (editor->activeScene.sky != nullptr) {
-		Engine::DrawSky(v.x, v.y, v.z, v.w, editor->activeScene.sky, rz/360.0f, rw/180.0f, 60, 0);
+	if (editor->activeScene.settings.sky != nullptr) {
+		Engine::DrawSky(v.x, v.y, v.z, v.w, editor->activeScene.settings.sky, rz / 360.0f, rw / 180.0f, 60, 0);
 		//Engine::DrawQuad(v.x, v.y, v.z, v.w, editor->activeScene.sky->pointer, white());
 	}
 	glDepthFunc(GL_LEQUAL);
@@ -804,7 +804,7 @@ void EB_Inspector::Draw() {
 			Engine::Label(v.r + 22, v.g + 6 + EB_HEADER_SIZE, 12, "Scene Settings", editor->font, white());
 
 			Engine::Label(v.r, v.g + 23 + EB_HEADER_SIZE, 12, "Sky", editor->font, white());
-			editor->DrawAssetSelector(v.r + v.b*0.3f, v.g + 21 + EB_HEADER_SIZE, v.b*0.7f - 1, 14, grey2(), ASSETTYPE_HDRI, 12, editor->font, &editor->activeScene.skyId);
+			editor->DrawAssetSelector(v.r + v.b*0.3f, v.g + 21 + EB_HEADER_SIZE, v.b*0.7f - 1, 14, grey2(), ASSETTYPE_HDRI, 12, editor->font, &editor->activeScene.settings.skyId);
 		}
 		else if(lockGlobal == 1) {
 			EBI_DrawObj(v, editor, this, lockedObj);
@@ -822,7 +822,7 @@ void EB_Inspector::Draw() {
 		Engine::Label(v.r + 22, v.g + 6 + EB_HEADER_SIZE, 12, "Scene Settings", editor->font, white());
 
 		Engine::Label(v.r, v.g + 23 + EB_HEADER_SIZE, 12, "Sky", editor->font, white());
-		editor->DrawAssetSelector(v.r + v.b*0.3f, v.g + 21 + EB_HEADER_SIZE, v.b*0.7f - 1, 14, grey2(), ASSETTYPE_HDRI, 12, editor->font, &editor->activeScene.skyId);
+		editor->DrawAssetSelector(v.r + v.b*0.3f, v.g + 21 + EB_HEADER_SIZE, v.b*0.7f - 1, 14, grey2(), ASSETTYPE_HDRI, 12, editor->font, &editor->activeScene.settings.skyId);
 
 	}
 	else if (editor->selected != nullptr){
@@ -927,11 +927,58 @@ ASSETID Editor::GetAssetId(void* i, ASSETTYPE&) {
 	return -1;
 }
 
+void Editor::ReadPrefs() {
+	string ss = projectFolder;
+	while (ss[ss.size() - 1] == '\\')
+		ss = ss.substr(0, ss.size()-1);
+	string s = projectFolder + "\\" + ss.substr(ss.find_last_of('\\'), string::npos) + ".Bordom";
+	ifstream strm(s, ios::in | ios::binary);
+	if (!strm.is_open()) {
+		_Error("Editor", "Fail to load project prefs!");
+		return;
+	}
+	ushort n;
+	_Strm2Val(strm, n);
+	savedIncludedScenes = n;
+	char* cc = new char[100];
+	for (short a = 0; a < n; a++) {
+		char c;
+		strm >> c;
+		if ((byte)c > 1) {
+			_Error("Editor", "Strange byte in prefs file! " + strm.tellg());
+			return;
+		}
+		includedScenesUse.push_back(c == 1);
+		strm.getline(cc, 100, (char)0);
+		includedScenes.push_back(cc);
+	}
+}
+
+void Editor::SavePrefs() {
+	string ss = projectFolder;
+	while (ss[ss.size() - 1] == '\\')
+		ss = ss.substr(0, ss.size() - 1);
+	string s = projectFolder + "\\" + ss.substr(ss.find_last_of('\\'), string::npos) + ".Bordom";
+	ofstream strm(s, ios::out | ios::binary | ios::trunc);
+	ushort u = includedScenes.size();
+	_StreamWrite(&u, &strm, 2);
+	for (int a = 0; a < u; a++) {
+		if (includedScenesUse[a])
+			strm << (char)1;
+		else
+			strm << (char)0;
+		strm << includedScenes[a] << (char)0;
+	}
+
+	savedIncludedScenes = includedScenes.size();
+}
+
 void Editor::LoadDefaultAssets() {
-	font = new Font(dataPath + "res\\default_s.font", dataPath + "res\\default_l.font", 17);
+	font = new Font(dataPath + "res\\default_l.font", dataPath + "res\\default_s.font", 17);
 
 	buttonX = GetRes("xbutton");
 	buttonExt = GetRes("extbutton");
+	buttonPlus = GetRes("plusbutton");
 	buttonExtArrow = GetRes("extbutton arrow");
 	background = GetRes("lines");
 
@@ -1010,6 +1057,7 @@ void Editor::LoadDefaultAssets() {
 	gridId[67] = 63;
 
 	globalShorts.emplace(GetShortcutInt(Key_B, Key_Control), &Compile);
+	globalShorts.emplace(GetShortcutInt(Key_B, Key_Control, Key_Shift), &ShowCompileSett);
 	globalShorts.emplace(GetShortcutInt(Key_U, Key_Control, Key_Alt), &ShowPrefs);
 	globalShorts.emplace(GetShortcutInt(Key_S, Key_Control), &SaveScene);
 	globalShorts.emplace(GetShortcutInt(Key_O, Key_Control), &OpenScene);
@@ -1092,7 +1140,9 @@ void Editor::GenerateScriptResolver() {
 	vcxOut << vcx.substr(vcx.find('#') + 1, string::npos);
 	vcxOut.close();
 
+
 	string h = "#include <vector>\n#include \"Engine.h\"\ntypedef SceneScript*(*sceneScriptInstantiator)();\nclass SceneScriptResolver {\npublic:\n\tSceneScriptResolver();\n\tstd::vector<sceneScriptInstantiator> map;\n";
+	/*
 	h += "static SceneScript ";
 	for (int a = 0, b = headerAssets.size(); a < b; a++) {
 		h += "*_Inst" + to_string(a) + "()";
@@ -1101,20 +1151,27 @@ void Editor::GenerateScriptResolver() {
 		else
 			h += ", ";
 	}
+	*/
 	h += "};";
 	string s = "#include \"SceneScriptResolver.h\"\n#include \"Engine.h\"\n\n";
+	/*
 	for (int a = 0, b = headerAssets.size(); a < b; a++) {
 		s += "#include \"..\\Assets\\" + headerAssets[a] + "\"\n";
 		string ss = headerAssets[a].substr(0, headerAssets[a].size()-2);
 		s += "SceneScript* SceneScriptResolver::_Inst" + to_string(a) + "() { return new " + ss + "(); }\n\n";
 	}
+	*/
 	s += "\n\nusing namespace std;\r\nSceneScriptResolver::SceneScriptResolver() {\n";
-	for (int a = 0, b = headerAssets.size(); a < b; a++) {
-		s += "\tmap.push_back(&_Inst" + to_string(a) + ");\n";
-	}
+	//for (int a = 0, b = headerAssets.size(); a < b; a++) {
+		//s += "\tmap.push_back(&_Inst" + to_string(a) + ");\n";
+	//}
 	s += "}";
 	string cppO = projectFolder + "\\System\\SceneScriptResolver.cpp";
 	string hO = projectFolder + "\\System\\SceneScriptResolver.h";
+
+	remove(hO.c_str());
+	remove(cppO.c_str());
+
 	ofstream ofs (cppO);
 	ofs << s;
 	ofs.close();
@@ -1345,6 +1402,24 @@ void Editor::DrawHandles() {
 				dy++;
 			}
 		}
+		else if (editorLayer == 7) {
+			Engine::DrawQuad(0, 0, (float)Display::width, (float)Display::height, black(0.6f));
+			Engine::DrawQuad(Display::width*0.2f, Display::height*0.2f, Display::width*0.6f, Display::height*0.6f, black(0.8f));
+
+			Engine::Label(Display::width*0.2f + 10, Display::height*0.2f + 10, 21, "Build settings", font, white());
+
+			uint sz = includedScenes.size();
+			Engine::Label(Display::width*0.2f + 15, Display::height*0.2f + 35, 12, "Included scenes: " + to_string(sz), font, white());
+			Engine::DrawQuad(Display::width*0.2f + 12, Display::height*0.2f + 50, Display::width*0.3f, 306, white(0.05f));
+			for (int a = 0; a < sz; a++) {
+				includedScenesUse[a] = Engine::DrawToggle(Display::width*0.2f + 14, Display::height*0.2f + 51 + a*15, 14, checkbox, includedScenesUse[a], white(), ORIENT_HORIZONTAL);
+				Engine::Label(Display::width*0.2f + 30, Display::height*0.2f + 52 + a*15, 12, includedScenes[a], font, white());
+			}
+
+			if (Engine::Button(Display::width*0.8f - 80, Display::height*0.2f + 2, 78, 18, grey2(), "Save", 18, font, white()) == MOUSE_RELEASE) {
+				SavePrefs();
+			}
+		}
 	}
 }
 
@@ -1493,6 +1568,86 @@ void DoReloadAssets(Editor* e, string path, bool recursive, mutex* l) {
 		lock_guard<mutex> lock(*l);
 		e->headerAssets.clear();
 		AddH(e, e->projectFolder + "Assets", &e->headerAssets, &e->cppAssets);
+	}
+	for (string s : e->headerAssets) {
+		string p = e->projectFolder + "Assets\\" + s;
+		ifstream strm(p.c_str(), ios::in);
+		char* c = new char[100];
+		string sc = ("class" + s.substr(0, s.size() - 2) + ":publicSceneScript{");
+		bool hasClass = false, isPublic = false;
+		uint count = 0;
+		while (!strm.eof()) {
+			strm.getline(c, 100);
+			string ss;
+			for (uint a = 0; a < 100; a++) {
+				if (c[a] != ' ' && c[a] != '\t' && c[a] != '\r') {
+					ss += c[a];
+				}
+			}
+			if (strcmp(sc.c_str(), ss.c_str()) == 0) {
+				hasClass = true;
+				string op = p + ".meta";
+				ofstream oStrm(op.c_str(), ios::out | ios::binary | ios::trunc);
+				oStrm << "XXXX";
+				//read variables
+				while (!strm.eof()) {
+					strm.getline(c, 100);
+					string sss(c);
+					while (sss != "" && sss[0] == ' ' || sss[0] == '\t')
+						sss = sss.substr(1);
+					if (sss == "" || sss.find('(') != string::npos)
+						continue;
+					if (!isPublic && sss == "public:") {
+						isPublic = true;
+						continue;
+					}
+					else if (isPublic && (sss == "protected:" || sss == "private:" || sss == "};"))
+						break;
+					if (!isPublic)
+						continue;
+					int spos = sss.find_first_of(" ");
+					if (spos == string::npos)
+						continue;
+					string tp = sss.substr(0, spos);
+					if (tp == "int") {
+						oStrm << (char)SCRTYPE_INT;
+					}
+					else if (tp == "float") {
+						oStrm << (char)SCRTYPE_FLOAT;
+					}
+					else if (tp == "Texture*") {
+						oStrm << (char)SCRTYPE_TEXTURE;
+					}
+					else if (tp == "string" || tp == "std::string") {
+						oStrm << (char)SCRTYPE_STRING;
+					}
+					else continue;
+					int spos2 = min(min(sss.find_first_of(" ", spos + 1), sss.find_first_of(";", spos + 1)), sss.find_first_of("=", spos + 1));
+					if (spos2 == string::npos) {
+						long l = oStrm.tellp();
+						oStrm.seekp(l - 1);
+						continue;
+					}
+					string s2 = sss.substr(spos + 1, spos2 - spos - 1);
+					while (sss != "" && sss[0] == ' ' || sss[0] == '\t')
+						sss = sss.substr(1);
+					if (sss == ""){
+						long l = oStrm.tellp();
+						oStrm.seekp(l - 1);
+						continue;
+					}
+					oStrm << s2 << (char)0;
+					count++;
+				}
+				oStrm.seekp(0);
+				_StreamWrite(&count, &oStrm, 4);
+				oStrm.close();
+			}
+		}
+		if (!hasClass)
+			e->_Error("Script Importer", "SceneScript class for " + s + " not found!");
+	}
+	{
 		//e->GenerateScriptResolver();
 		for (EditorBlock* eb : e->blocks) {
 			if (eb->editorType == 1)
@@ -1547,6 +1702,8 @@ bool Editor::ParseAsset(string path) {
 		return false;
 	}
 	string ext = path.substr(path.find_last_of('.') + 1, string::npos);
+	string p = (path + ".meta");
+	SetFileAttributes(p.c_str(), FILE_ATTRIBUTE_NORMAL);
 	if (ext == "shade") {
 		ok = ShaderBase::Parse(&stream, path + ".meta");
 	}
@@ -1565,7 +1722,6 @@ bool Editor::ParseAsset(string path) {
 	}
 	stream.close();
 	if (ok) {
-		string p = (path + ".meta");
 		SetFileAttributes(p.c_str(), FILE_ATTRIBUTE_HIDDEN);
 		return true;
 	}
@@ -1590,21 +1746,24 @@ void Editor::SetBackground(string s, float a) {
 }
 
 void Editor::AddBuildLog(Editor* e, string s, bool forceE) {
+	lock_guard<mutex> lock(*Editor::lockMutex);
 	buildLog.push_back(s);
 	bool a = s.find("error C") != string::npos;
 	bool b = s.find("error LNK") != string::npos;
 	bool c = (s.find("warning C") != string::npos) || (s.find("warning LNK") != string::npos);
-	buildLogErrors.push_back(a || b);
+	buildLogErrors.push_back(a || b || forceE);
 	buildLogWarnings.push_back(c);
-	if (forceE || (!forceE && a && (buildErrorPath == ""))) {
+	if (a && (buildErrorPath == "")) {
 		while (s[0] == ' ' || s[0] == '\t')
 			s = s.substr(1, string::npos);
 		int i = s.find_first_of('(');
+		if (i == string::npos)
+			return;
 		buildErrorPath = "F:\\TestProject\\" + s.substr(0, i);
 		string ii = s.substr(i + 1, s.find_first_of(')') - i - 1);
 		buildErrorLine = stoi(ii);
 	}
-	glutPostRedisplay();
+	//glutPostRedisplay();
 }
 
 void* Editor::GetCache(ASSETTYPE type, int i) {
@@ -1653,24 +1812,57 @@ bool MergeAssets(Editor* e) {
 	if (!file.is_open())
 		return false;
 	//headers
-	file << "D0" << (byte)e->includedScenes.size();
-	for (string ss : e->includedScenes) {
-		ifstream f2(ss, ios::in | ios::binary);
-		if (!f2.is_open()) {
-			e->AddBuildLog(e, "Cannot open " + ss + "!", true);
-			return false;
+	file << "D0";
+
+	//asset data
+	ushort xx = 0;
+	long long poss1 = file.tellp();
+	file << "00";
+	for (auto as : e->normalAssets) {
+		ushort ii = 0;
+		for (auto as2 : as.second) {
+			file << (char)as.first;
+			_StreamWrite(&ii, &file, 2);
+			file << as2 << (char)0;
+			ii++;
+			xx++;
 		}
-		e->AddBuildLog(e, "Including " + ss);
-		long long pos = file.tellp();
-		file << "0000" << null << f2.rdbuf() << null;
-		long long pos2 = file.tellp();
-		long long size = pos2 - pos - 6;
-		file.seekp(pos);
-		_StreamWrite(&size, &file, 4);
-		file.seekp(pos2);
-		f2.close();
 	}
-	//file.close();
+	long long poss2 = file.tellp();
+	file.seekp(poss1);
+	_StreamWrite(&xx, &file, 2);
+	file.seekp(poss2);
+
+	//scene data
+	ushort q = 0;
+	poss1 = file.tellp();
+	file << "00";
+	for (string ss : e->includedScenes) {
+		if (e->includedScenesUse[q]) {
+			string sss = e->projectFolder + "Assets\\" + ss;
+			ifstream f2(sss, ios::in | ios::binary);
+			if (!f2.is_open()) {
+				e->AddBuildLog(e, "Cannot open " + ss + "!", true);
+				e->_Error("Asset Compiler", "Scene not found! " + ss);
+				return false;
+			}
+			e->AddBuildLog(e, "Including " + ss);
+			long long pos = file.tellp();
+			file << "0000" << null << f2.rdbuf() << null;
+			long long pos2 = file.tellp();
+			long long size = pos2 - pos - 6;
+			file.seekp(pos);
+			_StreamWrite(&size, &file, 4);
+			file.seekp(pos2);
+			f2.close();
+		}
+		q++;
+	}
+	poss2 = file.tellp();
+	file.seekp(poss1);
+	_StreamWrite(&q, &file, 2);
+	file.close();
+
 	byte incre = 1;
 	string nm = e->projectFolder + "Release\\data" + to_string(incre);
 	e->AddBuildLog(e, "Writing to " + nm);
@@ -1681,16 +1873,16 @@ bool MergeAssets(Editor* e) {
 	}
 	for (auto it : e->normalAssets) {
 		if (it.second.size() > 0) {
-			short i = 0;
+			ushort i = 0;
 			for (string s : it.second) {
 				ifstream f2(e->projectFolder + "Assets\\" + s, ios::in | ios::binary);
-				_StreamWrite((void*)&it.first, &file2, 1);
+				file2 << (char)it.first;
 				_StreamWrite(&i, &file2, 2);
 				long long pos = file2.tellp();
 				file2 << "0000XX" << f2.rdbuf() << null;
 				long long pos2 = file2.tellp();
 				file2.seekp(pos);
-				long long size = pos2 - pos - 6;
+				uint size = (uint)(pos2 - pos - 6);
 				_StreamWrite(&size, &file2, 4);
 				file2.seekp(pos2);
 				file2 << null;
@@ -1709,7 +1901,7 @@ bool MergeAssets(Editor* e) {
 			}
 		}
 	}
-	file.close();
+	file2.close();
 	return true;
 }
 
@@ -1811,8 +2003,34 @@ void Editor::Compile(Editor* e) {
 	e->WAITINGBUILDSTARTFLAG = true;
 }
 
+void AddOtherScenes(Editor* e, string dir, vector<string> &v1, vector<bool> &v2) {
+	for (string s : IO::GetFiles(dir)) {
+		if (s.size() > 7 && s.substr(s.size() - 6, string::npos) == ".scene") {
+			string pp = s.substr(s.find_last_of("\\")+1, string::npos);
+			for (string p2 : v1)
+				if (p2==pp)
+					goto cancel;
+			v1.push_back(pp);
+			v2.push_back(false);
+		}
+	cancel:;
+	}
+	vector<string> f;
+	IO::GetFolders(dir, &f);
+	for (string ff : f)
+		if (ff != "." && ff != "..")
+		AddOtherScenes(e, ff, v1, v2);
+}
+
 void Editor::ShowPrefs(Editor* e) {
 	e->editorLayer = 5;
+}
+
+void Editor::ShowCompileSett(Editor* e) {
+	e->includedScenes.resize(e->savedIncludedScenes);
+	e->includedScenesUse.resize(e->savedIncludedScenes);
+	AddOtherScenes(e, e->projectFolder + "Assets\\", e->includedScenes, e->includedScenesUse);
+	e->editorLayer = 7;
 }
 
 void Editor::SaveScene(Editor* e) {
@@ -1821,7 +2039,6 @@ void Editor::SaveScene(Editor* e) {
 
 
 void Editor::DoCompile() {
-	glutPostRedisplay();
 	buildEnd = false;
 	buildErrorPath = "";
 	buildProgressVec4 = white(1, 0.35f);
@@ -1837,7 +2054,6 @@ void Editor::DoCompile() {
 	buildProgressValue = 10;
 	buildLabel = "Build: merging assets...";
 	AddBuildLog(this, "Creating data files");
-	glutPostRedisplay();
 	/*copy files
 	AddBuildLog(this, "Copying: dummy source directory -> dummy target directory");
 	AddBuildLog(this, "Copying: dummy source directory2 -> dummy target directory2");
@@ -1848,6 +2064,8 @@ void Editor::DoCompile() {
 	if (!MergeAssets(this)) {
 		buildLabel = "Build: failed.";
 		buildProgressVec4 = red(1, 0.7f);
+		buildEnd = true;
+		return;
 	}
 	//compile
 	buildProgressValue = 50;

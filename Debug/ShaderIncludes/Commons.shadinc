@@ -1,10 +1,13 @@
 INSTART
 layout(location=0) in vec3 pos;
 layout(location=1) in vec2 texCoord;
+layout(location=2) in vec3 normal;
 INEND
 
 V2FSTART
-vec2 uv;
+vec2 v2f_uv;
+vec4 v2f_normal;
+float v2f_depth;
 V2FEND
 
 COMMONSTART
@@ -18,8 +21,13 @@ vec4 hdr2float (vec4 i) {
 	c.a = 1;
 	return c;
 }
-uniform mat4 _MV;
-uniform mat4 _P;
+float encodeDepth (float f) {
+	return 1.0/(f+1);
+}
+float decodeDepth (float f) {
+	return (1.0/f)+1;
+}
+uniform mat4 _MVP;
 uniform int _isForward;
 COMMONEND
 

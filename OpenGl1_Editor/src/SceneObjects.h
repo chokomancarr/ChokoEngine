@@ -84,7 +84,7 @@ protected:
 
 	static bool ParseBlend(Editor* e, string s);
 	vector<vector<int>> _matTriangles;
-	void Draw(Material* mat);
+	//void Draw(Material* mat);
 	//void Load();
 };
 
