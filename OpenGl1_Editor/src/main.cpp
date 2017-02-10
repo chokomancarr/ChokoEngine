@@ -1,5 +1,4 @@
 #define _USE_MATH_DEFINES
-#define IS_EDITOR
 #include <math.h>
 #include <iostream>
 #include <vector>
@@ -13,12 +12,12 @@
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include "Engine.h"
-#include "editor.h"
-#include "SceneObjects.h"
 #include <gl/GLUT.h>
 #include <thread>
 #include <mutex>
+#include "Engine.h"
+#include "editor.h"
+#include "SceneObjects.h"
 using namespace std;
 
 void InitGL(int argc, char* argv[]);
@@ -60,8 +59,6 @@ int main(int argc, char **argv)
 	editor = new Editor();
 	editor->dataPath = path.substr(0, path.find_last_of('\\') + 1);
 	editor->lockMutex = &lockMutex;
-
-	//AssetManager::Init("F:\\TestProject\\Release\\data");
 
 	//editor->ParseAsset("D:\\test.blend");
 	//editor->Compile();
@@ -357,15 +354,13 @@ void renderScene()
 		t++;
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glClearColor(0, 0, 0, 1.0f);
-		glEnable(GL_DEPTH_TEST);
+		glDisable(GL_DEPTH_TEST);
 		glDepthFunc(GL_LEQUAL);
 
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
-		//glMultMatrixf(glm::value_ptr(glm::perspective(60.0f, 1.0f, 0.1f, 100.0f))); //double fovy, double aspect, double zNear, double zFar
-		//glMultMatrixf(glm::value_ptr(glm::ortho(-1.0f, -1.0f, 1.0f, 1.0f, 0.1f, 100.0f)));
-
-		glDisable(GL_DEPTH_TEST);
 		DrawOverlay();
 		glutSwapBuffers();
 		redrawn = true;

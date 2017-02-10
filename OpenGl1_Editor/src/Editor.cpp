@@ -945,7 +945,7 @@ void Editor::ReadPrefs() {
 		char c;
 		strm >> c;
 		if ((byte)c > 1) {
-			_Error("Editor", "Strange byte in prefs file! " + strm.tellg());
+			_Error("Editor", "Strange byte in prefs file! " + to_string(strm.tellg()));
 			return;
 		}
 		includedScenesUse.push_back(c == 1);
@@ -1411,7 +1411,7 @@ void Editor::DrawHandles() {
 			uint sz = includedScenes.size();
 			Engine::Label(Display::width*0.2f + 15, Display::height*0.2f + 35, 12, "Included scenes: " + to_string(sz), font, white());
 			Engine::DrawQuad(Display::width*0.2f + 12, Display::height*0.2f + 50, Display::width*0.3f, 306, white(0.05f));
-			for (int a = 0; a < sz; a++) {
+			for (uint a = 0; a < sz; a++) {
 				includedScenesUse[a] = Engine::DrawToggle(Display::width*0.2f + 14, Display::height*0.2f + 51 + a*15, 14, checkbox, includedScenesUse[a], white(), ORIENT_HORIZONTAL);
 				Engine::Label(Display::width*0.2f + 30, Display::height*0.2f + 52 + a*15, 12, includedScenes[a], font, white());
 			}
@@ -1624,7 +1624,7 @@ void DoReloadAssets(Editor* e, string path, bool recursive, mutex* l) {
 					else continue;
 					int spos2 = min(min(sss.find_first_of(" ", spos + 1), sss.find_first_of(";", spos + 1)), sss.find_first_of("=", spos + 1));
 					if (spos2 == string::npos) {
-						long l = oStrm.tellp();
+						long l = (long)oStrm.tellp();
 						oStrm.seekp(l - 1);
 						continue;
 					}
@@ -1632,7 +1632,7 @@ void DoReloadAssets(Editor* e, string path, bool recursive, mutex* l) {
 					while (sss != "" && sss[0] == ' ' || sss[0] == '\t')
 						sss = sss.substr(1);
 					if (sss == ""){
-						long l = oStrm.tellp();
+						long l = (long)oStrm.tellp();
 						oStrm.seekp(l - 1);
 						continue;
 					}
@@ -1908,7 +1908,7 @@ bool MergeAssets(Editor* e) {
 				//uint size = (uint)(pos2 - pos - 6);
 				//_StreamWrite(&size, &file2, 4);
 				//file2.seekp(pos2);
-				if (pos2 > e->_assetDataSize * 100000000) {
+				if (pos2 > e->_assetDataSize * uint(10 << 6)) {
 					//file2 << etx;
 					file2.close();
 					nm = e->projectFolder + "Release\\data" + to_string(++incre);

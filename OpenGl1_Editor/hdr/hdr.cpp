@@ -55,10 +55,10 @@ unsigned char *hdr::read_hdr(const char *filename, unsigned int *w, unsigned int
     char buf[1024] = {0};
     char col[4] = {0};
     unsigned char *imagergbe;
-    float *image;
+    //float *image;
     int bFlippedX = 0;
     int bFlippedY = 0;
-    int cnt, x, y, i, component;
+    int cnt, i, component;
 
 	FILE* fp;
 	fopen_s(&fp, filename, "rb");
@@ -134,7 +134,7 @@ unsigned char *hdr::read_hdr(const char *filename, unsigned int *w, unsigned int
 
     /* Do the RLE compression stuff
      * Some of the RLE decoding stuff comes from ggLibrary */
-    for (y = 0; y < (*h); y++) {
+    for (unsigned int y = 0; y < (*h); y++) {
         int start = bFlippedY ? ((*h)-y-1)*(*w) : y*(*w);
         int step = bFlippedX ? -1 : 1;
 
@@ -155,7 +155,7 @@ unsigned char *hdr::read_hdr(const char *filename, unsigned int *w, unsigned int
                 int pos = start;
 
                 /* Keep going until the end of the scanline */
-                x = 0;
+                unsigned int x = 0;
                 while (x < (*w)) {
                     /* Check to see if we have a run */
                     unsigned char num;
@@ -199,7 +199,7 @@ unsigned char *hdr::read_hdr(const char *filename, unsigned int *w, unsigned int
              * All it contains is either runs or raw data, runs have
              * their header, which we check for right away. */
             int pos = start;
-            for (x=0; x<(*w); x++) {
+            for (unsigned int x=0; x<(*w); x++) {
                 if (x > 0) {
                     if (fread(col, 1, 4, fp) != 4) {
                         fprintf(stderr, "read_hdr(): unexpected EOF reading data\n");

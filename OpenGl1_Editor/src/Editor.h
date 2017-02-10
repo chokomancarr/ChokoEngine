@@ -289,7 +289,7 @@ public:
 	bool _showDebugInfo = true;
 	bool _showGrid = true;
 	bool _mouseJump = true;
-	int _assetDataSize = 10; //x100Mb
+	byte _assetDataSize = 10; //x100Mb
 	bool _cleanOnBuild = false;
 	string _blenderInstallationPath = "C:\\Program Files\\Blender Foundation\\Blender\\blender.exe";
 

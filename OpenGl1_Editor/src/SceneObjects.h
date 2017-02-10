@@ -125,6 +125,12 @@ private:
 #define COMP_UNDEF 0x00
 
 #define COMP_CAM 0x01
+enum CAM_CLEARTYPE {
+	CAM_CLEAR_NONE,
+	CAM_CLEAR_COLOR,
+	CAM_CLEAR_DEPTH,
+	CAM_CLEAR_SKY
+};
 class Camera : public Component {
 public:
 	Camera();
@@ -132,20 +138,29 @@ public:
 	bool ortographic;
 	float fov, orthoSize;
 	Rect screenPos;
+	CAM_CLEARTYPE clearType;
+	Vec4 clearColor;
+	float nearClip;
+	float farClip;
 
 	Vec3 camVerts[6];
 	static int camVertsIds[19];
-	
+
+	friend int main(int argc, char **argv);
+	friend void Serialize(Editor* e, SceneObject* o, ofstream* stream);
+	friend void Deserialize(ifstream& stream, SceneObject* obj);
+	friend class EB_Viewer;
+	friend class EB_Inspector;
+protected:
+	Camera(ifstream& stream, SceneObject* o, long pos = -1);
+
+	void ApplyGL();
+
 	void UpdateCamVerts();
 	void DrawEditor(EB_Viewer* ebv) override;
 	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos);
 	void Serialize(Editor* e, ofstream* stream) override;
 
-	friend int main(int argc, char **argv);
-	friend void Serialize(Editor* e, SceneObject* o, ofstream* stream);
-	friend void Deserialize(ifstream& stream, SceneObject* obj);
-protected:
-	Camera(ifstream& stream, SceneObject* o, long pos = -1);
 };
 
 #define COMP_MFT 0x02

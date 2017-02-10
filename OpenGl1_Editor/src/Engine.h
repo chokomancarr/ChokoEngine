@@ -34,7 +34,7 @@ typedef glm::quat Quat;
 class Color {
 public:
 	Color() : r(0), g(0), b(0), a(0) {}
-	Color(Vec4 v) : r(round(v.r * 255)), g(round(v.g * 255)), b(round(v.b * 255)), a(round(v.a * 255)) {}
+	Color(Vec4 v) : r((byte)round(v.r * 255)), g((byte)round(v.g * 255)), b((byte)round(v.b * 255)), a((byte)round(v.a * 255)) {}
 	
 	byte r, g, b, a;
 
@@ -52,7 +52,7 @@ public:
 	}
 };
 
-struct Rect {
+class Rect {
 public:
 	Rect(): x(0), y(0), w(1), h(1) {}
 	Rect(float x, float y, float w, float h) : x(x), y(y), w(w), h(h) {}
@@ -152,7 +152,7 @@ enum GBUFFERS {
 	GBUFFER_NUM_TEXTURES
 };
 
-struct Int2 {
+class Int2 {
 public:	
 	Int2(): x(0), y(0){}
 	Int2(int x, int y): x(x), y(y) {}
@@ -174,6 +174,7 @@ public:
 	friend int main(int argc, char **argv);
 protected:
 	static ofstream* stream;
+	static void Init(string path);
 };
 
 class EB_Browser_File;
@@ -232,7 +233,7 @@ enum InputKey {
 
 class Input {
 public:
-	static Vec2 mousePos, mousePosRelative;
+	static Vec2 mousePos, mousePosRelative, mouseDownPos;
 	static bool mouse0, mouse1, mouse2;
 	static byte mouse0State, mouse1State, mouse2State;
 	static string inputString;
@@ -409,7 +410,6 @@ public:
 
 class Engine {
 public:
-
 	static void BeginStencil(float x, float y, float w, float h);
 	static void EndStencil();
 	static void DrawTexture(float x, float y, float w, float h, Texture* texture);
@@ -435,6 +435,7 @@ public:
 	static byte EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4);
 	static bool DrawToggle(float x, float y, float s, Vec4 col, bool t);
 	static bool DrawToggle(float x, float y, float s, Texture* texture, bool t, Vec4 col=white(), ORIENTATION o = 0x00);
+	static float DrawSliderFill(float x, float y, float w, float h, float min, float max, float val, Vec4 background, Vec4 foreground);
 	//scaleType: 0=scale, 1=clip, 2=tile
 	static void DrawProgressBar(float x, float y, float w, float h, float progress, Vec4 background, Texture* foreground, Vec4 tint, int padding, byte scaleType);
 	static void DrawSky(Background* sky, float forX, float forY, float angleW, float rot);
@@ -500,12 +501,14 @@ public:
 	vector<SceneObject*> objects;
 	SceneSettings settings;
 
-	static void Load(int i);
+	static void Load(uint i);
 
 	friend int main(int argc, char **argv);
 	friend class Editor;
+	friend class AssetManager;
 protected:
 	static ifstream* strm;
+	static vector<string> sceneNames;
 	static vector<long> scenePoss;
 	static void ReadD0(ifstream& strm);
 	Scene() : sceneName("newScene") {}

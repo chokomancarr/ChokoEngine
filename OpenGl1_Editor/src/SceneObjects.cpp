@@ -46,6 +46,28 @@ Camera::Camera(ifstream& stream, SceneObject* o, long pos) : Component("Camera",
 	UpdateCamVerts();
 }
 
+void Camera::ApplyGL() {
+	switch (clearType) {
+	case CAM_CLEAR_COLOR:
+		glClearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
+		glClear(GL_COLOR_BUFFER_BIT);
+		break;
+	case CAM_CLEAR_DEPTH:
+		glClearDepth(1);
+		glClear(GL_DEPTH_BUFFER_BIT);
+		break;
+	}
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glScalef(1.2f, -1.2f, 1);
+	glMultMatrixf(glm::value_ptr(glm::perspective(fov*0.5f, Display::width*1.0f / Display::height, nearClip, farClip)));
+	glScalef(-1, 1, -1);
+	//rotation matrix here
+
+	Vec3 pos = -object->transform.worldPosition();
+	glTranslatef(pos.x, pos.y, pos.z);
+}
+
 void Camera::UpdateCamVerts() {
 	Vec3 cst = Vec3(cos(fov*0.5f * 3.14159265f / 180), sin(fov*0.5f * 3.14159265f / 180), tan(fov*0.5f * 3.14159265f / 180))*cos(fov*0.618f * 3.14159265f / 180);
 	camVerts[1] = Vec3(cst.x, cst.y, 1 - cst.z) * 2.0f;
@@ -71,8 +93,9 @@ void Camera::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 	Camera* cam = (Camera*)c;
 	if (DrawComponentHeader(e, v, pos, this)) {
 		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Field of view", e->font, white());
-		Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos + 17, v.b*0.7f, 16, grey1());
+		Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos + 17, v.b * 0.3f - 1, 16, grey1());
 		Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 20, 12, to_string(cam->fov), e->font, white());
+		cam->fov = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos + 17, v.b * 0.4f-1, 16, 0.1f, 179.9f, cam->fov, grey1(), white());
 		Engine::Label(v.r + 2, v.g + pos + 35, 12, "Frustrum", e->font, white());
 		Engine::Label(v.r + 4, v.g + pos + 50, 12, "X", e->font, white());
 		Engine::DrawQuad(v.r + 20, v.g + pos + 47, v.b*0.3f - 20, 16, grey1());
@@ -85,7 +108,7 @@ void Camera::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 		float dh = ((v.b*0.35f - 1)*Display::height / Display::width) - 1;
 		Engine::DrawQuad(v.r + v.b*0.65f, v.g + pos + 35, v.b*0.35f - 1, dh, grey1());
 		Engine::DrawQuad(v.r + v.b*0.65f + ((v.b*0.35f - 1)*screenPos.x), v.g + pos + 35 + dh*screenPos.y, (v.b*0.35f - 1)*screenPos.w, dh*screenPos.h, grey2());
-		pos += max(37 + dh, 87);
+		pos += (uint)max(37 + dh, 87);
 	}
 	else pos += 17;
 }

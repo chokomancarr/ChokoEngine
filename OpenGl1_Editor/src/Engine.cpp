@@ -19,6 +19,7 @@
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include "Defines.h"
 
 using namespace std;
 
@@ -274,13 +275,13 @@ void Engine::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4, 
 					break;
 				}
 			}
-			int x0 = (x + a*s*font->gw2h(s)*w - (s*font->gw2h(s)*w*st.size()*(font->alignment & 0x0f)*0.5f));
+			int x0 = (int)(x + a*s*font->gw2h(s)*w - (s*font->gw2h(s)*w*st.size()*(font->alignment & 0x0f)*0.5f));
 			if (x0 > Display::width)
 				break;
 
 			float r = Display::height * 1.0f / Display::width; //(x2 + a*s2*font->w2h*w*r) * 2 - 1, (1 - y2) * 2 - 1, s2*font->w2h * 2 * w*r, -s2 * 2
 			//DrawQuad(x + a*s*font->gw2h(s)*w - (s*font->gw2h(s)*w*st.size()*(font->alignment & 0x0f)*0.5f), y - s*(1 - ((font->alignment & 0xf0) >> 4)*0.5f), s*font->gw2h(s)*w, s, font->getpointer(s), Vec2(0, h + (1.0f / font->gchars(s))), Vec2(w, h + (1.0f / font->gchars(s))), Vec2(0, h), Vec2(w, h), true, Vec4);//Vec2(0, 0.49), Vec2(1, 0.49));//(1.0f / font->chars)), Vec2(1, h - (1.0f / font->chars)));
-			AddQuad(x0, (int)(y - s*(1 - ((font->alignment & 0xf0) >> 4)*0.5f)), s*font->gw2h(s)*w, s, Vec2(0, h + (1.0f / font->gchars(s))), Vec2(w, h + (1.0f / font->gchars(s))), Vec2(0, h), Vec2(w, h), &quadPoss, &indexes, &uvs, a * 4);
+			AddQuad((float)x0, round(y - s*(1 - ((font->alignment & 0xf0) >> 4)*0.5f)), s*font->gw2h(s)*w, s, Vec2(0, h + (1.0f / font->gchars(s))), Vec2(w, h + (1.0f / font->gchars(s))), Vec2(0, h), Vec2(w, h), &quadPoss, &indexes, &uvs, a * 4);
 		}
 		if (quadPoss.size() == 0) //happens if click showdesktop
 			return;
@@ -351,7 +352,7 @@ byte Engine::Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 hi
 	byte b = Button(x, y, w, h, normalVec4, LerpVec4(normalVec4, white(), 0.5f), LerpVec4(normalVec4, black(), 0.5f));
 	ALIGNMENT al = labelFont->alignment;
 	labelFont->alignment = ALIGN_MIDLEFT;
-	Label((int)(x + 2), (int)(y + 0.5f*h), labelSize, label, labelFont, labelVec4);
+	Label(round(x + 2), round(y + 0.5f*h), labelSize, label, labelFont, labelVec4);
 	labelFont->alignment = al;
 	return b;
 }
@@ -431,6 +432,22 @@ bool Engine::DrawToggle(float x, float y, float s, Texture* texture, bool t, Vec
 	if (b == MOUSE_RELEASE)
 		t = !t;
 	return t;
+}
+
+float Engine::DrawSliderFill(float x, float y, float w, float h, float min, float max, float val, Vec4 background, Vec4 foreground) {
+	DrawQuad(x, y, w, h, background);
+	val = clamp(val, min, max);
+	float v = val, vv = (val - min)/(max-min);
+	if (Rect(x, y, w, h).Inside(Input::mouseDownPos)) {
+		if (Input::mouse0) {
+			vv = clamp((Input::mousePos.x - x) / w, 0, 1);
+			v = vv*(max - min) + min;
+			DrawQuad(x + 1, y + 1, (w - 2)*vv, h - 2, foreground);
+			return v;
+		}
+	}
+	DrawQuad(x + 1, y + 1, (w - 2)*vv, h - 2, foreground*(Rect(x, y, w, h).Inside(Input::mousePos)? 1 : 0.8f));
+	return v;
 }
 
 void Engine::DrawProgressBar(float x, float y, float w, float h, float progress, Vec4 background, Texture* foreground, Vec4 tint, int padding, byte clip) {
@@ -735,6 +752,9 @@ void Input::UpdateMouseNKeyboard() {
 		mouse2State = min(mouse2State + 1, MOUSE_HOLD);
 	else
 		mouse2State = ((mouse2State == MOUSE_UP) | (mouse2State == 0)) ? 0 : MOUSE_UP;
+
+	if (mouse0State == MOUSE_DOWN)
+		mouseDownPos = mousePos;
 }
 
 ulong Engine::idCounter = 0;
@@ -750,13 +770,30 @@ ulong Engine::GetNewId() {
 
 //-----------------debug class-----------------------
 void Debug::Message(string c, string s) {
-
+#ifndef IS_EDITOR
+	*stream << c << ": " << s << endl;
+#endif
+	cout << "[i]" << c << ": " << s << endl;
 }
 void Debug::Warning(string c, string s) {
-
+#ifndef IS_EDITOR
+	*stream << c << ": " << s << endl;
+#endif
+	cout << "[w]" << c << ": " << s << endl;
 }
 void Debug::Error(string c, string s) {
-
+#ifndef IS_EDITOR
+	*stream << c << ": " << s << endl;
+#endif
+	cout << "[e]" << c << " says: " << s << endl;
+}
+ofstream* Debug::stream = nullptr;
+void Debug::Init(string s) {
+#ifndef IS_EDITOR
+	string ss = s + "Log.txt";
+	stream = new ofstream(ss.c_str(), ios::out | ios::trunc);
+	Message("Debug", "Log init'd");
+#endif
 }
 //-----------------io class-----------------------
 vector<string> IO::GetFiles(const string& folder, string ext)
@@ -1514,6 +1551,7 @@ glm::mat3 Display::uiMatrix = glm::mat3();
 //--------------------Input class--------------
 Vec2 Input::mousePos = Vec2(0, 0);
 Vec2 Input::mousePosRelative = Vec2(0, 0);
+Vec2 Input::mouseDownPos = Vec2(0, 0);
 
 //-------------------Material class--------------
 Material::Material() : _shader(-1), AssetObject(ASSETTYPE_MATERIAL) {
@@ -1721,12 +1759,12 @@ void Material::ApplyGL(glm::mat4& matrix) {
 				glUniform1i(a.first, *(int*)a.second);
 		for (auto a : vals[SHADER_FLOAT])
 			if (a.second != nullptr)
-				glUniform1i(a.first, *(float*)a.second);
+				glUniform1f(a.first, *(float*)a.second);
 		for (auto a : vals[SHADER_VEC2]) {
 			if (a.second == nullptr)
 				continue;
 			Vec2* v2 = (Vec2*)a.second;
-			glUniform2i(a.first, v2->x, v2->y);
+			glUniform2f(a.first, v2->x, v2->y);
 		}
 		int ti = 0;
 		for (auto a : vals[SHADER_SAMPLER]) {
@@ -1767,7 +1805,7 @@ template<typename T> void _Strm2Val(ifstream& strm, T &val) {
 	if (strm.fail()) {
 		Editor::instance->_Error("Strm2Val", "Fail bit raised! (probably eof reached)");
 	}
-	int rr(*(T*)c);
+	//int rr(*(T*)c);
 	val = 0 + *(T*)c;
 }
 
@@ -1790,9 +1828,9 @@ float* hdr2float(byte imagergbe[], int w, int h) {
 		}
 		else {
 			double v = (1.0f / 256.0f) * pow(2, (float)(exponent - 128));
-			image[i * 3 + 0] = (imagergbe[i * 4 + 0] + 0.5f) * v;
-			image[i * 3 + 1] = (imagergbe[i * 4 + 1] + 0.5f) * v;
-			image[i * 3 + 2] = (imagergbe[i * 4 + 2] + 0.5f) * v;
+			image[i * 3 + 0] = (float)((imagergbe[i * 4 + 0] + 0.5f) * v);
+			image[i * 3 + 1] = (float)((imagergbe[i * 4 + 1] + 0.5f) * v);
+			image[i * 3 + 2] = (float)((imagergbe[i * 4 + 2] + 0.5f) * v);
 		}
 	}
 	return image;
@@ -1904,19 +1942,36 @@ void Scene::ReadD0(ifstream& strm) {
 	ushort num;
 	_Strm2Val(strm, num);
 	for (ushort a = 0; a < num; a++) {
+		uint sz;
+		_Strm2Val(strm, sz);
+		long p1 = (long)strm.tellg();
+		scenePoss.push_back(p1);
+		char *c = new char[100];
+		strm >> c[0] >> c[0] >> c[1];
+		if (c[0] != 'S' || c[1] != 'N') {
+			Debug::Error("Scene Importer", "fatal: Scene Signature wrong!");
+			return;
+		}
+		strm.getline(c, 100, 0);
+		sceneNames.push_back(c);
+		strm.seekg(p1 + sz + 2);
+		Debug::Message("AssetManager", "Registered scene " + sceneNames[a] + " (" + to_string(sz) + " bytes)");
 	}
 }
 
-Scene::Scene(ifstream& stream, long pos) : sceneName("loadedScene") {
+Scene::Scene(ifstream& stream, long pos) : sceneName("") {
 	vector<SceneObject*>().swap(objects);
 	stream.seekg(pos);
 	char h1, h2;
 	stream >> h1 >> h2;
-	if (h1 != 'S' && h2 != 'N')
+	if (h1 != 'S' || h2 != 'N')
 		throw runtime_error("scene data corrupted");
+	char* cc = new char[100];
+	stream.getline(cc, 100, 0);
+	sceneName += string(cc);
 	char o;
 	stream >> o;
-	while (o == 'O' && !stream.eof()) {
+	while (!stream.eof() && o == 'O') {
 		SceneObject* sc = new SceneObject();
 		objects.push_back(sc);
 		Deserialize(stream, sc);
@@ -1927,10 +1982,11 @@ Scene::Scene(ifstream& stream, long pos) : sceneName("loadedScene") {
 
 Scene* Scene::active = nullptr;
 ifstream* Scene::strm = nullptr;
+vector<string> Scene::sceneNames = {};
 vector<long> Scene::scenePoss = {};
 
-void Scene::Load(int i) {
-	if (i >= scenePoss.size() || i < 0) {
+void Scene::Load(uint i) {
+	if (i >= scenePoss.size()) {
 		Debug::Error("Scene Loader", "Scene ID (" + to_string(i) + ") out of range!");
 		return;
 	}
@@ -1942,6 +1998,7 @@ void Scene::Load(int i) {
 void Scene::Save(Editor* e) {
 	ofstream sw(e->projectFolder + "Assets\\" + sceneName + ".scene", ios::out);
 	sw << "SN";
+	sw << sceneName << (char)0;
 	for (SceneObject* sc : objects) {
 		Serialize(e, sc, &sw);
 	}
@@ -2008,9 +2065,11 @@ void AssetManager::Init(string dpath) {
 			streams[bb.first]->seekg(bb.second);
 			uint sz;
 			_Strm2Val(*streams[bb.first], sz);
-			cout << "Registered asset " + names[aa.first][s] + " (" << sz << " bytes)" << endl;
+			Debug::Message("AssetManager", "Registered asset " + names[aa.first][s] + " (" + to_string(sz) + " bytes)");
 			streams[bb.first]->seekg(0);
 			s++;
 		}
 	}
+
+	Scene::ReadD0(strm);
 }

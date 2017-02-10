@@ -45,11 +45,11 @@ class KTMExporter():
             if obj.parent:
                 self.write(file2, " \x00prt " + obj.parent.name)
             poss = obj.location
-            self.write(file2, " \x00pos {:f} {:f} {:f}".format(poss[0], poss[1], poss[2]))
+            self.write(file2, " \x00pos {:f} {:f} {:f}".format(poss[0], poss[2], poss[1]))
             rott = obj.rotation_quaternion
             self.write(file2, " \x00rot {:f} {:f} {:f} {:f}".format(rott[0], rott[1], rott[2], rott[3]))
             scll = obj.scale
-            self.write(file2, " \x00scl {:f} {:f} {:f}\n".format(scll[0], scll[1], scll[2]))
+            self.write(file2, " \x00scl {:f} {:f} {:f}\n".format(scll[0], scll[2], scll[1]))
                 
             print ("!writing to: " + dirr + name + "_blend\\" + obj.name + ".mesh.meta")
             file = open(dirr + name + "_blend\\" + obj.name + ".mesh.meta", "wb")
@@ -60,13 +60,13 @@ class KTMExporter():
             m = obj.to_mesh(bpy.context.scene, True, 'PREVIEW')
             for loop in m.loops:
                 vert = m.vertices[loop.vertex_index]
-                self.write(file, "    vrt {} {:f} {:f} {:f}\r\n".format(loop.index, vert.co[0], vert.co[1], vert.co[2]))
-                self.write(file, "    nrm {} {:f} {:f} {:f}\r\n".format(loop.index, vert.normal[0], vert.normal[1], vert.normal[2]))
+                self.write(file, "    vrt {} {:f} {:f} {:f}\r\n".format(loop.index, vert.co[0], vert.co[2], vert.co[1]))
+                self.write(file, "    nrm {} {:f} {:f} {:f}\r\n".format(loop.index, vert.normal[0], vert.normal[2], vert.normal[1]))
             self.write(file, "\r\n")
             for poly in m.polygons:
                 self.write(file, "    tri {} ".format(poly.material_index))
-                for loop_index in poly.loop_indices:
-                    self.write(file, " {}".format(loop_index))
+                #for loop_index in poly.loop_indices:
+                self.write(file, " {} {} {}".format(poly.loop_indices[0], poly.loop_indices[2], poly.loop_indices[1]))
                 self.write(file, "\r\n")
             self.write(file, "\r\n")
             if len(m.uv_layers) > 0:

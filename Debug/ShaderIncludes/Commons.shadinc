@@ -28,7 +28,7 @@ float decodeDepth (float f) {
 	return (1.0/f)+1;
 }
 uniform mat4 _MVP;
-uniform int _isForward;
+uniform int _isForward = 1;
 COMMONEND
 
 FRAGSTART
