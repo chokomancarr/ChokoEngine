@@ -138,7 +138,7 @@ void MeshFilter::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 void MeshFilter::SetMesh(int i) {
 	_mesh = i;
 	if (i >= 0)
-		mesh = (Mesh*)Editor::instance->GetCache(ASSETTYPE_MESH, i);
+		mesh = _GetCache<Mesh>(ASSETTYPE_MESH, i);
 	else
 		mesh = nullptr;
 	object->Refresh();
@@ -147,7 +147,7 @@ void MeshFilter::SetMesh(int i) {
 void MeshFilter::_UpdateMesh(void* i) {
 	MeshFilter* mf = (MeshFilter*)i;
 	if (mf->_mesh >= 0) {
-		mf->mesh = (Mesh*)Editor::instance->GetCache(ASSETTYPE_MESH, mf->_mesh);
+		mf->mesh = _GetCache<Mesh>(ASSETTYPE_MESH, mf->_mesh);
 	}
 	else
 		mf->mesh = nullptr;
@@ -164,7 +164,7 @@ MeshFilter::MeshFilter(ifstream& stream, SceneObject* o, long pos) : Component("
 	ASSETTYPE t;
 	_Strm2Asset(stream, Editor::instance, t, _mesh);
 	if (_mesh >= 0)
-		mesh = (Mesh*)Editor::instance->GetCache(ASSETTYPE_MESH, _mesh);
+		mesh = _GetCache<Mesh>(ASSETTYPE_MESH, _mesh);
 	object->Refresh();
 }
 
@@ -183,7 +183,7 @@ MeshRenderer::MeshRenderer(ifstream& stream, SceneObject* o, long pos) : Compone
 		Material* m;
 		ASSETID i;
 		_Strm2Asset(stream, Editor::instance, t, i);
-		m = (Material*)Editor::instance->GetCache(ASSETTYPE_MATERIAL, i);
+		m = _GetCache<Material>(ASSETTYPE_MATERIAL, i);
 		materials.push_back(m);
 		_materials.push_back(i);
 	}
@@ -274,13 +274,13 @@ void MeshRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 void MeshRenderer::_UpdateMat(void* i) {
 	MeshRenderer* mf = (MeshRenderer*)i;
 	for (int q = mf->_materials.size() - 1; q >= 0; q--) {
-		mf->materials[q] = (Material*)Editor::instance->GetCache(ASSETTYPE_MATERIAL, mf->_materials[q]);
+		mf->materials[q] = _GetCache<Material>(ASSETTYPE_MATERIAL, mf->_materials[q]);
 	}
 }
 
 void MeshRenderer::_UpdateTex(void* i) {
 	MatVal_Tex* v = (MatVal_Tex*)i;
-	v->tex = (Texture*)Editor::instance->GetCache(ASSETTYPE_TEXTURE, v->id);
+	v->tex = _GetCache<Texture>(ASSETTYPE_TEXTURE, v->id);
 }
 
 void MeshRenderer::Serialize(Editor* e, ofstream* stream) {
@@ -324,7 +324,7 @@ TextureRenderer::TextureRenderer(ifstream& stream, SceneObject* o, long pos) : C
 }
 
 SceneScript::SceneScript(Editor* e, ASSETID id) : Component("script", COMP_SCR, DRAWORDER_NOT) {
-	e->GetCache(ASSETTYPE_SCRIPT_H, id);
+	e->GetCache(ASSETTYPE_SCRIPT_H, id); //will not be called in game (protected)
 }
 void SceneScript::Serialize(Editor* e, ofstream* stream) {
 	_StreamWriteAsset(e, stream, ASSETTYPE_SCRIPT_H, _script);

@@ -19,6 +19,7 @@
 #include <Windows.h>
 #include <jpeglib.h>
 #include <png.h>
+#include "Defines.h"
 
 using namespace std;
 
@@ -110,8 +111,28 @@ glm::mat4 Quat2Mat(Quat q);
 void _StreamWrite(const void* val, ofstream* stream, int size);
 void _StreamWriteAsset(Editor* e, ofstream* stream, ASSETTYPE t, ASSETID i);
 //void _Strm2Int(ifstream& strm, int& i), _Strm2Float(ifstream& strm, float& f), _Strm2Short(ifstream& strm, short& i);
-template<typename T> void _Strm2Val(ifstream& strm, T &val);
+
+template<typename T> void _Strm2Val(ifstream& strm, T &val) {
+	byte size = sizeof(T);
+	char c[8];
+	strm.read(c, size);
+	if (strm.fail()) {
+		Debug::Error("Strm2Val", "Fail bit raised! (probably eof reached)");
+	}
+	//int rr(*(T*)c);
+	val = 0 + *(T*)c;
+}
+
 string _Strm2Asset(ifstream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int maxL = 100);
+
+//void* __GetCacheE(ASSETTYPE t, ASSETID i);
+template<typename T> T* _GetCache(ASSETTYPE t, ASSETID i) {
+#ifdef IS_EDITOR
+	return static_cast<T*>(Editor::instance->GetCache(t, i));
+#else
+	return static_cast<T*>(AssetManager::GetCache(t, i));
+#endif
+}
 float* hdr2float(byte imagergbe[], int w, int h);
 
 //see SceneObjects.h
@@ -501,7 +522,7 @@ public:
 	vector<SceneObject*> objects;
 	SceneSettings settings;
 
-	static void Load(uint i);
+	static void Load(uint i), Load(string name);
 
 	friend int main(int argc, char **argv);
 	friend class Editor;
@@ -510,7 +531,7 @@ protected:
 	static ifstream* strm;
 	static vector<string> sceneNames;
 	static vector<long> scenePoss;
-	static void ReadD0(ifstream& strm);
+	static void ReadD0();
 	Scene() : sceneName("newScene") {}
 	Scene(ifstream& stream, long pos);
 	void Save(Editor* e);
@@ -524,9 +545,14 @@ class AssetManager {
 protected:
 	static unordered_map<ASSETTYPE, vector<string>> names;
 	static unordered_map<ASSETTYPE, vector<pair<byte, uint>>> dataLocs;
+	static unordered_map<ASSETTYPE, vector<void*>> dataCaches;
 	static vector<ifstream*> streams;
 
 	static void Init(string dpath);
+	static void* CacheFromName(string nm);
+	static ASSETID GetAssetId(string nm, ASSETTYPE &t);
+	static void* GetCache(ASSETTYPE t, ASSETID i);
+	static void* GenCache(ASSETTYPE t, ASSETID i);
 };
 
 #include "SceneObjects.h"

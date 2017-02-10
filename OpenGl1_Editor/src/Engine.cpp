@@ -20,6 +20,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include "Defines.h"
+#include "SceneScriptResolver.h"
 
 using namespace std;
 
@@ -771,19 +772,19 @@ ulong Engine::GetNewId() {
 //-----------------debug class-----------------------
 void Debug::Message(string c, string s) {
 #ifndef IS_EDITOR
-	*stream << c << ": " << s << endl;
+	*stream << "[i]" << c << ": " << s << endl;
 #endif
 	cout << "[i]" << c << ": " << s << endl;
 }
 void Debug::Warning(string c, string s) {
 #ifndef IS_EDITOR
-	*stream << c << ": " << s << endl;
+	*stream << "[w]" << c << ": " << s << endl;
 #endif
 	cout << "[w]" << c << ": " << s << endl;
 }
 void Debug::Error(string c, string s) {
 #ifndef IS_EDITOR
-	*stream << c << ": " << s << endl;
+	*stream << "[e]" << c << ": " << s << endl;
 #endif
 	cout << "[e]" << c << " says: " << s << endl;
 }
@@ -975,7 +976,7 @@ Transform* Transform::Translate(Vec3 v) {
 
 //-----------------mesh class------------------------
 Mesh::Mesh(Editor* e, int i) : AssetObject(ASSETTYPE_MESH) {
-	Mesh* m2 = (Mesh*)e->GetCache(type, i);
+	Mesh* m2 = _GetCache<Mesh>(type, i);
 	vertices = m2->vertices;
 	vertexCount = m2->vertexCount;
 	normals = m2->normals;
@@ -996,14 +997,14 @@ Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false) {
 	uint x;
 	stream >> a;
 	if (a != "KTO123") {
-		Editor::instance->_Error("Mesh Importer", "mesh metadata corrupted (wrong header)!");
+		Debug::Error("Mesh Importer", "mesh metadata corrupted (wrong header)!");
 	}
 	stream >> a;
 	if (a == "obj") {
 		stream >> name >> junk;
 	}
 	else {
-		Editor::instance->_Error("Mesh Importer", "mesh metadata corrupted (obj tag not found)!");
+		Debug::Error("Mesh Importer", "mesh metadata corrupted (obj tag not found)!");
 		return;
 	}
 	stream >> a;
@@ -1012,7 +1013,7 @@ Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false) {
 			Vec3 v;
 			stream >> x;
 			if (x != vertexCount) {
-				Editor::instance->_Error("Mesh Importer", "mesh metadata corrupted (vertex id not in order)!");
+				Debug::Error("Mesh Importer", "mesh metadata corrupted (vertex id not in order)!");
 				return;
 			}
 			vertexCount++;
@@ -1022,7 +1023,7 @@ Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false) {
 		else if (a == "nrm") {
 			stream >> x;
 			if (x >= vertexCount) {
-				Editor::instance->_Error("Mesh Importer", "mesh metadata corrupted (normal id exceed vertex id)!");
+				Debug::Error("Mesh Importer", "mesh metadata corrupted (normal id exceed vertex id)!");
 				return;
 			}
 			Vec3 n;
@@ -1034,7 +1035,7 @@ Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false) {
 		else if (a == "vcl") {
 			stream >> x;
 			if (x >= vertCount) {
-				Editor::instance->_Error("Mesh Importer", "mesh metadata corrupted (vertex color id exceed vertex id)!");
+				Debug::Error("Mesh Importer", "mesh metadata corrupted (vertex color id exceed vertex id)!");
 				return false;
 			}
 			stream >> mesh.vertices[x].Vec4.x >> mesh.vertices[x].Vec4.y >> mesh.vertices[x].Vec4.z;
@@ -1065,7 +1066,7 @@ Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false) {
 			Vec2 v;
 			stream >> x;
 			if (x >= vertexCount) {
-				Editor::instance->_Error("Mesh Importer", "mesh metadata corrupted (uv id exceed vertex id)!");
+				Debug::Error("Mesh Importer", "mesh metadata corrupted (uv id exceed vertex id)!");
 				return;
 			}
 			vertexCount++;
@@ -1076,7 +1077,7 @@ Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false) {
 			Vec2 v;
 			stream >> x;
 			if (x >= vertexCount) {
-				Editor::instance->_Error("Mesh Importer", "mesh metadata corrupted (uv id exceed vertex id)!");
+				Debug::Error("Mesh Importer", "mesh metadata corrupted (uv id exceed vertex id)!");
 				return;
 			}
 			vertexCount++;
@@ -1093,11 +1094,11 @@ Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false) {
 	int vs = vertices.size();
 	if (vs > 0) {
 		if (normals.size() != vs)
-			Editor::instance->_Error("Mesh Importer", "mesh metadata corrupted (normals incomplete)!");
+			Debug::Error("Mesh Importer", "mesh metadata corrupted (normals incomplete)!");
 		else if (uv0.size() == 0)
 			uv0.resize(vs);
 		else if (uv0.size() != vs)
-			Editor::instance->_Error("Mesh Importer", "mesh metadata corrupted (uv0 incomplete)!");
+			Debug::Error("Mesh Importer", "mesh metadata corrupted (uv0 incomplete)!");
 		if (uv1.size() == 0)
 			uv1.resize(vs);
 	}
@@ -1601,7 +1602,7 @@ Material::Material(string path) : AssetObject(ASSETTYPE_MATERIAL) {
 		return;
 	ASSETTYPE t;
 	Editor::instance->GetAssetInfo(shp, t, _shader);
-	shader = (ShaderBase*)Editor::instance->GetCache(ASSETTYPE_SHADER, _shader);
+	shader = _GetCache<ShaderBase>(ASSETTYPE_SHADER, _shader);
 	
 	if (shader == nullptr)
 		return;
@@ -1660,7 +1661,7 @@ Material::Material(string path) : AssetObject(ASSETTYPE_MATERIAL) {
 					string nm2(nmm2);
 					ASSETTYPE t;
 					Editor::instance->GetAssetInfo(nm2, t, ((MatVal_Tex*)vals[SHADER_SAMPLER][nMap[nm]])->id);
-					((MatVal_Tex*)vals[SHADER_SAMPLER][nMap[nm]])->tex = (Texture*)Editor::instance->GetCache(ASSETTYPE_TEXTURE, ((MatVal_Tex*)vals[SHADER_SAMPLER][nMap[nm]])->id);
+					((MatVal_Tex*)vals[SHADER_SAMPLER][nMap[nm]])->tex = _GetCache<Texture>(ASSETTYPE_TEXTURE, ((MatVal_Tex*)vals[SHADER_SAMPLER][nMap[nm]])->id);
 					break;
 				}
 			}
@@ -1798,22 +1799,15 @@ void _StreamWriteAsset(Editor* e, ofstream* stream, ASSETTYPE t, ASSETID i) {
 	(*stream) << p << (char)0;
 }
 
-template<typename T> void _Strm2Val(ifstream& strm, T &val) {
-	byte size = sizeof(T);
-	char c[8];
-	strm.read(c, size);
-	if (strm.fail()) {
-		Editor::instance->_Error("Strm2Val", "Fail bit raised! (probably eof reached)");
-	}
-	//int rr(*(T*)c);
-	val = 0 + *(T*)c;
-}
-
 string _Strm2Asset(ifstream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int max) {
 	char* c = new char[max];
 	strm.getline(c, max, (char)0);
 	string s(c);
+#ifdef IS_EDITOR
 	e->GetAssetInfo(s, t, i);
+#else
+	i = AssetManager::GetAssetId(s, t);
+#endif
 	return s;
 }
 
@@ -1886,6 +1880,7 @@ void Deserialize(ifstream& stream, SceneObject* obj) {
 	char* cc = new char[100];
 	stream.getline(cc, 100, 0);
 	obj->name = string(cc);
+	Debug::Message("Object Deserializer", "Deserializing object " + obj->name);
 	char c;
 	_Strm2Val(stream, obj->transform.position.x);
 	_Strm2Val(stream, obj->transform.position.y);
@@ -1898,7 +1893,7 @@ void Deserialize(ifstream& stream, SceneObject* obj) {
 	_Strm2Val(stream, obj->transform.scale.z);
 	stream >> c;
 	while (c != 'o') {
-		cout << "1 " << hex << stream.tellg() << endl;
+		Debug::Message("Object Deserializer", to_string(c) + " " + to_string(stream.tellg()));
 		if (c == 'O') {
 			SceneObject* sc = new SceneObject();
 			obj->AddChild(sc);
@@ -1906,6 +1901,7 @@ void Deserialize(ifstream& stream, SceneObject* obj) {
 		}
 		else if (c == 'C') {
 			stream >> c; //component type
+			Debug::Message("Object Deserializer", "component " + to_string(c) + " " + to_string((int)c));
 			switch (c) {
 			case COMP_CAM:
 				obj->AddComponent(new Camera(stream, obj));
@@ -1919,6 +1915,9 @@ void Deserialize(ifstream& stream, SceneObject* obj) {
 			case COMP_TRD:
 				obj->AddComponent(new TextureRenderer(stream, obj));
 				break;
+			case COMP_SCR:
+				//obj->AddComponent(SceneScriptResolver::instance);
+				break;
 			default:
 				char cc;
 				stream >> cc;
@@ -1928,33 +1927,34 @@ void Deserialize(ifstream& stream, SceneObject* obj) {
 				stream.seekg(ss-1);
 				break;
 			}
-			cout << "2 " << hex << stream.tellg() << endl;
+			Debug::Message("Object Deserializer", "2 " + to_string(stream.tellg()));
 			stream >> c;
 			if (c != 'c')
-				throw runtime_error("scene data corrupted(component)");
+				Debug::Error("Object Deserializer", "scene data corrupted(component)");
 		}
-		else throw runtime_error("scene data corrupted(2)");
+		else Debug::Error("Object Deserializer", "scene data corrupted(2)");
 		stream >> c;
 	}
 }
 
-void Scene::ReadD0(ifstream& strm) {
+void Scene::ReadD0() {
 	ushort num;
-	_Strm2Val(strm, num);
+	_Strm2Val(*strm, num);
 	for (ushort a = 0; a < num; a++) {
 		uint sz;
-		_Strm2Val(strm, sz);
-		long p1 = (long)strm.tellg();
-		scenePoss.push_back(p1);
 		char *c = new char[100];
-		strm >> c[0] >> c[0] >> c[1];
+		_Strm2Val(*strm, sz);
+		*strm >> c[0];
+		long p1 = (long)strm->tellg();
+		scenePoss.push_back(p1);
+		*strm >> c[0] >> c[1];
 		if (c[0] != 'S' || c[1] != 'N') {
 			Debug::Error("Scene Importer", "fatal: Scene Signature wrong!");
 			return;
 		}
-		strm.getline(c, 100, 0);
+		strm->getline(c, 100, 0);
 		sceneNames.push_back(c);
-		strm.seekg(p1 + sz + 2);
+		strm->seekg(p1 + sz + 1);
 		Debug::Message("AssetManager", "Registered scene " + sceneNames[a] + " (" + to_string(sz) + " bytes)");
 	}
 }
@@ -1985,14 +1985,25 @@ ifstream* Scene::strm = nullptr;
 vector<string> Scene::sceneNames = {};
 vector<long> Scene::scenePoss = {};
 
+void Scene::Load(string name) {
+	for (uint a = sceneNames.size() - 1; a >= 0; a--) {
+		if (sceneNames[a] == name) {
+			Load(a);
+			return;
+		}
+	}
+}
+
 void Scene::Load(uint i) {
 	if (i >= scenePoss.size()) {
 		Debug::Error("Scene Loader", "Scene ID (" + to_string(i) + ") out of range!");
 		return;
 	}
 	free(active);
+	Debug::Message("Scene Loader", "Loading scene " + to_string(i) + "...");
 	active = new Scene(*strm, scenePoss[i]);
 	active->sceneId = i;
+	Debug::Message("Scene Loader", "Loaded scene " + to_string(i) + "(" + sceneNames[i] + ")");
 }
 
 void Scene::Save(Editor* e) {
@@ -2020,6 +2031,7 @@ void Scene::Save(Editor* e) {
 
 unordered_map<ASSETTYPE, vector<string>> AssetManager::names = {};
 unordered_map<ASSETTYPE, vector<pair<byte, uint>>> AssetManager::dataLocs = {};
+unordered_map<ASSETTYPE, vector<void*>> AssetManager::dataCaches = {};
 vector<ifstream*> AssetManager::streams = {};
 void AssetManager::Init(string dpath) {
 	names.clear();
@@ -2027,8 +2039,9 @@ void AssetManager::Init(string dpath) {
 	vector<ifstream*>().swap(streams);
 
 	string pp = dpath + "0";
-	ifstream strm(pp.c_str(), ios::in | ios::binary);
-	if (!strm.is_open()) {
+	Scene::strm = new ifstream(pp.c_str(), ios::in | ios::binary);
+	ifstream* strm = Scene::strm;
+	if (!strm->is_open()) {
 		Debug::Error("AssetManager", "Fatal: cannot open data file 0!");
 		return;
 	}
@@ -2038,19 +2051,20 @@ void AssetManager::Init(string dpath) {
 	ASSETTYPE type;
 	uint pos;
 	char* c = new char[100];
-	strm >> c[0] >> c[1];
+	*strm >> c[0] >> c[1];
 	if (c[0] != 'D' || c[1] != '0') {
 		Debug::Error("AssetManager", "Fatal: file 0 has wrong signature!");
 		return;
 	}
-	_Strm2Val(strm, num);
+	_Strm2Val(*strm, num);
 	for (ushort a = 0; a < num; a++) {
-		_Strm2Val(strm, type);
-		_Strm2Val(strm, id);
-		_Strm2Val(strm, pos);
-		strm.getline(c, 100, (char)0);
+		_Strm2Val(*strm, type);
+		_Strm2Val(*strm, id);
+		_Strm2Val(*strm, pos);
+		strm->getline(c, 100, (char)0);
 		numDat = max(numDat, id);
-		dataLocs[type].push_back(pair<byte, uint>(id-1, pos));
+		dataLocs[type].push_back(pair<byte, uint>(id - 1, pos));
+		dataCaches[type].push_back(nullptr);
 		names[type].push_back(c);
 	}
 
@@ -2071,5 +2085,40 @@ void AssetManager::Init(string dpath) {
 		}
 	}
 
-	Scene::ReadD0(strm);
+	Scene::ReadD0();
+}
+
+void* AssetManager::CacheFromName(string nm) {
+	ASSETTYPE t;
+	
+	for (uint a = names[t].size() - 1; a >= 0; a--) {
+		if (names[t][a] == nm) {
+			return GetCache(t, a);
+		}
+	}
+	Debug::Warning("Asset Finder", "Asset not found for " + nm + "!");
+	return nullptr;
+}
+
+ASSETID AssetManager::GetAssetId(string nm, ASSETTYPE &t) {
+	for (auto q : names) {
+		for (uint a = q.second.size() - 1; a >= 0; a--) {
+			if (q.second[a] == nm) {
+				t = q.first;
+				return a;
+			}
+		}
+	}
+	t = ASSETTYPE_UNDEF;
+	return -1;
+}
+
+void* AssetManager::GetCache(ASSETTYPE t, ASSETID i) {
+	if (dataCaches[t][i] != nullptr)
+		return dataCaches[t][i];
+	else
+		return GenCache(t, i);
+}
+void* AssetManager::GenCache(ASSETTYPE t, ASSETID i) {
+	return nullptr;
 }

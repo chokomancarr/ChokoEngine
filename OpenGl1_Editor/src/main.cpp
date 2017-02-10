@@ -183,6 +183,9 @@ int main(int argc, char **argv)
 		//m.Save(editor->projectFolder + "Assets\\test.material");
 
 		ifstream strm(editor->projectFolder + "Assets\\newScene.scene", ios::in | ios::binary);
+		//AssetManager::Init("F:\\TestProject\\Release\\data");
+		//Scene::Load(0);
+		//editor->activeScene = Scene(*Scene::strm, Scene::scenePoss[0]);
 		editor->activeScene = Scene(strm, 0);
 
 		glEnable(GL_BLEND);

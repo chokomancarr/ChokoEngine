@@ -1141,9 +1141,9 @@ void Editor::GenerateScriptResolver() {
 	vcxOut.close();
 
 
-	string h = "#include <vector>\n#include \"Engine.h\"\ntypedef SceneScript*(*sceneScriptInstantiator)();\nclass SceneScriptResolver {\npublic:\n\tSceneScriptResolver();\n\tstd::vector<sceneScriptInstantiator> map;\n";
-	/*
-	h += "static SceneScript ";
+	string h = "#include <vector>\n#include \"Engine.h\"\ntypedef SceneScript*(*sceneScriptInstantiator)();\nclass SceneScriptResolver {\npublic:\n\tSceneScriptResolver();\n\tstatic SceneScriptResolver* instance;\n\tstd::vector<sceneScriptInstantiator> map;\n";
+	//*
+	h += "\n\tstatic SceneScript ";
 	for (int a = 0, b = headerAssets.size(); a < b; a++) {
 		h += "*_Inst" + to_string(a) + "()";
 		if (a == b - 1)
@@ -1151,20 +1151,20 @@ void Editor::GenerateScriptResolver() {
 		else
 			h += ", ";
 	}
-	*/
+	//*/
 	h += "};";
 	string s = "#include \"SceneScriptResolver.h\"\n#include \"Engine.h\"\n\n";
-	/*
+	//*
 	for (int a = 0, b = headerAssets.size(); a < b; a++) {
 		s += "#include \"..\\Assets\\" + headerAssets[a] + "\"\n";
 		string ss = headerAssets[a].substr(0, headerAssets[a].size()-2);
 		s += "SceneScript* SceneScriptResolver::_Inst" + to_string(a) + "() { return new " + ss + "(); }\n\n";
 	}
-	*/
-	s += "\n\nusing namespace std;\r\nSceneScriptResolver::SceneScriptResolver() {\n";
-	//for (int a = 0, b = headerAssets.size(); a < b; a++) {
-		//s += "\tmap.push_back(&_Inst" + to_string(a) + ");\n";
-	//}
+	//*/
+	s += "\n\nusing namespace std;\r\nSceneScriptResolver* SceneScriptResolver::instance = nullptr;\nSceneScriptResolver::SceneScriptResolver() {\n\tinstance = this;\n";
+	for (int a = 0, b = headerAssets.size(); a < b; a++) {
+		s += "\tmap.push_back(&_Inst" + to_string(a) + ");\n";
+	}
 	s += "}";
 	string cppO = projectFolder + "\\System\\SceneScriptResolver.cpp";
 	string hO = projectFolder + "\\System\\SceneScriptResolver.h";
@@ -1172,14 +1172,14 @@ void Editor::GenerateScriptResolver() {
 	remove(hO.c_str());
 	remove(cppO.c_str());
 
-	ofstream ofs (cppO);
+	ofstream ofs (cppO.c_str(), ios::out | ios::trunc);
 	ofs << s;
 	ofs.close();
-	SetFileAttributes(cppO.c_str(), FILE_ATTRIBUTE_HIDDEN);
-	ofs.open(hO);
+	//SetFileAttributes(cppO.c_str(), FILE_ATTRIBUTE_HIDDEN);
+	ofs.open(hO.c_str(), ios::out | ios::trunc);
 	ofs << h;
 	ofs.close();
-	SetFileAttributes(hO.c_str(), FILE_ATTRIBUTE_HIDDEN);
+	//SetFileAttributes(hO.c_str(), FILE_ATTRIBUTE_HIDDEN);
 }
 
 void Editor::NewScene() {
@@ -1908,7 +1908,7 @@ bool MergeAssets(Editor* e) {
 				//uint size = (uint)(pos2 - pos - 6);
 				//_StreamWrite(&size, &file2, 4);
 				//file2.seekp(pos2);
-				if (pos2 > e->_assetDataSize * uint(10 << 6)) {
+				if (pos2 > e->_assetDataSize * uint(10000000)) {
 					//file2 << etx;
 					file2.close();
 					nm = e->projectFolder + "Release\\data" + to_string(++incre);
