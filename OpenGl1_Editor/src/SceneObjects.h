@@ -88,11 +88,17 @@ protected:
 	//void Load();
 };
 
+enum TEX_FILTERING {
+	TEX_FILTER_POINT = 0x00,
+	TEX_FILTER_BILINEAR,
+	TEX_FILTER_TRILINEAR
+};
+
 class Texture : public AssetObject {
 public:
 	Texture(const string& path);
 	Texture(const string& path, bool mipmap);
-	Texture(const string& path, bool mipmap, bool nearest);
+	Texture(const string& path, bool mipmap, bool nearest, byte aniso);
 	//Texture(ifstream& stream, long pos);
 	~Texture(){ glDeleteTextures(1, &pointer); }
 	bool loaded;
@@ -100,8 +106,12 @@ public:
 	GLuint pointer;
 	friend int main(int argc, char **argv);
 	friend class Editor;
+	friend class EB_Inspector;
 private:
-	Texture(int i);
+	//Texture(int i);
+	byte _aniso = 0;
+	TEX_FILTERING _filter = TEX_FILTER_POINT;
+	bool _mipmap = true, _nearest = false;
 	static bool Parse(Editor* e, string path);
 	void Load();
 };

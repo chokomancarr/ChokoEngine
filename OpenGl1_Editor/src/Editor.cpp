@@ -156,6 +156,7 @@ void EBH_DrawItem(SceneObject* sc, Editor* e, Vec4* v, int& i, int indent) {
 	if (Engine::EButton((e->editorLayer == 0), v->r + xo + ((sc->childCount > 0) ? 16 : 0), v->g + EB_HEADER_SIZE + 1 + 17 * i, v->b - xo - ((sc->childCount > 0) ? 16 : 0), 16, grey2()) == MOUSE_RELEASE) {
 		e->selected = sc;
 		e->selectGlobal = false;
+		e->DeselectFile();
 	}
 	Engine::Label(v->r + 19 + xo, v->g + EB_HEADER_SIZE + 4 + 17 * i, 12, sc->name, e->font, white());
 	i++;
@@ -186,15 +187,18 @@ void EB_Hierarchy::Draw() {
 
 	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
 	glDisable(GL_DEPTH_TEST);
-	if (Engine::EButton((editor->editorLayer == 0), v.r, v.g + EB_HEADER_SIZE + 1, v.b, 16, Vec4(0.2f, 0.2f, 0.4f, 1)) == MOUSE_RELEASE) {
-		editor->selected = nullptr;
-		editor->selectGlobal = true;
-	}
-	Engine::Label(v.r + 19, v.g + EB_HEADER_SIZE + 4, 12, "Global", editor->font, white());
-	int i = 1;
-	for (SceneObject* sc : editor->activeScene.objects)
-	{
-		EBH_DrawItem(sc, editor, &v, i, 0);
+	if (editor->sceneLoaded) {
+		if (Engine::EButton((editor->editorLayer == 0), v.r, v.g + EB_HEADER_SIZE + 1, v.b, 16, Vec4(0.2f, 0.2f, 0.4f, 1)) == MOUSE_RELEASE) {
+			editor->selected = nullptr;
+			editor->selectGlobal = true;
+			editor->selectedFileType = ASSETTYPE_UNDEF;
+		}
+		Engine::Label(v.r + 19, v.g + EB_HEADER_SIZE + 4, 12, "Global", editor->font, white());
+		int i = 1;
+		for (SceneObject* sc : editor->activeScene.objects)
+		{
+			EBH_DrawItem(sc, editor, &v, i, 0);
+		}
 	}
 	Engine::EndStencil();
 }
@@ -307,6 +311,10 @@ void EB_Browser::Draw() {
 		if (DrawFileRect(v.r + 151 + ww, v.g + EB_HEADER_SIZE + (fileSize+1)* hh, fileSize, &files[ff], this)) {
 			//editor->_Message("1", files[ff].fullName);
 			editor->GetAssetInfo(files[ff].fullName, editor->selectedFileType, editor->selectedFile);
+			if (editor->selectedFileType != ASSETTYPE_UNDEF) {
+				editor->selectedFileName = files[ff].name;
+				editor->selectedFileCache = _GetCache<void>(editor->selectedFileType, editor->selectedFile);
+			}
 			//editor->_Message("1", files[ff].fullName + " " + to_string(editor->selectedFileType) + ":" + to_string(editor->selectedFile));
 		}
 		
@@ -724,35 +732,36 @@ void EB_Viewer::OnMousePress(int i) {
 				break;
 			}
 		}
-		modifying = 0;
+modifying = 0;
 	}
 }
 
 void EB_Viewer::OnMouseScr(bool up) {
-	scale += (up?0.1f:-0.1f);
+	scale += (up ? 0.1f : -0.1f);
 	scale = min(max(scale, 0.01f), 1000);
 }
 
-EB_Inspector::EB_Inspector(Editor* e, int x1, int y1, int x2, int y2): label("") {
+EB_Inspector::EB_Inspector(Editor* e, int x1, int y1, int x2, int y2) : label("") {
 	editorType = 3;
 	editor = e;
 	this->x1 = x1;
 	this->y1 = y1;
 	this->x2 = x2;
 	this->y2 = y2;
-	loaded = false;
 	lock = false;
 }
 
+/*
 void EB_Inspector::SelectAsset(EBI_Asset* e, string s) {
-	if (loaded && isAsset)
-		delete (obj);
-	obj = e;
-	isAsset = true;
-	label = s;
-	if (obj->correct)
-		loaded = true;
+if (loaded && isAsset)
+delete (obj);
+obj = e;
+isAsset = true;
+label = s;
+if (obj->correct)
+loaded = true;
 }
+*/
 
 void EBI_DrawObj(Vec4 v, Editor* editor, EB_Inspector* b, SceneObject* o) {
 	Engine::DrawTexture(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 18, 18, editor->object);
@@ -777,14 +786,14 @@ void EBI_DrawObj(Vec4 v, Editor* editor, EB_Inspector* b, SceneObject* o) {
 void EB_Inspector::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	CalcV(v);
+	DrawHeaders(editor, this, &v, "Inspector");// isAsset ? (loaded ? label : "No object selected") : nm);
 	string nm;
 	if (lock)
 		nm = (lockGlobal == 1) ? lockedObj->name : (lockGlobal == 2) ? "Scene settings" : "No object selected";
 	else
 		nm = (editor->selected != nullptr) ? editor->selected->name : editor->selectGlobal ? "Scene settings" : "No object selected";
-	DrawHeaders(editor, this, &v, "Inspector");// isAsset ? (loaded ? label : "No object selected") : nm);
 	lock = Engine::DrawToggle(v.r + v.b - EB_HEADER_PADDING - EB_HEADER_SIZE - 2, v.g, EB_HEADER_SIZE, editor->keylock, lock, lock ? Vec4(1, 1, 0, 1) : white(0.5f), ORIENT_HORIZONTAL);
-
+	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
 	if (!lock) {
 		lockGlobal = 0;
 		lockedObj = nullptr;
@@ -806,15 +815,36 @@ void EB_Inspector::Draw() {
 			Engine::Label(v.r, v.g + 23 + EB_HEADER_SIZE, 12, "Sky", editor->font, white());
 			editor->DrawAssetSelector(v.r + v.b*0.3f, v.g + 21 + EB_HEADER_SIZE, v.b*0.7f - 1, 14, grey2(), ASSETTYPE_HDRI, 12, editor->font, &editor->activeScene.settings.skyId);
 		}
-		else if(lockGlobal == 1) {
+		else if (lockGlobal == 1) {
 			EBI_DrawObj(v, editor, this, lockedObj);
 		}
 	}
-	else if (isAsset) {
-		if (loaded)
-			obj->Draw(editor, this, &v);
-		else
-			Engine::Label(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 12, "Select object to inspect.", editor->font, white());
+	else if (editor->selectedFileType != ASSETTYPE_UNDEF) {
+		Engine::Label(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 12, editor->selectedFileName, editor->font, white());
+		float off = v.g + EB_HEADER_SIZE;
+		switch (editor->selectedFileType) {
+		case ASSETTYPE_TEXTURE:
+			Texture* tex = (Texture*)editor->selectedFileCache;
+			float sz = min(v.b - 2, clamp(max(tex->width, tex->height), 16, editor->_maxPreviewSize));
+			Engine::DrawTexture(v.r + 1 + 0.5*(v.b - sz), off + 15, sz, sz, tex, DrawTex_Fit);
+			tex->_mipmap = Engine::DrawToggle(v.r + 2, off + sz + 17, 14, editor->checkbox, tex->_mipmap, white(), ORIENT_HORIZONTAL);
+			Engine::Label(v.r + 18, off + sz + 18, 12, "Use Mipmaps", editor->font, white());
+			Engine::Label(v.r + 18, off + sz + 33, 12, "Filtering", editor->font, white());
+			vector<string> filterNames = {"Point", "Bilinear", "Trilinear"};
+			if (Engine::EButton(editor->editorLayer == 0, v.r + v.b * 0.3f, off + sz + 33, v.b * 0.6f - 1, 14, grey2(), filterNames[tex->_filter], 12, editor->font, white()) == MOUSE_PRESS) {
+				editor->RegisterMenu(this, "", filterNames, { &_ApplyTexFilter0, &_ApplyTexFilter1, &_ApplyTexFilter2 }, 0, Vec2(v.r + v.b * 0.3f, off + sz + 33));
+			}
+			Engine::Label(v.r + 18, off + sz + 48, 12, "Aniso Level", editor->font, white());
+			Engine::DrawQuad(v.r + v.b * 0.3, off + sz + 47, v.b * 0.1 - 1, 14, grey2());
+			Engine::Label(v.r + v.b * 0.3 + 2, off + sz + 48, 12, to_string(tex->_aniso), editor->font, white());
+			tex->_aniso = round(Engine::DrawSliderFill(v.r + v.b * 0.4, off + sz + 47, v.b*0.7 - 1, 14, 0, 10, (float)tex->_aniso, grey2(), white()));
+			off += sz + 63;
+			break;
+		}
+
+		if (Engine::EButton(editor->editorLayer == 0, v.r + v.b - 81, off, 80, 14, grey2(), "Apply", 12, editor->font, white())) {
+
+		}
 	}
 	else if (editor->selectGlobal) {
 		//Engine::DrawTexture(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 18, 18, editor->object);
@@ -830,6 +860,7 @@ void EB_Inspector::Draw() {
 	}
 	else
 		Engine::Label(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 12, "Select object to inspect.", editor->font, white());
+	Engine::EndStencil();
 }
 
 void EB_Inspector::DrawVector3(Editor* e, Vec4 v, float dh, string label, Vec3& value) {
@@ -852,6 +883,17 @@ void EB_Inspector::DrawAsset(Editor* e, Vec4 v, float dh, string label, ASSETTYP
 	}
 	Engine::Label(v.r + v.b*0.19f + 2, v.g + dh + 2 + EB_HEADER_SIZE, 12, label, e->font, white());
 }
+
+void EB_Inspector::_ApplyTexFilter0(EditorBlock* b) {
+	((Texture*)(b->editor->selectedFileCache))->_filter = TEX_FILTER_POINT;
+}
+void EB_Inspector::_ApplyTexFilter1(EditorBlock* b) {
+	((Texture*)(b->editor->selectedFileCache))->_filter = TEX_FILTER_BILINEAR;
+}
+void EB_Inspector::_ApplyTexFilter2(EditorBlock* b) {
+	((Texture*)(b->editor->selectedFileCache))->_filter = TEX_FILTER_TRILINEAR;
+}
+
 
 void EB_ColorPicker::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
@@ -1141,7 +1183,7 @@ void Editor::GenerateScriptResolver() {
 	vcxOut.close();
 
 
-	string h = "#include <vector>\n#include \"Engine.h\"\ntypedef SceneScript*(*sceneScriptInstantiator)();\nclass SceneScriptResolver {\npublic:\n\tSceneScriptResolver();\n\tstatic SceneScriptResolver* instance;\n\tstd::vector<sceneScriptInstantiator> map;\n";
+	string h = "#include <vector>\n#include <fstream>\n#include \"Engine.h\"\ntypedef SceneScript*(*sceneScriptInstantiator)();\nclass SceneScriptResolver {\npublic:\n\tSceneScriptResolver();\n\tstatic SceneScriptResolver* instance;\n\tstd::vector<sceneScriptInstantiator> map;\n\tSceneScript* Resolve(ifstream& strm, SceneObject* o);\n";
 	//*
 	h += "\n\tstatic SceneScript ";
 	for (int a = 0, b = headerAssets.size(); a < b; a++) {
@@ -1384,6 +1426,7 @@ void Editor::DrawHandles() {
 
 				Engine::Label(Display::width*0.1f + 10, Display::height*0.1f + offy + 48, 12, "Background Brightness", font, white());
 				Engine::Button(Display::width*0.1f + 200, Display::height*0.1f + offy + 46, 70, 16, grey2(), to_string(backgroundAlpha), 12, font, white());
+				backgroundAlpha = (byte)Engine::DrawSliderFill(Display::width*0.1f + 271, Display::height*0.1f + offy + 46, 200, 16, 0, 100, backgroundAlpha, grey2(), white());
 			}
 
 			offy = 190;
@@ -1423,18 +1466,18 @@ void Editor::DrawHandles() {
 	}
 }
 
-void Editor::RegisterMenu(EditorBlock* block, string title, vector<string> names, vector<shortcutFunc> funcs, int padding) {
+void Editor::RegisterMenu(EditorBlock* block, string title, vector<string> names, vector<shortcutFunc> funcs, int padding, Vec2 pos) {
 	editorLayer = 1;
 	menuFuncIsSingle = false;
 	menuTitle = title;
 	menuBlock = block;
 	menuNames = names;
 	menuFuncs = funcs;
-	popupPos = Input::mousePos;
+	popupPos = pos;
 	menuPadding = padding;
 }
 
-void Editor::RegisterMenu(EditorBlock* block, string title, vector<string> names, dataFunc func, vector<void*> vals, int padding) {
+void Editor::RegisterMenu(EditorBlock* block, string title, vector<string> names, dataFunc func, vector<void*> vals, int padding, Vec2 pos) {
 	editorLayer = 1;
 	menuFuncIsSingle = true;
 	menuTitle = title;
@@ -1442,7 +1485,7 @@ void Editor::RegisterMenu(EditorBlock* block, string title, vector<string> names
 	menuNames = names;
 	menuFuncSingle = func;
 	menuFuncVals = vals;
-	popupPos = Input::mousePos;
+	popupPos = pos;
 	menuPadding = padding;
 }
 
@@ -1453,7 +1496,7 @@ Texture* Editor::GetRes(string name, bool mipmap) {
 	return GetRes(name, mipmap, false);
 }
 Texture* Editor::GetRes(string name, bool mipmap, bool nearest) {
-	return new Texture(dataPath + "res\\" + name + ".bmp", mipmap, nearest);
+	return new Texture(dataPath + "res\\" + name + ".bmp", mipmap, nearest, 0);
 }
 
 void Editor::_Message(string a, string b) {
@@ -1666,6 +1709,14 @@ void Editor::ClearLogs() {
 	}
 }
 
+void Editor::DeselectFile() { //do not free pointer as cache is reused
+	if (selectedFileType != ASSETTYPE_UNDEF) {
+		selectedFileName = "";
+		selectedFileType = ASSETTYPE_UNDEF;
+		selectedFileCache = nullptr;
+	}
+}
+
 void Editor::ResetAssetMap() {
 	normalAssets[ASSETTYPE_TEXTURE] = vector<string>();
 	normalAssets[ASSETTYPE_HDRI] = vector<string>();
@@ -1854,8 +1905,8 @@ bool MergeAssets(Editor* e) {
 			long long pos = file.tellp();
 			file << "0000" << null << f2.rdbuf() << null;
 			long long pos2 = file.tellp();
-			long long size = pos2 - pos - 6;
-			file.seekp(pos);
+			uint size = (uint)(pos2 - pos - 6);
+			file.seekp(pos + 1);
 			_StreamWrite(&size, &file, 4);
 			file.seekp(pos2);
 			f2.close();

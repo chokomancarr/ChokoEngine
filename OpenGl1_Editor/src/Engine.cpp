@@ -219,13 +219,24 @@ void Engine::EndStencil() {
 	glDisable(GL_DEPTH_TEST);
 }
 
-void Engine::DrawTexture(float x, float y, float w, float h, Texture* texture) {
-	DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer);
+void Engine::DrawTexture(float x, float y, float w, float h, Texture* texture, DrawTex_Scaling scl) {
+	if (scl == DrawTex_Stretch)
+		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer);
+	else if (scl == DrawTex_Fit) {
+		float w2h = ((float)texture->width) / texture->height;
+		if (w/h > w2h)
+			DrawQuad(x + 0.5*(w - h*w2h), y, h*w2h, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer);
+		else
+			DrawQuad(x, y + 0.5*(h - w/w2h), w, w/w2h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer);
+	}
+	else {
+		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer);
+	}
 }
-void Engine::DrawTexture(float x, float y, float w, float h, Texture* texture, float alpha) {
+void Engine::DrawTexture(float x, float y, float w, float h, Texture* texture, float alpha, DrawTex_Scaling scl) {
 	DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, Vec4(1, 1, 1, alpha));
 }
-void Engine::DrawTexture(float x, float y, float w, float h, Texture* texture, Vec4 tint) {
+void Engine::DrawTexture(float x, float y, float w, float h, Texture* texture, Vec4 tint, DrawTex_Scaling scl) {
 	DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint);
 }
 
@@ -756,6 +767,8 @@ void Input::UpdateMouseNKeyboard() {
 
 	if (mouse0State == MOUSE_DOWN)
 		mouseDownPos = mousePos;
+	else if (mouse0State == 0)
+		mouseDownPos = Vec2(-1, -1);
 }
 
 ulong Engine::idCounter = 0;
@@ -1316,9 +1329,9 @@ bool LoadBMP(string fileN, uint &x, uint &y, byte& channels, byte** data) {
 	return true;
 }
 
-Texture::Texture(const string& path) : Texture(path, true, false) {}
-Texture::Texture(const string& path, bool mipmap) : Texture(path, mipmap, false) {}
-Texture::Texture(const string& path, bool mipmap, bool nearest) : AssetObject(ASSETTYPE_TEXTURE) {
+Texture::Texture(const string& path) : Texture(path, true, false, 0) {}
+Texture::Texture(const string& path, bool mipmap) : Texture(path, mipmap, false, 0) {}
+Texture::Texture(const string& path, bool mipmap, bool nearest, byte aniso) : AssetObject(ASSETTYPE_TEXTURE) {
 	string sss = path.substr(path.find_last_of('.'), string::npos);
 	byte *data;
 	byte chn;
@@ -1350,11 +1363,13 @@ Texture::Texture(const string& path, bool mipmap, bool nearest) : AssetObject(AS
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (nearest) ? GL_NEAREST : GL_LINEAR);
 	if (mipmap) glGenerateMipmap(GL_TEXTURE_2D);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (mipmap) ? GL_LINEAR_MIPMAP_LINEAR : (nearest)? GL_NEAREST : GL_LINEAR);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	loaded = true;
 	//cout << "image loaded: " << width << "x" << height << endl;
 }
 
+//IMG [channels] [xxxx] [yyyy] [rgb=0, bgr=1] []
 bool Texture::Parse(Editor* e, string path) {
 	string sss = path.substr(path.find_last_of('.'), string::npos);
 	byte *data = nullptr;
@@ -1799,6 +1814,9 @@ void _StreamWriteAsset(Editor* e, ofstream* stream, ASSETTYPE t, ASSETID i) {
 	(*stream) << p << (char)0;
 }
 
+ASSETID _Strm2H(ifstream& strm) {
+	return -1;
+}
 string _Strm2Asset(ifstream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int max) {
 	char* c = new char[max];
 	strm.getline(c, max, (char)0);
@@ -1916,7 +1934,9 @@ void Deserialize(ifstream& stream, SceneObject* obj) {
 				obj->AddComponent(new TextureRenderer(stream, obj));
 				break;
 			case COMP_SCR:
-				//obj->AddComponent(SceneScriptResolver::instance);
+#ifndef IS_EDITOR
+				//obj->AddComponent(SceneScriptResolver::instance->Resolve(stream, obj));
+#endif
 				break;
 			default:
 				char cc;
@@ -2102,10 +2122,10 @@ void* AssetManager::CacheFromName(string nm) {
 
 ASSETID AssetManager::GetAssetId(string nm, ASSETTYPE &t) {
 	for (auto q : names) {
-		for (uint a = q.second.size() - 1; a >= 0; a--) {
-			if (q.second[a] == nm) {
+		for (uint a = q.second.size(); a > 0; a--) {
+			if (q.second[a-1] == nm) {
 				t = q.first;
-				return a;
+				return a-1;
 			}
 		}
 	}

@@ -202,6 +202,7 @@ public:
 	string name;
 };
 
+/*
 class I_EBI_ValueCollection {
 public:
 	vector<I_EBI_Value> vals;
@@ -230,20 +231,19 @@ public:
 
 	void Draw(Editor* e, EditorBlock* b, Vec4* v);
 };
+*/
 
 class EB_Inspector : public EditorBlock {
 public:
 	EB_Inspector(Editor* e, int x1, int y1, int x2, int y2);
 
-	bool isAsset;
-	EBI_Asset* obj;
 	string label;
 
-	bool loaded = false, lock = false;
+	bool lock = false;
 	SceneObject* lockedObj;
 	byte lockGlobal;
 
-	void SelectAsset(EBI_Asset* e, string s);
+	//void SelectAsset(EBI_Asset* e, string s);
 	void Deselect();
 	void Draw();
 	void Refresh() {}
@@ -254,6 +254,8 @@ public:
 	static void DrawVector4(Editor* e, Vec4 v, float dh, string label, Vec4& value);
 	static void DrawVec4(Editor* e, Vec4 v, float dh, string label, Vec4& col);
 	static void DrawAsset(Editor* e, Vec4 v, float dh, string label, ASSETTYPE type);
+
+	static void _ApplyTexFilter0(EditorBlock* e), _ApplyTexFilter1(EditorBlock* e), _ApplyTexFilter2(EditorBlock* e);
 	//static void DrawTexture(Editor* e, Vec4 v, string label, Texture* tex, Vec4& uv);
 };
 
@@ -289,6 +291,7 @@ public:
 	bool _showDebugInfo = true;
 	bool _showGrid = true;
 	bool _mouseJump = true;
+	ushort _maxPreviewSize = 256;
 	byte _assetDataSize = 100; //x10Mb
 	bool _cleanOnBuild = false;
 	string _blenderInstallationPath = "C:\\Program Files\\Blender Foundation\\Blender\\blender.exe";
@@ -376,8 +379,11 @@ public:
 	vector<bool> includedScenesUse;
 	ushort savedIncludedScenes;
 
+	string selectedFileName;
 	ASSETTYPE selectedFileType;
 	ASSETID selectedFile;
+	void* selectedFileCache;
+	void DeselectFile();
 
 	glm::mat4 viewMatrix;
 	bool persp;
@@ -413,8 +419,8 @@ public:
 	void UpdateLerpers();
 	void DrawHandles();
 
-	void RegisterMenu(EditorBlock* block, string title, vector<string> names, vector<shortcutFunc> funcs, int padding);
-	void RegisterMenu(EditorBlock* block, string title, vector<string> names, dataFunc func, vector<void*> vals, int padding);
+	void RegisterMenu(EditorBlock* block, string title, vector<string> names, vector<shortcutFunc> funcs, int padding, Vec2 pos = Input::mousePos);
+	void RegisterMenu(EditorBlock* block, string title, vector<string> names, dataFunc func, vector<void*> vals, int padding, Vec2 pos = Input::mousePos);
 
 	static Texture* GetRes(string name);
 	static Texture* GetRes(string name, bool mipmap);

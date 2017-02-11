@@ -122,6 +122,7 @@ template<typename T> void _Strm2Val(ifstream& strm, T &val) {
 	//int rr(*(T*)c);
 	val = 0 + *(T*)c;
 }
+ASSETID _Strm2H(ifstream& strm);
 
 string _Strm2Asset(ifstream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int maxL = 100);
 
@@ -429,13 +430,19 @@ public:
 	static float delta;
 };
 
+enum DrawTex_Scaling {
+	DrawTex_Fit,
+	DrawTex_Crop,
+	DrawTex_Stretch
+};
+
 class Engine {
 public:
 	static void BeginStencil(float x, float y, float w, float h);
 	static void EndStencil();
-	static void DrawTexture(float x, float y, float w, float h, Texture* texture);
-	static void DrawTexture(float x, float y, float w, float h, Texture* texture, float alpha);
-	static void DrawTexture(float x, float y, float w, float h, Texture* texture, Vec4 tint);
+	static void DrawTexture(float x, float y, float w, float h, Texture* texture, DrawTex_Scaling scl = DrawTex_Stretch);
+	static void DrawTexture(float x, float y, float w, float h, Texture* texture, float alpha, DrawTex_Scaling scl = DrawTex_Stretch);
+	static void DrawTexture(float x, float y, float w, float h, Texture* texture, Vec4 tint, DrawTex_Scaling scl = DrawTex_Stretch);
 	static void DrawLine(Vec2 v1, Vec2 v2, Vec4 col, float width);
 	static void DrawLine(Vec3 v1, Vec3 v2, Vec4 col, float width);
 	static void DrawLineW(Vec3 v1, Vec3 v2, Vec4 col, float width);
@@ -542,6 +549,8 @@ class AssetManager {
 	friend class Engine;
 	friend class Scene;
 	friend class SceneObject;
+	template<typename T> friend T* _GetCache(ASSETTYPE t, ASSETID i);
+	friend string _Strm2Asset(ifstream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int max);
 protected:
 	static unordered_map<ASSETTYPE, vector<string>> names;
 	static unordered_map<ASSETTYPE, vector<pair<byte, uint>>> dataLocs;

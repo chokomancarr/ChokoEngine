@@ -32,15 +32,17 @@ uniform int _isForward = 1;
 COMMONEND
 
 FRAGSTART
-layout (location=0) out vec4 outColor;
-layout (location=1) out vec4 outNormal; 
-layout (location=2) out float outDepth;
+layout (location=0) out vec4 outColor; //rgb occlu
+layout (location=1) out vec3 outNormal; //xyz []
+layout (location=2) out vec2 outSpec; //spec gloss [] []
+layout (location=3) out float outDepth; //z
 
-void Output(vec3 col, vec3 norm, float spec, float gloss, float z) {
+void Output(vec3 col, vec3 norm, float spec, float gloss, float occlu, float z) {
 	outColor.rgb = col;
 	outColor.a = max(spec, _isForward);
-	outNormal.rgb = norm;
-	outNormal.a = gloss;
+	outNormal = norm;
+	outSpec.r = spec;
+	outSpec.g = gloss;
 	outDepth = z;
 }
 FRAGEND
