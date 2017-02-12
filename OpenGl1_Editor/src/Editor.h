@@ -380,6 +380,7 @@ public:
 	ushort savedIncludedScenes;
 
 	string selectedFileName;
+	string selectedFilePath;
 	ASSETTYPE selectedFileType;
 	ASSETID selectedFile;
 	void* selectedFileCache;

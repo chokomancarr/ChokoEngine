@@ -98,7 +98,7 @@ class Texture : public AssetObject {
 public:
 	Texture(const string& path);
 	Texture(const string& path, bool mipmap);
-	Texture(const string& path, bool mipmap, bool nearest, byte aniso);
+	Texture(const string& path, bool mipmap, TEX_FILTERING filter, byte aniso);
 	//Texture(ifstream& stream, long pos);
 	~Texture(){ glDeleteTextures(1, &pointer); }
 	bool loaded;
@@ -107,13 +107,14 @@ public:
 	friend int main(int argc, char **argv);
 	friend class Editor;
 	friend class EB_Inspector;
+	friend void EBI_DrawAss_Tex(Vec4 v, Editor* editor, EB_Inspector* b, float &off);
 private:
-	//Texture(int i);
+	Texture(int i, Editor* e); //for caches
 	byte _aniso = 0;
 	TEX_FILTERING _filter = TEX_FILTER_POINT;
-	bool _mipmap = true, _nearest = false;
+	bool _mipmap = true, _repeat = false;
 	static bool Parse(Editor* e, string path);
-	void Load();
+	void _ApplyPrefs(const string& p);
 };
 
 class Background : public AssetObject {
@@ -129,7 +130,6 @@ public:
 private:
 	Background(int i);
 	static bool Parse(string path);
-	//void Load() {}
 };
 
 #define COMP_UNDEF 0x00

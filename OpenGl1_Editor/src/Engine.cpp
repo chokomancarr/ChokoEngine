@@ -1329,9 +1329,9 @@ bool LoadBMP(string fileN, uint &x, uint &y, byte& channels, byte** data) {
 	return true;
 }
 
-Texture::Texture(const string& path) : Texture(path, true, false, 0) {}
-Texture::Texture(const string& path, bool mipmap) : Texture(path, mipmap, false, 0) {}
-Texture::Texture(const string& path, bool mipmap, bool nearest, byte aniso) : AssetObject(ASSETTYPE_TEXTURE) {
+Texture::Texture(const string& path) : Texture(path, true, TEX_FILTER_TRILINEAR, 5) {}
+Texture::Texture(const string& path, bool mipmap) : Texture(path, mipmap, mipmap? TEX_FILTER_TRILINEAR : TEX_FILTER_BILINEAR, 5) {}
+Texture::Texture(const string& path, bool mipmap, TEX_FILTERING filter, byte aniso) : AssetObject(ASSETTYPE_TEXTURE), _mipmap(mipmap), _filter(filter), _aniso(aniso) {
 	string sss = path.substr(path.find_last_of('.'), string::npos);
 	byte *data;
 	byte chn;
@@ -1360,17 +1360,67 @@ Texture::Texture(const string& path, bool mipmap, bool nearest, byte aniso) : As
 	glBindTexture(GL_TEXTURE_2D, pointer);
 	if (chn == 3) glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, rgb, GL_UNSIGNED_BYTE, data);
 	else glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, rgba, GL_UNSIGNED_BYTE, data);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (nearest) ? GL_NEAREST : GL_LINEAR);
 	if (mipmap) glGenerateMipmap(GL_TEXTURE_2D);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (mipmap) ? GL_LINEAR_MIPMAP_LINEAR : (nearest)? GL_NEAREST : GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (mipmap && (filter == TEX_FILTER_TRILINEAR)) ? GL_LINEAR_MIPMAP_LINEAR : (filter == TEX_FILTER_POINT)? GL_NEAREST : GL_LINEAR);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso);
 	glBindTexture(GL_TEXTURE_2D, 0);
+	free(data);
 	loaded = true;
 	//cout << "image loaded: " << width << "x" << height << endl;
 }
 
-//IMG [channels] [xxxx] [yyyy] [rgb=0, bgr=1] []
+Texture::Texture(int i, Editor* e) : AssetObject(ASSETTYPE_TEXTURE) {
+	string p = e->projectFolder + "Assets\\" + e->normalAssets[ASSETTYPE_TEXTURE][i] + ".meta";
+	ifstream strm(p, ios::in | ios::binary);
+	if (strm.is_open()) {
+		byte chn;
+		GLenum rgb = GL_RGB, rgba = GL_RGBA;
+		vector<char> hd(4);
+		strm.read((&hd[0]), 3);
+		if (hd[0] != 'I' || hd[1] != 'M' || hd[2] != 'G') {
+			e->_Error("Image Cacher", "Image cache header wrong! " + p);
+			return;
+		}
+		byte bb;
+		_Strm2Val<byte>(strm, chn);
+		_Strm2Val<uint>(strm, width);
+		_Strm2Val<uint>(strm, height);
+		_Strm2Val<byte>(strm, bb);
+		if (bb == 1) {
+			rgb = GL_BGR;
+			rgba = GL_BGRA;
+		}
+		_Strm2Val<byte>(strm, _aniso);
+		_Strm2Val<byte>(strm, bb);
+		_filter = (TEX_FILTERING)bb;
+		_Strm2Val<byte>(strm, bb);
+		_mipmap = (bb & 0xf0) == 0xf0;
+		_repeat = (bb & 0x0f) == 0x0f;
+		strm.read((&hd[0]), 4);
+		if (hd[0] != 'D' || hd[1] != 'A' || hd[2] != 'T' || hd[3] != 'A') {
+			e->_Error("Image Cacher", "Image cache data tag wrong! " + p);
+			return;
+		}
+		byte* data = new byte[chn*width*height];
+		strm.read((char*)data, chn*width*height);
+		strm.close();
+
+		glGenTextures(1, &pointer);
+		glBindTexture(GL_TEXTURE_2D, pointer);
+		if (chn == 3) glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, rgb, GL_UNSIGNED_BYTE, data);
+		else glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, rgba, GL_UNSIGNED_BYTE, data);
+		if (_mipmap) glGenerateMipmap(GL_TEXTURE_2D);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (_mipmap && (_filter == TEX_FILTER_TRILINEAR)) ? GL_LINEAR_MIPMAP_LINEAR : (_filter == TEX_FILTER_POINT) ? GL_NEAREST : GL_LINEAR);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, _aniso);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		free(data);
+		loaded = true;
+	}
+}
+
+//IMG [channels] [xxxx] [yyyy] [rgb=0, bgr=1] [aniso] [filter] [mipmap 0xf0 | repeat 0x0f] DATA [data]
 bool Texture::Parse(Editor* e, string path) {
+	byte ans = 5, flt = 2, mnr = 0xf0;
 	string sss = path.substr(path.find_last_of('.'), string::npos);
 	byte *data = nullptr;
 	byte chn;
@@ -1397,16 +1447,53 @@ bool Texture::Parse(Editor* e, string path) {
 	if (data == nullptr)
 		return false;
 	string ss(path + ".meta");
+	ifstream iStrm(ss, ios::in | ios::binary); //if exists, read old prefs
+	if (iStrm.is_open()) {
+		char* c = new char[16];
+		iStrm.read(c, 16);
+		if (c[0] == 'I' && c[1] == 'M' && c[2] == 'G') {
+			byte* cb = (byte*)c;
+			ans = cb[13];
+			flt = cb[14];
+			mnr = cb[15];
+		}
+		free(c);
+	}
 	ofstream str(ss, ios::out | ios::trunc | ios::binary);
 	str << "IMG";
 	str << chn;
 	_StreamWrite(&width, &str, 4);
 	_StreamWrite(&height, &str, 4);
 	str << (byte)((rgb == GL_RGB)? 0 : 1);
+	str << ans << flt << mnr;
 	str << "DATA";
 	_StreamWrite(data, &str, width*height*chn);
 	str.close();
+	free(data);
 	return true;
+}
+
+void Texture::_ApplyPrefs(const string& p) {
+	ifstream iStrm(p, ios::in | ios::binary | ios::ate);
+	if (iStrm.is_open()) {
+		long long sz = iStrm.tellg();
+		vector<byte> data(sz);
+		iStrm.seekg(0);
+		iStrm.read((char*)(&data[0]), sz);
+		iStrm.close();
+
+		data[13] = _aniso;
+		data[14] = _filter;
+		data[15] = (_mipmap ? 0xf0 : 0) | (_repeat ? 0x0f : 0);
+
+		remove(p.c_str());
+		ofstream strm(p, ios::out | ios::binary | ios::trunc);
+		if (strm.is_open()) {
+			strm.write((char*)(&data[0]), sz);
+			strm.close();
+			SetFileAttributes(p.c_str(), FILE_ATTRIBUTE_HIDDEN);
+		}
+	}
 }
 
 Background::Background(const string& path) : width(0), height(0), AssetObject(ASSETTYPE_HDRI) {
@@ -1430,6 +1517,7 @@ Background::Background(const string& path) : width(0), height(0), AssetObject(AS
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	loaded = true;
+	free(data2);
 	//cout << "HDR Image loaded: " << width << "x" << height << endl;
 }
 
@@ -1448,6 +1536,7 @@ bool Background::Parse(string path) {
 	str << "DATA";
 	_StreamWrite(data, &str, width*height*4);
 	str.close();
+	free(data);
 	return true;
 }
 
@@ -1609,7 +1698,7 @@ Material::Material(string path) : AssetObject(ASSETTYPE_MATERIAL) {
 		cerr << "file not supported" << endl;
 		return;
 	}
-
+	free(c);
 	char* nmm = new char[100];
 	stream.getline(nmm, 100, (char)0);
 	string shp(nmm);
@@ -1644,7 +1733,7 @@ Material::Material(string path) : AssetObject(ASSETTYPE_MATERIAL) {
 	for (int r = 0; r < vs; r++) {
 		char ii;
 		stream >> ii;
-		char* nmm = new char[100];
+		nmm = new char[100];
 		stream.getline(nmm, 100, (char)0);
 		string nm(nmm);
 		switch (ii) {
@@ -1677,12 +1766,14 @@ Material::Material(string path) : AssetObject(ASSETTYPE_MATERIAL) {
 					ASSETTYPE t;
 					Editor::instance->GetAssetInfo(nm2, t, ((MatVal_Tex*)vals[SHADER_SAMPLER][nMap[nm]])->id);
 					((MatVal_Tex*)vals[SHADER_SAMPLER][nMap[nm]])->tex = _GetCache<Texture>(ASSETTYPE_TEXTURE, ((MatVal_Tex*)vals[SHADER_SAMPLER][nMap[nm]])->id);
+					free(nmm2);
 					break;
 				}
 			}
 			break;
 		}
 	}
+	free(nmm);
 	stream.close();
 }
 
@@ -1826,6 +1917,7 @@ string _Strm2Asset(ifstream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int max)
 #else
 	i = AssetManager::GetAssetId(s, t);
 #endif
+	free(c);
 	return s;
 }
 
@@ -1898,6 +1990,7 @@ void Deserialize(ifstream& stream, SceneObject* obj) {
 	char* cc = new char[100];
 	stream.getline(cc, 100, 0);
 	obj->name = string(cc);
+	free(cc);
 	Debug::Message("Object Deserializer", "Deserializing object " + obj->name);
 	char c;
 	_Strm2Val(stream, obj->transform.position.x);

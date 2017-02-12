@@ -313,6 +313,7 @@ void EB_Browser::Draw() {
 			editor->GetAssetInfo(files[ff].fullName, editor->selectedFileType, editor->selectedFile);
 			if (editor->selectedFileType != ASSETTYPE_UNDEF) {
 				editor->selectedFileName = files[ff].name;
+				editor->selectedFilePath = files[ff].fullName;
 				editor->selectedFileCache = _GetCache<void>(editor->selectedFileType, editor->selectedFile);
 			}
 			//editor->_Message("1", files[ff].fullName + " " + to_string(editor->selectedFileType) + ":" + to_string(editor->selectedFile));
@@ -783,6 +784,24 @@ void EBI_DrawObj(Vec4 v, Editor* editor, EB_Inspector* b, SceneObject* o) {
 	}
 }
 
+void EBI_DrawAss_Tex(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
+	Texture* tex = (Texture*)editor->selectedFileCache;
+	float sz = min(v.b - 2, clamp(max(tex->width, tex->height), 16, editor->_maxPreviewSize));
+	Engine::DrawTexture(v.r + 1 + 0.5*(v.b - sz), off + 15, sz, sz, tex, DrawTex_Fit);
+	tex->_mipmap = Engine::DrawToggle(v.r + 2, off + sz + 17, 14, editor->checkbox, tex->_mipmap, white(), ORIENT_HORIZONTAL);
+	Engine::Label(v.r + 18, off + sz + 18, 12, "Use Mipmaps", editor->font, white());
+	Engine::Label(v.r + 18, off + sz + 33, 12, "Filtering", editor->font, white());
+	vector<string> filterNames = { "Point", "Bilinear", "Trilinear" };
+	if (Engine::EButton(editor->editorLayer == 0, v.r + v.b * 0.3f, off + sz + 33, v.b * 0.6f - 1, 14, grey2(), filterNames[tex->_filter], 12, editor->font, white()) == MOUSE_PRESS) {
+		editor->RegisterMenu(b, "", filterNames, { &b->_ApplyTexFilter0, &b->_ApplyTexFilter1, &b->_ApplyTexFilter2 }, 0, Vec2(v.r + v.b * 0.3f, off + sz + 33));
+	}
+	Engine::Label(v.r + 18, off + sz + 49, 12, "Aniso Level", editor->font, white());
+	Engine::DrawQuad(v.r + v.b * 0.3, off + sz + 48, v.b * 0.1 - 1, 14, grey2());
+	Engine::Label(v.r + v.b * 0.3 + 2, off + sz + 49, 12, to_string(tex->_aniso), editor->font, white());
+	tex->_aniso = round(Engine::DrawSliderFill(v.r + v.b * 0.4, off + sz + 48, v.b*0.7 - 1, 14, 0, 10, (float)tex->_aniso, grey2(), white()));
+	off += sz + 63;
+}
+
 void EB_Inspector::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	CalcV(v);
@@ -822,28 +841,20 @@ void EB_Inspector::Draw() {
 	else if (editor->selectedFileType != ASSETTYPE_UNDEF) {
 		Engine::Label(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 12, editor->selectedFileName, editor->font, white());
 		float off = v.g + EB_HEADER_SIZE;
+		bool canApply = false;
 		switch (editor->selectedFileType) {
 		case ASSETTYPE_TEXTURE:
-			Texture* tex = (Texture*)editor->selectedFileCache;
-			float sz = min(v.b - 2, clamp(max(tex->width, tex->height), 16, editor->_maxPreviewSize));
-			Engine::DrawTexture(v.r + 1 + 0.5*(v.b - sz), off + 15, sz, sz, tex, DrawTex_Fit);
-			tex->_mipmap = Engine::DrawToggle(v.r + 2, off + sz + 17, 14, editor->checkbox, tex->_mipmap, white(), ORIENT_HORIZONTAL);
-			Engine::Label(v.r + 18, off + sz + 18, 12, "Use Mipmaps", editor->font, white());
-			Engine::Label(v.r + 18, off + sz + 33, 12, "Filtering", editor->font, white());
-			vector<string> filterNames = {"Point", "Bilinear", "Trilinear"};
-			if (Engine::EButton(editor->editorLayer == 0, v.r + v.b * 0.3f, off + sz + 33, v.b * 0.6f - 1, 14, grey2(), filterNames[tex->_filter], 12, editor->font, white()) == MOUSE_PRESS) {
-				editor->RegisterMenu(this, "", filterNames, { &_ApplyTexFilter0, &_ApplyTexFilter1, &_ApplyTexFilter2 }, 0, Vec2(v.r + v.b * 0.3f, off + sz + 33));
-			}
-			Engine::Label(v.r + 18, off + sz + 48, 12, "Aniso Level", editor->font, white());
-			Engine::DrawQuad(v.r + v.b * 0.3, off + sz + 47, v.b * 0.1 - 1, 14, grey2());
-			Engine::Label(v.r + v.b * 0.3 + 2, off + sz + 48, 12, to_string(tex->_aniso), editor->font, white());
-			tex->_aniso = round(Engine::DrawSliderFill(v.r + v.b * 0.4, off + sz + 47, v.b*0.7 - 1, 14, 0, 10, (float)tex->_aniso, grey2(), white()));
-			off += sz + 63;
+			EBI_DrawAss_Tex(v, editor, this, off);
+			canApply = true;
 			break;
 		}
 
-		if (Engine::EButton(editor->editorLayer == 0, v.r + v.b - 81, off, 80, 14, grey2(), "Apply", 12, editor->font, white())) {
-
+		if (canApply && (Engine::EButton(editor->editorLayer == 0, v.r + v.b - 81, off, 80, 14, grey2(), "Apply", 12, editor->font, white())) == MOUSE_RELEASE) {
+			switch (editor->selectedFileType) {
+			case ASSETTYPE_TEXTURE:
+				((Texture*)editor->selectedFileCache)->_ApplyPrefs(editor->selectedFilePath);
+				break;
+			}
 		}
 	}
 	else if (editor->selectGlobal) {
@@ -1496,7 +1507,7 @@ Texture* Editor::GetRes(string name, bool mipmap) {
 	return GetRes(name, mipmap, false);
 }
 Texture* Editor::GetRes(string name, bool mipmap, bool nearest) {
-	return new Texture(dataPath + "res\\" + name + ".bmp", mipmap, nearest, 0);
+	return new Texture(dataPath + "res\\" + name + ".bmp", mipmap, nearest? TEX_FILTER_POINT : TEX_FILTER_TRILINEAR, 0);
 }
 
 void Editor::_Message(string a, string b) {
@@ -1840,7 +1851,7 @@ void* Editor::GenCache(ASSETTYPE type, int i) {
 		normalAssetCaches[type][i] = new Material(normalAssets[type][i]);
 		break;
 	case ASSETTYPE_TEXTURE:
-		normalAssetCaches[type][i] = new Texture(projectFolder + "Assets\\" + normalAssets[type][i]);
+		normalAssetCaches[type][i] = new Texture(i, this);
 		break;
 	default:
 		return nullptr;
