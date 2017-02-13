@@ -17,11 +17,12 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <Windows.h>
-#include <jpeglib.h>
-#include <png.h>
 #include "Defines.h"
 
 using namespace std;
+
+#define rad2deg 57.2958f
+#define deg2rad 0.0174533f
 
 typedef unsigned char byte;
 typedef unsigned int uint;
@@ -86,13 +87,6 @@ typedef unsigned char ORIENTATION;
 #define ORIENT_HORIZONTAL 0x01
 #define ORIENT_VERTICAL 0x02
 
-typedef unsigned char SCRTYPE;
-#define SCRTYPE_INT 0x01
-#define SCRTYPE_UINT 0x02
-#define SCRTYPE_FLOAT 0x03
-#define SCRTYPE_STRING 0x04
-#define SCRTYPE_TEXTURE 0x10
-
 long long milliseconds();
 
 class Editor;
@@ -113,14 +107,15 @@ void _StreamWriteAsset(Editor* e, ofstream* stream, ASSETTYPE t, ASSETID i);
 //void _Strm2Int(ifstream& strm, int& i), _Strm2Float(ifstream& strm, float& f), _Strm2Short(ifstream& strm, short& i);
 
 template<typename T> void _Strm2Val(ifstream& strm, T &val) {
+	long long pos = strm.tellg();
 	byte size = sizeof(T);
 	char c[8];
 	strm.read(c, size);
 	if (strm.fail()) {
-		Debug::Error("Strm2Val", "Fail bit raised! (probably eof reached)");
+		Debug::Error("Strm2Val", "Fail bit raised! (probably eof reached) " + to_string(pos));
 	}
 	//int rr(*(T*)c);
-	val = 0 + *(T*)c;
+	val = *(T*)c;
 }
 ASSETID _Strm2H(ifstream& strm);
 
@@ -362,7 +357,7 @@ public:
 	~ShaderBase() {
 		glDeleteProgram(pointer);
 		for (ShaderVariable* v : vars)
-			free(v);
+			delete(v);
 	}
 
 	bool loaded;

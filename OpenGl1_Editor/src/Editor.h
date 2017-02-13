@@ -410,7 +410,7 @@ public:
 	void ResetAssetMap();
 
 	void DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASSETTYPE type, float labelSize, Font* labelFont, int* tar, callbackFunc func = nullptr, void* param = nullptr);
-	ASSETID GetAssetInfo(string p, ASSETTYPE &type, ASSETID& i);
+	ASSETID GetAssetInfoH(string p), GetAssetInfo(string p, ASSETTYPE &type, ASSETID& i);
 	ASSETID GetAssetId(void* p), GetAssetId(void* p, ASSETTYPE& t);
 
 	void ReadPrefs(), SavePrefs();

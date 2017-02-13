@@ -417,9 +417,15 @@ void DrawSceneObjectsOpaque(EB_Viewer* ebv, vector<SceneObject*> oo) {
 	for (SceneObject* sc : oo)
 	{
 		glPushMatrix();
+		//Vec3 v2 = sc->transform.worldPosition();
 		Vec3 v = sc->transform.position;
-		//rotation matrix here
+		Vec3 vv = sc->transform.scale;
+		Quat vvv = sc->transform.rotation;
+		//glTranslatef(v.x - v2.x, v.y - v2.y, v.z - v2.z);
 		glTranslatef(v.x, v.y, v.z);
+		glScalef(vv.x, vv.y, vv.z);
+		glMultMatrixf(glm::value_ptr(Quat2Mat(vvv)));
+		//glRotatef(rad2deg*vvv.w, vvv.x, vvv.y, vvv.z);
 		for (Component* com : sc->_components)
 		{
 			if (com->componentType == COMP_MRD || com->componentType == COMP_CAM)
@@ -726,7 +732,7 @@ void EB_Viewer::OnMousePress(int i) {
 				editor->selected->transform.position = preModVals;
 				break;
 			case 2:
-				editor->selected->transform.eulerRotation = preModVals;
+				editor->selected->transform.eulerRotation(preModVals);
 				break;
 			case 3:
 				editor->selected->transform.scale = preModVals;
@@ -771,7 +777,7 @@ void EBI_DrawObj(Vec4 v, Editor* editor, EB_Inspector* b, SceneObject* o) {
 
 	//TRS
 	b->DrawVector3(editor, v, 21, "Position", o->transform.position);
-	b->DrawVector3(editor, v, 38, "Rotation", o->transform.eulerRotation);
+	b->DrawVector3(editor, v, 38, "Rotation", (Vec3&)o->transform.eulerRotation());
 	b->DrawVector3(editor, v, 55, "Scale", o->transform.scale);
 
 	//draw components
@@ -786,8 +792,8 @@ void EBI_DrawObj(Vec4 v, Editor* editor, EB_Inspector* b, SceneObject* o) {
 
 void EBI_DrawAss_Tex(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 	Texture* tex = (Texture*)editor->selectedFileCache;
-	float sz = min(v.b - 2, clamp(max(tex->width, tex->height), 16, editor->_maxPreviewSize));
-	Engine::DrawTexture(v.r + 1 + 0.5*(v.b - sz), off + 15, sz, sz, tex, DrawTex_Fit);
+	float sz = min(v.b - 2.0f, clamp((float)max(tex->width, tex->height), 16.0f, editor->_maxPreviewSize));
+	Engine::DrawTexture(v.r + 1 + 0.5f*(v.b - sz), off + 15, sz, sz, tex, DrawTex_Fit);
 	tex->_mipmap = Engine::DrawToggle(v.r + 2, off + sz + 17, 14, editor->checkbox, tex->_mipmap, white(), ORIENT_HORIZONTAL);
 	Engine::Label(v.r + 18, off + sz + 18, 12, "Use Mipmaps", editor->font, white());
 	Engine::Label(v.r + 18, off + sz + 33, 12, "Filtering", editor->font, white());
@@ -796,9 +802,9 @@ void EBI_DrawAss_Tex(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 		editor->RegisterMenu(b, "", filterNames, { &b->_ApplyTexFilter0, &b->_ApplyTexFilter1, &b->_ApplyTexFilter2 }, 0, Vec2(v.r + v.b * 0.3f, off + sz + 33));
 	}
 	Engine::Label(v.r + 18, off + sz + 49, 12, "Aniso Level", editor->font, white());
-	Engine::DrawQuad(v.r + v.b * 0.3, off + sz + 48, v.b * 0.1 - 1, 14, grey2());
-	Engine::Label(v.r + v.b * 0.3 + 2, off + sz + 49, 12, to_string(tex->_aniso), editor->font, white());
-	tex->_aniso = round(Engine::DrawSliderFill(v.r + v.b * 0.4, off + sz + 48, v.b*0.7 - 1, 14, 0, 10, (float)tex->_aniso, grey2(), white()));
+	Engine::DrawQuad(v.r + v.b * 0.3f, off + sz + 48, v.b * 0.1f - 1, 14, grey2());
+	Engine::Label(v.r + v.b * 0.3f + 2, off + sz + 49, 12, to_string(tex->_aniso), editor->font, white());
+	tex->_aniso = (byte)round(Engine::DrawSliderFill(v.r + v.b * 0.4f, off + sz + 48, v.b*0.7f - 1, 14, 0, 10, (float)tex->_aniso, grey2(), white()));
 	off += sz + 63;
 }
 
@@ -930,9 +936,19 @@ void Editor::DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASS
 	labelFont->alignment = al;
 }
 
+ASSETID Editor::GetAssetInfoH(string p) {
+	ushort i = 0;
+	for (string s : headerAssets) {
+		if (s == p)
+			return i;
+		i++;
+	}
+	return -1;
+}
+
 ASSETID Editor::GetAssetInfo(string p, ASSETTYPE &type, ASSETID& i) {
 	for (auto t : normalAssets) {
-		int x = 0;
+		ushort x = 0;
 		for (auto u : t.second) {
 			if (u == p) {
 				type = t.first;
@@ -1239,6 +1255,7 @@ void Editor::NewScene() {
 	if (sceneLoaded)
 		delete(&activeScene);
 	activeScene = Scene();
+	sceneLoaded = true;
 }
 
 void Editor::UpdateLerpers() {
@@ -1624,82 +1641,7 @@ void DoReloadAssets(Editor* e, string path, bool recursive, mutex* l) {
 		AddH(e, e->projectFolder + "Assets", &e->headerAssets, &e->cppAssets);
 	}
 	for (string s : e->headerAssets) {
-		string p = e->projectFolder + "Assets\\" + s;
-		ifstream strm(p.c_str(), ios::in);
-		char* c = new char[100];
-		string sc = ("class" + s.substr(0, s.size() - 2) + ":publicSceneScript{");
-		bool hasClass = false, isPublic = false;
-		uint count = 0;
-		while (!strm.eof()) {
-			strm.getline(c, 100);
-			string ss;
-			for (uint a = 0; a < 100; a++) {
-				if (c[a] != ' ' && c[a] != '\t' && c[a] != '\r') {
-					ss += c[a];
-				}
-			}
-			if (strcmp(sc.c_str(), ss.c_str()) == 0) {
-				hasClass = true;
-				string op = p + ".meta";
-				ofstream oStrm(op.c_str(), ios::out | ios::binary | ios::trunc);
-				oStrm << "XXXX";
-				//read variables
-				while (!strm.eof()) {
-					strm.getline(c, 100);
-					string sss(c);
-					while (sss != "" && sss[0] == ' ' || sss[0] == '\t')
-						sss = sss.substr(1);
-					if (sss == "" || sss.find('(') != string::npos)
-						continue;
-					if (!isPublic && sss == "public:") {
-						isPublic = true;
-						continue;
-					}
-					else if (isPublic && (sss == "protected:" || sss == "private:" || sss == "};"))
-						break;
-					if (!isPublic)
-						continue;
-					int spos = sss.find_first_of(" ");
-					if (spos == string::npos)
-						continue;
-					string tp = sss.substr(0, spos);
-					if (tp == "int") {
-						oStrm << (char)SCRTYPE_INT;
-					}
-					else if (tp == "float") {
-						oStrm << (char)SCRTYPE_FLOAT;
-					}
-					else if (tp == "Texture*") {
-						oStrm << (char)SCRTYPE_TEXTURE;
-					}
-					else if (tp == "string" || tp == "std::string") {
-						oStrm << (char)SCRTYPE_STRING;
-					}
-					else continue;
-					int spos2 = min(min(sss.find_first_of(" ", spos + 1), sss.find_first_of(";", spos + 1)), sss.find_first_of("=", spos + 1));
-					if (spos2 == string::npos) {
-						long l = (long)oStrm.tellp();
-						oStrm.seekp(l - 1);
-						continue;
-					}
-					string s2 = sss.substr(spos + 1, spos2 - spos - 1);
-					while (sss != "" && sss[0] == ' ' || sss[0] == '\t')
-						sss = sss.substr(1);
-					if (sss == ""){
-						long l = (long)oStrm.tellp();
-						oStrm.seekp(l - 1);
-						continue;
-					}
-					oStrm << s2 << (char)0;
-					count++;
-				}
-				oStrm.seekp(0);
-				_StreamWrite(&count, &oStrm, 4);
-				oStrm.close();
-			}
-		}
-		if (!hasClass)
-			e->_Error("Script Importer", "SceneScript class for " + s + " not found!");
+		SceneScript::Parse(s, e);
 	}
 	{
 		//e->GenerateScriptResolver();
@@ -1917,7 +1859,7 @@ bool MergeAssets(Editor* e) {
 			file << "0000" << null << f2.rdbuf() << null;
 			long long pos2 = file.tellp();
 			uint size = (uint)(pos2 - pos - 6);
-			file.seekp(pos + 1);
+			file.seekp(pos);
 			_StreamWrite(&size, &file, 4);
 			file.seekp(pos2);
 			f2.close();
@@ -1936,11 +1878,12 @@ bool MergeAssets(Editor* e) {
 		e->AddBuildLog(e, "Cannot open " + nm + "!", true);
 		return false;
 	}
-	xx = 0;
+	uint xxx = 0;
 	for (auto it : e->normalAssets) {
 		if (it.second.size() > 0) {
 			ushort i = 0;
 			for (string s : it.second) {
+				e->buildLabel = "Build: merging assets... " + s + "(" + to_string(xxx + 1) + "/" + to_string(xx) + ") ";
 				string nmm;
 				if (it.first == ASSETTYPE_MESH)
 					nmm = e->projectFolder + "Assets\\" + s + ".mesh.meta";
@@ -1956,7 +1899,7 @@ bool MergeAssets(Editor* e) {
 				//file2 << (char)it.first;
 				//_StreamWrite(&i, &file2, 2);
 				uint pos = (uint)file2.tellp();
-				file.seekp(dataPoss[xx]);
+				file.seekp(dataPoss[xxx]);
 				file << incre;
 				_StreamWrite(&pos, &file, 4);
 				file2 << "0000" << f2.rdbuf();
@@ -1982,7 +1925,7 @@ bool MergeAssets(Editor* e) {
 					}
 				}
 				i++;
-				xx++;
+				xxx++;
 			}
 		}
 	}

@@ -49,17 +49,25 @@ protected:
 
 class Transform : public Object {
 public:
-	//never call Transform constructor directly. Call SceneObject().transform instead.
-	Transform(SceneObject* sc, Vec3 pos, Quat rot, Vec3 scl);
 
 	SceneObject* object;
 	Vec3 position, worldPosition();
 	Quat rotation;
-	Vec3 eulerRotation;
+	const Vec3& eulerRotation() const { return _eulerRotation;  }
+	void eulerRotation(Vec3 r);
 	Vec3 scale;
 
 	Transform* Translate(float x, float y, float z) { return Translate(Vec3(x, y, z)); }
-	Transform* Translate(Vec3 v);
+	Transform* Rotate(float x, float y, float z) { return Rotate(Vec3(x, y, z)); }
+	Transform* Scale(float x, float y, float z) { return Scale(Vec3(x, y, z)); }
+	Transform* Translate(Vec3 v), *Rotate(Vec3 v), *Scale(Vec3 v);
+
+	friend class SceneObject;
+private:
+	//never call Transform constructor directly. Call SceneObject().transform instead.
+	Transform(SceneObject* sc, Vec3 pos, Quat rot, Vec3 scl);
+	Vec3 _eulerRotation;
+	void _UpdateQuat();
 };
 
 class Mesh : public AssetObject {
@@ -88,7 +96,7 @@ protected:
 	//void Load();
 };
 
-enum TEX_FILTERING {
+enum TEX_FILTERING : byte {
 	TEX_FILTER_POINT = 0x00,
 	TEX_FILTER_BILINEAR,
 	TEX_FILTER_TRILINEAR
@@ -135,7 +143,7 @@ private:
 #define COMP_UNDEF 0x00
 
 #define COMP_CAM 0x01
-enum CAM_CLEARTYPE {
+enum CAM_CLEARTYPE : byte {
 	CAM_CLEAR_NONE,
 	CAM_CLEAR_COLOR,
 	CAM_CLEAR_DEPTH,
@@ -168,7 +176,7 @@ protected:
 
 	void UpdateCamVerts();
 	void DrawEditor(EB_Viewer* ebv) override;
-	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos);
+	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, ofstream* stream) override;
 
 };
@@ -181,7 +189,7 @@ public:
 	Mesh* mesh;
 	//void LoadDefaultValues() override;
 
-	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos);
+	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, ofstream* stream) override;
 	
 	friend class Editor;
@@ -202,7 +210,7 @@ public:
 	vector<Material*> materials;
 
 	void DrawEditor(EB_Viewer* ebv) override;
-	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos);
+	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
 
 	void Serialize(Editor* e, ofstream* stream) override;
 	void Refresh() override;
@@ -224,36 +232,51 @@ public:
 	
 	Texture* texture;
 
-	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos);
+	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, ofstream* stream) override;
 
 	friend int main(int argc, char **argv);
 	friend void Serialize(Editor* e, SceneObject* o, ofstream* stream);
 	friend void Deserialize(ifstream& stream, SceneObject* obj);
 protected:
-	int _texture;
 	TextureRenderer(ifstream& stream, SceneObject* o, long pos = -1);
+	int _texture;
 };
 
 #define COMP_SCR 0xff
+enum SCR_VARTYPE : byte {
+	SCR_VAR_UNDEF = 0U,
+	SCR_VAR_INT, SCR_VAR_UINT,
+	SCR_VAR_FLOAT,
+	SCR_VAR_V2, SCR_VAR_V3,
+	SCR_VAR_STRING = 16U,
+	SCR_VAR_TEXTURE,
+	SCR_VAR_OBJREF //can further specify COMP_X
+};
 class SceneScript : public Component {
 public:
-	SceneScript() : Component("(Script)", COMP_SCR, DRAWORDER_NOT) {}
+	~SceneScript();
 
 	virtual void Start() {}
 	virtual void Update() {}
 	virtual void LateUpdate() {}
 	virtual void Paint() {}
 
-	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos); //we want c to be null if deleted
+	static void Parse(string s, Editor* e);
+
+	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override; //we want c to be null if deleted
 	void Serialize(Editor* e, ofstream* stream) override;
 
 	//bool ReferencingObject(Object* o) override;
 	friend class Editor;
 	friend class EB_Viewer;
 protected:
-	ASSETID _script;
+
+	vector<pair<string, pair<SCR_VARTYPE, void*>>> _vals;
+
 	SceneScript(Editor* e, ASSETID id);
+	SceneScript() : Component("(Script)", COMP_SCR, DRAWORDER_NOT) {}
+	ASSETID _script;
 };
 
 class SceneObject : public Object {
@@ -275,7 +298,19 @@ public:
 	SceneObject* AddChild(SceneObject* child);
 	SceneObject* GetChild(int i) { return children[i]; }
 	Component* AddComponent(Component* c);
+	
 	Component* GetComponent(COMPONENT_TYPE type);
+	template<class T> T* GetComponent() {
+		//static_assert(is_base_of(Component, T), "GetComponent requires a component type!");
+		(void)static_cast<Component*>((T*)0);
+		for (Component* cc : _components)
+		{
+			if (typeid(&cc) == typeid(T)) {
+				return (T*)cc;
+			}
+		}
+		return nullptr;
+	}
 	void RemoveComponent(Component*& c);
 
 	bool _expanded;

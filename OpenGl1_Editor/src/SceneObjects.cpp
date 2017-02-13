@@ -323,9 +323,49 @@ TextureRenderer::TextureRenderer(ifstream& stream, SceneObject* o, long pos) : C
 	_Strm2Asset(stream, Editor::instance, t, _texture);
 }
 
-SceneScript::SceneScript(Editor* e, ASSETID id) : Component("script", COMP_SCR, DRAWORDER_NOT) {
-	e->GetCache(ASSETTYPE_SCRIPT_H, id); //will not be called in game (protected)
+SceneScript::SceneScript(Editor* e, ASSETID id) : Component(e->headerAssets[id] + " (Script)", COMP_SCR, DRAWORDER_NOT) {
+	ifstream strm(e->projectFolder + "Assets\\" + e->headerAssets[id] + ".meta", ios::in | ios::binary);
+	if (!strm.is_open()) {
+		e->_Error("Script Component", "Cannot read meta file!");
+		_script = -1;
+		return;
+	}
+	ushort sz;
+	_Strm2Val<ushort>(strm, sz);
+	_vals.resize(sz);
+	SCR_VARTYPE t;
+	for (ushort x = 0; x < sz; x++) {
+		_Strm2Val<SCR_VARTYPE>(strm, t);
+		_vals[x].second.first = t;
+		char c[100];
+		strm.getline(&c[0], 100, 0);
+		_vals[x].first += string(c);
+		switch (t) {
+		case SCR_VAR_INT:
+			_vals[x].second.second = new int(0);
+			break;
+		case SCR_VAR_FLOAT:
+			_vals[x].second.second = new float(0);
+			break;
+		case SCR_VAR_STRING:
+			_vals[x].second.second = new string("");
+			break;
+		}
+	}
 }
+
+SceneScript::~SceneScript() {
+#ifdef IS_EDITOR
+	for (auto a : _vals) {
+		switch (a.second.first) {
+		case SCR_VAR_INT:
+		case SCR_VAR_FLOAT:
+			delete(a.second.second);
+		}
+	}
+#endif
+}
+
 void SceneScript::Serialize(Editor* e, ofstream* stream) {
 	_StreamWriteAsset(e, stream, ASSETTYPE_SCRIPT_H, _script);
 }
@@ -338,11 +378,88 @@ void SceneScript::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 	else pos += 17;
 }
 
+void SceneScript::Parse(string s, Editor* e) {
+	string p = e->projectFolder + "Assets\\" + s;
+	ifstream strm(p.c_str(), ios::in);
+	char* c = new char[100];
+	string sc = ("class" + s.substr(0, s.size() - 2) + ":publicSceneScript{");
+	bool hasClass = false, isPublic = false;
+	ushort count = 0;
+	while (!strm.eof()) {
+		strm.getline(c, 100);
+		string ss;
+		for (uint a = 0; a < 100; a++) {
+			if (c[a] != ' ' && c[a] != '\t' && c[a] != '\r') {
+				ss += c[a];
+			}
+		}
+		if (strcmp(sc.c_str(), ss.c_str()) == 0) {
+			hasClass = true;
+			string op = p + ".meta";
+			ofstream oStrm(op.c_str(), ios::out | ios::binary | ios::trunc);
+			oStrm << "XX";
+			//read variables
+			while (!strm.eof()) {
+				strm.getline(c, 100);
+				string sss(c);
+				while (sss != "" && sss[0] == ' ' || sss[0] == '\t')
+					sss = sss.substr(1);
+				if (sss == "" || sss.find('(') != string::npos)
+					continue;
+				if (!isPublic && sss == "public:") {
+					isPublic = true;
+					continue;
+				}
+				else if (isPublic && (sss == "protected:" || sss == "private:" || sss == "};"))
+					break;
+				if (!isPublic)
+					continue;
+				int spos = sss.find_first_of(" ");
+				if (spos == string::npos)
+					continue;
+				string tp = sss.substr(0, spos);
+				if (tp == "int") {
+					oStrm << (char)SCR_VAR_INT;
+				}
+				else if (tp == "float") {
+					oStrm << (char)SCR_VAR_FLOAT;
+				}
+				else if (tp == "string" || tp == "std::string") {
+					oStrm << (char)SCR_VAR_STRING;
+				}
+				else if (tp == "Texture*") {
+					oStrm << (char)SCR_VAR_TEXTURE;
+				}
+				else continue;
+				int spos2 = min(min(sss.find_first_of(" ", spos + 1), sss.find_first_of(";", spos + 1)), sss.find_first_of("=", spos + 1));
+				if (spos2 == string::npos) {
+					long l = (long)oStrm.tellp();
+					oStrm.seekp(l - 1);
+					continue;
+				}
+				string s2 = sss.substr(spos + 1, spos2 - spos - 1);
+				while (sss != "" && sss[0] == ' ' || sss[0] == '\t')
+					sss = sss.substr(1);
+				if (sss == ""){
+					long l = (long)oStrm.tellp();
+					oStrm.seekp(l - 1);
+					continue;
+				}
+				oStrm << s2 << (char)0;
+				count++;
+			}
+			oStrm.seekp(0);
+			_StreamWrite(&count, &oStrm, 2);
+			oStrm.close();
+		}
+	}
+	if (!hasClass)
+		e->_Error("Script Importer", "SceneScript class for " + s + " not found!");
+}
+
 SceneObject::SceneObject() : SceneObject(Vec3(), Quat(), Vec3(1, 1, 1)) {}
 SceneObject::SceneObject(string s) : SceneObject(s, Vec3(), Quat(), Vec3(1, 1, 1)) {}
-SceneObject::SceneObject(Vec3 pos, Quat rot, Vec3 scale) : active(true), transform(this, pos, rot, scale), childCount(0), _expanded(true), Object("New Object") {
-	id = Engine::GetNewId();
-}
+SceneObject::SceneObject(Vec3 pos, Quat rot, Vec3 scale) : SceneObject("New Object", Vec3(), Quat(), Vec3(1, 1, 1)) {}
 SceneObject::SceneObject(string s, Vec3 pos, Quat rot, Vec3 scale) : active(true), transform(this, pos, rot, scale), childCount(0), _expanded(true), Object(s) {
 	id = Engine::GetNewId();
 }
@@ -395,6 +512,7 @@ Component* SceneObject::AddComponent(Component* c) {
 	return c;
 }
 
+/// <summary>you should probably use GetComponent&lt;T&gt;() instead.</summary>
 Component* SceneObject::GetComponent(COMPONENT_TYPE type) {
 	for (Component* cc : _components)
 	{

@@ -14,6 +14,8 @@
 #include <math.h>
 #include <jpeglib.h>
 #include <jerror.h>
+//#include <png.h>
+//#include <zlib.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/transform.hpp>
@@ -225,9 +227,9 @@ void Engine::DrawTexture(float x, float y, float w, float h, Texture* texture, D
 	else if (scl == DrawTex_Fit) {
 		float w2h = ((float)texture->width) / texture->height;
 		if (w/h > w2h)
-			DrawQuad(x + 0.5*(w - h*w2h), y, h*w2h, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer);
+			DrawQuad(x + 0.5f*(w - h*w2h), y, h*w2h, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer);
 		else
-			DrawQuad(x, y + 0.5*(h - w/w2h), w, w/w2h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer);
+			DrawQuad(x, y + 0.5f*(h - w/w2h), w, w/w2h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer);
 	}
 	else {
 		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer);
@@ -800,6 +802,7 @@ void Debug::Error(string c, string s) {
 	*stream << "[e]" << c << ": " << s << endl;
 #endif
 	cout << "[e]" << c << " says: " << s << endl;
+	abort();
 }
 ofstream* Debug::stream = nullptr;
 void Debug::Init(string s) {
@@ -964,7 +967,8 @@ Vec3 rotate(Vec3 v, Quat q) {
 }
 
 glm::mat4 Quat2Mat(Quat q) {
-	return glm::mat4(q.w, q.x, q.y, q.z, -q.x, q.w, q.z, -q.y, -q.y, -q.z, q.w, q.x, -q.z, q.y, -q.x, q.w);
+	//return glm::mat4(q.w, q.x, q.y, q.z, -q.x, q.w, q.z, -q.y, -q.y, -q.z, q.w, q.x, -q.z, q.y, -q.x, q.w);
+	return glm::mat4_cast(q);
 }
 
 //-----------------transform class-------------------
@@ -982,8 +986,29 @@ Vec3 Transform::worldPosition() {
 	return w;
 }
 
+void Transform::eulerRotation(Vec3 r) {
+	_eulerRotation = r;
+	_eulerRotation.x = clamp(_eulerRotation.x, 0, 360);
+	_eulerRotation.y = clamp(_eulerRotation.y, 0, 360);
+	_eulerRotation.z = clamp(_eulerRotation.z, 0, 360);
+	_UpdateQuat();
+}
+
+void Transform::_UpdateQuat() {
+	rotation = Quat(deg2rad*_eulerRotation);
+}
+
+
 Transform* Transform::Translate(Vec3 v) {
 	position += v;
+	return this;
+}
+Transform* Transform::Rotate(Vec3 v) {
+	eulerRotation(_eulerRotation + v);
+	return this;
+}
+Transform* Transform::Scale(Vec3 v) {
+	scale += v;
 	return this;
 }
 
@@ -1287,6 +1312,102 @@ bool LoadJPEG(string fileN, uint &x, uint &y, byte& channels, byte** data)
 	return true;
 }
 
+/*
+void DoReadPNG(png_structp pngPtr, png_bytep data, png_size_t length) {
+	//Here we get our IO pointer back from the read struct.
+	//This is the parameter we passed to the png_set_read_fn() function.
+	//Our std::istream pointer.
+	png_voidp a = png_get_io_ptr(pngPtr);
+	//Cast the pointer to std::istream* and read 'length' bytes into 'data'
+	((ifstream*)a)->read((char*)data, length);
+}
+
+bool LoadPNG(string fileN, uint &x, uint &y, byte& channels, byte** data) {
+	ifstream strm(fileN, ios::in | ios::binary);
+	png_byte pngsig[8]; //signature
+	int is_png = 0;
+	strm.read((char*)pngsig, 8);
+	if (!strm.good()) return false;
+	is_png = png_sig_cmp(pngsig, 0, 8);
+	if (is_png != 0) {
+		Debug::Warning("PNG reader", "Png file has wrong header!");
+		return false;
+	}
+
+	//Here we create the png read struct. The 3 NULL's at the end can be used
+	//for your own custom error handling functions, but we'll just use the default.
+	//if the function fails, NULL is returned. Always check the return values!
+	png_structp pngPtr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+	if (!pngPtr) {
+		Debug::Warning("PNG reader", "Couldn't initialize png read struct!");
+		return false;
+	}
+	png_infop infoPtr = png_create_info_struct(pngPtr);
+	if (!infoPtr) {
+		Debug::Warning("PNG reader", "Couldn't initialize png info struct!");
+		png_destroy_read_struct(&pngPtr, (png_infopp)0, (png_infopp)0);
+		return false;
+	}
+
+	png_set_read_fn(pngPtr, (png_voidp)&strm, DoReadPNG);
+
+	//Set the amount signature bytes we've already read:
+	png_set_sig_bytes(pngPtr, 8);
+	//Now call png_read_info with our pngPtr as image handle, and infoPtr to receive the file info.
+	png_read_info(pngPtr, infoPtr);
+	x = (uint)png_get_image_width(pngPtr, infoPtr);
+	y = (uint)png_get_image_height(pngPtr, infoPtr);
+	//bits per channel
+	png_uint_32 bitdepth = png_get_bit_depth(pngPtr, infoPtr);
+	//Number of channels
+	channels = png_get_channels(pngPtr, infoPtr);
+	//Color type. (RGB, RGBA, Luminance, luminance alpha... palette... etc)
+	png_uint_32 color_type = png_get_color_type(pngPtr, infoPtr);
+
+	switch (color_type) {
+	case PNG_COLOR_TYPE_PALETTE:
+		png_set_palette_to_rgb(pngPtr);
+		channels = 3;
+		break;
+	case PNG_COLOR_TYPE_GRAY:
+		if (bitdepth > 8)
+			png_set_expand_gray_1_2_4_to_8(pngPtr);
+		//And the bitdepth info
+		bitdepth = 8;
+		break;
+	}
+	//if the image has a transperancy set.. convert it to a full Alpha channel..
+	if (png_get_valid(pngPtr, infoPtr, PNG_INFO_tRNS)) {
+		png_set_tRNS_to_alpha(pngPtr);
+		channels += 1;
+	}
+
+	png_bytep* rowPtrs = new png_bytep[y];
+
+	*data = new byte[x * y * bitdepth * channels / 8];
+	//This is the length in bytes, of one row.
+	const unsigned int stride = x * bitdepth * channels / 8;
+
+	//A little for-loop here to set all the row pointers to the starting
+	//Addresses for every row in the buffer
+	for (size_t i = 0; i < y; i++) {
+		//Set the pointer to the data pointer + i times the row stride.
+		//Notice that the row order is reversed with q.
+		//This is how at least OpenGL expects it,
+		//and how many other image loaders present the data.
+		png_uint_32 q = (y - i - 1) * stride;
+		rowPtrs[i] = (png_bytep)data + q;
+	}
+	//And here it is! The actual reading of the image!
+	//Read the imagedata and write it to the addresses pointed to
+	//by rowptrs (in other words: our image databuffer)
+	png_read_image(pngPtr, rowPtrs);
+
+	delete[](png_bytep)rowPtrs;
+	png_destroy_read_struct(&pngPtr, &infoPtr, (png_infopp)0);
+}
+*/
+
 bool LoadBMP(string fileN, uint &x, uint &y, byte& channels, byte** data) {
 
 	char header[54]; // Each BMP file begins by a 54-bytes header
@@ -1351,6 +1472,14 @@ Texture::Texture(const string& path, bool mipmap, TEX_FILTERING filter, byte ani
 			return;
 		}
 	}
+	/*
+	else if (sss == ".png") {
+		if (!LoadPNG(path, width, height, chn, &data)) {
+			cout << "load png failed! " << path << endl;
+			return;
+		}
+	}
+	*/
 	else  {
 		cout << "Image extension invalid! " << path << endl;
 		return;
@@ -1364,7 +1493,7 @@ Texture::Texture(const string& path, bool mipmap, TEX_FILTERING filter, byte ani
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (mipmap && (filter == TEX_FILTER_TRILINEAR)) ? GL_LINEAR_MIPMAP_LINEAR : (filter == TEX_FILTER_POINT)? GL_NEAREST : GL_LINEAR);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso);
 	glBindTexture(GL_TEXTURE_2D, 0);
-	free(data);
+	delete[](data);
 	loaded = true;
 	//cout << "image loaded: " << width << "x" << height << endl;
 }
@@ -1413,7 +1542,7 @@ Texture::Texture(int i, Editor* e) : AssetObject(ASSETTYPE_TEXTURE) {
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (_mipmap && (_filter == TEX_FILTER_TRILINEAR)) ? GL_LINEAR_MIPMAP_LINEAR : (_filter == TEX_FILTER_POINT) ? GL_NEAREST : GL_LINEAR);
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, _aniso);
 		glBindTexture(GL_TEXTURE_2D, 0);
-		free(data);
+		delete[](data);
 		loaded = true;
 	}
 }
@@ -1457,7 +1586,7 @@ bool Texture::Parse(Editor* e, string path) {
 			flt = cb[14];
 			mnr = cb[15];
 		}
-		free(c);
+		delete[](c);
 	}
 	ofstream str(ss, ios::out | ios::trunc | ios::binary);
 	str << "IMG";
@@ -1469,14 +1598,14 @@ bool Texture::Parse(Editor* e, string path) {
 	str << "DATA";
 	_StreamWrite(data, &str, width*height*chn);
 	str.close();
-	free(data);
+	delete[](data);
 	return true;
 }
 
 void Texture::_ApplyPrefs(const string& p) {
 	ifstream iStrm(p, ios::in | ios::binary | ios::ate);
 	if (iStrm.is_open()) {
-		long long sz = iStrm.tellg();
+		uint sz((uint)iStrm.tellg());
 		vector<byte> data(sz);
 		iStrm.seekg(0);
 		iStrm.read((char*)(&data[0]), sz);
@@ -1517,7 +1646,7 @@ Background::Background(const string& path) : width(0), height(0), AssetObject(AS
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	loaded = true;
-	free(data2);
+	delete[](data2);
 	//cout << "HDR Image loaded: " << width << "x" << height << endl;
 }
 
@@ -1536,7 +1665,7 @@ bool Background::Parse(string path) {
 	str << "DATA";
 	_StreamWrite(data, &str, width*height*4);
 	str.close();
-	free(data);
+	delete[](data);
 	return true;
 }
 
@@ -1586,7 +1715,7 @@ Font::Font(const string& pathb, const string& paths, int size) : loaded(false), 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glBindTexture(GL_TEXTURE_2D, 0);
-		free(data);
+		delete[](data);
 		//cout << "font loaded: " << width << "x" << height << endl;
 		//loaded = true;
 	}
@@ -1634,7 +1763,7 @@ Font::Font(const string& pathb, const string& paths, int size) : loaded(false), 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 	glBindTexture(GL_TEXTURE_2D, 0);
-	free(data);
+	delete[](data);
 	loaded = true;
 	//cout << "font loaded: " << width2 << "x" << height2 << endl;
 }
@@ -1698,7 +1827,7 @@ Material::Material(string path) : AssetObject(ASSETTYPE_MATERIAL) {
 		cerr << "file not supported" << endl;
 		return;
 	}
-	free(c);
+	delete[](c);
 	char* nmm = new char[100];
 	stream.getline(nmm, 100, (char)0);
 	string shp(nmm);
@@ -1773,14 +1902,14 @@ Material::Material(string path) : AssetObject(ASSETTYPE_MATERIAL) {
 			break;
 		}
 	}
-	free(nmm);
+	delete[](nmm);
 	stream.close();
 }
 
 Material::~Material() {
 	for (auto a : vals) {
 		for (auto b : a.second)
-			free(b.second);
+			delete(b.second);
 	}
 }
 
@@ -1917,7 +2046,7 @@ string _Strm2Asset(ifstream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int max)
 #else
 	i = AssetManager::GetAssetId(s, t);
 #endif
-	free(c);
+	delete[](c);
 	return s;
 }
 
@@ -1965,9 +2094,10 @@ void Serialize(Editor* e, SceneObject* o, ofstream* stream) {
 	_StreamWrite(&o->transform.position.x, stream, 4);
 	_StreamWrite(&o->transform.position.y, stream, 4);
 	_StreamWrite(&o->transform.position.z, stream, 4);
-	_StreamWrite(&o->transform.eulerRotation.x, stream, 4);
-	_StreamWrite(&o->transform.eulerRotation.y, stream, 4);
-	_StreamWrite(&o->transform.eulerRotation.z, stream, 4);
+	const Vec3& rot = o->transform.eulerRotation();
+	_StreamWrite(&rot.x, stream, 4);
+	_StreamWrite(&rot.y, stream, 4);
+	_StreamWrite(&rot.z, stream, 4);
 	_StreamWrite(&o->transform.scale.x, stream, 4);
 	_StreamWrite(&o->transform.scale.y, stream, 4);
 	_StreamWrite(&o->transform.scale.z, stream, 4);
@@ -1990,15 +2120,17 @@ void Deserialize(ifstream& stream, SceneObject* obj) {
 	char* cc = new char[100];
 	stream.getline(cc, 100, 0);
 	obj->name = string(cc);
-	free(cc);
+	delete[](cc);
 	Debug::Message("Object Deserializer", "Deserializing object " + obj->name);
 	char c;
 	_Strm2Val(stream, obj->transform.position.x);
 	_Strm2Val(stream, obj->transform.position.y);
 	_Strm2Val(stream, obj->transform.position.z);
-	_Strm2Val(stream, obj->transform.eulerRotation.x);
-	_Strm2Val(stream, obj->transform.eulerRotation.y);
-	_Strm2Val(stream, obj->transform.eulerRotation.z);
+	Vec3 r;
+	_Strm2Val(stream, r.x);
+	_Strm2Val(stream, r.y);
+	_Strm2Val(stream, r.z);
+	obj->transform.eulerRotation(r);
 	_Strm2Val(stream, obj->transform.scale.x);
 	_Strm2Val(stream, obj->transform.scale.y);
 	_Strm2Val(stream, obj->transform.scale.z);
@@ -2197,7 +2329,7 @@ void AssetManager::Init(string dpath) {
 			s++;
 		}
 	}
-
+	long long ppos = strm->tellg();
 	Scene::ReadD0();
 }
 

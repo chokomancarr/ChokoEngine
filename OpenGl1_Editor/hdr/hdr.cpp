@@ -141,7 +141,7 @@ unsigned char *hdr::read_hdr(const char *filename, unsigned int *w, unsigned int
         /* Start by reading the first four bytes of every scanline */
         if (fread(col, 1, 4, fp) != 4) {
             fprintf(stderr, "read_hdr(): unexpected EOF reading data\n");
-            free(imagergbe);
+            delete[](imagergbe);
             return NULL;
         }
 
@@ -161,7 +161,7 @@ unsigned char *hdr::read_hdr(const char *filename, unsigned int *w, unsigned int
                     unsigned char num;
                     if (fread(&num, 1, 1, fp) != 1) {
                         fprintf(stderr, "read_hdr(): unexpected EOF reading data\n");
-                        free(imagergbe);
+                        delete[](imagergbe);
                         return NULL;
                     }
                     if (num <= 128) {
@@ -169,7 +169,7 @@ unsigned char *hdr::read_hdr(const char *filename, unsigned int *w, unsigned int
                         for (i=0; i<num; i++) {
                             if (fread(&imagergbe[component+pos*4], 1, 1, fp) != 1) {
                                 fprintf(stderr, "read_hdr(): unexpected EOF reading data\n");
-                                free(imagergbe);
+                                delete[](imagergbe);
                                 return NULL;
                             }
                             pos += step;
@@ -181,7 +181,7 @@ unsigned char *hdr::read_hdr(const char *filename, unsigned int *w, unsigned int
                         unsigned char value;
                         if (fread(&value, 1, 1, fp) != 1) {
                             fprintf(stderr, "read_hdr(): unexpected EOF reading data\n");
-                            free(imagergbe);
+                            delete[](imagergbe);
                             return NULL;
                         }
                         num -= 128;
@@ -203,7 +203,7 @@ unsigned char *hdr::read_hdr(const char *filename, unsigned int *w, unsigned int
                 if (x > 0) {
                     if (fread(col, 1, 4, fp) != 4) {
                         fprintf(stderr, "read_hdr(): unexpected EOF reading data\n");
-                        free(imagergbe);
+                        delete[](imagergbe);
                         return NULL;
                     }
                 }

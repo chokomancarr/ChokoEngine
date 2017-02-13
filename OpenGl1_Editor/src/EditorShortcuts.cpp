@@ -31,7 +31,7 @@ void EB_Viewer::_Grab(EditorBlock* b) {
 				v->editor->selected->transform.position = v->preModVals;
 				break;
 			case 2:
-				v->editor->selected->transform.eulerRotation = v->preModVals;
+				v->editor->selected->transform.eulerRotation(v->preModVals);
 				break;
 			case 3:
 				v->editor->selected->transform.scale = v->preModVals;
@@ -260,9 +260,7 @@ void EB_Viewer::_DoAddObjectBl(EditorBlock* b, void* v) {
 	}
 }
 void EB_Viewer::_DoAddComScr(EditorBlock* b, void* v) {
-	ASSETTYPE t;
-	ASSETID id;
-	b->editor->selected->AddComponent(new SceneScript(b->editor, b->editor->GetAssetInfo(*(string*)v, t, id)));
+	b->editor->selected->AddComponent(new SceneScript(b->editor, b->editor->GetAssetInfoH(*(string*)v)));
 }
 
 void EB_Viewer::_D2AddComCam(EditorBlock* b) {

@@ -98,7 +98,7 @@ ShaderBase::ShaderBase(string path) : AssetObject(ASSETTYPE_SHADER) {
 	stream.read(cc, i);
 	cc[i] = (char)0;
 	vertex_shader_code = string(cc);
-	free(cc);
+	delete[](cc);
 
 	stream.get(type);
 	if ((byte)type != 0x00)
