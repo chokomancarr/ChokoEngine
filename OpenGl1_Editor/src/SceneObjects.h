@@ -270,11 +270,13 @@ public:
 	//bool ReferencingObject(Object* o) override;
 	friend class Editor;
 	friend class EB_Viewer;
+	friend void Deserialize(ifstream& stream, SceneObject* obj);
 protected:
 
 	vector<pair<string, pair<SCR_VARTYPE, void*>>> _vals;
 
 	SceneScript(Editor* e, ASSETID id);
+	SceneScript(ifstream& strm, SceneObject* o);
 	SceneScript() : Component("(Script)", COMP_SCR, DRAWORDER_NOT) {}
 	ASSETID _script;
 };

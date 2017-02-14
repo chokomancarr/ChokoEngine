@@ -164,8 +164,8 @@ int main(int argc, char **argv)
 		//Material m(s);
 		//m.Save(editor->projectFolder + "Assets\\test.material");
 
-		
-		//*
+
+		/*
 		editor->NewScene();
 		editor->activeScene.objects.push_back(new SceneObject("Main Camera"));
 		editor->activeScene.objects.push_back(new SceneObject("Player"));
@@ -173,7 +173,7 @@ int main(int argc, char **argv)
 		->AddChild(new SceneObject())
 		->AddChild(new SceneObject("Sound"))
 		->AddChild(new SceneObject("Particles"))
-		->transform.Translate(0, 3, -5)->Rotate(20, 10, 0)
+		->transform.Translate(0, 3, -5)
 		->object->AddComponent(new Camera())
 		->object->AddComponent(new TextureRenderer())
 		->object->GetChild(1)
@@ -183,13 +183,16 @@ int main(int argc, char **argv)
 		->AddComponent(new MeshFilter())
 		->object->AddComponent(new MeshRenderer());
 		//*/
-		/*
-		ifstream strm(editor->projectFolder + "Assets\\newScene.scene", ios::in | ios::binary);
-		//AssetManager::Init("F:\\TestProject\\Release\\data");
-		//Scene::Load(0);
-		//editor->activeScene = Scene(*Scene::strm, Scene::scenePoss[0]);
-		editor->activeScene = Scene(strm, 0);
-		editor->sceneLoaded = true;
+		//*
+		{ //destroy strm after this
+			ifstream strm(editor->projectFolder + "Assets\\newScene.scene", ios::in | ios::binary);
+			//AssetManager::Init("F:\\TestProject\\Release\\data");
+			//Scene::Load(0);
+			//editor->activeScene = Scene(*Scene::strm, Scene::scenePoss[0]);
+			editor->activeScene = Scene(strm, 0);
+			//editor->activeScene.sceneName = "newScene";
+			editor->sceneLoaded = true;
+		}
 		//*/
 
 		glEnable(GL_BLEND);

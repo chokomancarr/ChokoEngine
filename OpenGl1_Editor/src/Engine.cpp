@@ -2158,9 +2158,11 @@ void Deserialize(ifstream& stream, SceneObject* obj) {
 			case COMP_TRD:
 				obj->AddComponent(new TextureRenderer(stream, obj));
 				break;
-			case COMP_SCR:
-#ifndef IS_EDITOR
-				//obj->AddComponent(SceneScriptResolver::instance->Resolve(stream, obj));
+			case (char)COMP_SCR:
+#ifdef IS_EDITOR
+				obj->AddComponent(new SceneScript(stream, obj));
+#else
+				//obj->AddComponent(SceneScriptResolver::instance->Resolve(stream));
 #endif
 				break;
 			default:
@@ -2270,8 +2272,8 @@ void Scene::Save(Editor* e) {
 		a++;
 	}
 	//
-	e->includedScenes.clear();
-	e->includedScenes.push_back(e->projectFolder + "Assets\\test.scene");
+	//e->includedScenes.clear();
+	//e->includedScenes.push_back(e->projectFolder + "Assets\\test.scene");
 }
 
 unordered_map<ASSETTYPE, vector<string>> AssetManager::names = {};

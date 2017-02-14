@@ -1210,7 +1210,7 @@ void Editor::GenerateScriptResolver() {
 	vcxOut.close();
 
 
-	string h = "#include <vector>\n#include <fstream>\n#include \"Engine.h\"\ntypedef SceneScript*(*sceneScriptInstantiator)();\nclass SceneScriptResolver {\npublic:\n\tSceneScriptResolver();\n\tstatic SceneScriptResolver* instance;\n\tstd::vector<sceneScriptInstantiator> map;\n\tSceneScript* Resolve(ifstream& strm, SceneObject* o);\n";
+	string h = "#include <vector>\n#include <fstream>\n#include \"Engine.h\"\ntypedef SceneScript*(*sceneScriptInstantiator)();\nclass SceneScriptResolver {\npublic:\n\tSceneScriptResolver();\n\tstatic SceneScriptResolver* instance;\n\tstd::vector<string> names;\n\tstd::vector<sceneScriptInstantiator> map;\n\tSceneScript* Resolve(ifstream& strm);\n";
 	//*
 	h += "\n\tstatic SceneScript ";
 	for (int a = 0, b = headerAssets.size(); a < b; a++) {
@@ -1225,16 +1225,22 @@ void Editor::GenerateScriptResolver() {
 	string s = "#include \"SceneScriptResolver.h\"\n#include \"Engine.h\"\n\n";
 	//*
 	for (int a = 0, b = headerAssets.size(); a < b; a++) {
+		int flo = headerAssets[a].find_last_of('\\') + 1;
+		if (flo == string::npos) flo = 0;
+		string ha = headerAssets[a].substr(flo);
 		s += "#include \"..\\Assets\\" + headerAssets[a] + "\"\n";
-		string ss = headerAssets[a].substr(0, headerAssets[a].size()-2);
+		string ss = ha.substr(0, ha.size() - 2);
 		s += "SceneScript* SceneScriptResolver::_Inst" + to_string(a) + "() { return new " + ss + "(); }\n\n";
 	}
 	//*/
 	s += "\n\nusing namespace std;\r\nSceneScriptResolver* SceneScriptResolver::instance = nullptr;\nSceneScriptResolver::SceneScriptResolver() {\n\tinstance = this;\n";
 	for (int a = 0, b = headerAssets.size(); a < b; a++) {
+		s += "\tnames.push_back(R\"(" + headerAssets[a] + ")\");\n";
 		s += "\tmap.push_back(&_Inst" + to_string(a) + ");\n";
 	}
-	s += "}";
+	s += "}\n\n";
+	s += "SceneScript* SceneScriptResolver::Resolve(ifstream& strm) {\n\tchar* c = new char[100];\n\tstrm.getline(c, 100, 0);\n\tstring s(c);\n\tdelete[](c);";
+	s += "\n\tint a = 0;\n\tfor (string ss : names) {\n\t\tif (ss == s) {\n\t\t\treturn map[a]();\n\t\t}\n\t\ta++;\n\t}\n\treturn nullptr;\n}";
 	string cppO = projectFolder + "\\System\\SceneScriptResolver.cpp";
 	string hO = projectFolder + "\\System\\SceneScriptResolver.h";
 

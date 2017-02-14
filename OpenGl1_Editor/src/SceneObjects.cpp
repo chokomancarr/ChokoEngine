@@ -323,7 +323,11 @@ TextureRenderer::TextureRenderer(ifstream& stream, SceneObject* o, long pos) : C
 	_Strm2Asset(stream, Editor::instance, t, _texture);
 }
 
-SceneScript::SceneScript(Editor* e, ASSETID id) : Component(e->headerAssets[id] + " (Script)", COMP_SCR, DRAWORDER_NOT) {
+SceneScript::SceneScript(Editor* e, ASSETID id) : Component(e->headerAssets[id] + " (Script)", COMP_SCR, DRAWORDER_NOT), _script(id) {
+	if (id < 0) {
+		name = "missing script!";
+		return;
+	}
 	ifstream strm(e->projectFolder + "Assets\\" + e->headerAssets[id] + ".meta", ios::in | ios::binary);
 	if (!strm.is_open()) {
 		e->_Error("Script Component", "Cannot read meta file!");
@@ -354,6 +358,22 @@ SceneScript::SceneScript(Editor* e, ASSETID id) : Component(e->headerAssets[id] 
 	}
 }
 
+SceneScript::SceneScript(ifstream& strm, SceneObject* o) : Component("", COMP_SCR, DRAWORDER_NOT), _script(-1) {
+	char* c = new char[100];
+	strm.getline(c, 100, 0);
+	string s(c);
+	int i = 0;
+	for (auto a : Editor::instance->headerAssets) {
+		if (a == s) {
+			_script = i;
+			name = a + " (script)";
+			break;
+		}
+		i++;
+	}
+	delete[](c);
+}
+
 SceneScript::~SceneScript() {
 #ifdef IS_EDITOR
 	for (auto a : _vals) {
@@ -382,7 +402,9 @@ void SceneScript::Parse(string s, Editor* e) {
 	string p = e->projectFolder + "Assets\\" + s;
 	ifstream strm(p.c_str(), ios::in);
 	char* c = new char[100];
-	string sc = ("class" + s.substr(0, s.size() - 2) + ":publicSceneScript{");
+	int flo = s.find_last_of('\\') + 1;
+	if (flo == string::npos) flo = 0;
+	string sc = ("class" + s.substr(flo, s.size() - 2 - flo) + ":publicSceneScript{");
 	bool hasClass = false, isPublic = false;
 	ushort count = 0;
 	while (!strm.eof()) {
@@ -502,8 +524,8 @@ Component* SceneObject::AddComponent(Component* c) {
 	}
 	for (Component* cc : _components)
 	{
-		if (cc->componentType == c->componentType) {
-			cout << "same component already exists!" << endl;
+		if ((cc->componentType == c->componentType) && cc->componentType != COMP_SCR) {
+			Debug::Message("Add Component", "Same component already exists!");
 			delete(c);
 			return cc;
 		}
