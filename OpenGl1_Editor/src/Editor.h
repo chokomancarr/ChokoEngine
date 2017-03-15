@@ -17,7 +17,7 @@ using namespace std;
 #define EB_HEADER_PADDING 16
 
 //class Editor;
-class EditorBlock;
+//class EditorBlock;
 
 typedef unsigned char byte;
 typedef void(*dataFunc)(EditorBlock*, void*);
@@ -285,7 +285,7 @@ class yPossMerger;
 
 class Editor {
 public:
-	Editor() {instance = this;}
+	Editor();
 	static Editor* instance;
 	//prefs
 	bool _showDebugInfo = true;
@@ -371,10 +371,10 @@ public:
 	int gridId[68];
 	Vec3 grid[64];
 
-	bool sceneLoaded;
+	bool sceneLoaded = false;
 	Scene activeScene;
 	SceneObject* selected;
-	bool selectGlobal;
+	bool selectGlobal = false;
 	vector<string> includedScenes;
 	vector<bool> includedScenesUse;
 	ushort savedIncludedScenes;

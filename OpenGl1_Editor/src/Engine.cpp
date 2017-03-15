@@ -26,6 +26,19 @@
 
 using namespace std;
 
+string to_string(Vec2 v) {
+	return "(" + to_string(v.x) + ", " + to_string(v.y) + ")";
+}
+string to_string(Vec3 v) {
+	return "(" + to_string(v.x) + ", " + to_string(v.y) + ", " + to_string(v.z) + ")";
+}
+string to_string(Vec4 v) {
+	return "(" + to_string(v.w) + ", " + to_string(v.x) + ", " + to_string(v.y) + ", " + to_string(v.z) + ")";
+}
+string to_string(Quat v) {
+	return "(" + to_string(v.w) + ", " + to_string(v.x) + ", " + to_string(v.y) + ", " + to_string(v.z) + ")";
+}
+
 bool Rect::Inside(Vec2 v) {
 	return ((w > 0) ? (v.x > x && v.x < (x + w)) : (v.x >(x + w) && v.x < x)) && ((h > 0) ? (v.y > y && v.y < (y + h)) : (v.y >(y + h) && v.y < y));
 }
@@ -49,7 +62,7 @@ uint Engine::unlitProgram = 0;
 uint Engine::unlitProgramA = 0;
 uint Engine::unlitProgramC = 0;
 uint Engine::skyProgram = 0;
-Font* Engine::defaultFont;//&Font("F:\\ascii 2.font");
+Font* Engine::defaultFont;//&Font("D:\\ascii 2.font");
 bool Input::mouse0 = false;
 bool Input::mouse1 = false;
 bool Input::mouse2 = false;
@@ -139,7 +152,7 @@ void Engine::Init(string path) {
 		}
 		glDetachShader(unlitProgramC, vertex_shader);
 		glDetachShader(unlitProgramC, fragment_shaderC);
-		//defaultFont = &Font("F:\\ascii 2.font");
+		//defaultFont = &Font("D:\\ascii 2.font");
 	}
 	GLuint fragment_shaderS;
 	if (ShaderBase::LoadShader(GL_FRAGMENT_SHADER, fragcodeSky, fragment_shaderS)) {
@@ -164,7 +177,7 @@ void Engine::Init(string path) {
 		glDeleteShader(vertex_shader);
 		glDetachShader(unlitProgramC, fragment_shaderC);
 		glDeleteShader(fragment_shader);
-		//defaultFont = &Font("F:\\ascii 2.font");
+		//defaultFont = &Font("D:\\ascii 2.font");
 	}
 }
 
@@ -804,6 +817,31 @@ void Debug::Error(string c, string s) {
 	cout << "[e]" << c << " says: " << s << endl;
 	abort();
 }
+
+void Debug::DoDebugObjectTree(vector<SceneObject*> o, int i) {
+	for (SceneObject* oo : o) {
+		string s("");
+		for (int a = 0; a < i; a++)
+			s += " ";
+		s += "o \"" + oo->name + "\" (";
+		for (Component* cc : oo->_components) {
+			s += cc->name + ", ";
+		}
+		s += ")";
+#ifndef IS_EDITOR
+		*stream << s << endl;
+#endif
+		cout << s << endl;
+		DoDebugObjectTree(oo->children, i + 1);
+	}
+}
+
+void Debug::ObjectTree(vector<SceneObject*> o) {
+	Message("ObjectTree", "Start");
+	DoDebugObjectTree(o, 0);
+	Message("ObjectTree", "End");
+}
+
 ofstream* Debug::stream = nullptr;
 void Debug::Init(string s) {
 #ifndef IS_EDITOR
@@ -957,6 +995,14 @@ float clamp(float f, float a, float b) {
 	return min(b, max(f, a));
 }
 
+float repeat(float f, float a, float b) {
+	while (f >= b)
+		f -= (b-a);
+	while (f < a)
+		f += (b-a);
+	return f;
+}
+
 Vec3 rotate(Vec3 v, Quat q) {
 	// Extract the vector part of the quaternion
 	Vec3 u(q.x, q.y, q.z);
@@ -988,9 +1034,9 @@ Vec3 Transform::worldPosition() {
 
 void Transform::eulerRotation(Vec3 r) {
 	_eulerRotation = r;
-	_eulerRotation.x = clamp(_eulerRotation.x, 0, 360);
-	_eulerRotation.y = clamp(_eulerRotation.y, 0, 360);
-	_eulerRotation.z = clamp(_eulerRotation.z, 0, 360);
+	_eulerRotation.x = repeat(_eulerRotation.x, 0, 360);
+	_eulerRotation.y = repeat(_eulerRotation.y, 0, 360);
+	_eulerRotation.z = repeat(_eulerRotation.z, 0, 360);
 	_UpdateQuat();
 }
 
@@ -1191,7 +1237,7 @@ bool Mesh::ParseBlend(Editor* e, string s) {
 	string cmd2("cd " + e->_blenderInstallationPath.substr(0, e->_blenderInstallationPath.find_last_of("\\")) + "\n");
 	string cmd3("blender \"" + s + "\" --background --python \"" + e->dataPath + "\\Python\\blend_exporter.py\" -- \"" + s.substr(0, s.find_last_of('\\')) + "?" + ss.substr(ss.find_last_of('\\') + 1, string::npos) + "\"\n");
 	//outputs object list, and meshes in subdir
-	if (CreateProcess("C:\\Windows\\System32\\cmd.exe", 0, NULL, NULL, true, CREATE_NO_WINDOW, NULL, "F:\\TestProject\\", &startInfo, &processInfo) != 0) {
+	if (CreateProcess("C:\\Windows\\System32\\cmd.exe", 0, NULL, NULL, true, CREATE_NO_WINDOW, NULL, "D:\\TestProject\\", &startInfo, &processInfo) != 0) {
 		cout << "executing Blender..." << endl;
 		bool bSuccess = false;
 		DWORD dwWrite;
@@ -2162,7 +2208,7 @@ void Deserialize(ifstream& stream, SceneObject* obj) {
 #ifdef IS_EDITOR
 				obj->AddComponent(new SceneScript(stream, obj));
 #else
-				//obj->AddComponent(SceneScriptResolver::instance->Resolve(stream));
+				obj->AddComponent(SceneScriptResolver::instance->Resolve(stream));
 #endif
 				break;
 			default:
@@ -2225,6 +2271,12 @@ Scene::Scene(ifstream& stream, long pos) : sceneName("") {
 		sc->Refresh();
 		stream >> o;
 	}
+}
+
+Scene::~Scene() {
+	for (SceneObject* o : objects)
+		delete(o);
+	objects.resize(0);
 }
 
 Scene* Scene::active = nullptr;

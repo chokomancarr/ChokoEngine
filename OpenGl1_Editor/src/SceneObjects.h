@@ -42,7 +42,7 @@ protected:
 	virtual void LoadDefaultValues() {} //also loads assets
 	virtual void DrawEditor(EB_Viewer* ebv) {} //trs matrix not applied, apply before calling
 	virtual void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) = 0;
-	virtual void DrawGameCamera() {}
+	//virtual void DrawGameCamera() {}
 	virtual void Serialize(Editor* e, ofstream* stream) = 0;
 	virtual void Refresh() {}
 };
@@ -94,6 +94,11 @@ protected:
 	vector<vector<int>> _matTriangles;
 	//void Draw(Material* mat);
 	//void Load();
+};
+
+class RenderTexture : public AssetObject {
+public:
+	uint width, height;
 };
 
 enum TEX_FILTERING : byte {
@@ -160,9 +165,12 @@ public:
 	Vec4 clearColor;
 	float nearClip;
 	float farClip;
+	RenderTexture* targetRT;
 
 	Vec3 camVerts[6];
 	static int camVertsIds[19];
+
+	void Render(RenderTexture* target = nullptr);
 
 	friend int main(int argc, char **argv);
 	friend void Serialize(Editor* e, SceneObject* o, ofstream* stream);
@@ -172,13 +180,18 @@ public:
 protected:
 	Camera(ifstream& stream, SceneObject* o, long pos = -1);
 
+	GLuint d_fbo, d_texs[3], d_depthTex;
+	int _tarRT;
+	
 	void ApplyGL();
 
 	void UpdateCamVerts();
+	void InitGBuffer();
 	void DrawEditor(EB_Viewer* ebv) override;
 	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, ofstream* stream) override;
 
+	static void _SetClear0(EditorBlock* b), _SetClear1(EditorBlock* b), _SetClear2(EditorBlock* b), _SetClear3(EditorBlock* b);
 };
 
 #define COMP_MFT 0x02
@@ -217,8 +230,11 @@ public:
 
 	friend class Editor;
 	friend void Deserialize(ifstream& stream, SceneObject* obj);
+	friend void DrawSceneObjectsOpaque(vector<SceneObject*> oo);
 protected:
 	MeshRenderer(ifstream& stream, SceneObject* o, long pos = -1);
+
+	void DrawDeferred(){}
 
 	vector<ASSETID> _materials;
 	static void _UpdateMat(void* i);
@@ -277,7 +293,7 @@ protected:
 
 	SceneScript(Editor* e, ASSETID id);
 	SceneScript(ifstream& strm, SceneObject* o);
-	SceneScript() : Component("(Script)", COMP_SCR, DRAWORDER_NOT) {}
+	SceneScript() : Component("", COMP_SCR, DRAWORDER_NOT) {}
 	ASSETID _script;
 };
 
@@ -307,8 +323,10 @@ public:
 		(void)static_cast<Component*>((T*)0);
 		for (Component* cc : _components)
 		{
-			if (typeid(&cc) == typeid(T)) {
-				return (T*)cc;
+			T* xx = dynamic_cast<T*>(cc);
+			if (xx != nullptr) {
+			//if (typeid(&cc) == typeid(T)) {
+				return xx;
 			}
 		}
 		return nullptr;

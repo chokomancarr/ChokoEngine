@@ -1,4 +1,4 @@
-#include "SceneObjects.h"
+//#include "SceneObjects.h"
 #include "Engine.h"
 #include "Editor.h"
 
@@ -30,12 +30,12 @@ Component::Component(string name, COMPONENT_TYPE t, DRAWORDER drawOrder, SceneOb
 
 int Camera::camVertsIds[19] = { 0, 1, 0, 2, 0, 3, 0, 4, 1, 2, 2, 4, 4, 3, 3, 1, 1, 2, 5 };
 
-Camera::Camera() : Component("Camera", COMP_CAM, DRAWORDER_NOT), ortographic(false), fov(60), orthoSize(10), screenPos(0.3f, 0.1f, 0.6f, 0.4f) {
-	//camVerts[0] = Vec3();
+Camera::Camera() : Component("Camera", COMP_CAM, DRAWORDER_NOT), ortographic(false), fov(60), orthoSize(10), screenPos(0.3f, 0.1f, 0.6f, 0.4f), clearType(CAM_CLEAR_COLOR), clearColor(black(1)), _tarRT(-1) {
 	UpdateCamVerts();
+	InitGBuffer();
 }
 
-Camera::Camera(ifstream& stream, SceneObject* o, long pos) : Component("Camera", COMP_CAM, DRAWORDER_NOT, o), ortographic(false), orthoSize(10) {
+Camera::Camera(ifstream& stream, SceneObject* o, long pos) : Camera() {
 	if (pos >= 0)
 		stream.seekg(pos);
 	_Strm2Val(stream, fov);
@@ -43,14 +43,16 @@ Camera::Camera(ifstream& stream, SceneObject* o, long pos) : Component("Camera",
 	_Strm2Val(stream, screenPos.y);
 	_Strm2Val(stream, screenPos.w);
 	_Strm2Val(stream, screenPos.h);
-	UpdateCamVerts();
 }
 
+/// <summary>Clear, Reset Projection Matrix</summary>
 void Camera::ApplyGL() {
 	switch (clearType) {
 	case CAM_CLEAR_COLOR:
 		glClearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
 		glClear(GL_COLOR_BUFFER_BIT);
+		glClearDepth(1);
+		glClear(GL_DEPTH_BUFFER_BIT);
 		break;
 	case CAM_CLEAR_DEPTH:
 		glClearDepth(1);
@@ -69,12 +71,48 @@ void Camera::ApplyGL() {
 }
 
 void Camera::UpdateCamVerts() {
+#ifdef IS_EDITOR
 	Vec3 cst = Vec3(cos(fov*0.5f * 3.14159265f / 180), sin(fov*0.5f * 3.14159265f / 180), tan(fov*0.5f * 3.14159265f / 180))*cos(fov*0.618f * 3.14159265f / 180);
 	camVerts[1] = Vec3(cst.x, cst.y, 1 - cst.z) * 2.0f;
 	camVerts[2] = Vec3(-cst.x, cst.y, 1 - cst.z) * 2.0f;
 	camVerts[3] = Vec3(cst.x, -cst.y, 1 - cst.z) * 2.0f;
 	camVerts[4] = Vec3(-cst.x, -cst.y, 1 - cst.z) * 2.0f;
 	camVerts[5] = Vec3(0, cst.y * 1.5f, 1 - cst.z) * 2.0f;
+#endif
+}
+
+void Camera::InitGBuffer() {
+#ifndef IS_EDITOR
+	glGenFramebuffers(1, &d_fbo);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, d_fbo);
+
+	// Create the gbuffer textures
+	glGenTextures(3, d_texs);
+	glGenTextures(1, &d_depthTex);
+
+	for (uint i = 0; i < 3; i++) {
+		glBindTexture(GL_TEXTURE_2D, d_texs[i]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, Display::width, Display::height, 0, GL_RGB, GL_FLOAT, NULL);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, d_texs[i], 0);
+	}
+
+	// depth
+	glBindTexture(GL_TEXTURE_2D, d_depthTex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, Display::width, Display::height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, d_depthTex, 0);
+
+	GLenum DrawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3 };
+	glDrawBuffers(4, DrawBuffers);
+
+	GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+
+	if (Status != GL_FRAMEBUFFER_COMPLETE) {
+		Debug::Error("Camera", "FB error:" + Status);
+	}
+
+	// restore default FBO
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+#endif
 }
 
 void Camera::DrawEditor(EB_Viewer* ebv) {
@@ -109,6 +147,14 @@ void Camera::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 		Engine::DrawQuad(v.r + v.b*0.65f, v.g + pos + 35, v.b*0.35f - 1, dh, grey1());
 		Engine::DrawQuad(v.r + v.b*0.65f + ((v.b*0.35f - 1)*screenPos.x), v.g + pos + 35 + dh*screenPos.y, (v.b*0.35f - 1)*screenPos.w, dh*screenPos.h, grey2());
 		pos += (uint)max(37 + dh, 87);
+		Engine::Label(v.r + 2, v.g + pos + 4, 12, "Filtering", e->font, white());
+		vector<string> clearNames = { "None", "Color and Depth", "Depth only", "Skybox" };
+		if (Engine::EButton(e->editorLayer == 0, v.r + v.b * 0.3f, v.g + pos + 1, v.b * 0.7f - 1, 14, grey2(), clearNames[clearType], 12, e->font, white()) == MOUSE_PRESS) {
+			e->RegisterMenu(nullptr, "", clearNames, { &_SetClear0, &_SetClear1, &_SetClear2, &_SetClear3 }, 0, Vec2(v.r + v.b * 0.3f, v.g + pos));
+		}
+		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Target", e->font, white());
+		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 17, v.b*0.7f, 16, grey1(), ASSETTYPE_RENDERTEXTURE, 12, e->font, &_tarRT, nullptr, this);
+		pos += 34;
 	}
 	else pos += 17;
 }
@@ -119,6 +165,19 @@ void Camera::Serialize(Editor* e, ofstream* stream) {
 	_StreamWrite(&screenPos.y, stream, 4);
 	_StreamWrite(&screenPos.w, stream, 4);
 	_StreamWrite(&screenPos.h, stream, 4);
+}
+
+void Camera::_SetClear0(EditorBlock* b) {
+	Editor::instance->selected->GetComponent<Camera>()->clearType = CAM_CLEAR_NONE;
+}
+void Camera::_SetClear1(EditorBlock* b) {
+	Editor::instance->selected->GetComponent<Camera>()->clearType = CAM_CLEAR_COLOR;
+}
+void Camera::_SetClear2(EditorBlock* b) {
+	Editor::instance->selected->GetComponent<Camera>()->clearType = CAM_CLEAR_DEPTH;
+}
+void Camera::_SetClear3(EditorBlock* b) {
+	Editor::instance->selected->GetComponent<Camera>()->clearType = CAM_CLEAR_SKY;
 }
 
 MeshFilter::MeshFilter() : Component("Mesh Filter", COMP_MFT, DRAWORDER_NOT), _mesh(-1) {
@@ -358,7 +417,7 @@ SceneScript::SceneScript(Editor* e, ASSETID id) : Component(e->headerAssets[id] 
 	}
 }
 
-SceneScript::SceneScript(ifstream& strm, SceneObject* o) : Component("", COMP_SCR, DRAWORDER_NOT), _script(-1) {
+SceneScript::SceneScript(ifstream& strm, SceneObject* o) : Component("(Script)", COMP_SCR, DRAWORDER_NOT), _script(-1) {
 	char* c = new char[100];
 	strm.getline(c, 100, 0);
 	string s(c);
@@ -366,7 +425,7 @@ SceneScript::SceneScript(ifstream& strm, SceneObject* o) : Component("", COMP_SC
 	for (auto a : Editor::instance->headerAssets) {
 		if (a == s) {
 			_script = i;
-			name = a + " (script)";
+			name = a + " (Script)";
 			break;
 		}
 		i++;

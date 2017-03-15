@@ -43,8 +43,48 @@ void EB_Viewer::_Grab(EditorBlock* b) {
 		v->preModVals = v->editor->selected->transform.position;
 	}
 }
-void EB_Viewer::_Rotate(EditorBlock* b) {}
-void EB_Viewer::_Scale(EditorBlock* b) {}
+void EB_Viewer::_Rotate(EditorBlock* b) {
+	if (b->editor->selected != 0) {
+		EB_Viewer* v = (EB_Viewer*)b;
+		if (v->modifying > 0) {
+			switch (v->modifying >> 4) {
+			case 1:
+				v->editor->selected->transform.position = v->preModVals;
+				break;
+			case 2:
+				v->editor->selected->transform.eulerRotation(v->preModVals);
+				break;
+			case 3:
+				v->editor->selected->transform.scale = v->preModVals;
+				break;
+			}
+		}
+		v->modifying = 0x20;
+		v->modVal = Vec2();
+		v->preModVals = v->editor->selected->transform.eulerRotation();
+	}
+}
+void EB_Viewer::_Scale(EditorBlock* b) {
+	if (b->editor->selected != 0) {
+		EB_Viewer* v = (EB_Viewer*)b;
+		if (v->modifying > 0) {
+			switch (v->modifying >> 4) {
+			case 1:
+				v->editor->selected->transform.position = v->preModVals;
+				break;
+			case 2:
+				v->editor->selected->transform.eulerRotation(v->preModVals);
+				break;
+			case 3:
+				v->editor->selected->transform.scale = v->preModVals;
+				break;
+			}
+		}
+		v->modifying = 0x20;
+		v->modVal = Vec2();
+		v->preModVals = v->editor->selected->transform.scale;
+	}
+}
 
 void EB_Viewer::_X(EditorBlock* b) {
 	EB_Viewer* v = (EB_Viewer*)b;
@@ -103,7 +143,7 @@ void DoPreAdd(EditorBlock* b) {
 void EB_Viewer::_AddComScr(EditorBlock* b) {
 	vector<void*> vals;
 	for (uint a = 0; a < b->editor->headerAssets.size(); a++) {
-		vals.push_back(&b->editor->headerAssets[a]);
+		vals.push_back(new string(b->editor->headerAssets[a]));
 	}
 	b->editor->RegisterMenu(b, "Add Script", b->editor->headerAssets, ((EB_Viewer*)b)->_DoAddComScr, vals, 0);
 }
@@ -280,7 +320,7 @@ void EB_Viewer::_AddObjectE(EditorBlock* b) {
 void EB_Viewer::_AddObjectBl(EditorBlock* b) {
 	vector<void*> vals;
 	for (uint a = 0; a < b->editor->blendAssets.size(); a++) {
-		vals.push_back(&b->editor->blendAssets[a]);
+		vals.push_back(new string(b->editor->blendAssets[a]));
 	}
 	b->editor->RegisterMenu(b, "Add Blender Object", b->editor->blendAssets, ((EB_Viewer*)b)->_DoAddObjectBl, vals, 0);
 }
@@ -410,11 +450,15 @@ void Editor::OpenScene(Editor* e) {
 	GetSceneFiles(e->projectFolder + "Assets\\", "", scenes);
 	vector<void*> v;
 	for (string s : scenes) {
-		v.push_back(&s);
+		v.push_back(new string(s));
 	}
 	e->RegisterMenu(nullptr, "Open Scene", scenes, &DoOpenScene, v, 0);
 }
 
 void Editor::DoOpenScene(EditorBlock* b, void* v) {
-
+	//if (Editor::instance->sceneLoaded)
+	//	delete(&Editor::instance->activeScene);
+	string nm = Editor::instance->projectFolder + "Assets\\" + *(string*)v;
+	ifstream s(nm.c_str(), ios::binary | ios::in);
+	Editor::instance->activeScene = Scene(s, 0);
 }

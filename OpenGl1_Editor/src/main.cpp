@@ -69,7 +69,7 @@ int main(int argc, char **argv)
 
 	getline(cin, editor->projectFolder);
 	if (editor->projectFolder == "")
-		editor->projectFolder = "F:\\TestProject\\";
+		editor->projectFolder = "D:\\TestProject\\";
 	else while (!IO::HasDirectory(editor->projectFolder.c_str())) {
 		cout << "Invalid project folder path: " << editor->projectFolder << endl;
 		getline(cin, editor->projectFolder);
@@ -104,8 +104,8 @@ int main(int argc, char **argv)
 	editor->scrW = info.rcMonitor.right - info.rcMonitor.left;
 	editor->scrH = info.rcMonitor.bottom - info.rcMonitor.top;
 
-	//EBI_Asset* e = new EBI_Asset("F:\\OpenGl1\\OpenGl1_Editor\\OpenGl1_Editor\\src\\TestScript.h", "TestScript.h");
-	//((EB_Inspector*)(editor->blocks[0]))->SelectAsset(e, "F:\\OpenGl1\\OpenGl1_Editor\\OpenGl1_Editor\\src\\TestScript.h");
+	//EBI_Asset* e = new EBI_Asset("D:\\OpenGl1\\OpenGl1_Editor\\OpenGl1_Editor\\src\\TestScript.h", "TestScript.h");
+	//((EB_Inspector*)(editor->blocks[0]))->SelectAsset(e, "D:\\OpenGl1\\OpenGl1_Editor\\OpenGl1_Editor\\src\\TestScript.h");
 
 	//TestScript* ts = new TestScript();
 
@@ -158,7 +158,7 @@ int main(int argc, char **argv)
 		editor->blocks = vector<EditorBlock*>({ new EB_Inspector(editor, 2, 0, 1, 3), new EB_Inspector(editor, 2, 3, 1, 1), new EB_Browser(editor, 0, 2, 4, 1, editor->projectFolder + "Assets\\"), new EB_Debug(editor, 4, 2, 2, 1), new EB_Viewer(editor, 0, 0, 3, 2), new EB_Hierarchy(editor, 3, 0, 2, 2) }); //path.substr(0, path.find_last_of('\\') + 1)
 		editor->ReloadAssets(editor->projectFolder + "Assets\\", true);
 		//editor->activeScene.sky = new Background(editor->dataPath + "res\\bg_refl.hdr");
-		editor->SetBackground(editor->dataPath + "res\\cat.jpg", 0.3f);
+		editor->SetBackground(editor->dataPath + "res\\bg.jpg", 0.3f);
 		font = editor->font;
 		//ShaderBase* s = (ShaderBase*)editor->GetCache(ASSETTYPE_SHADER, 0);
 		//Material m(s);
@@ -184,15 +184,14 @@ int main(int argc, char **argv)
 		->object->AddComponent(new MeshRenderer());
 		//*/
 		//*
-		{ //destroy strm after this
 			ifstream strm(editor->projectFolder + "Assets\\newScene.scene", ios::in | ios::binary);
-			//AssetManager::Init("F:\\TestProject\\Release\\data");
+			//AssetManager::Init("D:\\TestProject\\Release\\data");
 			//Scene::Load(0);
 			//editor->activeScene = Scene(*Scene::strm, Scene::scenePoss[0]);
 			editor->activeScene = Scene(strm, 0);
 			//editor->activeScene.sceneName = "newScene";
 			editor->sceneLoaded = true;
-		}
+			strm.close();
 		//*/
 
 		glEnable(GL_BLEND);

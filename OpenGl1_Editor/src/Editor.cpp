@@ -26,7 +26,9 @@
 #include <filesystem>
 
 HWND Editor::hwnd = 0;
+//#ifdef IS_EDITOR
 Editor* Editor::instance = nullptr;
+//#endif
 string Editor::dataPath = "";
 
 Vec4 grey1() {
@@ -80,6 +82,8 @@ int GetFormatEnum(string ext) {
 		return ASSETTYPE_HDRI;
 	else if (ext == ".bmp" || ext == ".jpg")
 		return ASSETTYPE_TEXTURE;
+	else if (ext == ".rendtex")
+		return ASSETTYPE_RENDERTEXTURE;
 	else if (ext == ".shade")
 		return ASSETTYPE_SHADER;
 	
@@ -482,6 +486,8 @@ void EB_Viewer::Draw() {
 		glTranslatef(0, 0, -30);
 	}
 	else {
+		Quat q = seeingCamera->object->transform.rotation;
+		glRotatef(q.w, q.x, q.y, q.z);
 		glScalef(scale, -scale, 1);
 		glMultMatrixf(glm::value_ptr(glm::perspective(seeingCamera->fov*0.5f, Display::width*1.0f / Display::height, 0.01f, 500.0f)));
 		glScalef(-1, 1, -1);
@@ -509,21 +515,23 @@ void EB_Viewer::Draw() {
 	glEnable(GL_DEPTH_TEST);
 	glClearDepth(1);
 
-	//draw scene
-	glDepthFunc(GL_LEQUAL);
-	glDepthMask(true);
-	DrawSceneObjectsOpaque(this, editor->activeScene.objects);
-	glDepthMask(false);
-	DrawSceneObjectsGizmos(this, editor->activeScene.objects);
-	DrawSceneObjectsTrans(this, editor->activeScene.objects);
+	if (editor->sceneLoaded) {
+		//draw scene
+		glDepthFunc(GL_LEQUAL);
+		glDepthMask(true);
+		DrawSceneObjectsOpaque(this, editor->activeScene.objects);
+		glDepthMask(false);
+		DrawSceneObjectsGizmos(this, editor->activeScene.objects);
+		DrawSceneObjectsTrans(this, editor->activeScene.objects);
 
-	//draw background
-	glDepthFunc(GL_EQUAL);
-	if (editor->activeScene.settings.sky != nullptr) {
-		Engine::DrawSky(v.x, v.y, v.z, v.w, editor->activeScene.settings.sky, rz / 360.0f, rw / 180.0f, 60, 0);
-		//Engine::DrawQuad(v.x, v.y, v.z, v.w, editor->activeScene.sky->pointer, white());
+		//draw background
+		glDepthFunc(GL_EQUAL);
+		if (editor->activeScene.settings.sky != nullptr) {
+			Engine::DrawSky(v.x, v.y, v.z, v.w, editor->activeScene.settings.sky, rz / 360.0f, rw / 180.0f, 60, 0);
+			//Engine::DrawQuad(v.x, v.y, v.z, v.w, editor->activeScene.sky->pointer, white());
+		}
+		glDepthFunc(GL_LEQUAL);
 	}
-	glDepthFunc(GL_LEQUAL);
 
 	//draw grid
 	if (editor->_showGrid) {
@@ -718,6 +726,26 @@ void EB_Viewer::OnMouseM(Vec2 d) {
 				break;
 			case 3:
 				editor->selected->transform.position = preModVals + Vec3(0, 0, (modVal.x + modVal.y) * 40 / scale);
+				break;
+			}
+		}
+		else if (modifying >> 4 == 2) {
+			switch (modifying & 0x0f) {
+				/*
+				case 0: {
+				Vec4 c = glm::inverse(viewingMatrix)*Vec4(modVal.y, 0, -modVal.x, 0);
+				editor->selected->transform.position = preModVals + Vec3(c.x, c.y, c.z)*40.0f/scale;
+				break;
+				}
+				*/
+			case 1:
+				editor->selected->transform.eulerRotation(preModVals + Vec3((modVal.x + modVal.y) * 360 / scale, 0, 0));
+				break;
+			case 2:
+				editor->selected->transform.eulerRotation(preModVals + Vec3(0, (modVal.x + modVal.y) * 360 / scale, 0));
+				break;
+			case 3:
+				editor->selected->transform.eulerRotation(preModVals + Vec3(0, 0, (modVal.x + modVal.y) * 360 / scale));
 				break;
 			}
 		}
@@ -934,6 +962,10 @@ void Editor::DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASS
 	labelFont->alignment = ALIGN_MIDLEFT;
 	Engine::Label(round(x + 2), round(y + 0.5f*h), labelSize, (*tar == -1) ? "undefined" : normalAssets[type][*tar], labelFont, (*tar == -1) ? Vec4(0.7f, 0.4f, 0.4f, 1) : Vec4(0.4f, 0.4f, 0.7f, 1));
 	labelFont->alignment = al;
+}
+
+Editor::Editor() : sceneLoaded(false) {
+	instance = this;
 }
 
 ASSETID Editor::GetAssetInfoH(string p) {
@@ -1240,12 +1272,12 @@ void Editor::GenerateScriptResolver() {
 	}
 	s += "}\n\n";
 	s += "SceneScript* SceneScriptResolver::Resolve(ifstream& strm) {\n\tchar* c = new char[100];\n\tstrm.getline(c, 100, 0);\n\tstring s(c);\n\tdelete[](c);";
-	s += "\n\tint a = 0;\n\tfor (string ss : names) {\n\t\tif (ss == s) {\n\t\t\treturn map[a]();\n\t\t}\n\t\ta++;\n\t}\n\treturn nullptr;\n}";
+	s += "\n\tint a = 0;\n\tfor (string ss : names) {\n\t\tif (ss == s) {\n\t\t\tSceneScript* scr = map[a]();\n\t\t\tscr->name = s + \" (Script)\";\n\t\t\treturn scr;\n\t\t}\n\t\ta++;\n\t}\n\treturn nullptr;\n}";
 	string cppO = projectFolder + "\\System\\SceneScriptResolver.cpp";
 	string hO = projectFolder + "\\System\\SceneScriptResolver.h";
 
-	remove(hO.c_str());
-	remove(cppO.c_str());
+	std::remove(hO.c_str());
+	std::remove(cppO.c_str());
 
 	ofstream ofs (cppO.c_str(), ios::out | ios::trunc);
 	ofs << s;
@@ -1390,8 +1422,11 @@ void Editor::DrawHandles() {
 				if (Engine::Button(popupPos.x, popupPos.y + off, 200, 15, white(1, 0.7f), menuNames[r], 12, font, black()) == MOUSE_RELEASE) {
 					editorLayer = 0;
 					if (menuFuncIsSingle) {
-						if (menuFuncSingle != nullptr)
+						if (menuFuncSingle != nullptr) {
 							menuFuncSingle(menuBlock, menuFuncVals[r]);
+							for (void* v : menuFuncVals)
+								delete(v);
+						}
 					}
 					else if (menuFuncs[r] != nullptr)
 						menuFuncs[r](menuBlock);
@@ -1679,12 +1714,14 @@ void Editor::DeselectFile() { //do not free pointer as cache is reused
 void Editor::ResetAssetMap() {
 	normalAssets[ASSETTYPE_TEXTURE] = vector<string>();
 	normalAssets[ASSETTYPE_HDRI] = vector<string>();
+	normalAssets[ASSETTYPE_RENDERTEXTURE] = vector<string>();
 	normalAssets[ASSETTYPE_MATERIAL] = vector<string>();
 	normalAssets[ASSETTYPE_MESH] = vector<string>();
 	normalAssets[ASSETTYPE_BLEND] = vector<string>();
 
 	normalAssetCaches[ASSETTYPE_TEXTURE] = vector<void*>(); //Texture*
 	normalAssetCaches[ASSETTYPE_HDRI] = vector<void*>(); //Background*
+	normalAssetCaches[ASSETTYPE_RENDERTEXTURE] = vector<void*>(); //RenderTexture*
 	normalAssetCaches[ASSETTYPE_MATERIAL] = vector<void*>(); //Material*
 	normalAssetCaches[ASSETTYPE_MESH] = vector<void*>(); //Mesh*
 }
@@ -1769,7 +1806,7 @@ void Editor::AddBuildLog(Editor* e, string s, bool forceE) {
 		int i = s.find_first_of('(');
 		if (i == string::npos)
 			return;
-		buildErrorPath = "F:\\TestProject\\" + s.substr(0, i);
+		buildErrorPath = "D:\\TestProject\\" + s.substr(0, i);
 		string ii = s.substr(i + 1, s.find_first_of(')') - i - 1);
 		buildErrorLine = stoi(ii);
 	}
@@ -1869,8 +1906,8 @@ bool MergeAssets(Editor* e) {
 			_StreamWrite(&size, &file, 4);
 			file.seekp(pos2);
 			f2.close();
+			q++;
 		}
-		q++;
 	}
 	poss2 = file.tellp();
 	file.seekp(poss1);
@@ -1969,9 +2006,9 @@ bool DoMsBuild(Editor* e) {
 
 		string ss = (string(s) + "\\msbuild.exe");
 		/*
-		if (IO::HasFile("F:\\TestProject\\Debug\\TestProject.exe")) {
+		if (IO::HasFile("D:\\TestProject\\Debug\\TestProject.exe")) {
 			e->buildLog.push_back("removing previous executable");
-			if (remove("F:\\TestProject\\Debug\\TestProject.exe") != 0) {
+			if (remove("D:\\TestProject\\Debug\\TestProject.exe") != 0) {
 				e->buildLog.push_back("unable to remove previous executable!");
 				return false;
 			}
@@ -1980,7 +2017,7 @@ bool DoMsBuild(Editor* e) {
 		bool failed = true;
 		byte FINISH = 0;
 		_putenv("MSBUILDDISABLENODEREUSE=1");
-		if (CreateProcess(ss.c_str(), "F:\\TestProject\\TestProject.vcxproj /nr:false /t:Build /p:Configuration=Release /v:n /nologo /fl /flp:LogFile=F:\\TestProject\\BuildLog.txt", NULL, NULL, true, 0, NULL, "F:\\TestProject\\", &startInfo, &processInfo) != 0) {
+		if (CreateProcess(ss.c_str(), "D:\\TestProject\\TestProject.vcxproj /nr:false /t:Build /p:Configuration=Release /v:n /nologo /fl /flp:LogFile=D:\\TestProject\\BuildLog.txt", NULL, NULL, true, 0, NULL, "D:\\TestProject\\", &startInfo, &processInfo) != 0) {
 			e->AddBuildLog(e, "Compiling from " + ss);
 			cout << "compiling" << endl;
 			DWORD w;
@@ -2110,25 +2147,25 @@ void Editor::DoCompile() {
 		buildProgressVec4 = red(1, 0.7f);
 		AddBuildLog(this, "Press Enter to open first error file.");
 	}
-	else {//if (IO::HasFile("F:\\TestProject\\Debug\\TestProject.exe")) {
+	else {//if (IO::HasFile("D:\\TestProject\\Debug\\TestProject.exe")) {
 		if (_cleanOnBuild) {
 			buildProgressValue = 90;
 			AddBuildLog(this, "Cleaning up...");
 			buildLabel = "Build: cleaning up...";
-			//tr2::sys::remove_all("F:\\TestProject\\Release\\TestProject.tlog");
-			for (string s1 : IO::GetFiles("F:\\TestProject\\Release\\TestProject.tlog"))
+			//tr2::sys::remove_all("D:\\TestProject\\Release\\TestProject.tlog");
+			for (string s1 : IO::GetFiles("D:\\TestProject\\Release\\TestProject.tlog"))
 			{
 				AddBuildLog(this, "deleting " + s1);
-				remove(s1.c_str());
+				std::remove(s1.c_str());
 			}
-			RemoveDirectory("F:\\TestProject\\Release\\TestProject.tlog\\");
-			for (string s2 : IO::GetFiles("F:\\TestProject\\Release"))
+			RemoveDirectory("D:\\TestProject\\Release\\TestProject.tlog\\");
+			for (string s2 : IO::GetFiles("D:\\TestProject\\Release"))
 			{
 				string ss = s2.substr(s2.find_last_of('\\') + 1, string::npos);
 				string se = s2.substr(s2.size()-4, string::npos);
 				if (ss == "glewinfo.exe" || ss == "visualinfo.exe" || se == ".pdb" || se == ".obj") {
 					AddBuildLog(this, "deleting " + s2);
-					remove(s2.c_str());
+					std::remove(s2.c_str());
 				}
 			}
 		}
@@ -2136,7 +2173,7 @@ void Editor::DoCompile() {
 		buildLabel = "Build: complete.";
 		buildProgressVec4 = green(1, 0.7f);
 		AddBuildLog(this, "Build finished: press Escape to exit.");
-		ShellExecute(NULL, "open", "explorer", " /select,F:\\TestProject\\Release\\TestProject.exe", NULL, SW_SHOW);
+		ShellExecute(NULL, "open", "explorer", " /select,D:\\TestProject\\Release\\TestProject.exe", NULL, SW_SHOW);
 	}
 	buildEnd = true;
 	//else SetBuildFail(this);

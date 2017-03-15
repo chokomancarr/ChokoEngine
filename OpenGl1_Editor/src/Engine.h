@@ -33,6 +33,8 @@ typedef glm::vec3 Vec3;
 typedef glm::vec4 Vec4;
 typedef glm::quat Quat;
 
+string to_string(Vec2 v), to_string(Vec3 v), to_string(Vec4 v), to_string(Quat v);
+
 class Color {
 public:
 	Color() : r(0), g(0), b(0), a(0) {}
@@ -90,6 +92,7 @@ typedef unsigned char ORIENTATION;
 long long milliseconds();
 
 class Editor;
+class EditorBlock;
 
 typedef unsigned char ASSETTYPE;
 typedef int ASSETID;
@@ -100,6 +103,7 @@ Vec4 red(float f), green(float f), blue(float f), cyan(float f), yellow(float f)
 Vec4 red(float f, float i), green(float f, float i), blue(float f, float i), cyan(float f, float i), yellow(float f, float i), white(float f, float i);
 Vec4 LerpVec4(Vec4 a, Vec4 b, float f);
 float clamp(float f, float a, float b);
+float repeat(float f, float a, float b);
 Vec3 rotate(Vec3 v, Quat q);
 glm::mat4 Quat2Mat(Quat q);
 void _StreamWrite(const void* val, ofstream* stream, int size);
@@ -148,6 +152,7 @@ class AssetManager;
 #define ASSETTYPE_SCENE 0xf0
 #define ASSETTYPE_TEXTURE 0x01
 #define ASSETTYPE_HDRI 0x02
+#define ASSETTYPE_RENDERTEXTURE 0x03
 #define ASSETTYPE_SHADER 0x05
 #define ASSETTYPE_MATERIAL 0x10
 #define ASSETTYPE_BLEND 0x20
@@ -187,11 +192,15 @@ public:
 	static void Message(string c, string s);
 	static void Warning(string c, string s);
 	static void Error(string c, string s);
+	static void ObjectTree(vector<SceneObject*> o);
 
 	friend int main(int argc, char **argv);
 protected:
 	static ofstream* stream;
 	static void Init(string path);
+
+private:
+	static void DoDebugObjectTree(vector<SceneObject*> o, int i);
 };
 
 class EB_Browser_File;
@@ -497,7 +506,6 @@ public:
 protected:
 	static void Init(string path = "");
 	static bool LoadDatas(string path);
-	void Render();
 };
 
 class SceneSettings {
@@ -534,8 +542,10 @@ protected:
 	static vector<string> sceneNames;
 	static vector<long> scenePoss;
 	static void ReadD0();
+	static void Unload();
 	Scene() : sceneName("newScene") {}
 	Scene(ifstream& stream, long pos);
+	~Scene();
 	void Save(Editor* e);
 };
 
