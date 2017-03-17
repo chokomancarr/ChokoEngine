@@ -7,10 +7,10 @@ Object::Object(string nm) : id(Engine::GetNewId()), name(nm) {}
 bool DrawComponentHeader(Editor* e, Vec4 v, uint pos, Component* c) {
 	Engine::DrawQuad(v.r, v.g + pos, v.b - 17, 16, grey2());
 	//bool hi = expand;
-	//if (Engine::EButton((e->editorLayer == 0), v.r, v.g + pos, v.b, 16, grey2(), white(1, 0.7f), grey1()) == MOUSE_RELEASE) {
-	//	hi = !expand;
-	//}
-	Engine::DrawTexture(v.r, v.g + pos, 16, 16, c->_expanded ? e->collapse : e->expand);
+	if (Engine::EButton((e->editorLayer == 0), v.r, v.g + pos, 16, 16, c->_expanded ? e->collapse : e->expand, white()) == MOUSE_RELEASE) {
+		c->_expanded = !c->_expanded;//hi = !expand;
+	}
+	//Engine::DrawTexture(v.r, v.g + pos, 16, 16, c->_expanded ? e->collapse : e->expand);
 	if (Engine::EButton(e->editorLayer == 0, v.r + v.b - 16, v.g + pos, 16, 16, e->buttonX, white(1, 0.7f)) == MOUSE_RELEASE) {
 		//delete
 		c->object->RemoveComponent(c);
@@ -19,7 +19,7 @@ bool DrawComponentHeader(Editor* e, Vec4 v, uint pos, Component* c) {
 		return false;
 	}
 	Engine::Label(v.r + 20, v.g + pos + 3, 12, c->name, e->font, white());
-	return true;
+	return c->_expanded;
 }
 
 Component::Component(string name, COMPONENT_TYPE t, DRAWORDER drawOrder, SceneObject* o, vector<COMPONENT_TYPE> dep) : Object(name), componentType(t), active(true), drawOrder(drawOrder), _expanded(true), dependancies(dep), object(o) {
@@ -301,6 +301,25 @@ void MeshRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 				pos += 17;
 				if (materials[a] == nullptr)
 					continue;
+				for (uint q = 0; q < materials[a]->valOrders.size(); q++) {
+					Engine::Label(v.r + 20, v.g + pos + 38, 12, materials[a]->valNames[materials[a]->valOrders[q]][materials[a]->valOrderIds[q]], e->font, white());
+					Engine::DrawTexture(v.r + 3, v.g + pos + 35, 16, 16, e->matVarTexs[materials[a]->valOrders[q]]);
+					void* bbs = materials[a]->vals[materials[a]->valOrders[q]][materials[a]->valOrderGLIds[q]];
+					switch (materials[a]->valOrders[q]) {
+					case SHADER_INT:
+						Engine::Button(v.r + v.b * 0.3f + 17, v.g + pos + 35, v.b*0.7f - 17, 16, grey1(), to_string(*(int*)bbs), 12, e->font, white());
+						break;
+					case SHADER_FLOAT:
+						Engine::Button(v.r + v.b * 0.3f + 17, v.g + pos + 35, v.b*0.7f - 17, 16, grey1(), to_string(*(float*)bbs), 12, e->font, white());
+						break;
+					case SHADER_SAMPLER:
+						e->DrawAssetSelector(v.r + v.b * 0.3f + 17, v.g + pos + 35, v.b*0.7f - 17, 16, grey1(), ASSETTYPE_TEXTURE, 12, e->font, &((MatVal_Tex*)bbs)->id, _UpdateTex, bbs);
+						break;
+					}
+					pos += 17;
+				}
+				pos++;
+				/*
 				for (auto aa : materials[a]->vals) {
 					int r = 0;
 					for (auto bb : aa.second) {
@@ -323,6 +342,7 @@ void MeshRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 					}
 				}
 				pos += 1;
+				*/
 			}
 			pos += 34;
 		}

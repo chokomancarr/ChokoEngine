@@ -10,7 +10,7 @@
 
 using namespace std;
 
-bool ShaderBase::LoadShader(GLenum shaderType, string source, GLuint& shader) {
+bool ShaderBase::LoadShader(GLenum shaderType, string source, GLuint& shader, string* err) {
 
 	int compile_result = 0;
 
@@ -29,9 +29,10 @@ bool ShaderBase::LoadShader(GLenum shaderType, string source, GLuint& shader) {
 		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &info_log_length);
 		vector<char> shader_log(info_log_length);
 		glGetShaderInfoLog(shader, info_log_length, NULL, &shader_log[0]);
-		cerr << "error compiling shader" << string(shader_log.begin(), shader_log.end()) << endl;
 		glDeleteShader(shader);
 		shader = 0;
+		if (err != nullptr)
+			*err += string(shader_log.begin(), shader_log.end());
 		return false;
 	}
 	//std::cout << "shader compiled" << endl;
@@ -113,16 +114,21 @@ ShaderBase::ShaderBase(string path) : AssetObject(ASSETTYPE_SHADER) {
 	stream.close();
 
 	GLuint vertex_shader, fragment_shader;
+	string err = "";
 	if (vertex_shader_code != "") {
 		cout << "Vertex Shader: " << endl << vertex_shader_code;
-		if (!LoadShader(GL_VERTEX_SHADER, vertex_shader_code, vertex_shader))
+		if (!LoadShader(GL_VERTEX_SHADER, vertex_shader_code, vertex_shader, &err)) {
+			Editor::instance->_Error("Shader Compiler", path + " " + err);
 			return;
+		}
 	}
 	else return;
 	if (fragment_shader_code != "") {
 		cout << "Fragment Shader: " << endl << fragment_shader_code;
-		if (!LoadShader(GL_FRAGMENT_SHADER, fragment_shader_code, fragment_shader))
+		if (!LoadShader(GL_FRAGMENT_SHADER, fragment_shader_code, fragment_shader, &err)) {
+			Editor::instance->_Error("Shader Compiler", path + " " + err);
 			return;
+		}
 	}
 	else return;
 

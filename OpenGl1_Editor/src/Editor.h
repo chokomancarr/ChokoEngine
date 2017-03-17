@@ -9,6 +9,7 @@ Editor functions
 #include <string>
 #include <vector>
 #include <mutex>
+#include <memory>
 #include <unordered_map>
 
 using namespace std;
@@ -115,6 +116,7 @@ public:
 	int thumbnail;
 	bool canExpand, expanded;
 	vector<EB_Browser_File> children;
+	Texture* tex;
 };
 
 class EB_Browser_SubPath {
@@ -137,7 +139,7 @@ public:
 	void Refresh();
 
 	static void _AddAsset(EditorBlock* b);
-	static void _DoAddAssetH(EditorBlock* b);
+	static void _DoAddAssetH(EditorBlock* b), _DoAddAssetMat(EditorBlock* b);
 };
 
 class EB_Viewer : public EditorBlock {
@@ -256,6 +258,7 @@ public:
 	static void DrawAsset(Editor* e, Vec4 v, float dh, string label, ASSETTYPE type);
 
 	static void _ApplyTexFilter0(EditorBlock* e), _ApplyTexFilter1(EditorBlock* e), _ApplyTexFilter2(EditorBlock* e);
+	static void _ApplyMatShader(void* v);
 	//static void DrawTexture(Editor* e, Vec4 v, string label, Texture* tex, Vec4& uv);
 };
 
@@ -371,8 +374,8 @@ public:
 	int gridId[68];
 	Vec3 grid[64];
 
-	bool sceneLoaded = false;
-	Scene activeScene;
+	shared_ptr<Scene> activeScene = nullptr;
+	bool sceneLoaded() { return activeScene != nullptr; }
 	SceneObject* selected;
 	bool selectGlobal = false;
 	vector<string> includedScenes;
@@ -409,7 +412,7 @@ public:
 
 	void ResetAssetMap();
 
-	void DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASSETTYPE type, float labelSize, Font* labelFont, int* tar, callbackFunc func = nullptr, void* param = nullptr);
+	void DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASSETTYPE type, float labelSize, Font* labelFont, ASSETID* tar, callbackFunc func = nullptr, void* param = nullptr);
 	ASSETID GetAssetInfoH(string p), GetAssetInfo(string p, ASSETTYPE &type, ASSETID& i);
 	ASSETID GetAssetId(void* p), GetAssetId(void* p, ASSETTYPE& t);
 

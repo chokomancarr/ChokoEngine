@@ -93,6 +93,7 @@ long long milliseconds();
 
 class Editor;
 class EditorBlock;
+class EB_Inspector;
 
 typedef unsigned char ASSETTYPE;
 typedef int ASSETID;
@@ -379,12 +380,13 @@ public:
 	
 	//removes macros, insert include files
 	static bool Parse(ifstream* text, string path);
-	static bool LoadShader(GLenum shaderType, string source, GLuint& shader);
+	static bool LoadShader(GLenum shaderType, string source, GLuint& shader, string* err = nullptr);
 };
 
 class MatVal_Tex {
 	friend class Material;
 	friend class MeshRenderer;
+	friend void EBI_DrawAss_Mat(Vec4 v, Editor* editor, EB_Inspector* b, float &off);
 protected:
 	MatVal_Tex() : id(-1), tex(nullptr) {}
 
@@ -411,14 +413,21 @@ public:
 	void SetInt(GLint id, int val);
 
 	friend class Editor;
+	friend class EB_Browser;
+	friend class EB_Inspector;
 	friend class Mesh;
 	friend class MeshRenderer;
 	friend class Scene;
 	friend int main(int argc, char **argv);
+	friend void EBI_DrawAss_Mat(Vec4 v, Editor* editor, EB_Inspector* b, float &off);
 protected:
 	Material(string s);
+	void _ReloadParams();
 
 	int _shader;
+	vector<SHADER_VARTYPE> valOrders;
+	vector<byte> valOrderIds;
+	vector<byte> valOrderGLIds;
 
 	void Load();
 	void Save(string path);
@@ -500,7 +509,7 @@ public:
 	
 	static vector<ifstream*> assetStreams;
 	static unordered_map<byte, vector<string>> assetData;
-	static unordered_map<string, byte[]> assetDataLoaded;
+	//static unordered_map<string, byte[]> assetDataLoaded;
 	//byte GetAsset(string name);
 	friend int main(int argc, char **argv);
 protected:
@@ -523,6 +532,9 @@ protected:
 
 class Scene {
 public:
+	Scene() : sceneName("newScene") {}
+	Scene(ifstream& stream, long pos);
+	~Scene() {}
 	static Scene* active; //for use in-game
 	static bool loaded() {
 		return active != nullptr;
@@ -543,9 +555,6 @@ protected:
 	static vector<long> scenePoss;
 	static void ReadD0();
 	static void Unload();
-	Scene() : sceneName("newScene") {}
-	Scene(ifstream& stream, long pos);
-	~Scene();
 	void Save(Editor* e);
 };
 
@@ -561,7 +570,6 @@ protected:
 	static unordered_map<ASSETTYPE, vector<pair<byte, uint>>> dataLocs;
 	static unordered_map<ASSETTYPE, vector<void*>> dataCaches;
 	static vector<ifstream*> streams;
-
 	static void Init(string dpath);
 	static void* CacheFromName(string nm);
 	static ASSETID GetAssetId(string nm, ASSETTYPE &t);

@@ -183,7 +183,7 @@ void Engine::Init(string path) {
 
 vector<ifstream*> Engine::assetStreams = vector<ifstream*>();
 unordered_map<byte, vector<string>> Engine::assetData = unordered_map<byte, vector<string>>();
-unordered_map<string, byte[]> Engine::assetDataLoaded = unordered_map<string, byte[]>();
+//unordered_map<string, byte[]> Engine::assetDataLoaded = unordered_map<string, byte[]>();
 
 bool Engine::LoadDatas(string path) {
 	ifstream* d0 = new ifstream(path + "\\data0");
@@ -815,7 +815,7 @@ void Debug::Error(string c, string s) {
 	*stream << "[e]" << c << ": " << s << endl;
 #endif
 	cout << "[e]" << c << " says: " << s << endl;
-	abort();
+	//abort();
 }
 
 void Debug::DoDebugObjectTree(vector<SceneObject*> o, int i) {
@@ -1550,33 +1550,9 @@ Texture::Texture(int i, Editor* e) : AssetObject(ASSETTYPE_TEXTURE) {
 	if (strm.is_open()) {
 		byte chn;
 		GLenum rgb = GL_RGB, rgba = GL_RGBA;
-		vector<char> hd(4);
-		strm.read((&hd[0]), 3);
-		if (hd[0] != 'I' || hd[1] != 'M' || hd[2] != 'G') {
-			e->_Error("Image Cacher", "Image cache header wrong! " + p);
-			return;
-		}
-		byte bb;
-		_Strm2Val<byte>(strm, chn);
-		_Strm2Val<uint>(strm, width);
-		_Strm2Val<uint>(strm, height);
-		_Strm2Val<byte>(strm, bb);
-		if (bb == 1) {
-			rgb = GL_BGR;
-			rgba = GL_BGRA;
-		}
-		_Strm2Val<byte>(strm, _aniso);
-		_Strm2Val<byte>(strm, bb);
-		_filter = (TEX_FILTERING)bb;
-		_Strm2Val<byte>(strm, bb);
-		_mipmap = (bb & 0xf0) == 0xf0;
-		_repeat = (bb & 0x0f) == 0x0f;
-		strm.read((&hd[0]), 4);
-		if (hd[0] != 'D' || hd[1] != 'A' || hd[2] != 'T' || hd[3] != 'A') {
-			e->_Error("Image Cacher", "Image cache data tag wrong! " + p);
-			return;
-		}
-		byte* data = new byte[chn*width*height];
+		byte* data;
+		_ReadStrm(this, strm, chn, rgb, rgba);
+		data = new byte[chn*width*height];
 		strm.read((char*)data, chn*width*height);
 		strm.close();
 
@@ -1590,6 +1566,59 @@ Texture::Texture(int i, Editor* e) : AssetObject(ASSETTYPE_TEXTURE) {
 		glBindTexture(GL_TEXTURE_2D, 0);
 		delete[](data);
 		loaded = true;
+	}
+}
+
+Texture::Texture(ifstream& strm, uint offset) : AssetObject(ASSETTYPE_TEXTURE) {
+	if (strm.is_open()) {
+		strm.seekg(offset);
+		byte chn;
+		GLenum rgb = GL_RGB, rgba = GL_RGBA;
+		byte* data;
+		_ReadStrm(this, strm, chn, rgb, rgba);
+		data = new byte[chn*width*height];
+		strm.read((char*)data, chn*width*height);
+		strm.close();
+
+		glGenTextures(1, &pointer);
+		glBindTexture(GL_TEXTURE_2D, pointer);
+		if (chn == 3) glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, rgb, GL_UNSIGNED_BYTE, data);
+		else glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, rgba, GL_UNSIGNED_BYTE, data);
+		if (_mipmap) glGenerateMipmap(GL_TEXTURE_2D);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (_mipmap && (_filter == TEX_FILTER_TRILINEAR)) ? GL_LINEAR_MIPMAP_LINEAR : (_filter == TEX_FILTER_POINT) ? GL_NEAREST : GL_LINEAR);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, _aniso);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		delete[](data);
+		loaded = true;
+	}
+}
+
+void Texture::_ReadStrm(Texture* tex, ifstream& strm, byte& chn, GLenum& rgb, GLenum& rgba) {
+	vector<char> hd(4);
+	strm.read((&hd[0]), 3);
+	if (hd[0] != 'I' || hd[1] != 'M' || hd[2] != 'G') {
+		Debug::Error("Image Cacher", "Image cache header wrong!");
+		return;
+	}
+	byte bb;
+	_Strm2Val<byte>(strm, chn);
+	_Strm2Val<uint>(strm, tex->width);
+	_Strm2Val<uint>(strm, tex->height);
+	_Strm2Val<byte>(strm, bb);
+	if (bb == 1) {
+		rgb = GL_BGR;
+		rgba = GL_BGRA;
+	}
+	_Strm2Val<byte>(strm, tex->_aniso);
+	_Strm2Val<byte>(strm, bb);
+	tex->_filter = (TEX_FILTERING)bb;
+	_Strm2Val<byte>(strm, bb);
+	tex->_mipmap = (bb & 0xf0) == 0xf0;
+	tex->_repeat = (bb & 0x0f) == 0x0f;
+	strm.read((&hd[0]), 4);
+	if (hd[0] != 'D' || hd[1] != 'A' || hd[2] != 'T' || hd[3] != 'A') {
+		Debug::Error("Image Cacher", "Image cache data tag wrong!");
+		return;
 	}
 }
 
@@ -1842,10 +1871,14 @@ Material::Material(ShaderBase * shad) : _shader(-1), AssetObject(ASSETTYPE_MATER
 	shader = shad;
 	if (shad == nullptr)
 		return;
-	ResetVals();
 	if (Editor::instance != nullptr)
 		_shader = Editor::instance->GetAssetId(shader);
-	for (ShaderVariable* v : shad->vars) {
+	_ReloadParams();
+}
+
+void Material::_ReloadParams() {
+	ResetVals();
+	for (ShaderVariable* v : shader->vars) {
 		void* l = nullptr;
 		if (v->type == SHADER_INT)
 			l = new int();
@@ -1854,7 +1887,15 @@ Material::Material(ShaderBase * shad) : _shader(-1), AssetObject(ASSETTYPE_MATER
 		else if (v->type == SHADER_SAMPLER)
 			l = new MatVal_Tex();
 		valNames[v->type].push_back(v->name);
-		vals[v->type].emplace(glGetUniformLocation(shad->pointer, v->name.c_str()), l);
+		GLint ii = glGetUniformLocation(shader->pointer, v->name.c_str());
+		if (ii > -1) {
+			vals[v->type].emplace(ii, l);
+			valOrders.push_back(v->type);
+			valOrderIds.push_back((byte)(valNames[v->type].size()-1));
+			valOrderGLIds.push_back(ii);
+		}
+		else
+			Editor::instance->_Warning("Material", "Shader parameter " + v->name + " not used!");
 	}
 }
 
@@ -1899,8 +1940,15 @@ Material::Material(string path) : AssetObject(ASSETTYPE_MATERIAL) {
 			l = new MatVal_Tex();
 		valNames[v->type].push_back(v->name);
 		GLint loc = glGetUniformLocation(shader->pointer, v->name.c_str());
-		vals[v->type].emplace(loc, l);
-		nMap.emplace(v->name, loc);
+		if (loc > -1) {
+			vals[v->type].emplace(loc, l);
+			nMap.emplace(v->name, loc);
+			valOrders.push_back(v->type);
+			valOrderIds.push_back((byte)(valNames[v->type].size()-1));
+			valOrderGLIds.push_back(loc);
+		}
+		else
+			Editor::instance->_Warning("Material", "Shader parameter " + v->name + " not used!");
 	}
 
 	int vs;
@@ -1972,6 +2020,7 @@ void Material::ResetVals() {
 	valNames[SHADER_VEC3] = vector<string>();
 	valNames[SHADER_SAMPLER] = vector<string>();
 	valNames[SHADER_MATRIX] = vector<string>();
+	valOrders = vector<SHADER_VARTYPE>();
 }
 
 void Material::SetTexture(string name, Texture * texture) {
@@ -1982,7 +2031,7 @@ void Material::SetTexture(GLint id, Texture * texture) {
 }
 
 void Material::Save(string path) {
-	ofstream strm(path, ios::out | ios::binary | ios::trunc);
+	ofstream strm(path.c_str(), ios::out | ios::binary | ios::trunc);
 	strm << "KTC";
 	ASSETTYPE st;
 	ASSETID si = Editor::instance->GetAssetId(shader, st);
@@ -2048,16 +2097,17 @@ void Material::ApplyGL(glm::mat4& matrix) {
 			Vec2* v2 = (Vec2*)a.second;
 			glUniform2f(a.first, v2->x, v2->y);
 		}
-		int ti = 0;
+		int ti = -1;
 		for (auto a : vals[SHADER_SAMPLER]) {
+			ti++;
 			if (a.second == nullptr)
 				continue;
 			MatVal_Tex* tx = (MatVal_Tex*)a.second;
 			if (tx->tex == nullptr)
 				continue;
-			glUniform1i(a.first, ti);
 			glActiveTexture(GL_TEXTURE0 + ti);
 			glBindTexture(GL_TEXTURE_2D, tx->tex->pointer);
+			glUniform1i(a.first, ti);
 		}
 
 	}
@@ -2273,11 +2323,13 @@ Scene::Scene(ifstream& stream, long pos) : sceneName("") {
 	}
 }
 
+/*
 Scene::~Scene() {
 	for (SceneObject* o : objects)
 		delete(o);
 	objects.resize(0);
 }
+*/
 
 Scene* Scene::active = nullptr;
 ifstream* Scene::strm = nullptr;
@@ -2388,11 +2440,12 @@ void AssetManager::Init(string dpath) {
 }
 
 void* AssetManager::CacheFromName(string nm) {
-	ASSETTYPE t;
-	
-	for (uint a = names[t].size() - 1; a >= 0; a--) {
-		if (names[t][a] == nm) {
-			return GetCache(t, a);
+	//ASSETTYPE t;
+	for (auto t : names) {
+		for (uint a = names[t.first].size() - 1; a >= 0; a--) {
+			if (names[t.first][a] == nm) {
+				return GetCache(t.first, a);
+			}
 		}
 	}
 	Debug::Warning("Asset Finder", "Asset not found for " + nm + "!");
@@ -2419,5 +2472,14 @@ void* AssetManager::GetCache(ASSETTYPE t, ASSETID i) {
 		return GenCache(t, i);
 }
 void* AssetManager::GenCache(ASSETTYPE t, ASSETID i) {
-	return nullptr;
+	ifstream* strm = streams[dataLocs[t][i].first];
+	uint off = dataLocs[t][i].second;
+	switch (t) {
+	case ASSETTYPE_TEXTURE:
+		dataCaches[t][i] = new Texture(*strm, off);
+		break;
+	default:
+		return nullptr;
+	}
+	return dataCaches[t][i];
 }

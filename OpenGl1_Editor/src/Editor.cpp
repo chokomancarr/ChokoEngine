@@ -191,7 +191,7 @@ void EB_Hierarchy::Draw() {
 
 	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
 	glDisable(GL_DEPTH_TEST);
-	if (editor->sceneLoaded) {
+	if (editor->sceneLoaded()) {
 		if (Engine::EButton((editor->editorLayer == 0), v.r, v.g + EB_HEADER_SIZE + 1, v.b, 16, Vec4(0.2f, 0.2f, 0.4f, 1)) == MOUSE_RELEASE) {
 			editor->selected = nullptr;
 			editor->selectGlobal = true;
@@ -199,7 +199,7 @@ void EB_Hierarchy::Draw() {
 		}
 		Engine::Label(v.r + 19, v.g + EB_HEADER_SIZE + 4, 12, "Global", editor->font, white());
 		int i = 1;
-		for (SceneObject* sc : editor->activeScene.objects)
+		for (SceneObject* sc : editor->activeScene->objects)
 		{
 			EBH_DrawItem(sc, editor, &v, i, 0);
 		}
@@ -227,9 +227,20 @@ HICON GetHighResolutionIcon(LPTSTR pszPath)
 	else return nullptr;
 }
 
-EB_Browser_File::EB_Browser_File(Editor* e, string path, string nm, string fn) : path(path), thumbnail(-1), expanded(false), name(nm), fullName(path + fn) {
+EB_Browser_File::EB_Browser_File(Editor* e, string path, string nm, string fn) : path(path), thumbnail(-1), tex(nullptr), expanded(false), name(nm), fullName(path + fn) {
 	string ext = name.substr(name.find_last_of('.') + 1, string::npos);
 	canExpand = false;
+	/*
+	if (ext == "jpg" || ext == "bmp" || ext == "png") {
+		//name = name.substr(0, name.find_last_of('.'));
+		ASSETTYPE t;
+		ASSETID i;
+		if (e->GetAssetInfo(fullName, t, i) != ASSETTYPE_UNDEF) {
+			tex = _GetCache<Texture>(t, i);
+			thumbnail = 1;
+		}
+	}
+	*/
 	for (int a = e->assetIcons.size() - 1; a >= 0; a--) {
 		std::stringstream ss;
 		ss.str(e->assetIconsExt[a]);
@@ -264,7 +275,7 @@ EB_Browser::EB_Browser(Editor* e, int x1, int y1, int x2, int y2, string dir) : 
 bool DrawFileRect(float w, float h, float size, EB_Browser_File* file, EditorBlock* e) {
 	bool b = false;
 	if (e->editor->editorLayer == 0) {
-		byte bb = ((file->thumbnail >= 0) ? Engine::Button(w + 1, h + 1, size - 2, size - 2, e->editor->assetIcons[file->thumbnail], white(1, 0.8f), white(), white(1, 0.5f)) : Engine::Button(w + 1, h + 1, size - 2, size - 2, grey2()));
+		byte bb = ((file->thumbnail >= 0) ? Engine::Button(w + 1, h + 1, size - 2, size - 2, (file->tex != nullptr)? file->tex : e->editor->assetIcons[file->thumbnail], white(1, 0.8f), white(), white(1, 0.5f)) : Engine::Button(w + 1, h + 1, size - 2, size - 2, grey2()));
 		b = bb == MOUSE_RELEASE;
 
 		if (file->canExpand) {
@@ -324,7 +335,7 @@ void EB_Browser::Draw() {
 		}
 		
 		ww += fileSize+1;
-		if (ww > (v.b - 252)) {
+		if (ww > (v.b - 152 - fileSize)) {
 			ww = 0;
 			hh++;
 			if (v.g + EB_HEADER_SIZE + (fileSize+1)* hh > Display::height)
@@ -335,7 +346,7 @@ void EB_Browser::Draw() {
 				Engine::DrawQuad(v.r + 149 + ww, v.g + EB_HEADER_SIZE + (fileSize + 1)* hh + 1, fileSize + 1.0f, fileSize-2.0f, Vec4(1, 0.494f, 0.176f, 0.3f));
 				DrawFileRect(v.r + 153 + ww, v.g + EB_HEADER_SIZE + (fileSize+1)* hh + 2.0f, fileSize - 4.0f, &files[ff].children[fff], this);
 				ww += fileSize+1;
-				if (ww > (v.b - 252)) {
+				if (ww > (v.b - 152 - fileSize)) {
 					ww = 0;
 					hh++;
 					if (v.g + EB_HEADER_SIZE + (fileSize+1)* hh > Display::height)
@@ -515,20 +526,20 @@ void EB_Viewer::Draw() {
 	glEnable(GL_DEPTH_TEST);
 	glClearDepth(1);
 
-	if (editor->sceneLoaded) {
+	if (editor->sceneLoaded()) {
 		//draw scene
 		glDepthFunc(GL_LEQUAL);
 		glDepthMask(true);
-		DrawSceneObjectsOpaque(this, editor->activeScene.objects);
+		DrawSceneObjectsOpaque(this, editor->activeScene->objects);
 		glDepthMask(false);
-		DrawSceneObjectsGizmos(this, editor->activeScene.objects);
-		DrawSceneObjectsTrans(this, editor->activeScene.objects);
+		DrawSceneObjectsGizmos(this, editor->activeScene->objects);
+		DrawSceneObjectsTrans(this, editor->activeScene->objects);
 
 		//draw background
 		glDepthFunc(GL_EQUAL);
-		if (editor->activeScene.settings.sky != nullptr) {
-			Engine::DrawSky(v.x, v.y, v.z, v.w, editor->activeScene.settings.sky, rz / 360.0f, rw / 180.0f, 60, 0);
-			//Engine::DrawQuad(v.x, v.y, v.z, v.w, editor->activeScene.sky->pointer, white());
+		if (editor->activeScene->settings.sky != nullptr) {
+			Engine::DrawSky(v.x, v.y, v.z, v.w, editor->activeScene->settings.sky, rz / 360.0f, rw / 180.0f, 60, 0);
+			//Engine::DrawQuad(v.x, v.y, v.z, v.w, editor->activeScene->sky->pointer, white());
 		}
 		glDepthFunc(GL_LEQUAL);
 	}
@@ -836,6 +847,69 @@ void EBI_DrawAss_Tex(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 	off += sz + 63;
 }
 
+void EBI_DrawAss_Mat(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
+	Material* mat = (Material*)editor->selectedFileCache;
+	Engine::Label(v.r + 18, off + 17, 12, "Shader", editor->font, white());
+	editor->DrawAssetSelector(v.r + v.b*0.25f, off + 15, v.b*0.75f - 1, 16, grey2(), ASSETTYPE_SHADER, 12, editor->font, &mat->_shader, &EB_Inspector::_ApplyMatShader, mat);
+	off += 34;
+	/*
+	for (auto aa : mat->vals) {
+		int r = 0;
+		for (auto bb : aa.second) {
+			Engine::DrawTexture(v.r + 2, off, 16, 16, editor->matVarTexs[aa.first]);
+			Engine::Label(v.r + 19, off + 2, 12, mat->valNames[aa.first][r], editor->font, white());
+			switch (aa.first) {
+			case SHADER_INT:
+				Engine::Button(v.r + v.b * 0.3f + 17, off, v.b*0.7f - 17, 16, grey1(), to_string(*(int*)bb.second), 12, editor->font, white());
+				break;
+			case SHADER_FLOAT:
+				Engine::Button(v.r + v.b * 0.3f + 17, off, v.b*0.7f - 17, 16, grey1(), to_string(*(float*)bb.second), 12, editor->font, white());
+				break;
+			case SHADER_SAMPLER:
+				ASSETID id = ASSETID(((MatVal_Tex*)bb.second)->id);
+				int ti = 32;// max(min(ceil(v.b*0.3f - 12), 64), 32);
+				editor->DrawAssetSelector(v.r + 19, off + 16, v.b - ti - 21, 16, grey1(), ASSETTYPE_TEXTURE, 12, editor->font, &id);
+				if (id > -1)
+					Engine::DrawTexture(v.r + v.b - ti - 1, off, ti, ti, _GetCache<Texture>(ASSETTYPE_TEXTURE, id));
+				else
+					Engine::DrawQuad(v.r + v.b - ti - 1, off, ti, ti, grey1());
+				off += ti - 16;
+				break;
+			}
+			r++;
+			off += 17;
+		}
+	}
+	//*/
+	for (uint q = 0; q < mat->valOrders.size(); q++) {
+		int r = 0;
+		Engine::DrawTexture(v.r + 2, off, 16, 16, editor->matVarTexs[mat->valOrders[q]]);
+		Engine::Label(v.r + 19, off + 2, 12, mat->valNames[mat->valOrders[q]][mat->valOrderIds[q]], editor->font, white());
+		void* bbs = mat->vals[mat->valOrders[q]][mat->valOrderGLIds[q]];
+		switch (mat->valOrders[q]) {
+		case SHADER_INT:
+			Engine::Button(v.r + v.b * 0.3f + 17, off, v.b*0.7f - 17, 16, grey1(), to_string(*(int*)bbs), 12, editor->font, white());
+			break;
+		case SHADER_FLOAT:
+			Engine::Button(v.r + v.b * 0.3f + 17, off, v.b*0.7f - 17, 16, grey1(), to_string(*(float*)bbs), 12, editor->font, white());
+			break;
+		case SHADER_SAMPLER:
+			ASSETID* id = &ASSETID(((MatVal_Tex*)bbs)->id);
+			float ti = 32;// max(min(ceil(v.b*0.3f - 12), 64), 32);
+			editor->DrawAssetSelector(v.r + 19, off + 16, v.b - ti - 21, 16, grey1(), ASSETTYPE_TEXTURE, 12, editor->font, id);
+			if (*id > -1)
+				Engine::DrawTexture(v.r + v.b - ti - 1, off, ti, ti, _GetCache<Texture>(ASSETTYPE_TEXTURE, *id));
+			else
+				Engine::DrawQuad(v.r + v.b - ti - 1, off, ti, ti, grey1());
+			off += ti - 16;
+			break;
+		}
+		r++;
+		off += 17;
+	}
+	//*/
+}
+
 void EB_Inspector::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	CalcV(v);
@@ -866,7 +940,7 @@ void EB_Inspector::Draw() {
 			Engine::Label(v.r + 22, v.g + 6 + EB_HEADER_SIZE, 12, "Scene Settings", editor->font, white());
 
 			Engine::Label(v.r, v.g + 23 + EB_HEADER_SIZE, 12, "Sky", editor->font, white());
-			editor->DrawAssetSelector(v.r + v.b*0.3f, v.g + 21 + EB_HEADER_SIZE, v.b*0.7f - 1, 14, grey2(), ASSETTYPE_HDRI, 12, editor->font, &editor->activeScene.settings.skyId);
+			editor->DrawAssetSelector(v.r + v.b*0.3f, v.g + 21 + EB_HEADER_SIZE, v.b*0.7f - 1, 14, grey2(), ASSETTYPE_HDRI, 12, editor->font, &editor->activeScene->settings.skyId);
 		}
 		else if (lockGlobal == 1) {
 			EBI_DrawObj(v, editor, this, lockedObj);
@@ -881,12 +955,19 @@ void EB_Inspector::Draw() {
 			EBI_DrawAss_Tex(v, editor, this, off);
 			canApply = true;
 			break;
+		case ASSETTYPE_MATERIAL:
+			EBI_DrawAss_Mat(v, editor, this, off);
+			canApply = true;
+			break;
 		}
 
 		if (canApply && (Engine::EButton(editor->editorLayer == 0, v.r + v.b - 81, off, 80, 14, grey2(), "Apply", 12, editor->font, white())) == MOUSE_RELEASE) {
 			switch (editor->selectedFileType) {
 			case ASSETTYPE_TEXTURE:
 				((Texture*)editor->selectedFileCache)->_ApplyPrefs(editor->selectedFilePath);
+				break;
+			case ASSETTYPE_MATERIAL:
+				((Material*)editor->selectedFileCache)->Save(Editor::instance->selectedFilePath);
 				break;
 			}
 		}
@@ -897,7 +978,7 @@ void EB_Inspector::Draw() {
 		Engine::Label(v.r + 22, v.g + 6 + EB_HEADER_SIZE, 12, "Scene Settings", editor->font, white());
 
 		Engine::Label(v.r, v.g + 23 + EB_HEADER_SIZE, 12, "Sky", editor->font, white());
-		editor->DrawAssetSelector(v.r + v.b*0.3f, v.g + 21 + EB_HEADER_SIZE, v.b*0.7f - 1, 14, grey2(), ASSETTYPE_HDRI, 12, editor->font, &editor->activeScene.settings.skyId);
+		editor->DrawAssetSelector(v.r + v.b*0.3f, v.g + 21 + EB_HEADER_SIZE, v.b*0.7f - 1, 14, grey2(), ASSETTYPE_HDRI, 12, editor->font, &editor->activeScene->settings.skyId);
 
 	}
 	else if (editor->selected != nullptr){
@@ -939,6 +1020,13 @@ void EB_Inspector::_ApplyTexFilter2(EditorBlock* b) {
 	((Texture*)(b->editor->selectedFileCache))->_filter = TEX_FILTER_TRILINEAR;
 }
 
+void EB_Inspector::_ApplyMatShader(void* v) {
+	Material* mat = (Material*)v;
+	mat->shader = _GetCache<ShaderBase>(ASSETTYPE_SHADER, mat->_shader);
+	mat->_ReloadParams();
+	mat->Save(Editor::instance->selectedFilePath);
+}
+
 
 void EB_ColorPicker::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
@@ -946,7 +1034,7 @@ void EB_ColorPicker::Draw() {
 	DrawHeaders(editor, this, &v, "Color Picker");
 }
 
-void Editor::DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASSETTYPE type, float labelSize, Font* labelFont, int* tar, callbackFunc func, void* param) {
+void Editor::DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASSETTYPE type, float labelSize, Font* labelFont, ASSETID* tar, callbackFunc func, void* param) {
 	if (editorLayer == 0) {
 		if (Engine::Button(x, y, w, h, col, LerpVec4(col, white(), 0.5f), LerpVec4(col, black(), 0.5f)) == MOUSE_RELEASE) {
 			editorLayer = 3;
@@ -964,7 +1052,7 @@ void Editor::DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASS
 	labelFont->alignment = al;
 }
 
-Editor::Editor() : sceneLoaded(false) {
+Editor::Editor() {
 	instance = this;
 }
 
@@ -1290,10 +1378,7 @@ void Editor::GenerateScriptResolver() {
 }
 
 void Editor::NewScene() {
-	if (sceneLoaded)
-		delete(&activeScene);
-	activeScene = Scene();
-	sceneLoaded = true;
+	activeScene = make_shared<Scene>();
 }
 
 void Editor::UpdateLerpers() {
@@ -2106,7 +2191,7 @@ void Editor::ShowCompileSett(Editor* e) {
 }
 
 void Editor::SaveScene(Editor* e) {
-	e->activeScene.Save(e);
+	e->activeScene->Save(e);
 }
 
 

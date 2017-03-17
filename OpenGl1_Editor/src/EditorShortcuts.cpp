@@ -2,21 +2,33 @@
 #include "Engine.h"
 
 void EB_Browser::_AddAsset(EditorBlock* b) {
-	b->editor->RegisterMenu(b, "Add Asset", { "Script (Header)", "Script (Cpp)", "Shader", "Material" }, { &_DoAddAssetH, nullptr, nullptr, nullptr }, 0);
+	b->editor->RegisterMenu(b, "Add Asset", { "Script (Header)", "Script (Cpp)", "Shader", "Material" }, { &_DoAddAssetH, nullptr, nullptr, &_DoAddAssetMat }, 0);
 }
 
 void EB_Browser::_DoAddAssetH(EditorBlock* b) {
 	EB_Browser* eb = (EB_Browser*)b;
-	int q = 0;
-	string p = eb->currentDir + "NewSceneScript" + to_string(q) + ".h";
+	int q = 1;
+	string p = eb->currentDir + "NewSceneScript.h";
 	while (IO::HasFile(p.c_str())) {
-		p = eb->currentDir + "NewSceneScript" + to_string(++q) + ".h";
+		p = eb->currentDir + "NewSceneScript" + to_string(q++) + ".h";
 	}
 	ofstream strm(p, ios::out | ios::trunc);
 	strm << "#include \"Engine.h\"\r\n\r\nclass ";
 	strm << "NewSceneScript" + to_string(q);
 	strm << " : public SceneScript{\r\n\tvoid Start() override {}\r\n\tvoid Update() override {}\r\n};";
 	strm.close();
+	eb->Refresh();
+}
+
+void EB_Browser::_DoAddAssetMat(EditorBlock* b) {
+	EB_Browser* eb = (EB_Browser*)b;
+	int q = 1;
+	string p = eb->currentDir + "newMaterial.material";
+	while (IO::HasFile(p.c_str())) {
+		p = eb->currentDir + "newMaterial" + to_string(q++) + ".material";
+	}
+	Material m = Material();
+	m.Save(p);
 	eb->Refresh();
 }
 
@@ -190,7 +202,7 @@ void EB_Viewer::_DoAddObjectBl(EditorBlock* b, void* v) {
 	string path = b->editor->projectFolder + "Assets\\" + name + ".meta";
 	name = name.substr(name.find_last_of('\\') + 1, string::npos).substr(0, name.find_last_of('.'));
 	SceneObject* o = new SceneObject(name);
-	b->editor->activeScene.objects.push_back(o);
+	b->editor->activeScene->objects.push_back(o);
 	ifstream file(path.c_str(), ios::in | ios::binary);
 	if (file.is_open()) {
 		char * c = new char[8];
@@ -336,16 +348,16 @@ void EB_Viewer::_AddObjectAud(EditorBlock* b) {
 SceneObject* DoAdd(EditorBlock* b) {
 	switch (((EB_Viewer*)b)->preAddType) {
 	case 0:
-		b->editor->activeScene.objects.push_back(new SceneObject("Empty Object"));
-		b->editor->selected = b->editor->activeScene.objects[b->editor->activeScene.objects.size() - 1];
+		b->editor->activeScene->objects.push_back(new SceneObject("Empty Object"));
+		b->editor->selected = b->editor->activeScene->objects[b->editor->activeScene->objects.size() - 1];
 		break;
 	case 5:
-		b->editor->activeScene.objects.push_back(new SceneObject("Camera"));
-		b->editor->selected = b->editor->activeScene.objects[b->editor->activeScene.objects.size() - 1]->AddComponent(new Camera())->object;
+		b->editor->activeScene->objects.push_back(new SceneObject("Camera"));
+		b->editor->selected = b->editor->activeScene->objects[b->editor->activeScene->objects.size() - 1]->AddComponent(new Camera())->object;
 		break;
 	case 10:
-		b->editor->activeScene.objects.push_back(new SceneObject("Audio Source"));
-		b->editor->selected = b->editor->activeScene.objects[b->editor->activeScene.objects.size() - 1]->AddComponent(new Camera())->object;
+		b->editor->activeScene->objects.push_back(new SceneObject("Audio Source"));
+		b->editor->selected = b->editor->activeScene->objects[b->editor->activeScene->objects.size() - 1]->AddComponent(new Camera())->object;
 		break;
 	}
 	return b->editor->selected;
@@ -460,5 +472,5 @@ void Editor::DoOpenScene(EditorBlock* b, void* v) {
 	//	delete(&Editor::instance->activeScene);
 	string nm = Editor::instance->projectFolder + "Assets\\" + *(string*)v;
 	ifstream s(nm.c_str(), ios::binary | ios::in);
-	Editor::instance->activeScene = Scene(s, 0);
+	Editor::instance->activeScene = make_shared<Scene>(s, 0);
 }

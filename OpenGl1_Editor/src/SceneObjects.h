@@ -120,9 +120,12 @@ public:
 	friend int main(int argc, char **argv);
 	friend class Editor;
 	friend class EB_Inspector;
+	friend class AssetManager;
 	friend void EBI_DrawAss_Tex(Vec4 v, Editor* editor, EB_Inspector* b, float &off);
 private:
 	Texture(int i, Editor* e); //for caches
+	Texture(ifstream& strm, uint offset);
+	static void _ReadStrm(Texture* tex, ifstream& strm, byte& chn, GLenum& rgb, GLenum& rgba);
 	byte _aniso = 0;
 	TEX_FILTERING _filter = TEX_FILTER_POINT;
 	bool _mipmap = true, _repeat = false;
