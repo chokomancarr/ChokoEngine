@@ -23,6 +23,11 @@ using namespace std;
 
 #define rad2deg 57.2958f
 #define deg2rad 0.0174533f
+#define char0 (char)0
+
+#define Lerp(a, b, c) (a*(1-c) + b*c)
+#define Normalize(a) glm::normalize(a)
+#define Distance(a, b) glm::distance(a, b)
 
 typedef unsigned char byte;
 typedef unsigned int uint;
@@ -34,6 +39,7 @@ typedef glm::vec4 Vec4;
 typedef glm::quat Quat;
 
 string to_string(Vec2 v), to_string(Vec3 v), to_string(Vec4 v), to_string(Quat v);
+//Vec2 normalize
 
 class Color {
 public:
@@ -63,6 +69,11 @@ public:
 	float x, y, w, h;
 
 	bool Inside(Vec2 v);
+};
+
+class Random {
+public:
+	static float Value(), Range(float min, float max);
 };
 
 #define MOUSE_DOWN 0x01
@@ -541,6 +552,8 @@ public:
 	}
 	string sceneName;
 	int sceneId;
+	static void AddObject(SceneObject* object, SceneObject* parent = nullptr);
+	static void DeleteObject(SceneObject* object);
 	vector<SceneObject*> objects;
 	SceneSettings settings;
 

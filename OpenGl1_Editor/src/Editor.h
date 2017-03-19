@@ -281,6 +281,15 @@ public:
 	void Refresh(){}
 };
 
+class CompRef {
+public:
+	CompRef(COMPONENT_TYPE t) : type(t), comp(nullptr), path("") {}
+
+	COMPONENT_TYPE type;
+	Component* comp;
+	string path;
+};
+
 class xPossLerper;
 class yPossLerper;
 class xPossMerger;
@@ -336,10 +345,15 @@ public:
 	void SetBackground(string s, float a = -1);
 
 	//select = layer3
+	bool browseIsComp;
 	ASSETTYPE browseType;
+	vector<Component*> browseCompList;
+	vector<string> browseCompListNames;
+	void ScanBrowseComp();
 	float browseOffset;
 	int browseSize;
 	int* browseTarget;
+	CompRef* browseTargetComp;
 	callbackFunc browseCallback;
 	void* browseCallbackParam;
 	//progress = layer4
@@ -413,12 +427,14 @@ public:
 	void ResetAssetMap();
 
 	void DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASSETTYPE type, float labelSize, Font* labelFont, ASSETID* tar, callbackFunc func = nullptr, void* param = nullptr);
+	void DrawCompSelector(float x, float y, float w, float h, Vec4 col, float labelSize, Font* labelFont, CompRef* tar, callbackFunc func = nullptr, void* param = nullptr);
 	ASSETID GetAssetInfoH(string p), GetAssetInfo(string p, ASSETTYPE &type, ASSETID& i);
 	ASSETID GetAssetId(void* p), GetAssetId(void* p, ASSETTYPE& t);
 
 	void ReadPrefs(), SavePrefs();
 	void LoadDefaultAssets();
 	void GenerateScriptResolver();
+	void GenerateScriptValuesReader(string& s);
 	void NewScene();
 	void UpdateLerpers();
 	void DrawHandles();

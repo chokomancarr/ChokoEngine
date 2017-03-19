@@ -39,6 +39,9 @@
     <ClCompile Include="hdr\hdr.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="png\lodepng.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

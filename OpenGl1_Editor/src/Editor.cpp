@@ -80,7 +80,7 @@ int GetFormatEnum(string ext) {
 		return ASSETTYPE_MATERIAL;
 	else if (ext == ".hdr")
 		return ASSETTYPE_HDRI;
-	else if (ext == ".bmp" || ext == ".jpg")
+	else if (ext == ".bmp" || ext == ".jpg" || ext == ".png")
 		return ASSETTYPE_TEXTURE;
 	else if (ext == ".rendtex")
 		return ASSETTYPE_RENDERTEXTURE;
@@ -1052,6 +1052,25 @@ void Editor::DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASS
 	labelFont->alignment = al;
 }
 
+void Editor::DrawCompSelector(float x, float y, float w, float h, Vec4 col, float labelSize, Font* labelFont, CompRef* tar, callbackFunc func, void* param) {
+	if (editorLayer == 0) {
+		if (Engine::Button(x, y, w, h, col, LerpVec4(col, white(), 0.5f), LerpVec4(col, black(), 0.5f)) == MOUSE_RELEASE) {
+			editorLayer = 3;
+			browseIsComp = true;
+			browseTargetComp = tar;
+			browseCallback = func;
+			browseCallbackParam = param;
+			ScanBrowseComp();
+		}
+	}
+	else
+		Engine::DrawQuad(x, y, w, h, col);
+	ALIGNMENT al = labelFont->alignment;
+	labelFont->alignment = ALIGN_MIDLEFT;
+	Engine::Label(round(x + 2), round(y + 0.5f*h), labelSize, (tar->comp == nullptr) ? "undefined" : tar->path + " (" + tar->comp->name + ")", labelFont, (tar->comp == nullptr) ? Vec4(0.7f, 0.4f, 0.4f, 1) : Vec4(0.4f, 0.4f, 0.7f, 1));
+	labelFont->alignment = al;
+}
+
 Editor::Editor() {
 	instance = this;
 }
@@ -1201,7 +1220,7 @@ void Editor::LoadDefaultAssets() {
 	assetIconsExt.push_back("shade");
 	assetIconsExt.push_back("txt");
 	assetIconsExt.push_back("mesh");
-	assetIconsExt.push_back("bmp jpg");
+	assetIconsExt.push_back("bmp jpg png");
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_header.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_blend.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_cpp.bmp", false));
@@ -1329,8 +1348,8 @@ void Editor::GenerateScriptResolver() {
 	vcxOut << vcx.substr(vcx.find('#') + 1, string::npos);
 	vcxOut.close();
 
-
-	string h = "#include <vector>\n#include <fstream>\n#include \"Engine.h\"\ntypedef SceneScript*(*sceneScriptInstantiator)();\nclass SceneScriptResolver {\npublic:\n\tSceneScriptResolver();\n\tstatic SceneScriptResolver* instance;\n\tstd::vector<string> names;\n\tstd::vector<sceneScriptInstantiator> map;\n\tSceneScript* Resolve(ifstream& strm);\n";
+	//SceneScriptResolver.h
+	string h = "#include <vector>\n#include <fstream>\n#include \"Engine.h\"\ntypedef SceneScript*(*sceneScriptInstantiator)();\ntypedef void (*sceneScriptAssigner)(SceneScript*, ifstream&);\nclass SceneScriptResolver {\npublic:\n\tSceneScriptResolver();\n\tstatic SceneScriptResolver* instance;\n\tstd::vector<string> names;\n\tstd::vector<sceneScriptInstantiator> map;\n\tstd::vector<sceneScriptAssigner> ass;\n\t\tSceneScript* Resolve(ifstream& strm);\n";
 	//*
 	h += "\n\tstatic SceneScript ";
 	for (int a = 0, b = headerAssets.size(); a < b; a++) {
@@ -1340,8 +1359,19 @@ void Editor::GenerateScriptResolver() {
 		else
 			h += ", ";
 	}
+	
+	h += "\n\tstatic void ";
+	for (int a = 0, b = headerAssets.size(); a < b; a++) {
+		h += "_Ass" + to_string(a) + "(SceneScript* sscr, ifstream& strm)";
+		if (a == b - 1)
+			h += ";\n";
+		else
+			h += ", ";
+	}
 	//*/
 	h += "};";
+	
+	//SceneScriptResolver.cpp
 	string s = "#include \"SceneScriptResolver.h\"\n#include \"Engine.h\"\n\n";
 	//*
 	for (int a = 0, b = headerAssets.size(); a < b; a++) {
@@ -1357,10 +1387,14 @@ void Editor::GenerateScriptResolver() {
 	for (int a = 0, b = headerAssets.size(); a < b; a++) {
 		s += "\tnames.push_back(R\"(" + headerAssets[a] + ")\");\n";
 		s += "\tmap.push_back(&_Inst" + to_string(a) + ");\n";
+		s += "\tass.push_back(&_Ass" + to_string(a) + ");\n";
 	}
 	s += "}\n\n";
 	s += "SceneScript* SceneScriptResolver::Resolve(ifstream& strm) {\n\tchar* c = new char[100];\n\tstrm.getline(c, 100, 0);\n\tstring s(c);\n\tdelete[](c);";
-	s += "\n\tint a = 0;\n\tfor (string ss : names) {\n\t\tif (ss == s) {\n\t\t\tSceneScript* scr = map[a]();\n\t\t\tscr->name = s + \" (Script)\";\n\t\t\treturn scr;\n\t\t}\n\t\ta++;\n\t}\n\treturn nullptr;\n}";
+	s += "\n\tint a = 0;\n\tfor (string ss : names) {\n\t\tif (ss == s) {\n\t\t\tSceneScript* scr = map[a]();\n\t\t\tscr->name = s + \" (Script)\";\n\t\t\t(*ass[a])(scr, strm);\n\t\t\treturn scr;\n\t\t}\n\t\ta++;\n\t}\n\treturn nullptr;\n}";
+	
+	GenerateScriptValuesReader(s);
+	
 	string cppO = projectFolder + "\\System\\SceneScriptResolver.cpp";
 	string hO = projectFolder + "\\System\\SceneScriptResolver.h";
 
@@ -1375,6 +1409,55 @@ void Editor::GenerateScriptResolver() {
 	ofs << h;
 	ofs.close();
 	//SetFileAttributes(hO.c_str(), FILE_ATTRIBUTE_HIDDEN);
+}
+
+void Editor::GenerateScriptValuesReader(string& s) {
+	string tmpl = "\tushort sz = 0;\n\t_Strm2Val<ushort>(strm, sz);\n\tSCR_VARTYPE t;\n";
+	tmpl += "\tfor (ushort x = 0; x < sz; x++) {\n\t\t_Strm2Val<SCR_VARTYPE>(strm, t);\n";
+	tmpl += "\t\tchar c[100];\n\t\tstrm.getline(&c[0], 100, 0);\n\t\tstring s(c);\n\n";
+	s += "\n\n";
+	
+	for (int a = 0, b = headerAssets.size(); a < b; a++) {
+		int flo = headerAssets[a].find_last_of('\\') + 1;
+		if (flo == string::npos) flo = 0;
+		string ha = headerAssets[a].substr(flo);
+		ha = ha.substr(0, ha.size() - 2);
+		
+		s += "void SceneScriptResolver::_Ass" + to_string(a) + " (SceneScript* sscr, ifstream& strm) {\n\t" + ha + "* scr = (" + ha  + "*)sscr;\n" + tmpl;
+		ifstream mstrm(projectFolder + "Assets\\" + headerAssets[a] + ".meta", ios::in | ios::binary);
+		if (!mstrm.is_open()) {
+			_Error("Script Component", "Cannot read meta file!");
+			return;
+		}
+		ushort sz;
+		_Strm2Val<ushort>(mstrm, sz);
+		SCR_VARTYPE t;
+		for (ushort x = 0; x < sz; x++) {
+			char c[100];
+			_Strm2Val<SCR_VARTYPE>(mstrm, t);
+			mstrm.getline(&c[0], 100, 0);
+			if (t == SCR_VAR_COMMENT)
+				continue;
+			string vn = string(c);
+			s += "\t\tif (s == \"" + vn + "\") {\n";
+			switch (t) {
+			case SCR_VAR_INT:
+				s += "\t\t\tint ii;\n\t\t\t_Strm2Val<int>(strm, ii);\n";
+				s += "\t\t\tscr->" + vn + "+=ii;";
+				break;
+			case SCR_VAR_FLOAT:
+				s += "\t\t\tfloat ff;\n\t\t\t_Strm2Val<float>(strm, ff);\n";
+				s += "\t\t\tscr->" + vn + "+=ff;";
+				break;
+			case SCR_VAR_TEXTURE:
+				s += "\t\t\tASSETTYPE tdd;\n\t\t\tASSETID idd;\n\t\t\t_Strm2Asset(strm, nullptr, tdd, idd);\n";
+				s += "\t\t\tif (idd > -1) {\n\t\t\t\tscr->" + vn + "=_GetCache<Texture>(tdd, idd);\n\t\t\t}\n";
+				break;
+			}
+			s += "\n\t\t}\n";
+		}
+		s += "\t}\n}\n\n";
+	}
 }
 
 void Editor::NewScene() {
@@ -1536,21 +1619,40 @@ void Editor::DrawHandles() {
 		}
 		else if (editorLayer == 3) {
 			Engine::DrawQuad(0, 0, (float)Display::width, (float)Display::height, black(0.8f));
-			Engine::Label(Display::width*0.2f + 6, Display::height*0.2f + 2, 22, "Select Asset", font, white());
+			Engine::Label(Display::width*0.2f + 6, Display::height*0.2f + 2, 22, browseIsComp? "Select Component" : "Select Asset", font, white());
 			if (Engine::Button(Display::width*0.2f + 6, Display::height*0.2f + 26, Display::width*0.3f - 7, 14, grey2(), "undefined", 12, font, white()) == MOUSE_RELEASE) {
-				*browseTarget = -1;
+				if (browseIsComp) {
+					browseTargetComp->comp = nullptr;
+					browseTargetComp->path = "";
+				}
+				else
+					*browseTarget = -1;
 				editorLayer = 0;
 				if (browseCallback != nullptr)
 					(*browseCallback)(browseCallbackParam);
 				return;
 			}
-			for (int r = 0, rr = normalAssets[browseType].size(); r < rr; r++) {
-				if (Engine::Button(Display::width*0.2f + 6 + (Display::width*0.3f - 5)*((r+1)&1), Display::height*0.2f + 41 + 15 * (((r+1)>>1)-1), Display::width*0.3f - 7, 14, grey2(), normalAssets[browseType][r], 12, font, white()) == MOUSE_RELEASE) {
-					*browseTarget = r;
-					editorLayer = 0;
-					if (browseCallback != nullptr)
-						(*browseCallback)(browseCallbackParam);
-					return;
+			if (browseIsComp) {
+				for (int r = 0, rr = browseCompList.size(); r < rr; r++) {
+					if (Engine::Button(Display::width*0.2f + 6 + (Display::width*0.3f - 5)*((r + 1) & 1), Display::height*0.2f + 41 + 15 * (((r + 1) >> 1) - 1), Display::width*0.3f - 7, 14, grey2(), browseCompListNames[r], 12, font, white()) == MOUSE_RELEASE) {
+						browseTargetComp->comp = browseCompList[r];
+						browseTargetComp->path = browseCompListNames[r];
+						editorLayer = 0;
+						if (browseCallback != nullptr)
+							(*browseCallback)(browseCallbackParam);
+						return;
+					}
+				}
+			}
+			else {
+				for (int r = 0, rr = normalAssets[browseType].size(); r < rr; r++) {
+					if (Engine::Button(Display::width*0.2f + 6 + (Display::width*0.3f - 5)*((r + 1) & 1), Display::height*0.2f + 41 + 15 * (((r + 1) >> 1) - 1), Display::width*0.3f - 7, 14, grey2(), normalAssets[browseType][r], 12, font, white()) == MOUSE_RELEASE) {
+						*browseTarget = r;
+						editorLayer = 0;
+						if (browseCallback != nullptr)
+							(*browseCallback)(browseCallbackParam);
+						return;
+					}
 				}
 			}
 		}
@@ -1767,6 +1869,7 @@ void DoReloadAssets(Editor* e, string path, bool recursive, mutex* l) {
 		AddH(e, e->projectFolder + "Assets", &e->headerAssets, &e->cppAssets);
 	}
 	for (string s : e->headerAssets) {
+		lock_guard<mutex> lock(*l);
 		SceneScript::Parse(s, e);
 	}
 	{
@@ -1842,14 +1945,14 @@ bool Editor::ParseAsset(string path) {
 	else if (ext == "blend"){
 		ok = Mesh::ParseBlend(this, path);
 	}
-	else if (ext == "bmp" || ext == "jpg") {
+	else if (ext == "bmp" || ext == "jpg" || ext == "png") {
 		ok = Texture::Parse(this, path);
 	}
 	else if (ext == "hdr") {
 		ok = Background::Parse(path);
 	}
 	else {
-		_Message("Asset Parser", "format not supported!");
+		_Message("Asset Parser", "format not supported! (" + ext + ")");
 		return false;
 	}
 	stream.close();
@@ -1875,6 +1978,24 @@ void Editor::SetBackground(string s, float a) {
 	backgroundTex = new Texture(s);
 	if (a >= 0)
 		backgroundAlpha = (int)(a*100);
+}
+
+void DoScanBrowseComp(SceneObject* o, COMPONENT_TYPE t, string p, vector<Component*>& vc, vector<string>& vs) {
+	Component* c = o->GetComponent(t);
+	string nm = p + ((p == "") ? "" : "/") + o->name;
+	if (c != nullptr) {
+		vc.push_back(c);
+		vs.push_back(nm);
+	}
+	for (auto oo : o->children)
+		DoScanBrowseComp(oo, t, nm, vc, vs);
+}
+
+void Editor::ScanBrowseComp() {
+	browseCompList.clear();
+	browseCompListNames.clear();
+	for (auto o : activeScene->objects)
+		DoScanBrowseComp(o, browseTargetComp->type, "", browseCompList, browseCompListNames);
 }
 
 void Editor::AddBuildLog(Editor* e, string s, bool forceE) {

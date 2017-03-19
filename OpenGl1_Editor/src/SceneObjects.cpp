@@ -28,6 +28,18 @@ Component::Component(string name, COMPONENT_TYPE t, DRAWORDER drawOrder, SceneOb
 	}
 }
 
+COMPONENT_TYPE Component::Name2Type(string nm) {
+	if (nm == "Camera")
+		return COMP_CAM;
+	if (nm == "MeshFilter")
+		return COMP_MFT;
+	if (nm == "MeshRenderer")
+		return COMP_MRD;
+	if (nm == "TextureRenderer")
+		return COMP_TRD;
+	return COMP_UNDEF;
+}
+
 int Camera::camVertsIds[19] = { 0, 1, 0, 2, 0, 3, 0, 4, 1, 2, 2, 4, 4, 3, 3, 1, 1, 2, 5 };
 
 Camera::Camera() : Component("Camera", COMP_CAM, DRAWORDER_NOT), ortographic(false), fov(60), orthoSize(10), screenPos(0.3f, 0.1f, 0.6f, 0.4f), clearType(CAM_CLEAR_COLOR), clearColor(black(1)), _tarRT(-1) {
@@ -433,6 +445,13 @@ SceneScript::SceneScript(Editor* e, ASSETID id) : Component(e->headerAssets[id] 
 		case SCR_VAR_STRING:
 			_vals[x].second.second = new string("");
 			break;
+		case SCR_VAR_TEXTURE:
+			_vals[x].second.second = new ASSETID(-1);
+			break;
+		case SCR_VAR_COMPREF:
+			_vals[x].second.second = new CompRef((COMPONENT_TYPE)c[0]);
+			_vals[x].first = _vals[x].first.substr(1);
+			break;
 		}
 	}
 }
@@ -446,9 +465,80 @@ SceneScript::SceneScript(ifstream& strm, SceneObject* o) : Component("(Script)",
 		if (a == s) {
 			_script = i;
 			name = a + " (Script)";
+
+			ifstream strm(Editor::instance->projectFolder + "Assets\\" + a + ".meta", ios::in | ios::binary);
+			if (!strm.is_open()) {
+				Editor::instance->_Error("Script Component", "Cannot read meta file!");
+				_script = -1;
+				return;
+			}
+			ushort sz;
+			_Strm2Val<ushort>(strm, sz);
+			_vals.resize(sz);
+			SCR_VARTYPE t;
+			for (ushort x = 0; x < sz; x++) {
+				_Strm2Val<SCR_VARTYPE>(strm, t);
+				_vals[x].second.first = t;
+				char c[100];
+				strm.getline(&c[0], 100, 0);
+				_vals[x].first += string(c);
+				switch (t) {
+				case SCR_VAR_INT:
+					_vals[x].second.second = new int(0);
+					break;
+				case SCR_VAR_FLOAT:
+					_vals[x].second.second = new float(0);
+					break;
+				case SCR_VAR_STRING:
+					_vals[x].second.second = new string("");
+					break;
+				case SCR_VAR_TEXTURE:
+					_vals[x].second.second = new ASSETID(-1);
+					break;
+				case SCR_VAR_COMPREF:
+					_vals[x].second.second = new CompRef((COMPONENT_TYPE)c[0]);
+					_vals[x].first = _vals[x].first.substr(1);
+					break;
+				}
+			}
 			break;
 		}
 		i++;
+	}
+	ushort sz;
+	byte tp;
+	_Strm2Val<ushort>(strm, sz);
+	for (ushort aa = 0; aa < sz; aa++) {
+		_Strm2Val<byte>(strm, tp);
+		strm.getline(c, 100, 0);
+		string ss(c);
+		for (auto vl : _vals) {
+			if (vl.first == ss && vl.second.first == SCR_VARTYPE(tp)) {
+				switch (vl.second.first) {
+				case SCR_VAR_INT:
+					int ii;
+					_Strm2Val<int>(strm, ii);
+					*(int*)vl.second.second += ii;
+					break;
+				case SCR_VAR_FLOAT:
+					float ff;
+					_Strm2Val<float>(strm, ff);
+					*(float*)vl.second.second += ff;
+					break;
+				case SCR_VAR_STRING:
+					strm.getline(c, 100, 0);
+					*(string*)vl.second.second += string(c);
+					break;
+				case SCR_VAR_TEXTURE:
+					ASSETTYPE tdd;
+					ASSETID idd;
+					//strm.getline(c, 100, 0);
+					//string sss(c);
+					_Strm2Asset(strm, Editor::instance, tdd, idd);
+					*(ASSETID*)vl.second.second += 1 + idd;
+				}
+			}
+		}
 	}
 	delete[](c);
 }
@@ -456,25 +546,55 @@ SceneScript::SceneScript(ifstream& strm, SceneObject* o) : Component("(Script)",
 SceneScript::~SceneScript() {
 #ifdef IS_EDITOR
 	for (auto a : _vals) {
-		switch (a.second.first) {
-		case SCR_VAR_INT:
-		case SCR_VAR_FLOAT:
-			delete(a.second.second);
-		}
+		delete(a.second.second);
 	}
 #endif
 }
 
 void SceneScript::Serialize(Editor* e, ofstream* stream) {
 	_StreamWriteAsset(e, stream, ASSETTYPE_SCRIPT_H, _script);
+	ushort sz = (ushort)_vals.size();
+	_StreamWrite(&sz, stream, 2);
+	for (auto a : _vals) {
+		_StreamWrite(&a.second.first, stream, 1);
+		*stream << a.first << char0;
+		switch (a.second.first) {
+		case SCR_VAR_INT:
+		case SCR_VAR_FLOAT:
+			_StreamWrite(a.second.second, stream, 4);
+			break;
+		case SCR_VAR_TEXTURE:
+			_StreamWriteAsset(e, stream, ASSETTYPE_TEXTURE, *(ASSETID*)a.second.second);
+			break;
+		}
+	}
 }
 
 void SceneScript::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 	SceneScript* scr = (SceneScript*)c;
 	if (DrawComponentHeader(e, v, pos, this)) {
-		pos += 100;
+		for (auto p : _vals){
+			Engine::Label(v.r + 20, v.g + pos + 19, 12, p.first, e->font, white(1, (p.second.first == SCR_VAR_COMMENT)? 0.5f : 1));
+			switch (p.second.first) {
+			case SCR_VAR_FLOAT:
+				Engine::Button(v.r + v.b*0.3f, v.g + pos + 17, v.b*0.7f - 1, 16, grey2());
+				Engine::Label(v.r + v.b*0.3f + 2, v.g + pos + 19, 12, to_string(*(float*)p.second.second), e->font, white());
+				break;
+			case SCR_VAR_INT:
+				Engine::Button(v.r + v.b*0.3f, v.g + pos + 17, v.b*0.7f - 1, 16, grey2());
+				Engine::Label(v.r + v.b*0.3f + 2, v.g + pos + 19, 12, to_string(*(int*)p.second.second), e->font, white());
+				break;
+			case SCR_VAR_TEXTURE:
+				e->DrawAssetSelector(v.r + v.b*0.3f, v.g + pos + 17, v.b*0.7f - 1, 16, grey2(), ASSETTYPE_TEXTURE, 12, e->font, (ASSETID*)p.second.second);
+				break;
+			case SCR_VAR_COMPREF:
+				e->DrawCompSelector(v.r + v.b*0.3f, v.g + pos + 17, v.b*0.7f - 1, 16, grey2(), 12, e->font, (CompRef*)p.second.second);
+				break;
+			}
+			pos += 17;
+		}
 	}
-	else pos += 17;
+	pos += 17;
 }
 
 void SceneScript::Parse(string s, Editor* e) {
@@ -505,8 +625,17 @@ void SceneScript::Parse(string s, Editor* e) {
 				string sss(c);
 				while (sss != "" && sss[0] == ' ' || sss[0] == '\t')
 					sss = sss.substr(1);
-				if (sss == "" || sss.find('(') != string::npos)
+				if (sss == "")
 					continue;
+				int cmtPos = sss.find("//");
+				int ccc = sss.find('(');
+				if (ccc != string::npos && (cmtPos == string::npos || ccc < cmtPos))
+					continue;
+				if (cmtPos == 0 && sss[2] == '#' && sss.size() > 3) {
+					oStrm << (char)SCR_VAR_COMMENT << sss.substr(3) << char0;
+					count++;
+					continue;
+				}
 				if (!isPublic && sss == "public:") {
 					isPublic = true;
 					continue;
@@ -531,7 +660,12 @@ void SceneScript::Parse(string s, Editor* e) {
 				else if (tp == "Texture*") {
 					oStrm << (char)SCR_VAR_TEXTURE;
 				}
-				else continue;
+				else {
+					if (tp[tp.size() - 1] != '*') continue;
+					COMPONENT_TYPE ct = Component::Name2Type(tp.substr(0, tp.size()-1));
+					if (ct == COMP_UNDEF) continue;
+					oStrm << (char)SCR_VAR_COMPREF << (char)ct;
+				}
 				int spos2 = min(min(sss.find_first_of(" ", spos + 1), sss.find_first_of(";", spos + 1)), sss.find_first_of("=", spos + 1));
 				if (spos2 == string::npos) {
 					long l = (long)oStrm.tellp();

@@ -39,6 +39,8 @@ protected:
 
 	bool _expanded;
 
+	static COMPONENT_TYPE Name2Type(string nm);
+
 	virtual void LoadDefaultValues() {} //also loads assets
 	virtual void DrawEditor(EB_Viewer* ebv) {} //trs matrix not applied, apply before calling
 	virtual void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) = 0;
@@ -170,8 +172,6 @@ public:
 	float farClip;
 	RenderTexture* targetRT;
 
-	Vec3 camVerts[6];
-	static int camVertsIds[19];
 
 	void Render(RenderTexture* target = nullptr);
 
@@ -183,6 +183,8 @@ public:
 protected:
 	Camera(ifstream& stream, SceneObject* o, long pos = -1);
 
+	Vec3 camVerts[6];
+	static int camVertsIds[19];
 	GLuint d_fbo, d_texs[3], d_depthTex;
 	int _tarRT;
 	
@@ -270,7 +272,8 @@ enum SCR_VARTYPE : byte {
 	SCR_VAR_V2, SCR_VAR_V3,
 	SCR_VAR_STRING = 16U,
 	SCR_VAR_TEXTURE,
-	SCR_VAR_OBJREF //can further specify COMP_X
+	SCR_VAR_COMPREF,
+	SCR_VAR_COMMENT = 255U
 };
 class SceneScript : public Component {
 public:
@@ -283,21 +286,20 @@ public:
 
 	static void Parse(string s, Editor* e);
 
-	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override; //we want c to be null if deleted
-	void Serialize(Editor* e, ofstream* stream) override;
-
 	//bool ReferencingObject(Object* o) override;
 	friend class Editor;
 	friend class EB_Viewer;
 	friend void Deserialize(ifstream& stream, SceneObject* obj);
 protected:
-
-	vector<pair<string, pair<SCR_VARTYPE, void*>>> _vals;
-
 	SceneScript(Editor* e, ASSETID id);
 	SceneScript(ifstream& strm, SceneObject* o);
 	SceneScript() : Component("", COMP_SCR, DRAWORDER_NOT) {}
+	
 	ASSETID _script;
+	vector<pair<string, pair<SCR_VARTYPE, void*>>> _vals;
+
+	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override; //we want c to be null if deleted
+	void Serialize(Editor* e, ofstream* stream) override;
 };
 
 class SceneObject : public Object {

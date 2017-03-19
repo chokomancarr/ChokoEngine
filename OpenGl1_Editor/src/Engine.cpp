@@ -16,6 +16,7 @@
 #include <jerror.h>
 //#include <png.h>
 //#include <zlib.h>
+#include <lodepng.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/transform.hpp>
@@ -41,6 +42,14 @@ string to_string(Quat v) {
 
 bool Rect::Inside(Vec2 v) {
 	return ((w > 0) ? (v.x > x && v.x < (x + w)) : (v.x >(x + w) && v.x < x)) && ((h > 0) ? (v.y > y && v.y < (y + h)) : (v.y >(y + h) && v.y < y));
+}
+
+float Random::Value() {
+	return ((float)rand()) / ((float)RAND_MAX);
+}
+
+float Random::Range(float min, float max) {
+	return min + Random::Value()*(max-min);
 }
 
 long long milliseconds() {
@@ -744,6 +753,7 @@ bool Input::KeyHold(InputKey k) {
 	return keyStatusNew[k];
 }
 
+
 bool Input::KeyUp(InputKey k) {
 	return !keyStatusNew[k] && keyStatusOld[k];
 }
@@ -1315,7 +1325,7 @@ void Mesh::Draw(Material* mat) {
 bool LoadJPEG(string fileN, uint &x, uint &y, byte& channels, byte** data)
 {
 	//unsigned int texture_id;
-	unsigned long data_size;     // length of the 
+	unsigned long data_size;     // length
 	unsigned char * rowptr[1];
 	struct jpeg_decompress_struct info; //for our jpeg info
 	struct jpeg_error_mgr err;          //the error handler
@@ -1358,101 +1368,29 @@ bool LoadJPEG(string fileN, uint &x, uint &y, byte& channels, byte** data)
 	return true;
 }
 
-/*
-void DoReadPNG(png_structp pngPtr, png_bytep data, png_size_t length) {
-	//Here we get our IO pointer back from the read struct.
-	//This is the parameter we passed to the png_set_read_fn() function.
-	//Our std::istream pointer.
-	png_voidp a = png_get_io_ptr(pngPtr);
-	//Cast the pointer to std::istream* and read 'length' bytes into 'data'
-	((ifstream*)a)->read((char*)data, length);
+//slow!!
+void InvertPNG(vector<byte>& data, uint x, uint y) {
+	for (uint a = 0; a <= y*0.5f; a++) {
+		for (uint b = 0; b < x; b++) {
+			for (uint c = 0; c < 4; c++) {
+				byte t = data[(a*x + b)*4 + c];
+				data[(a*x + b)*4+c] = data[((y - a - 1)*x + b)*4 + c];
+				data[((y - a - 1)*x + b)*4+c] = t;
+			}
+		}
+	}
 }
 
-bool LoadPNG(string fileN, uint &x, uint &y, byte& channels, byte** data) {
-	ifstream strm(fileN, ios::in | ios::binary);
-	png_byte pngsig[8]; //signature
-	int is_png = 0;
-	strm.read((char*)pngsig, 8);
-	if (!strm.good()) return false;
-	is_png = png_sig_cmp(pngsig, 0, 8);
-	if (is_png != 0) {
-		Debug::Warning("PNG reader", "Png file has wrong header!");
+bool LoadPNG(string fileN, uint &x, uint &y, byte& channels, vector<byte>& data) {
+	channels = 4;
+	uint err = lodepng::decode(data, x, y, fileN.c_str());
+	if (err){
+		Debug::Error("PNG reader", "Read PNG error: " + string(lodepng_error_text(err)));
 		return false;
 	}
-
-	//Here we create the png read struct. The 3 NULL's at the end can be used
-	//for your own custom error handling functions, but we'll just use the default.
-	//if the function fails, NULL is returned. Always check the return values!
-	png_structp pngPtr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-	if (!pngPtr) {
-		Debug::Warning("PNG reader", "Couldn't initialize png read struct!");
-		return false;
-	}
-	png_infop infoPtr = png_create_info_struct(pngPtr);
-	if (!infoPtr) {
-		Debug::Warning("PNG reader", "Couldn't initialize png info struct!");
-		png_destroy_read_struct(&pngPtr, (png_infopp)0, (png_infopp)0);
-		return false;
-	}
-
-	png_set_read_fn(pngPtr, (png_voidp)&strm, DoReadPNG);
-
-	//Set the amount signature bytes we've already read:
-	png_set_sig_bytes(pngPtr, 8);
-	//Now call png_read_info with our pngPtr as image handle, and infoPtr to receive the file info.
-	png_read_info(pngPtr, infoPtr);
-	x = (uint)png_get_image_width(pngPtr, infoPtr);
-	y = (uint)png_get_image_height(pngPtr, infoPtr);
-	//bits per channel
-	png_uint_32 bitdepth = png_get_bit_depth(pngPtr, infoPtr);
-	//Number of channels
-	channels = png_get_channels(pngPtr, infoPtr);
-	//Color type. (RGB, RGBA, Luminance, luminance alpha... palette... etc)
-	png_uint_32 color_type = png_get_color_type(pngPtr, infoPtr);
-
-	switch (color_type) {
-	case PNG_COLOR_TYPE_PALETTE:
-		png_set_palette_to_rgb(pngPtr);
-		channels = 3;
-		break;
-	case PNG_COLOR_TYPE_GRAY:
-		if (bitdepth > 8)
-			png_set_expand_gray_1_2_4_to_8(pngPtr);
-		//And the bitdepth info
-		bitdepth = 8;
-		break;
-	}
-	//if the image has a transperancy set.. convert it to a full Alpha channel..
-	if (png_get_valid(pngPtr, infoPtr, PNG_INFO_tRNS)) {
-		png_set_tRNS_to_alpha(pngPtr);
-		channels += 1;
-	}
-
-	png_bytep* rowPtrs = new png_bytep[y];
-
-	*data = new byte[x * y * bitdepth * channels / 8];
-	//This is the length in bytes, of one row.
-	const unsigned int stride = x * bitdepth * channels / 8;
-
-	//A little for-loop here to set all the row pointers to the starting
-	//Addresses for every row in the buffer
-	for (size_t i = 0; i < y; i++) {
-		//Set the pointer to the data pointer + i times the row stride.
-		//Notice that the row order is reversed with q.
-		//This is how at least OpenGL expects it,
-		//and how many other image loaders present the data.
-		png_uint_32 q = (y - i - 1) * stride;
-		rowPtrs[i] = (png_bytep)data + q;
-	}
-	//And here it is! The actual reading of the image!
-	//Read the imagedata and write it to the addresses pointed to
-	//by rowptrs (in other words: our image databuffer)
-	png_read_image(pngPtr, rowPtrs);
-
-	delete[](png_bytep)rowPtrs;
-	png_destroy_read_struct(&pngPtr, &infoPtr, (png_infopp)0);
+	InvertPNG(data, x, y);
+	return true;
 }
-*/
 
 bool LoadBMP(string fileN, uint &x, uint &y, byte& channels, byte** data) {
 
@@ -1461,15 +1399,14 @@ bool LoadBMP(string fileN, uint &x, uint &y, byte& channels, byte** data) {
 	unsigned int imageSize;   // = width*height*3
 	unsigned short bpi;
 
-	FILE *file;
+	ifstream strm(fileN.c_str(), ios::in | ios::binary);
 
-	fopen_s(&file, fileN.c_str(), "rb");
-
-	if (!file){
+	if (!strm.is_open()){
 		printf("Image could not be opened\n");
 		return false;
 	}
-	if (fread(header, 1, 54, file) != 54){ // If not 54 bytes read : problem
+	strm.read(header, 54);
+	if (strm.bad()){ // If not 54 bytes read : problem
 		printf("Not a correct BMP file\n");
 		return false;
 	}
@@ -1490,9 +1427,7 @@ bool LoadBMP(string fileN, uint &x, uint &y, byte& channels, byte** data) {
 	if (dataPos == 0)      dataPos = 54; // The BMP header is done that way
 	*data = new unsigned char[imageSize];
 	// Read the actual data from the file into the buffer
-	fread(*data, 1, imageSize, file);
-	//Everything is in memory now, the file can be closed
-	fclose(file);
+	strm.read(*(char**)data, imageSize);
 	return true;
 }
 
@@ -1501,6 +1436,7 @@ Texture::Texture(const string& path, bool mipmap) : Texture(path, mipmap, mipmap
 Texture::Texture(const string& path, bool mipmap, TEX_FILTERING filter, byte aniso) : AssetObject(ASSETTYPE_TEXTURE), _mipmap(mipmap), _filter(filter), _aniso(aniso) {
 	string sss = path.substr(path.find_last_of('.'), string::npos);
 	byte *data;
+	vector<byte> dataV;
 	byte chn;
 	//cout << "opening image at " << path << endl;
 	GLenum rgb = GL_RGB, rgba = GL_RGBA;
@@ -1518,14 +1454,15 @@ Texture::Texture(const string& path, bool mipmap, TEX_FILTERING filter, byte ani
 			return;
 		}
 	}
-	/*
+	//*
 	else if (sss == ".png") {
-		if (!LoadPNG(path, width, height, chn, &data)) {
+		if (!LoadPNG(path, width, height, chn, dataV)) {
 			cout << "load png failed! " << path << endl;
 			return;
 		}
+		data = &dataV[0];
 	}
-	*/
+	//*/
 	else  {
 		cout << "Image extension invalid! " << path << endl;
 		return;
@@ -1539,7 +1476,7 @@ Texture::Texture(const string& path, bool mipmap, TEX_FILTERING filter, byte ani
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (mipmap && (filter == TEX_FILTER_TRILINEAR)) ? GL_LINEAR_MIPMAP_LINEAR : (filter == TEX_FILTER_POINT)? GL_NEAREST : GL_LINEAR);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso);
 	glBindTexture(GL_TEXTURE_2D, 0);
-	delete[](data);
+	if (dataV.size() == 0) delete[](data);
 	loaded = true;
 	//cout << "image loaded: " << width << "x" << height << endl;
 }
@@ -1578,7 +1515,7 @@ Texture::Texture(ifstream& strm, uint offset) : AssetObject(ASSETTYPE_TEXTURE) {
 		_ReadStrm(this, strm, chn, rgb, rgba);
 		data = new byte[chn*width*height];
 		strm.read((char*)data, chn*width*height);
-		strm.close();
+		//strm.close();
 
 		glGenTextures(1, &pointer);
 		glBindTexture(GL_TEXTURE_2D, pointer);
@@ -1586,6 +1523,7 @@ Texture::Texture(ifstream& strm, uint offset) : AssetObject(ASSETTYPE_TEXTURE) {
 		else glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, rgba, GL_UNSIGNED_BYTE, data);
 		if (_mipmap) glGenerateMipmap(GL_TEXTURE_2D);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (_mipmap && (_filter == TEX_FILTER_TRILINEAR)) ? GL_LINEAR_MIPMAP_LINEAR : (_filter == TEX_FILTER_POINT) ? GL_NEAREST : GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (_filter == TEX_FILTER_POINT) ? GL_NEAREST : GL_LINEAR);
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, _aniso);
 		glBindTexture(GL_TEXTURE_2D, 0);
 		delete[](data);
@@ -1627,6 +1565,7 @@ bool Texture::Parse(Editor* e, string path) {
 	byte ans = 5, flt = 2, mnr = 0xf0;
 	string sss = path.substr(path.find_last_of('.'), string::npos);
 	byte *data = nullptr;
+	vector<byte> dataV;
 	byte chn;
 	uint width, height;
 	GLenum rgb = GL_RGB, rgba = GL_RGBA;
@@ -1643,6 +1582,13 @@ bool Texture::Parse(Editor* e, string path) {
 			cout << "load jpg failed! " << path << endl;
 			return false;
 		}
+	}
+	else if (sss == ".png") {
+		if (!LoadPNG(path, width, height, chn, dataV)) {
+			cout << "load png failed! " << path << endl;
+			return false;
+		}
+		data = &dataV[0];
 	}
 	else  {
 		cout << "Image extension invalid! " << path << endl;
@@ -1673,7 +1619,7 @@ bool Texture::Parse(Editor* e, string path) {
 	str << "DATA";
 	_StreamWrite(data, &str, width*height*chn);
 	str.close();
-	delete[](data);
+	if (dataV.size() == 0) delete[](data);
 	return true;
 }
 
@@ -2331,6 +2277,20 @@ Scene::~Scene() {
 }
 */
 
+void Scene::AddObject(SceneObject* object, SceneObject* parent) {
+	if (active == nullptr)
+		return;
+	if (parent == nullptr)
+		active->objects.push_back(object);
+	else
+		parent->AddChild(object);
+}
+
+void Scene::DeleteObject(SceneObject* o) {
+	if (active == nullptr)
+		return;
+}
+
 Scene* Scene::active = nullptr;
 ifstream* Scene::strm = nullptr;
 vector<string> Scene::sceneNames = {};
@@ -2422,6 +2382,10 @@ void AssetManager::Init(string dpath) {
 	for (int a = 0; a < numDat; a++) {
 		string pp = dpath + to_string(a+1);
 		streams.push_back(new ifstream(pp.c_str(), ios::in | ios::binary));
+		if (streams[a]->is_open())
+			Debug::Message("AssetManager", "Streaming data" + to_string(a+1));
+		else
+			Debug::Error("AssetManager", "Failed to open data" + to_string(a+1) + "!");
 	}
 
 	for (auto aa : dataLocs) {
@@ -2474,6 +2438,10 @@ void* AssetManager::GetCache(ASSETTYPE t, ASSETID i) {
 void* AssetManager::GenCache(ASSETTYPE t, ASSETID i) {
 	ifstream* strm = streams[dataLocs[t][i].first];
 	uint off = dataLocs[t][i].second;
+	strm->seekg(off);
+	uint sz;
+	_Strm2Val(*strm, sz);
+	off += 4;
 	switch (t) {
 	case ASSETTYPE_TEXTURE:
 		dataCaches[t][i] = new Texture(*strm, off);
