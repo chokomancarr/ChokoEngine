@@ -308,6 +308,7 @@ public:
 	SceneObject(string s);
 	SceneObject(Vec3 pos, Quat rot, Vec3 scale);
 	SceneObject(string s, Vec3 pos, Quat rot, Vec3 scale);
+	~SceneObject();
 	bool active;
 	int childCount;
 	Transform transform;
@@ -320,6 +321,7 @@ public:
 
 	SceneObject* AddChild(SceneObject* child);
 	SceneObject* GetChild(int i) { return children[i]; }
+	void RemoveChild(SceneObject* o);
 	Component* AddComponent(Component* c);
 	
 	Component* GetComponent(COMPONENT_TYPE type);

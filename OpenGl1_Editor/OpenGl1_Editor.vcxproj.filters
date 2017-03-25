@@ -42,6 +42,9 @@
     <ClCompile Include="png\lodepng.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\Compressors.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -61,6 +64,9 @@
     </ClInclude>
     <ClInclude Include="src\Defines.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Compressors.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

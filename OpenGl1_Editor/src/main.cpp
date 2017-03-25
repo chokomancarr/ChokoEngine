@@ -18,6 +18,8 @@
 #include "Engine.h"
 #include "editor.h"
 #include "SceneObjects.h"
+#include "Compressors.h"
+#include <sstream>
 using namespace std;
 
 void InitGL(int argc, char* argv[]);

@@ -290,6 +290,8 @@ class Display {
 public:
 	static int width, height;
 	static glm::mat3 uiMatrix;
+
+	static void Resize(int x, int y, bool maximize = false);
 };
 
 class Object {

@@ -79,6 +79,7 @@
   <ItemGroup>
     <ClCompile Include="hdr\hdr.cpp" />
     <ClCompile Include="png\lodepng.cpp" />
+    <ClCompile Include="src\Compressors.cpp" />
     <ClCompile Include="src\Editor.cpp" />
     <ClCompile Include="src\EditorShortcuts.cpp" />
     <ClCompile Include="src\Engine.cpp" />
@@ -91,6 +92,7 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\Compressors.h" />
     <ClInclude Include="src\Defines.h" />
     <ClInclude Include="src\Editor.h" />
     <ClInclude Include="src\Engine.h" />

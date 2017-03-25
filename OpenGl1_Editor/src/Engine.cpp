@@ -2,6 +2,7 @@
 #include "Editor.h"
 #include "hdr.h"
 #include <GL/glew.h>
+#include <gl/GLUT.h>
 #include <vector>
 #include <string>
 #include <iostream>
@@ -794,6 +795,11 @@ void Input::UpdateMouseNKeyboard() {
 		mouseDownPos = mousePos;
 	else if (mouse0State == 0)
 		mouseDownPos = Vec2(-1, -1);
+}
+
+void Display::Resize(int x, int y, bool maximize) {
+	ShowWindow(GetActiveWindow(), maximize? SW_MAXIMIZE : SW_NORMAL);
+	glutReshapeWindow(x, y);
 }
 
 ulong Engine::idCounter = 0;
@@ -2289,6 +2295,19 @@ void Scene::AddObject(SceneObject* object, SceneObject* parent) {
 void Scene::DeleteObject(SceneObject* o) {
 	if (active == nullptr)
 		return;
+	if (o->parent == nullptr){
+		auto it = std::find(active->objects.begin(), active->objects.end(), o);
+		if (it != active->objects.end()) {
+			swap(*it, active->objects.back());
+			active->objects.pop_back();
+		}
+	}
+	else {
+		SceneObject* p = o->parent;
+		p->RemoveChild(o);
+	}
+
+	delete(o);
 }
 
 Scene* Scene::active = nullptr;

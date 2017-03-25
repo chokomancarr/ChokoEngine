@@ -22,7 +22,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>./Assets;./System;./packages/glm;./packages/hdr;./packages/png;./packages/zlib;./packages/jpeg;./packages.jpg</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>./Assets;./System;./packages/glm;./packages/hdr;./packages/png;./packages/jpeg;./packages.jpg</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -34,6 +34,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>  
 	<ClCompile Include="packages\hdr\hdr.cpp" />
+	<ClCompile Include="packages\png\lodepng.cpp" />
     #
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

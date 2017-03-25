@@ -699,6 +699,12 @@ SceneObject::SceneObject(string s, Vec3 pos, Quat rot, Vec3 scale) : active(true
 	id = Engine::GetNewId();
 }
 
+SceneObject::~SceneObject() {
+	for (Component* c : _components)
+		delete(c);
+	_components.clear();
+}
+
 void SceneObject::Enable() {
 	active = true;
 }
@@ -723,6 +729,14 @@ SceneObject* SceneObject::AddChild(SceneObject* child) {
 	children.push_back(child); 
 	child->parent = this;
 	return this;
+}
+
+void SceneObject::RemoveChild(SceneObject* o) {
+	auto it = std::find(children.begin(), children.end(), o);
+	if (it != children.end()) {
+		swap(*it, children.back());
+		children.pop_back();
+	}
 }
 
 Component* SceneObject::AddComponent(Component* c) {
