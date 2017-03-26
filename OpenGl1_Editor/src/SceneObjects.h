@@ -88,8 +88,10 @@ public:
 	friend class Editor;
 	friend class MeshFilter;
 	friend class MeshRenderer;
+	friend class AssetManager;
 protected:
 	Mesh(Editor* e, int i);
+	Mesh(ifstream& strm, uint offset);
 	Mesh(string path);
 
 	static bool ParseBlend(Editor* e, string s);
@@ -159,6 +161,15 @@ enum CAM_CLEARTYPE : byte {
 	CAM_CLEAR_DEPTH,
 	CAM_CLEAR_SKY
 };
+
+enum GBUFFERS {
+	GBUFFER_DIFFUSE,
+	GBUFFER_NORMAL,
+	GBUFFER_SPEC_GLOSS,
+	GBUFFER_Z,
+	GBUFFER_NUM_TEXTURES
+};
+
 class Camera : public Component {
 public:
 	Camera();
@@ -182,6 +193,8 @@ public:
 	friend class EB_Inspector;
 protected:
 	Camera(ifstream& stream, SceneObject* o, long pos = -1);
+
+	void RenderLights();
 
 	Vec3 camVerts[6];
 	static int camVertsIds[19];
@@ -239,7 +252,7 @@ public:
 protected:
 	MeshRenderer(ifstream& stream, SceneObject* o, long pos = -1);
 
-	void DrawDeferred(){}
+	void DrawDeferred();
 
 	vector<ASSETID> _materials;
 	static void _UpdateMat(void* i);

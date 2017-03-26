@@ -1085,124 +1085,202 @@ Mesh::Mesh(Editor* e, int i) : AssetObject(ASSETTYPE_MESH) {
 	loaded = m2->loaded;
 }
 
-Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false) {
+Mesh::Mesh(ifstream& stream, uint offset) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0), triangleCount(0), materialCount(0) {
+	if (stream.is_open()) {
+		stream.seekg(offset);
+
+		char* c = new char[100];
+		stream.read(c, 6);
+		c[6] = (char)0;
+		if (string(c) != "KTO123") {
+			Debug::Error("Mesh importer", "file not supported");
+			return;
+		}
+		stream.getline(c, 100, 0);
+		name += string(c);
+		delete[](c);
+
+		char cc;
+		stream.read(&cc, 1);
+
+		while (cc != 0) {
+			if (cc == 'V') {
+				_Strm2Val(stream, vertexCount);
+				for (uint vc = 0; vc < vertexCount; vc++) {
+					Vec3 v;
+					_Strm2Val(stream, v.x);
+					_Strm2Val(stream, v.y);
+					_Strm2Val(stream, v.z);
+					vertices.push_back(v);
+					_Strm2Val(stream, v.x);
+					_Strm2Val(stream, v.y);
+					_Strm2Val(stream, v.z);
+					normals.push_back(v);
+				}
+			}
+			else if (cc == 'F') {
+				_Strm2Val(stream, triangleCount);
+				for (uint fc = 0; fc < triangleCount; fc++) {
+					byte m;
+					_Strm2Val(stream, m);
+					while (materialCount <= m) {
+						_matTriangles.push_back(vector<int>());
+						materialCount++;
+					}
+					uint i;
+					_Strm2Val(stream, i);
+					_matTriangles[m].push_back(i);
+					_Strm2Val(stream, i);
+					_matTriangles[m].push_back(i);
+					_Strm2Val(stream, i);
+					_matTriangles[m].push_back(i);
+				}
+			}
+			else if (cc == 'U') {
+				byte c;
+				_Strm2Val(stream, c);
+				for (uint vc = 0; vc < vertexCount; vc++) {
+					Vec2 i;
+					_Strm2Val(stream, i.x);
+					_Strm2Val(stream, i.y);
+					uv0.push_back(i);
+				}
+				if (c > 1) {
+					for (uint vc = 0; vc < vertexCount; vc++) {
+						Vec2 i;
+						_Strm2Val(stream, i.x);
+						_Strm2Val(stream, i.y);
+						uv1.push_back(i);
+					}
+				}
+			}
+			else {
+				Debug::Error("Mesh Importer", "Unknown char: " + to_string(cc));
+			}
+			stream.read(&cc, 1);
+		}
+
+		if (vertexCount > 0) {
+			if (normals.size() != vertexCount) {
+				Debug::Error("Mesh Importer", "mesh metadata corrupted (normals incomplete)!");
+				return;
+			}
+			else if (uv0.size() == 0)
+				uv0.resize(vertexCount);
+			else if (uv0.size() != vertexCount){
+				Debug::Error("Mesh Importer", "mesh metadata corrupted (uv0 incomplete)!");
+				return;
+			}
+			if (uv1.size() == 0)
+				uv1.resize(vertexCount);
+			else if (uv1.size() != vertexCount) {
+				Debug::Error("Mesh Importer", "mesh metadata corrupted (uv1 incomplete)!");
+				return;
+			}
+			loaded = true;
+		}
+		return;
+	}
+}
+
+Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0), triangleCount(0), materialCount(0) {
 	string p = Editor::instance->projectFolder + "Assets\\" + path + ".mesh.meta";
-	ifstream stream(p.c_str());
+	ifstream stream(p.c_str(), ios::in | ios::binary);
 	if (!stream.good()) {
 		cout << "mesh file not found!" << endl;
 		return;
 	}
-	string a;
-	string junk;
-	uint x;
-	stream >> a;
-	if (a != "KTO123") {
-		Debug::Error("Mesh Importer", "mesh metadata corrupted (wrong header)!");
-	}
-	stream >> a;
-	if (a == "obj") {
-		stream >> name >> junk;
-	}
-	else {
-		Debug::Error("Mesh Importer", "mesh metadata corrupted (obj tag not found)!");
+
+	char* c = new char[100];
+	stream.read(c, 6);
+	c[6] = (char)0;
+	if (string(c) != "KTO123") {
+		Debug::Error("Mesh importer", "file not supported");
 		return;
 	}
-	stream >> a;
-	while (!stream.eof()) {
-		if (a == "vrt") {
-			Vec3 v;
-			stream >> x;
-			if (x != vertexCount) {
-				Debug::Error("Mesh Importer", "mesh metadata corrupted (vertex id not in order)!");
-				return;
+	stream.getline(c, 100, 0);
+	name += string(c);
+	delete[](c);
+
+	char cc;
+	stream.read(&cc, 1);
+
+	while (cc != 0) {
+		if (cc == 'V') {
+			_Strm2Val(stream, vertexCount);
+			for (uint vc = 0; vc < vertexCount; vc++) {
+				Vec3 v;
+				_Strm2Val(stream, v.x);
+				_Strm2Val(stream, v.y);
+				_Strm2Val(stream, v.z);
+				vertices.push_back(v);
+				_Strm2Val(stream, v.x);
+				_Strm2Val(stream, v.y);
+				_Strm2Val(stream, v.z);
+				normals.push_back(v);
 			}
-			vertexCount++;
-			stream >> v.x >> v.y >> v.z;
-			vertices.push_back(v);
 		}
-		else if (a == "nrm") {
-			stream >> x;
-			if (x >= vertexCount) {
-				Debug::Error("Mesh Importer", "mesh metadata corrupted (normal id exceed vertex id)!");
-				return;
+		else if (cc == 'F') {
+			_Strm2Val(stream, triangleCount);
+			for (uint fc = 0; fc < triangleCount; fc++) {
+				byte m;
+				_Strm2Val(stream, m);
+				while (materialCount <= m) {
+					_matTriangles.push_back(vector<int>());
+					materialCount++;
+				}
+				uint i;
+				_Strm2Val(stream, i);
+				_matTriangles[m].push_back(i);
+				_Strm2Val(stream, i);
+				_matTriangles[m].push_back(i);
+				_Strm2Val(stream, i);
+				_matTriangles[m].push_back(i);
 			}
-			Vec3 n;
-			stream >> n.x >> n.y >> n.z;
-			normals.push_back(n);
-			//cout << "vn" << x << " " << s(mesh.vertices[x].normal) << endl;
 		}
-		/*
-		else if (a == "vcl") {
-			stream >> x;
-			if (x >= vertCount) {
-				Debug::Error("Mesh Importer", "mesh metadata corrupted (vertex color id exceed vertex id)!");
-				return false;
+		else if (cc == 'U') {
+			byte c;
+			_Strm2Val(stream, c);
+			for (uint vc = 0; vc < vertexCount; vc++) {
+				Vec2 i;
+				_Strm2Val(stream, i.x);
+				_Strm2Val(stream, i.y);
+				uv0.push_back(i);
 			}
-			stream >> mesh.vertices[x].Vec4.x >> mesh.vertices[x].Vec4.y >> mesh.vertices[x].Vec4.z;
-			//cout << "vc" << x << " " << s(mesh.vertices[x].normal) << endl;
-		}
-		*/
-		else if (a == "tri") {
-			uint i;
-			stream >> i;
-			int mati = i+0;
-			while (_matTriangles.size() <= i) {
-				_matTriangles.push_back({});
-				materialCount++;
+			if (c > 1) {
+				for (uint vc = 0; vc < vertexCount; vc++) {
+					Vec2 i;
+					_Strm2Val(stream, i.x);
+					_Strm2Val(stream, i.y);
+					uv1.push_back(i);
+				}
 			}
-			stream >> i;
-			triangles.push_back(i+0);
-			_matTriangles[mati].push_back(i + 0);
-			stream >> i;
-			triangles.push_back(i + 0);
-			_matTriangles[mati].push_back(i + 0);
-			stream >> i;
-			triangles.push_back(i + 0);
-			_matTriangles[mati].push_back(i + 0);
-			triangleCount++;
-			//cout << "tri" << faceCount - 1 << endl;
 		}
-		else if (a == "uv0") {
-			Vec2 v;
-			stream >> x;
-			if (x >= vertexCount) {
-				Debug::Error("Mesh Importer", "mesh metadata corrupted (uv id exceed vertex id)!");
-				return;
-			}
-			vertexCount++;
-			stream >> v.x >> v.y;
-			uv0.push_back(v);
-		}
-		else if (a == "uv1") {
-			Vec2 v;
-			stream >> x;
-			if (x >= vertexCount) {
-				Debug::Error("Mesh Importer", "mesh metadata corrupted (uv id exceed vertex id)!");
-				return;
-			}
-			vertexCount++;
-			stream >> v.x >> v.y;
-			uv1.push_back(v);
-		}
-		else if (a == "]")
-			break;
 		else {
-			cout << "what is this? [" << a << "]" << endl;
+			Debug::Error("Mesh Importer", "Unknown char: " + to_string(cc));
 		}
-		stream >> a;
+		stream.read(&cc, 1);
 	}
-	int vs = vertices.size();
-	if (vs > 0) {
-		if (normals.size() != vs)
+
+	if (vertexCount > 0) {
+		if (normals.size() != vertexCount) {
 			Debug::Error("Mesh Importer", "mesh metadata corrupted (normals incomplete)!");
+			return;
+		}
 		else if (uv0.size() == 0)
-			uv0.resize(vs);
-		else if (uv0.size() != vs)
+			uv0.resize(vertexCount);
+		else if (uv0.size() != vertexCount){
 			Debug::Error("Mesh Importer", "mesh metadata corrupted (uv0 incomplete)!");
+			return;
+		}
 		if (uv1.size() == 0)
-			uv1.resize(vs);
+			uv1.resize(vertexCount);
+		else if (uv1.size() != vertexCount) {
+			Debug::Error("Mesh Importer", "mesh metadata corrupted (uv1 incomplete)!");
+			return;
+		}
+		loaded = true;
 	}
-	loaded = true;
 	return;
 }
 
@@ -1862,7 +1940,7 @@ Material::Material(string path) : AssetObject(ASSETTYPE_MATERIAL) {
 	stream.read(c, 3);
 	c[3] = (char)0;
 	string ss(c);
-	if (string(c) != "KTC") {
+	if (ss != "KTC") {
 		cerr << "file not supported" << endl;
 		return;
 	}
@@ -2464,6 +2542,9 @@ void* AssetManager::GenCache(ASSETTYPE t, ASSETID i) {
 	switch (t) {
 	case ASSETTYPE_TEXTURE:
 		dataCaches[t][i] = new Texture(*strm, off);
+		break;
+	case ASSETTYPE_MESH:
+		dataCaches[t][i] = new Mesh(*strm, off);
 		break;
 	default:
 		return nullptr;

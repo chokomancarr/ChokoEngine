@@ -500,8 +500,8 @@ void EB_Viewer::Draw() {
 		Quat q = seeingCamera->object->transform.rotation;
 		glRotatef(q.w, q.x, q.y, q.z);
 		glScalef(scale, -scale, 1);
-		glMultMatrixf(glm::value_ptr(glm::perspective(seeingCamera->fov*0.5f, Display::width*1.0f / Display::height, 0.01f, 500.0f)));
-		glScalef(-1, 1, -1);
+		glMultMatrixf(glm::value_ptr(glm::perspectiveFov(seeingCamera->fov * deg2rad, (float)Display::width, (float)Display::height, 0.01f, 500.0f)));
+		glScalef(1, -1, -1);
 		Vec3 pos = -seeingCamera->object->transform.worldPosition();
 		glTranslatef(pos.x, pos.y, pos.z);
 	}
@@ -1326,7 +1326,7 @@ void Editor::GenerateScriptResolver() {
 	vcxIn.close();
 	//<ClCompile Include = "Assets/main.cpp" / >< / ItemGroup><ItemGroup>
 
-	ofstream vcxOut(projectFolder + "TestProject.vcxproj", ios::out | ios::trunc);
+	ofstream vcxOut(projectFolder + "TestProject2.vcxproj", ios::out | ios::trunc);
 	if (!vcxOut.is_open()) {
 		_Error("Script Resolver", "Cannot write to vcxproj!");
 		return;
@@ -2012,7 +2012,7 @@ void Editor::AddBuildLog(Editor* e, string s, bool forceE) {
 		int i = s.find_first_of('(');
 		if (i == string::npos)
 			return;
-		buildErrorPath = "D:\\TestProject\\" + s.substr(0, i);
+		buildErrorPath = projectFolder + s.substr(0, i);
 		string ii = s.substr(i + 1, s.find_first_of(')') - i - 1);
 		buildErrorLine = stoi(ii);
 	}
@@ -2223,7 +2223,7 @@ bool DoMsBuild(Editor* e) {
 		bool failed = true;
 		byte FINISH = 0;
 		_putenv("MSBUILDDISABLENODEREUSE=1");
-		if (CreateProcess(ss.c_str(), "D:\\TestProject\\TestProject.vcxproj /nr:false /t:Build /p:Configuration=Release /v:n /nologo /fl /flp:LogFile=D:\\TestProject\\BuildLog.txt", NULL, NULL, true, 0, NULL, "D:\\TestProject\\", &startInfo, &processInfo) != 0) {
+		if (CreateProcess(ss.c_str(), "D:\\TestProject2\\TestProject2.vcxproj /nr:false /t:Build /p:Configuration=Release /v:n /nologo /fl /flp:LogFile=D:\\TestProject2\\BuildLog.txt", NULL, NULL, true, 0, NULL, "D:\\TestProject2\\", &startInfo, &processInfo) != 0) {
 			e->AddBuildLog(e, "Compiling from " + ss);
 			cout << "compiling" << endl;
 			DWORD w;
@@ -2332,6 +2332,8 @@ void Editor::DoCompile() {
 	buildProgressValue = 10;
 	buildLabel = "Build: merging assets...";
 	AddBuildLog(this, "Creating data files");
+	string ss = projectFolder + "Release\\";
+	CreateDirectory(ss.c_str(), NULL);
 	/*copy files
 	AddBuildLog(this, "Copying: dummy source directory -> dummy target directory");
 	AddBuildLog(this, "Copying: dummy source directory2 -> dummy target directory2");
@@ -2359,13 +2361,14 @@ void Editor::DoCompile() {
 			AddBuildLog(this, "Cleaning up...");
 			buildLabel = "Build: cleaning up...";
 			//tr2::sys::remove_all("D:\\TestProject\\Release\\TestProject.tlog");
-			for (string s1 : IO::GetFiles("D:\\TestProject\\Release\\TestProject.tlog"))
+			for (string s1 : IO::GetFiles(projectFolder + "Release\\TestProject.tlog"))
 			{
 				AddBuildLog(this, "deleting " + s1);
 				std::remove(s1.c_str());
 			}
-			RemoveDirectory("D:\\TestProject\\Release\\TestProject.tlog\\");
-			for (string s2 : IO::GetFiles("D:\\TestProject\\Release"))
+			string ss = projectFolder + "Release\\TestProject.tlog\\";
+			RemoveDirectory(ss.c_str());
+			for (string s2 : IO::GetFiles(projectFolder + "Release"))
 			{
 				string ss = s2.substr(s2.find_last_of('\\') + 1, string::npos);
 				string se = s2.substr(s2.size()-4, string::npos);
@@ -2379,7 +2382,8 @@ void Editor::DoCompile() {
 		buildLabel = "Build: complete.";
 		buildProgressVec4 = green(1, 0.7f);
 		AddBuildLog(this, "Build finished: press Escape to exit.");
-		ShellExecute(NULL, "open", "explorer", " /select,D:\\TestProject\\Release\\TestProject.exe", NULL, SW_SHOW);
+		string ss = " /select," + projectFolder + "Release\\TestProject.exe";
+		ShellExecute(NULL, "open", "explorer", ss.c_str(), NULL, SW_SHOW);
 	}
 	buildEnd = true;
 	//else SetBuildFail(this);

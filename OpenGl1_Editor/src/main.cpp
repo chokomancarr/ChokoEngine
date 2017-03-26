@@ -98,7 +98,7 @@ int main(int argc, char **argv)
 	editor->yLimits.push_back(Int2(0, 1));
 	editor->yLimits.push_back(Int2(0, 2));
 	editor->yLimits.push_back(Int2(2, 1));
-	
+
 	HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
 	MONITORINFO info;
 	info.cbSize = sizeof(MONITORINFO);
@@ -120,7 +120,7 @@ int main(int argc, char **argv)
 	SendMessage(GetWindow(hwnd, GW_OWNER), WM_SETICON, ICON_BIG, hIcon);
 
 	long style = GetWindowLong(hwnd, GWL_STYLE);
-	style &= ~(WS_VISIBLE);    // this works - window become invisible 
+	style &= ~(WS_VISIBLE);    // this works - window become invisible
 
 	style |= WS_EX_TOOLWINDOW;
 	style &= ~(WS_EX_APPWINDOW);
@@ -166,25 +166,6 @@ int main(int argc, char **argv)
 		//Material m(s);
 		//m.Save(editor->projectFolder + "Assets\\test.material");
 
-
-		/*
-		editor->NewScene();
-		editor->activeScene.objects.push_back(new SceneObject("Main Camera"));
-		editor->activeScene.objects.push_back(new SceneObject("Player"));
-		editor->activeScene.objects[0]
-		->AddChild(new SceneObject())
-		->AddChild(new SceneObject("Sound"))
-		->AddChild(new SceneObject("Particles"))
-		->transform.Translate(0, 3, -5)
-		->object->AddComponent(new Camera())
-		->object->AddComponent(new TextureRenderer())
-		->object->GetChild(1)
-		->AddChild(new SceneObject("Child"))
-		->AddComponent(new MeshFilter());
-		editor->activeScene.objects[1]
-		->AddComponent(new MeshFilter())
-		->object->AddComponent(new MeshRenderer());
-		//*/
 		//*
 			//ifstream strm(editor->projectFolder + "Assets\\newScene.scene", ios::in | ios::binary);
 			//AssetManager::Init("D:\\TestProject\\Release\\data");

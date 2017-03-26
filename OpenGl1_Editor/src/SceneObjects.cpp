@@ -71,13 +71,12 @@ void Camera::ApplyGL() {
 		glClear(GL_DEPTH_BUFFER_BIT);
 		break;
 	}
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glScalef(1.2f, -1.2f, 1);
-	glMultMatrixf(glm::value_ptr(glm::perspective(fov*0.5f, Display::width*1.0f / Display::height, nearClip, farClip)));
-	glScalef(-1, 1, -1);
-	//rotation matrix here
 
+	Quat q = object->transform.rotation;
+	glRotatef(q.w, q.x, q.y, q.z);
+	glScalef(3.2f, -3.2f, 1);
+	glMultMatrixf(glm::value_ptr(glm::perspectiveFov(fov * deg2rad, (float)Display::width, (float)Display::height, 0.01f, 500.0f)));
+	glScalef(1, -1, -1);
 	Vec3 pos = -object->transform.worldPosition();
 	glTranslatef(pos.x, pos.y, pos.z);
 }
@@ -90,40 +89,6 @@ void Camera::UpdateCamVerts() {
 	camVerts[3] = Vec3(cst.x, -cst.y, 1 - cst.z) * 2.0f;
 	camVerts[4] = Vec3(-cst.x, -cst.y, 1 - cst.z) * 2.0f;
 	camVerts[5] = Vec3(0, cst.y * 1.5f, 1 - cst.z) * 2.0f;
-#endif
-}
-
-void Camera::InitGBuffer() {
-#ifndef IS_EDITOR
-	glGenFramebuffers(1, &d_fbo);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, d_fbo);
-
-	// Create the gbuffer textures
-	glGenTextures(3, d_texs);
-	glGenTextures(1, &d_depthTex);
-
-	for (uint i = 0; i < 3; i++) {
-		glBindTexture(GL_TEXTURE_2D, d_texs[i]);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, Display::width, Display::height, 0, GL_RGB, GL_FLOAT, NULL);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, d_texs[i], 0);
-	}
-
-	// depth
-	glBindTexture(GL_TEXTURE_2D, d_depthTex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, Display::width, Display::height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, d_depthTex, 0);
-
-	GLenum DrawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3 };
-	glDrawBuffers(4, DrawBuffers);
-
-	GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-
-	if (Status != GL_FRAMEBUFFER_COMPLETE) {
-		Debug::Error("Camera", "FB error:" + Status);
-	}
-
-	// restore default FBO
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 #endif
 }
 
@@ -277,6 +242,40 @@ void MeshRenderer::DrawEditor(EB_Viewer* ebv) {
 	glm::mat4 m2(matrix2[0], matrix2[1], matrix2[2], matrix2[3], matrix2[4], matrix2[5], matrix2[6], matrix2[7], matrix2[8], matrix2[9], matrix2[10], matrix2[11], matrix2[12], matrix2[13], matrix2[14], matrix2[15]);
 	glm::mat4 mat(m2*m1);
 	//glm::mat4()
+	for (uint m = 0; m < mf->mesh->materialCount; m++) {
+		if (materials[m] == nullptr)
+			continue;
+		materials[m]->ApplyGL(mat);
+		glEnableVertexAttribArray(0);
+		glEnableVertexAttribArray(1);
+		glEnableVertexAttribArray(2);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->vertices[0]));
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->uv0[0]));
+		glVertexAttribPointer(2, 3, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->normals[0]));
+		glDrawElements(GL_TRIANGLES, mf->mesh->_matTriangles[m].size(), GL_UNSIGNED_INT, &(mf->mesh->_matTriangles[m][0]));
+		glDisableVertexAttribArray(0);
+		glDisableVertexAttribArray(1);
+		glDisableVertexAttribArray(2);
+	}
+	glUseProgram(0);
+	glDisableClientState(GL_VERTEX_ARRAY);
+	glDisable(GL_CULL_FACE);
+}
+
+void MeshRenderer::DrawDeferred() {
+	MeshFilter* mf = (MeshFilter*)dependacyPointers[0];
+	if (mf == nullptr || mf->mesh == nullptr || !mf->mesh->loaded)
+		return;
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glEnable(GL_CULL_FACE);
+	glVertexPointer(3, GL_FLOAT, 0, &(mf->mesh->vertices[0]));
+	GLfloat matrix[16], matrix2[16];
+	glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
+	glGetFloatv(GL_PROJECTION_MATRIX, matrix2);
+	glm::mat4 m1(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
+	glm::mat4 m2(matrix2[0], matrix2[1], matrix2[2], matrix2[3], matrix2[4], matrix2[5], matrix2[6], matrix2[7], matrix2[8], matrix2[9], matrix2[10], matrix2[11], matrix2[12], matrix2[13], matrix2[14], matrix2[15]);
+	glm::mat4 mat(m2*m1);
 	for (uint m = 0; m < mf->mesh->materialCount; m++) {
 		if (materials[m] == nullptr)
 			continue;
