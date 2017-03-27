@@ -110,7 +110,7 @@ ShaderBase::ShaderBase(string path) : AssetObject(ASSETTYPE_SHADER) {
 	stream.read(cc, i);
 	cc[i] = (char)0;
 	fragment_shader_code = string(cc);
-	free(cc);
+	delete[](cc);
 	stream.close();
 
 	GLuint vertex_shader, fragment_shader;
@@ -127,6 +127,123 @@ ShaderBase::ShaderBase(string path) : AssetObject(ASSETTYPE_SHADER) {
 		cout << "Fragment Shader: " << endl << fragment_shader_code;
 		if (!LoadShader(GL_FRAGMENT_SHADER, fragment_shader_code, fragment_shader, &err)) {
 			Editor::instance->_Error("Shader Compiler", path + " " + err);
+			return;
+		}
+	}
+	else return;
+
+	pointer = glCreateProgram();
+	glAttachShader(pointer, vertex_shader);
+	glAttachShader(pointer, fragment_shader);
+
+	int link_result = 0;
+
+	glLinkProgram(pointer);
+	glGetProgramiv(pointer, GL_LINK_STATUS, &link_result);
+	if (link_result == GL_FALSE)
+	{
+		int info_log_length = 0;
+		glGetProgramiv(pointer, GL_INFO_LOG_LENGTH, &info_log_length);
+		vector<char> program_log(info_log_length);
+		glGetProgramInfoLog(pointer, info_log_length, NULL, &program_log[0]);
+		cout << "Shader link error" << endl << &program_log[0] << endl;
+		glDeleteProgram(pointer);
+		pointer = 0;
+		return;
+	}
+	cout << "shader linked" << endl;
+
+	glDetachShader(pointer, vertex_shader);
+	glDeleteShader(vertex_shader);
+	glDetachShader(pointer, fragment_shader);
+	glDeleteShader(fragment_shader);
+	loaded = true;
+}
+
+ShaderBase::ShaderBase(ifstream& stream, uint offset) : AssetObject(ASSETTYPE_SHADER) {
+	if (!stream.is_open())
+		return;
+	stream.seekg(offset);
+	string vertex_shader_code = "";
+	string fragment_shader_code = "";
+	char* c = new char[4];
+	stream.read(c, 3);
+	c[3] = (char)0;
+	string ss(c);
+	if (string(c) != "KTS") {
+		Debug::Error("ShaderLoader", "Wrong data header!");
+		return;
+	}
+
+	int vs;
+	_Strm2Val(stream, vs);
+
+	char type;
+	char* nmm = new char[100];
+	for (int r = 0; r < vs; r++) {
+		stream.get(type);
+		byte bb = type;
+		vars.push_back(new ShaderVariable());
+		vars[r]->type = bb;
+		switch (bb) {
+		case SHADER_INT:
+			_Strm2Val(stream, vars[r]->min);
+			_Strm2Val(stream, vars[r]->max);
+			_Strm2Val(stream, vars[r]->val.i);
+			stream.getline(nmm, 100, (char)0);
+			vars[r]->name += string(nmm);
+			break;
+		case SHADER_FLOAT:
+			_Strm2Val(stream, vars[r]->min);
+			_Strm2Val(stream, vars[r]->max);
+			_Strm2Val(stream, vars[r]->val.x);
+			stream.getline(nmm, 100, (char)0);
+			vars[r]->name += string(nmm);
+			break;
+		case SHADER_SAMPLER:
+			vars[r]->val.i = -1;
+			stream.getline(nmm, 100, (char)0);
+			vars[r]->name += string(nmm);
+			break;
+		}
+	}
+	stream.get(type);
+	if ((byte)type != 0xff)
+		return;
+
+	int i;
+	_Strm2Val(stream, i);
+	char* cc = new char[i + 1];
+	stream.read(cc, i);
+	cc[i] = (char)0;
+	vertex_shader_code = string(cc);
+	delete[](cc);
+
+	stream.get(type);
+	if ((byte)type != 0x00)
+		return;
+
+	_Strm2Val(stream, i);
+	cc = new char[i + 1];
+	stream.read(cc, i);
+	cc[i] = (char)0;
+	fragment_shader_code = string(cc);
+	delete[](cc);
+
+	GLuint vertex_shader, fragment_shader;
+	string err = "";
+	if (vertex_shader_code != "") {
+		cout << "Vertex Shader: " << endl << vertex_shader_code;
+		if (!LoadShader(GL_VERTEX_SHADER, vertex_shader_code, vertex_shader, &err)) {
+			Debug::Error("Shader Compiler", "Vert error: " + err);
+			return;
+		}
+	}
+	else return;
+	if (fragment_shader_code != "") {
+		cout << "Fragment Shader: " << endl << fragment_shader_code;
+		if (!LoadShader(GL_FRAGMENT_SHADER, fragment_shader_code, fragment_shader, &err)) {
+			Debug::Error("Shader Compiler", "Frag error: " + err);
 			return;
 		}
 	}

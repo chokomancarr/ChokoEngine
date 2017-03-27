@@ -1948,14 +1948,18 @@ Material::Material(string path) : AssetObject(ASSETTYPE_MATERIAL) {
 	char* nmm = new char[100];
 	stream.getline(nmm, 100, (char)0);
 	string shp(nmm);
-	if (shp == "")
+	if (shp == "") {
+		delete[](nmm);
 		return;
+	}
 	ASSETTYPE t;
 	Editor::instance->GetAssetInfo(shp, t, _shader);
 	shader = _GetCache<ShaderBase>(ASSETTYPE_SHADER, _shader);
-	
-	if (shader == nullptr)
+
+	if (shader == nullptr) {
+		delete[](nmm);
 		return;
+	}
 	ResetVals();
 	unordered_map<string, GLint> nMap;
 	//if (Editor::instance != nullptr)
@@ -2019,7 +2023,7 @@ Material::Material(string path) : AssetObject(ASSETTYPE_MATERIAL) {
 					ASSETTYPE t;
 					Editor::instance->GetAssetInfo(nm2, t, ((MatVal_Tex*)vals[SHADER_SAMPLER][nMap[nm]])->id);
 					((MatVal_Tex*)vals[SHADER_SAMPLER][nMap[nm]])->tex = _GetCache<Texture>(ASSETTYPE_TEXTURE, ((MatVal_Tex*)vals[SHADER_SAMPLER][nMap[nm]])->id);
-					free(nmm2);
+					delete[](nmm2);
 					break;
 				}
 			}
@@ -2028,6 +2032,106 @@ Material::Material(string path) : AssetObject(ASSETTYPE_MATERIAL) {
 	}
 	delete[](nmm);
 	stream.close();
+}
+
+Material::Material(ifstream& stream, uint offset) : AssetObject(ASSETTYPE_MATERIAL) {
+	if (stream.is_open()) {
+		stream.seekg(offset);
+		char* c = new char[4];
+		stream.read(c, 3);
+		c[3] = (char)0;
+		string ss(c);
+		if (ss != "KTC") {
+			cerr << "file not supported" << endl;
+			return;
+		}
+		delete[](c);
+		char* nmm = new char[100];
+		stream.getline(nmm, 100, (char)0);
+		string shp(nmm);
+		if (shp == "") {
+			delete[](nmm);
+			return;
+		}
+		offset = (uint)stream.tellg();
+		ASSETTYPE t;
+		_shader = AssetManager::GetAssetId(shp, t);
+		shader = _GetCache<ShaderBase>(ASSETTYPE_SHADER, _shader);
+
+		if (shader == nullptr) {
+			delete[](nmm);
+			return;
+		}
+		ResetVals();
+		unordered_map<string, GLint> nMap;
+		for (ShaderVariable* v : shader->vars) {
+			void* l = nullptr;
+			if (v->type == SHADER_INT)
+				l = new int();
+			else if (v->type == SHADER_FLOAT)
+				l = new float();
+			else if (v->type == SHADER_SAMPLER)
+				l = new MatVal_Tex();
+			valNames[v->type].push_back(v->name);
+			GLint loc = glGetUniformLocation(shader->pointer, v->name.c_str());
+			if (loc > -1) {
+				vals[v->type].emplace(loc, l);
+				nMap.emplace(v->name, loc);
+				valOrders.push_back(v->type);
+				valOrderIds.push_back((byte)(valNames[v->type].size() - 1));
+				valOrderGLIds.push_back(loc);
+			}
+			else
+				Debug::Warning("Material", "Shader parameter " + v->name + " not used!");
+		}
+		stream.seekg(offset);
+		int vs;
+		_Strm2Val(stream, vs);
+		for (int r = 0; r < vs; r++) {
+			char ii;
+			stream >> ii;
+			nmm = new char[100];
+			stream.getline(nmm, 100, (char)0);
+			string nm(nmm);
+			switch (ii) {
+			case SHADER_FLOAT:
+				for (int x = vals[SHADER_FLOAT].size() - 1; x >= 0; x--) {
+					if (valNames[SHADER_FLOAT][x] == nm) {
+						float f;
+						_Strm2Val(stream, f);
+						(*(float*)vals[SHADER_FLOAT][nMap[nm]]) += f;
+						break;
+					}
+				}
+				break;
+			case SHADER_INT:
+				for (int x = vals[SHADER_INT].size() - 1; x >= 0; x--) {
+					if (valNames[SHADER_INT][x] == nm) {
+						int f;
+						_Strm2Val(stream, f);
+						(*(int*)vals[SHADER_INT][nMap[nm]]) += f;
+						break;
+					}
+				}
+				break;
+			case SHADER_SAMPLER:
+				for (int x = vals[SHADER_SAMPLER].size() - 1; x >= 0; x--) {
+					if (valNames[SHADER_SAMPLER][x] == nm) {
+						char* nmm2 = new char[100];
+						stream.getline(nmm2, 100, (char)0);
+						string nm2(nmm2);
+						ASSETTYPE t;
+						((MatVal_Tex*)vals[SHADER_SAMPLER][nMap[nm]])->id = AssetManager::GetAssetId(nm2, t);
+						((MatVal_Tex*)vals[SHADER_SAMPLER][nMap[nm]])->tex = _GetCache<Texture>(ASSETTYPE_TEXTURE, ((MatVal_Tex*)vals[SHADER_SAMPLER][nMap[nm]])->id);
+						delete[](nmm2);
+						break;
+					}
+				}
+				break;
+			}
+		}
+		delete[](nmm);
+	}
 }
 
 Material::~Material() {
@@ -2546,7 +2650,14 @@ void* AssetManager::GenCache(ASSETTYPE t, ASSETID i) {
 	case ASSETTYPE_MESH:
 		dataCaches[t][i] = new Mesh(*strm, off);
 		break;
+	case ASSETTYPE_MATERIAL:
+		dataCaches[t][i] = new Material(*strm, off);
+		break;
+	case ASSETTYPE_SHADER:
+		dataCaches[t][i] = new ShaderBase(*strm, off);
+		break;
 	default:
+		Debug::Warning("AssetManager", "No operation suits asset type " + to_string(t) + "!");
 		return nullptr;
 	}
 	return dataCaches[t][i];

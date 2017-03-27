@@ -71,7 +71,7 @@ int main(int argc, char **argv)
 
 	getline(cin, editor->projectFolder);
 	if (editor->projectFolder == "")
-		editor->projectFolder = "D:\\TestProject\\";
+		editor->projectFolder = "D:\\TestProject2\\";
 	else while (!IO::HasDirectory(editor->projectFolder.c_str())) {
 		cout << "Invalid project folder path: " << editor->projectFolder << endl;
 		getline(cin, editor->projectFolder);

@@ -123,6 +123,7 @@ void _StreamWriteAsset(Editor* e, ofstream* stream, ASSETTYPE t, ASSETID i);
 //void _Strm2Int(ifstream& strm, int& i), _Strm2Float(ifstream& strm, float& f), _Strm2Short(ifstream& strm, short& i);
 
 template<typename T> void _Strm2Val(ifstream& strm, T &val) {
+	/*
 	long long pos = strm.tellg();
 	byte size = sizeof(T);
 	char c[8];
@@ -132,6 +133,12 @@ template<typename T> void _Strm2Val(ifstream& strm, T &val) {
 	}
 	//int rr(*(T*)c);
 	val = *(T*)c;
+	*/
+	long long pos = strm.tellg();
+	strm.read((char*)&val, (byte)sizeof(T));
+	if (strm.fail()) {
+		Debug::Error("Strm2Val", "Fail bit raised! (probably eof reached) " + to_string(pos));
+	}
 }
 ASSETID _Strm2H(ifstream& strm);
 
@@ -368,6 +375,7 @@ public:
 class ShaderBase : public AssetObject {
 public:
 	ShaderBase(string path);
+	ShaderBase(ifstream& stream, uint offset);
 	//ShaderBase(string vert, string frag);
 	~ShaderBase() {
 		glDeleteProgram(pointer);
@@ -423,10 +431,12 @@ public:
 	friend class Mesh;
 	friend class MeshRenderer;
 	friend class Scene;
+	friend class AssetManager;
 	friend int main(int argc, char **argv);
 	friend void EBI_DrawAss_Mat(Vec4 v, Editor* editor, EB_Inspector* b, float &off);
 protected:
 	Material(string s);
+	Material(ifstream& stream, uint offset);
 	void _ReloadParams();
 
 	int _shader;
@@ -570,6 +580,7 @@ class AssetManager {
 	friend class Engine;
 	friend class Scene;
 	friend class SceneObject;
+	friend class Material;
 	template<typename T> friend T* _GetCache(ASSETTYPE t, ASSETID i);
 	friend string _Strm2Asset(ifstream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int max);
 protected:
