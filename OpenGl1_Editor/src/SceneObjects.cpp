@@ -72,11 +72,12 @@ void Camera::ApplyGL() {
 		break;
 	}
 
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
 	Quat q = object->transform.rotation;
 	glRotatef(q.w, q.x, q.y, q.z);
-	glScalef(3.2f, -3.2f, 1);
 	glMultMatrixf(glm::value_ptr(glm::perspectiveFov(fov * deg2rad, (float)Display::width, (float)Display::height, 0.01f, 500.0f)));
-	glScalef(1, -1, -1);
+	glScalef(1, 1, -1);
 	Vec3 pos = -object->transform.worldPosition();
 	glTranslatef(pos.x, pos.y, pos.z);
 }

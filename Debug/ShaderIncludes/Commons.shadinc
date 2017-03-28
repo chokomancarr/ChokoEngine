@@ -33,16 +33,17 @@ COMMONEND
 
 FRAGSTART
 layout (location=0) out vec4 outColor; //rgba
-layout (location=1) out vec3 outNormal; //xyz []
+layout (location=1) out vec4 outNormal; //xyz []
 layout (location=2) out vec4 outSpec; //spec gloss [] []
-layout (location=3) out float outDepth; //z
+//layout (location=3) out float outDepth; //z
 
 void Output(vec4 col, vec3 norm, vec3 spec, float gloss, float z) {
 	outColor = col;
 	outColor.a = max(outColor.a, _isForward);
-	outNormal = norm;
+	outNormal.rgb = norm;
+	outNormal.a = 1;
 	outSpec.rgb = spec;
 	outSpec.a = gloss;
-	outDepth = z;
+	//outDepth = z;
 }
 FRAGEND

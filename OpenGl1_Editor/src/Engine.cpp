@@ -2021,6 +2021,10 @@ Material::Material(string path) : AssetObject(ASSETTYPE_MATERIAL) {
 					stream.getline(nmm2, 100, (char)0);
 					string nm2(nmm2);
 					ASSETTYPE t;
+					if (vals[SHADER_SAMPLER][nMap[nm]] == nullptr) {
+						delete[](nmm2);
+						break;
+					}
 					Editor::instance->GetAssetInfo(nm2, t, ((MatVal_Tex*)vals[SHADER_SAMPLER][nMap[nm]])->id);
 					((MatVal_Tex*)vals[SHADER_SAMPLER][nMap[nm]])->tex = _GetCache<Texture>(ASSETTYPE_TEXTURE, ((MatVal_Tex*)vals[SHADER_SAMPLER][nMap[nm]])->id);
 					delete[](nmm2);
@@ -2057,6 +2061,7 @@ Material::Material(ifstream& stream, uint offset) : AssetObject(ASSETTYPE_MATERI
 		ASSETTYPE t;
 		_shader = AssetManager::GetAssetId(shp, t);
 		shader = _GetCache<ShaderBase>(ASSETTYPE_SHADER, _shader);
+		stream.seekg(offset);
 
 		if (shader == nullptr) {
 			delete[](nmm);
@@ -2084,7 +2089,6 @@ Material::Material(ifstream& stream, uint offset) : AssetObject(ASSETTYPE_MATERI
 			else
 				Debug::Warning("Material", "Shader parameter " + v->name + " not used!");
 		}
-		stream.seekg(offset);
 		int vs;
 		_Strm2Val(stream, vs);
 		for (int r = 0; r < vs; r++) {
@@ -2121,8 +2125,14 @@ Material::Material(ifstream& stream, uint offset) : AssetObject(ASSETTYPE_MATERI
 						stream.getline(nmm2, 100, (char)0);
 						string nm2(nmm2);
 						ASSETTYPE t;
+						if (vals[SHADER_SAMPLER][nMap[nm]] == nullptr) {
+							delete[](nmm2);
+							break;
+						}
+						offset = (uint)stream.tellg();
 						((MatVal_Tex*)vals[SHADER_SAMPLER][nMap[nm]])->id = AssetManager::GetAssetId(nm2, t);
 						((MatVal_Tex*)vals[SHADER_SAMPLER][nMap[nm]])->tex = _GetCache<Texture>(ASSETTYPE_TEXTURE, ((MatVal_Tex*)vals[SHADER_SAMPLER][nMap[nm]])->id);
+						stream.seekg(offset);
 						delete[](nmm2);
 						break;
 					}
@@ -2196,6 +2206,8 @@ void Material::Save(string path) {
 	}
 	j = 0;
 	for (auto v : vals[SHADER_SAMPLER]) {
+		if (v.second == nullptr)
+			continue;
 		t = SHADER_SAMPLER;
 		strm << t;
 		strm << valNames[SHADER_SAMPLER][j] << (char)0;
@@ -2631,6 +2643,8 @@ ASSETID AssetManager::GetAssetId(string nm, ASSETTYPE &t) {
 }
 
 void* AssetManager::GetCache(ASSETTYPE t, ASSETID i) {
+	if (i == -1)
+		return nullptr;
 	if (dataCaches[t][i] != nullptr)
 		return dataCaches[t][i];
 	else

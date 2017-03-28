@@ -195,6 +195,7 @@ protected:
 	Camera(ifstream& stream, SceneObject* o, long pos = -1);
 
 	void RenderLights();
+	void DumpBuffers();
 
 	Vec3 camVerts[6];
 	static int camVertsIds[19];
