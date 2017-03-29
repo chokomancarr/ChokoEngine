@@ -541,7 +541,6 @@ public:
 
 	friend class Editor;
 	friend class EB_Inspector;
-protected:
 	int skyId;
 };
 

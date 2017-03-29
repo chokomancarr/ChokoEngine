@@ -910,6 +910,16 @@ void EBI_DrawAss_Mat(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 	//*/
 }
 
+void EBI_DrawAss_Hdr(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
+	Background* tex = (Background*)editor->selectedFileCache;
+	float sz = min(v.b - 2.0f, clamp((float)max(tex->width, tex->height), 16.0f, editor->_maxPreviewSize));
+	float x = v.r + 1 + 0.5f*(v.b - sz);
+	float y = off + 15;
+	float w2h = ((float)tex->width) / tex->height;
+	Engine::DrawQuad(x, y, sz, sz / w2h, (tex->loaded) ? tex->pointer : Engine::fallbackTex->pointer);
+	off += sz + 63;
+}
+
 void EB_Inspector::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	CalcV(v);
@@ -940,7 +950,7 @@ void EB_Inspector::Draw() {
 			Engine::Label(v.r + 22, v.g + 6 + EB_HEADER_SIZE, 12, "Scene Settings", editor->font, white());
 
 			Engine::Label(v.r, v.g + 23 + EB_HEADER_SIZE, 12, "Sky", editor->font, white());
-			editor->DrawAssetSelector(v.r + v.b*0.3f, v.g + 21 + EB_HEADER_SIZE, v.b*0.7f - 1, 14, grey2(), ASSETTYPE_HDRI, 12, editor->font, &editor->activeScene->settings.skyId);
+			editor->DrawAssetSelector(v.r + v.b*0.3f, v.g + 21 + EB_HEADER_SIZE, v.b*0.7f - 1, 14, grey2(), ASSETTYPE_HDRI, 12, editor->font, &editor->activeScene->settings.skyId, &_ApplySky, Scene::active);
 		}
 		else if (lockGlobal == 1) {
 			EBI_DrawObj(v, editor, this, lockedObj);
@@ -957,6 +967,10 @@ void EB_Inspector::Draw() {
 			break;
 		case ASSETTYPE_MATERIAL:
 			EBI_DrawAss_Mat(v, editor, this, off);
+			canApply = true;
+			break;
+		case ASSETTYPE_HDRI:
+			EBI_DrawAss_Hdr(v, editor, this, off);
 			canApply = true;
 			break;
 		}
@@ -978,7 +992,7 @@ void EB_Inspector::Draw() {
 		Engine::Label(v.r + 22, v.g + 6 + EB_HEADER_SIZE, 12, "Scene Settings", editor->font, white());
 
 		Engine::Label(v.r, v.g + 23 + EB_HEADER_SIZE, 12, "Sky", editor->font, white());
-		editor->DrawAssetSelector(v.r + v.b*0.3f, v.g + 21 + EB_HEADER_SIZE, v.b*0.7f - 1, 14, grey2(), ASSETTYPE_HDRI, 12, editor->font, &editor->activeScene->settings.skyId);
+		editor->DrawAssetSelector(v.r + v.b*0.3f, v.g + 21 + EB_HEADER_SIZE, v.b*0.7f - 1, 14, grey2(), ASSETTYPE_HDRI, 12, editor->font, &editor->activeScene->settings.skyId, &_ApplySky, Scene::active);
 
 	}
 	else if (editor->selected != nullptr){
@@ -1025,6 +1039,11 @@ void EB_Inspector::_ApplyMatShader(void* v) {
 	mat->shader = _GetCache<ShaderBase>(ASSETTYPE_SHADER, mat->_shader);
 	mat->_ReloadParams();
 	mat->Save(Editor::instance->selectedFilePath);
+}
+
+void EB_Inspector::_ApplySky(void* v) {
+	Scene* sc = (Scene*)v;
+	sc->settings.sky = _GetCache<Background>(ASSETTYPE_HDRI, sc->settings.skyId);
 }
 
 
@@ -2043,6 +2062,9 @@ void* Editor::GenCache(ASSETTYPE type, int i) {
 		break;
 	case ASSETTYPE_TEXTURE:
 		normalAssetCaches[type][i] = new Texture(i, this);
+		break;
+	case ASSETTYPE_HDRI:
+		normalAssetCaches[type][i] = new Background(i, this);
 		break;
 	default:
 		return nullptr;

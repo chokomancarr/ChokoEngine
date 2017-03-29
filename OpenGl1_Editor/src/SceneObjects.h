@@ -147,8 +147,10 @@ public:
 	GLuint pointer;
 	friend int main(int argc, char **argv);
 	friend class Editor;
+	friend class AssetManager;
 private:
-	Background(int i);
+	Background(int i, Editor* editor);
+	Background(ifstream& strm, uint offset);
 	static bool Parse(string path);
 };
 

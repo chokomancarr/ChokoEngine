@@ -258,7 +258,7 @@ public:
 	static void DrawAsset(Editor* e, Vec4 v, float dh, string label, ASSETTYPE type);
 
 	static void _ApplyTexFilter0(EditorBlock* e), _ApplyTexFilter1(EditorBlock* e), _ApplyTexFilter2(EditorBlock* e);
-	static void _ApplyMatShader(void* v);
+	static void _ApplyMatShader(void* v), _ApplySky(void* v);
 	//static void DrawTexture(Editor* e, Vec4 v, string label, Texture* tex, Vec4& uv);
 };
 

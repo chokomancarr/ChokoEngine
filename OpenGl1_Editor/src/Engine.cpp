@@ -1395,16 +1395,6 @@ bool Mesh::ParseBlend(Editor* e, string s) {
 	return true;
 }
 
-/*
-void Mesh::Draw(Material* mat) {
-	if (mat == nullptr)
-		glUseProgram(0);
-	else {
-		mat->ApplyGL();
-	}
-}
-*/
-
 //-----------------texture class---------------------
 bool LoadJPEG(string fileN, uint &x, uint &y, byte& channels, byte** data)
 {
@@ -1755,6 +1745,74 @@ Background::Background(const string& path) : width(0), height(0), AssetObject(AS
 	//cout << "HDR Image loaded: " << width << "x" << height << endl;
 }
 
+Background::Background(int i, Editor* editor) : width(0), height(0), AssetObject(ASSETTYPE_HDRI) {
+	string path = editor->projectFolder + "Assets\\" + editor->normalAssets[ASSETTYPE_HDRI][i] + ".meta";
+	ifstream strm(path.c_str(), ios::in | ios::binary);
+	vector<char> hd(6);
+	strm.read((&hd[0]), 4);
+	if (hd[0] != 'I' || hd[1] != 'M' || hd[2] != 'G' || hd[3] != (char)4) {
+		Debug::Error("HDR Cacher", "HDR cache header wrong!");
+		return;
+	}
+	_Strm2Val<uint>(strm, width);
+	_Strm2Val<uint>(strm, height);
+	strm.read((&hd[0]), 5);
+	if (hd[0] != (char)0 || hd[1] != 'D' || hd[2] != 'A' || hd[3] != 'T' || hd[4] != 'A') {
+		Debug::Error("HDR Cacher", "Data tag missing!");
+		return;
+	}
+
+	byte* data2 = new byte[width*height*4];
+	strm.read((char*)data2, width*height*4);
+	float* data = hdr2float(data2, width, height);
+	delete[](data2);
+
+	glGenTextures(1, &pointer);
+	glBindTexture(GL_TEXTURE_2D, pointer);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_FLOAT, data);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glGenerateMipmap(GL_TEXTURE_2D);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	loaded = true;
+	//cout << "HDR Image loaded: " << width << "x" << height << endl;
+}
+
+Background::Background(ifstream& strm, uint offset) : width(0), height(0), AssetObject(ASSETTYPE_HDRI) {
+	vector<char> hd(6);
+	strm.read((&hd[0]), 4);
+	if (hd[0] != 'I' || hd[1] != 'M' || hd[2] != 'G' || hd[3] != (char)4) {
+		Debug::Error("HDR Cacher", "HDR cache header wrong!");
+		return;
+	}
+	_Strm2Val<uint>(strm, width);
+	_Strm2Val<uint>(strm, height);
+	strm.read((&hd[0]), 5);
+	if (hd[0] != (char)0 || hd[1] != 'D' || hd[2] != 'A' || hd[3] != 'T' || hd[4] != 'A') {
+		Debug::Error("HDR Cacher", "Data tag missing!");
+		return;
+	}
+
+	byte* data2 = new byte[width*height * 4];
+	strm.read((char*)data2, width*height * 4);
+	float* data = hdr2float(data2, width, height);
+	delete[](data2);
+
+	glGenTextures(1, &pointer);
+	glBindTexture(GL_TEXTURE_2D, pointer);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_FLOAT, data);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glGenerateMipmap(GL_TEXTURE_2D);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	loaded = true;
+	//cout << "HDR Image loaded: " << width << "x" << height << endl;
+}
+
 bool Background::Parse(string path) {
 	uint width, height;
 	byte* data = hdr::read_hdr(path.c_str(), &width, &height);
@@ -1773,6 +1831,7 @@ bool Background::Parse(string path) {
 	delete[](data);
 	return true;
 }
+
 
 //-----------------font class---------------------
 Font::Font(const string& pathb, const string& paths, int size) : loaded(false), alignment(ALIGN_TOPLEFT), sizeToggle(size) {
@@ -2458,6 +2517,15 @@ Scene::Scene(ifstream& stream, long pos) : sceneName("") {
 	char* cc = new char[100];
 	stream.getline(cc, 100, 0);
 	sceneName += string(cc);
+	ASSETTYPE t;
+
+	_Strm2Asset(stream, Editor::instance, t, settings.skyId);
+	if (settings.skyId >= 0 && t != ASSETTYPE_HDRI) {
+		Debug::Error("Scene", "Sky asset invalid!");
+		return;
+	}
+	settings.sky = _GetCache<Background>(t, settings.skyId);
+
 	char o;
 	stream >> o;
 	while (!stream.eof() && o == 'O') {
@@ -2534,6 +2602,7 @@ void Scene::Save(Editor* e) {
 	ofstream sw(e->projectFolder + "Assets\\" + sceneName + ".scene", ios::out);
 	sw << "SN";
 	sw << sceneName << (char)0;
+	_StreamWriteAsset(e, &sw, ASSETTYPE_HDRI, settings.skyId);
 	for (SceneObject* sc : objects) {
 		Serialize(e, sc, &sw);
 	}
@@ -2660,6 +2729,9 @@ void* AssetManager::GenCache(ASSETTYPE t, ASSETID i) {
 	switch (t) {
 	case ASSETTYPE_TEXTURE:
 		dataCaches[t][i] = new Texture(*strm, off);
+		break;
+	case ASSETTYPE_HDRI:
+		dataCaches[t][i] = new Background(*strm, off);
 		break;
 	case ASSETTYPE_MESH:
 		dataCaches[t][i] = new Mesh(*strm, off);

@@ -1,0 +1,10 @@
+uniform vec2 screenSize;
+uniform sampler2D inColor;
+uniform sampler2D inNormal;
+uniform sampler2D inSpec;
+//uniform sampler2D inDepth;
+
+void main () {
+	vec2 tex = gl_FragCoord.xy / screenSize;
+	
+}
