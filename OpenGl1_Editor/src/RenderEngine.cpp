@@ -67,6 +67,9 @@ void Camera::InitGBuffer() {
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 }
 
+const Vec2 Camera::screenRectVerts[] = { Vec2(-1, -1), Vec2(-1, 1), Vec2(1, -1), Vec2(1, 1) };
+const int Camera::screenRectIndices[] = { 0, 1, 2, 1, 3, 2 };
+
 void Camera::Render(RenderTexture* target) {
 	//enable deferred
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
@@ -92,17 +95,52 @@ void Camera::Render(RenderTexture* target) {
 #endif
 }
 
+void Camera::_RenderSky() {
+	GLint diffLoc = glGetUniformLocation(d_skyProgram, "inColor");
+	GLint specLoc = glGetUniformLocation(d_skyProgram, "inNormal");
+	GLint normLoc = glGetUniformLocation(d_skyProgram, "inSpec");
+	GLint skyLoc = glGetUniformLocation(d_skyProgram, "inSky");
+	GLint scrSzLoc = glGetUniformLocation(d_skyProgram, "screenSize");
+
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(2, GL_FLOAT, 0, screenRectVerts);
+	glUseProgram(d_skyProgram);
+
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, screenRectVerts);
+
+	glUniform2f(scrSzLoc, (GLfloat)Display::width, (GLfloat)Display::height);
+	glUniform1i(diffLoc, 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, d_texs[0]);
+	glUniform1i(specLoc, 1);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, d_texs[1]);
+	glUniform1i(normLoc, 2);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, d_texs[2]);
+	glUniform1i(skyLoc, 3);
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D, Scene::active->settings.sky->pointer);
+
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, screenRectIndices);
+
+	glDisableVertexAttribArray(0);
+	glUseProgram(0);
+	glDisableClientState(GL_VERTEX_ARRAY);
+}
+
 void Camera::RenderLights() {
 	glEnable(GL_BLEND);
 	glBlendEquation(GL_FUNC_ADD);
 	glBlendFunc(GL_ONE, GL_ONE);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, d_fbo);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 	glClearColor(0, 0, 0, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-
-
+	_RenderSky();
 }
 
 void Camera::DumpBuffers() {

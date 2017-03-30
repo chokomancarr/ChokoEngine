@@ -1,6 +1,7 @@
 //#include "SceneObjects.h"
 #include "Engine.h"
 #include "Editor.h"
+#include <sstream>
 
 Object::Object(string nm) : id(Engine::GetNewId()), name(nm) {}
 
@@ -55,6 +56,52 @@ Camera::Camera(ifstream& stream, SceneObject* o, long pos) : Camera() {
 	_Strm2Val(stream, screenPos.y);
 	_Strm2Val(stream, screenPos.w);
 	_Strm2Val(stream, screenPos.h);
+
+#ifndef IS_EDITOR
+	GLuint vertex_shader, fragment_shader;
+	string err = "";
+	ifstream strm("D:\\lightPassVert.txt");
+	stringstream ss, ss2;
+	ss << strm.rdbuf();
+
+	if (!ShaderBase::LoadShader(GL_VERTEX_SHADER, ss.str(), vertex_shader, &err)) {
+		Debug::Error("Cam Shader Compiler", "v!");
+		return;
+	}
+	strm.close();
+	strm.open("D:\\lightPassFrag_Sky.txt");
+	ss2 << strm.rdbuf();
+	if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, ss2.str(), fragment_shader, &err)) {
+		Debug::Error("Cam Shader Compiler", "f!");
+		return;
+	}
+
+	d_skyProgram = glCreateProgram();
+	glAttachShader(d_skyProgram, vertex_shader);
+	glAttachShader(d_skyProgram, fragment_shader);
+
+	int link_result = 0;
+
+	glLinkProgram(d_skyProgram);
+	glGetProgramiv(d_skyProgram, GL_LINK_STATUS, &link_result);
+	if (link_result == GL_FALSE)
+	{
+		int info_log_length = 0;
+		glGetProgramiv(d_skyProgram, GL_INFO_LOG_LENGTH, &info_log_length);
+		vector<char> program_log(info_log_length);
+		glGetProgramInfoLog(d_skyProgram, info_log_length, NULL, &program_log[0]);
+		cout << "Shader link error" << endl << &program_log[0] << endl;
+		glDeleteProgram(d_skyProgram);
+		d_skyProgram = 0;
+		return;
+	}
+	cout << "cam shader linked" << endl;
+
+	glDetachShader(d_skyProgram, vertex_shader);
+	glDeleteShader(vertex_shader);
+	glDetachShader(d_skyProgram, fragment_shader);
+	glDeleteShader(fragment_shader);
+#endif
 }
 
 /// <summary>Clear, Reset Projection Matrix</summary>

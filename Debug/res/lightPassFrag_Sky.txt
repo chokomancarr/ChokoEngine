@@ -1,10 +1,17 @@
+#version 330
+
 uniform vec2 screenSize;
 uniform sampler2D inColor;
 uniform sampler2D inNormal;
 uniform sampler2D inSpec;
+uniform sampler2D inSky;
 //uniform sampler2D inDepth;
 
+out vec4 fragCol;
+
 void main () {
-	vec2 tex = gl_FragCoord.xy / screenSize;
+	vec2 uv = gl_FragCoord.xy / screenSize;
+	vec4 nCol = texture(inNormal, uv);
 	
+	fragCol = vec4(1, 0, 0, 1)*(nCol.r+1.0)*0.5;
 }

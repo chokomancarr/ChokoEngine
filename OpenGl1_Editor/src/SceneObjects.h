@@ -152,6 +152,7 @@ private:
 	Background(int i, Editor* editor);
 	Background(ifstream& strm, uint offset);
 	static bool Parse(string path);
+	static vector<float> Downsample(vector<float>&, uint, uint, uint&, uint&);
 };
 
 #define COMP_UNDEF 0x00
@@ -198,10 +199,15 @@ protected:
 
 	void RenderLights();
 	void DumpBuffers();
+	void _RenderSky();
 
 	Vec3 camVerts[6];
 	static int camVertsIds[19];
 	GLuint d_fbo, d_texs[3], d_depthTex;
+	GLuint d_skyProgram;
+	static const Vec2 screenRectVerts[];
+	static const int screenRectIndices[];
+
 	int _tarRT;
 	
 	void ApplyGL();

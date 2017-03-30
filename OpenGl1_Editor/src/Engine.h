@@ -152,7 +152,7 @@ template<typename T> T* _GetCache(ASSETTYPE t, ASSETID i) {
 	return static_cast<T*>(AssetManager::GetCache(t, i));
 #endif
 }
-float* hdr2float(byte imagergbe[], int w, int h);
+vector<float> hdr2float(byte imagergbe[], int w, int h);
 
 //see SceneObjects.h
 class Object;

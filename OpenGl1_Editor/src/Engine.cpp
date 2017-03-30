@@ -1730,21 +1730,32 @@ Background::Background(const string& path) : width(0), height(0), AssetObject(AS
 	byte* data2 = hdr::read_hdr(path.c_str(), &width, &height);
 	if (data2 == NULL)
 		return;
-	float* data = hdr2float(data2, width, height);
+	auto data = hdr2float(data2, width, height);
+	delete[](data2);
 
 	glGenTextures(1, &pointer);
 	glBindTexture(GL_TEXTURE_2D, pointer);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_FLOAT, data);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_FLOAT, &data[0]);
+
+	uint width_1, height_1, mips = 0;
+	while (mips < 6 && height > 16) {
+		mips++;
+		data = Downsample(data, width, height, width_1, height_1);
+		glTexImage2D(GL_TEXTURE_2D, mips, GL_RGB, width_1, height_1, 0, GL_RGB, GL_FLOAT, &data[0]);
+		width = width_1 + 0;
+		height = height_1 + 0;
+	}
+
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	//if (mipmap) glGenerateMipmap(GL_TEXTURE_2D);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, mips);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	loaded = true;
-	delete[](data2);
 	//cout << "HDR Image loaded: " << width << "x" << height << endl;
 }
 
+//do not generate mipmaps in editor
 Background::Background(int i, Editor* editor) : width(0), height(0), AssetObject(ASSETTYPE_HDRI) {
 	string path = editor->projectFolder + "Assets\\" + editor->normalAssets[ASSETTYPE_HDRI][i] + ".meta";
 	ifstream strm(path.c_str(), ios::in | ios::binary);
@@ -1764,15 +1775,14 @@ Background::Background(int i, Editor* editor) : width(0), height(0), AssetObject
 
 	byte* data2 = new byte[width*height*4];
 	strm.read((char*)data2, width*height*4);
-	float* data = hdr2float(data2, width, height);
+	auto data = hdr2float(data2, width, height);
 	delete[](data2);
 
 	glGenTextures(1, &pointer);
 	glBindTexture(GL_TEXTURE_2D, pointer);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_FLOAT, data);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_FLOAT, &data[0]);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glGenerateMipmap(GL_TEXTURE_2D);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 	glBindTexture(GL_TEXTURE_2D, 0);
@@ -1797,20 +1807,84 @@ Background::Background(ifstream& strm, uint offset) : width(0), height(0), Asset
 
 	byte* data2 = new byte[width*height * 4];
 	strm.read((char*)data2, width*height * 4);
-	float* data = hdr2float(data2, width, height);
+	auto data = hdr2float(data2, width, height);
 	delete[](data2);
 
 	glGenTextures(1, &pointer);
 	glBindTexture(GL_TEXTURE_2D, pointer);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_FLOAT, data);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_FLOAT, &data[0]);
+	
+	uint width_1, height_1, mips = 0;
+	while (mips < 6 && height > 16) {
+		mips++;
+		cout << "Downsampling " << mips << endl;
+		data = Downsample(data, width, height, width_1, height_1);
+		glTexImage2D(GL_TEXTURE_2D, mips, GL_RGB, width_1, height_1, 0, GL_RGB, GL_FLOAT, &data[0]);
+		width = width_1 + 0;
+		height = height_1 + 0;
+	}
+
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glGenerateMipmap(GL_TEXTURE_2D);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, mips);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	loaded = true;
 	//cout << "HDR Image loaded: " << width << "x" << height << endl;
+}
+
+vector<float> Background::Downsample(vector<float>& data, uint w, uint h, uint& w2, uint& h2) {
+	if (w % 2 != 0) w--;
+	if (h % 2 != 0) h--;
+	w2 = w / 2;
+	h2 = h / 2;
+
+	//half the size
+	vector<float> hImg(w2*h2*3);
+	for (uint x = 0; x < w2; x++) {
+		for (uint y = 0; y < h2; y++) {
+			hImg[x * 3 + y * 3 * w2] = 0.25f*(data[x * 6 + y * 6 * w] + data[(x * 6 + 3) + y * 6 * w] + data[x * 6 + (y * 6 + 3) * w] + data[x * 6 + 3 + (y * 6 + 3) * w]);
+			hImg[x * 3 + y * 3 * w2 + 1] = 0.25f*(data[x * 6 + y * 6 * w + 1] + data[(x * 6 + 3) + y * 6 * w + 1] + data[x * 6 + (y * 6 + 3) * w + 1] + data[x * 6 + 3 + (y * 6 + 3) * w + 1]);
+			hImg[x * 3 + y * 3 * w2 + 2] = 0.25f*(data[x * 6 + y * 6 * w + 2] + data[(x * 6 + 3) + y * 6 * w + 2] + data[x * 6 + (y * 6 + 3) * w + 2] + data[x * 6 + 3 + (y * 6 + 3) * w + 2]);
+		}
+	}
+
+	//sigma 5
+	float kernal[21] = { 0.011f, 0.0164f, 0.023f, 0.031f, 0.04f, 0.05f, 0.06f, 0.07f, 0.076f, 0.08f, 0.0852f, 0.08f, 0.076f, 0.07f, 0.06f, 0.05f, 0.04f, 0.031f, 0.023f, 0.0164f, 0.011f };
+	//blur 20 pixels x
+	vector<float> xImg(w2*h2*3);
+	for (uint x = 0; x < w2; x++) {
+		for (uint y = 0; y < h2; y++) {
+			for (uint a = 0; a < 21; a++) {
+				int xx = x + (a-10);
+				if (xx < 0) xx = w2 + xx;
+				else if ((uint)xx >= w2) xx -= w2;
+				xImg[x * 3 + y * 3 * w2] += (hImg[xx * 3 + y * 3 * w2] * kernal[a]);
+				xImg[x * 3 + y * 3 * w2 + 1] += (hImg[xx * 3 + y * 3 * w2 + 1] * kernal[a]);
+				xImg[x * 3 + y * 3 * w2 + 2] += (hImg[xx * 3 + y * 3 * w2 + 2] * kernal[a]);
+			}
+		}
+	}
+
+	//blur 20 pixels y
+	vector<float> oImg(w2*h2 * 3);
+	for (uint x = 0; x < w2; x++) {
+		for (uint y = 0; y < h2; y++) {
+			for (uint a = 0; a < 21; a++) {
+				int yy = y + (a - 10);
+				int xx = w2-x-1;
+				if (yy < 0) yy = -yy;
+				else if ((uint)yy >= h2) yy = h2 - (yy - h2 + 1) - 1;
+				else xx = x;
+				oImg[x * 3 + y * 3 * w2] += (xImg[xx * 3 + yy * 3 * w2] * kernal[a]);
+				oImg[x * 3 + y * 3 * w2 + 1] += (xImg[xx * 3 + yy * 3 * w2 + 1] * kernal[a]);
+				oImg[x * 3 + y * 3 * w2 + 2] += (xImg[xx * 3 + yy * 3 * w2 + 2] * kernal[a]);
+			}
+		}
+	}
+
+	return oImg;
 }
 
 bool Background::Parse(string path) {
@@ -2351,8 +2425,8 @@ string _Strm2Asset(ifstream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int max)
 	return s;
 }
 
-float* hdr2float(byte imagergbe[], int w, int h) {
-	float* image = (float *)malloc(w * h * 3 * sizeof(float));
+vector<float> hdr2float(byte imagergbe[], int w, int h) {
+	vector<float> image(w * h * 3 * sizeof(float));
 	for (int i = 0; i < w*h; i++) {
 		unsigned char exponent = imagergbe[i * 4 + 3];
 		if (exponent == 0) {
