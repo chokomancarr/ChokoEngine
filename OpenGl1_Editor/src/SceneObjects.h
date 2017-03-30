@@ -199,7 +199,7 @@ protected:
 
 	void RenderLights();
 	void DumpBuffers();
-	void _RenderSky();
+	void _RenderSky(glm::quat mat);
 
 	Vec3 camVerts[6];
 	static int camVertsIds[19];

@@ -95,10 +95,12 @@ void Camera::Render(RenderTexture* target) {
 #endif
 }
 
-void Camera::_RenderSky() {
+void Camera::_RenderSky(glm::quat mat) {
+	GLint _IP = glGetUniformLocation(d_skyProgram, "_IP");
 	GLint diffLoc = glGetUniformLocation(d_skyProgram, "inColor");
 	GLint specLoc = glGetUniformLocation(d_skyProgram, "inNormal");
 	GLint normLoc = glGetUniformLocation(d_skyProgram, "inSpec");
+	GLint depthLoc = glGetUniformLocation(d_skyProgram, "inDepth");
 	GLint skyLoc = glGetUniformLocation(d_skyProgram, "inSky");
 	GLint scrSzLoc = glGetUniformLocation(d_skyProgram, "screenSize");
 
@@ -108,6 +110,8 @@ void Camera::_RenderSky() {
 
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, screenRectVerts);
+
+	glUniformMatrix4fv(_IP, 1, GL_FALSE, glm::value_ptr(mat));
 
 	glUniform2f(scrSzLoc, (GLfloat)Display::width, (GLfloat)Display::height);
 	glUniform1i(diffLoc, 0);
@@ -119,8 +123,11 @@ void Camera::_RenderSky() {
 	glUniform1i(normLoc, 2);
 	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_2D, d_texs[2]);
-	glUniform1i(skyLoc, 3);
+	glUniform1i(depthLoc, 3);
 	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D, d_depthTex);
+	glUniform1i(skyLoc, 4);
+	glActiveTexture(GL_TEXTURE4);
 	glBindTexture(GL_TEXTURE_2D, Scene::active->settings.sky->pointer);
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -140,7 +147,11 @@ void Camera::RenderLights() {
 	glClearColor(0, 0, 0, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	_RenderSky();
+	GLfloat matrix[16];
+	glGetFloatv(GL_PROJECTION_MATRIX, matrix);
+	glm::mat4 m1(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
+	glm::mat4 ip = glm::inverse(m1);
+	_RenderSky(ip);
 }
 
 void Camera::DumpBuffers() {
