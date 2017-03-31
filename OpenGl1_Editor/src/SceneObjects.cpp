@@ -43,7 +43,7 @@ COMPONENT_TYPE Component::Name2Type(string nm) {
 
 int Camera::camVertsIds[19] = { 0, 1, 0, 2, 0, 3, 0, 4, 1, 2, 2, 4, 4, 3, 3, 1, 1, 2, 5 };
 
-Camera::Camera() : Component("Camera", COMP_CAM, DRAWORDER_NOT), ortographic(false), fov(60), orthoSize(10), screenPos(0.3f, 0.1f, 0.6f, 0.4f), clearType(CAM_CLEAR_COLOR), clearColor(black(1)), _tarRT(-1) {
+Camera::Camera() : Component("Camera", COMP_CAM, DRAWORDER_NOT), ortographic(false), fov(60), orthoSize(10), screenPos(0.3f, 0.1f, 0.6f, 0.4f), clearType(CAM_CLEAR_COLOR), clearColor(black(1)), _tarRT(-1), nearClip(0.01f), farClip(500) {
 	UpdateCamVerts();
 	InitGBuffer();
 }
@@ -122,7 +122,7 @@ void Camera::ApplyGL() {
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	Quat q = glm::inverse(object->transform.rotation);
-	glMultMatrixf(glm::value_ptr(glm::perspectiveFov(fov * deg2rad, (float)Display::width, (float)Display::height, 0.01f, 500.0f)));
+	glMultMatrixf(glm::value_ptr(glm::perspectiveFov(fov * deg2rad, (float)Display::width, (float)Display::height, nearClip, farClip)));
 	glScalef(1, 1, -1);
 	glMultMatrixf(glm::value_ptr(Quat2Mat(q)));
 	Vec3 pos = -object->transform.worldPosition();

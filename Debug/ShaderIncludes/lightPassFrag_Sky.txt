@@ -1,0 +1,30 @@
+#version 330
+
+uniform mat4 _IP;
+uniform vec2 screenSize;
+uniform sampler2D inColor;
+uniform sampler2D inNormal;
+uniform sampler2D inSpec;
+uniform sampler2D inDepth;
+uniform sampler2D inSky;
+
+out vec4 fragCol;
+
+void main () {
+	vec2 uv = gl_FragCoord.xy / screenSize;
+	vec4 dCol = texture(inColor, uv);
+	vec4 nCol = texture(inNormal, uv);
+	vec4 sCol = texture(inSpec, uv);
+	vec4 z = texture(inDepth, uv);
+	
+	vec4 wn = normalize(_IP*vec4(nCol.xyz, 0));
+	
+	vec3 refl = normalize(reflect(vec3(0, 0, 1), wn.xyz));
+	
+	float cx = acos(refl.x)/(3.14159*2);
+	float sy = asin(refl.y)/(3.14159);
+
+	vec4 skyCol = textureLod(inSky, vec2(cx , sy + 0.5), (1-sCol.a)*3);
+	vec4 ambCol = textureLod(inSky, vec2(cx , sy + 0.5), 1000);
+	fragCol = mix(ambCol*dCol, vec4(skyCol.rgb*sCol.rgb, 1), 0.3333*(sCol.r + sCol.g + sCol.b));
+}

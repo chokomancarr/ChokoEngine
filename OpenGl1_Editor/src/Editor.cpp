@@ -499,7 +499,7 @@ void EB_Viewer::Draw() {
 	else {
 		Quat q = glm::inverse(seeingCamera->object->transform.rotation);
 		glScalef(scale, -scale, 1);
-		glMultMatrixf(glm::value_ptr(glm::perspectiveFov(seeingCamera->fov * deg2rad, (float)Display::width, (float)Display::height, 0.01f, 500.0f)));
+		glMultMatrixf(glm::value_ptr(glm::perspectiveFov(seeingCamera->fov * deg2rad, (float)Display::width, (float)Display::height, seeingCamera->nearClip, seeingCamera->farClip)));
 		glScalef(1, -1, -1);
 		glMultMatrixf(glm::value_ptr(Quat2Mat(q)));
 		Vec3 pos = -seeingCamera->object->transform.worldPosition();

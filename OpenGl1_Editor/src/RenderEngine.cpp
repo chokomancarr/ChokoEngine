@@ -33,6 +33,7 @@ void Camera::InitGBuffer() {
 	// Create the gbuffer textures
 	glGenTextures(3, d_texs);
 	glGenTextures(1, &d_depthTex);
+	glGenTextures(1, &d_dTexVis);
 
 	for (uint i = 0; i < 3; i++) {
 		glBindTexture(GL_TEXTURE_2D, d_texs[i]);
@@ -49,7 +50,18 @@ void Camera::InitGBuffer() {
 	// depth
 	glBindTexture(GL_TEXTURE_2D, d_depthTex);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, Display::width, Display::height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, d_depthTex, 0);
+
+	glBindTexture(GL_TEXTURE_2D, d_dTexVis);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, Display::width, Display::height, 0, GL_RED, GL_FLOAT, NULL);
+#ifdef SHOW_GBUFFERS
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+#else
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+#endif
 
 	GLenum DrawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3 };
 	glDrawBuffers(4, DrawBuffers);
@@ -125,7 +137,8 @@ void Camera::_RenderSky(glm::quat mat) {
 	glBindTexture(GL_TEXTURE_2D, d_texs[2]);
 	glUniform1i(depthLoc, 3);
 	glActiveTexture(GL_TEXTURE3);
-	glBindTexture(GL_TEXTURE_2D, d_depthTex);
+	glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 0, 0, Display::width, Display::height, 0);
+	glBindTexture(GL_TEXTURE_2D, d_dTexVis);
 	glUniform1i(skyLoc, 4);
 	glActiveTexture(GL_TEXTURE4);
 	glBindTexture(GL_TEXTURE_2D, Scene::active->settings.sky->pointer);

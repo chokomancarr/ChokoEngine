@@ -203,7 +203,7 @@ protected:
 
 	Vec3 camVerts[6];
 	static int camVertsIds[19];
-	GLuint d_fbo, d_texs[3], d_depthTex;
+	GLuint d_fbo, d_texs[3], d_depthTex, d_dTexVis;
 	GLuint d_skyProgram;
 	static const Vec2 screenRectVerts[];
 	static const int screenRectIndices[];
