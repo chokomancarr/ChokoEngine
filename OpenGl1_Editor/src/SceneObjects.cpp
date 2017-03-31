@@ -58,10 +58,11 @@ Camera::Camera(ifstream& stream, SceneObject* o, long pos) : Camera() {
 	_Strm2Val(stream, screenPos.h);
 
 #ifndef IS_EDITOR
+	int link_result = 0;
 	GLuint vertex_shader, fragment_shader;
 	string err = "";
 	ifstream strm("D:\\lightPassVert.txt");
-	stringstream ss, ss2;
+	stringstream ss, ss2, ss3;
 	ss << strm.rdbuf();
 
 	if (!ShaderBase::LoadShader(GL_VERTEX_SHADER, ss.str(), vertex_shader, &err)) {
@@ -72,16 +73,13 @@ Camera::Camera(ifstream& stream, SceneObject* o, long pos) : Camera() {
 	strm.open("D:\\lightPassFrag_Sky.txt");
 	ss2 << strm.rdbuf();
 	if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, ss2.str(), fragment_shader, &err)) {
-		Debug::Error("Cam Shader Compiler", "f!");
+		Debug::Error("Cam Shader Compiler", "fs!");
 		return;
 	}
 
 	d_skyProgram = glCreateProgram();
 	glAttachShader(d_skyProgram, vertex_shader);
 	glAttachShader(d_skyProgram, fragment_shader);
-
-	int link_result = 0;
-
 	glLinkProgram(d_skyProgram);
 	glGetProgramiv(d_skyProgram, GL_LINK_STATUS, &link_result);
 	if (link_result == GL_FALSE)
@@ -90,17 +88,47 @@ Camera::Camera(ifstream& stream, SceneObject* o, long pos) : Camera() {
 		glGetProgramiv(d_skyProgram, GL_INFO_LOG_LENGTH, &info_log_length);
 		vector<char> program_log(info_log_length);
 		glGetProgramInfoLog(d_skyProgram, info_log_length, NULL, &program_log[0]);
-		cout << "Shader link error" << endl << &program_log[0] << endl;
+		cout << "cam shader(sky) error" << endl << &program_log[0] << endl;
 		glDeleteProgram(d_skyProgram);
 		d_skyProgram = 0;
 		return;
 	}
-	cout << "cam shader linked" << endl;
-
+	cout << "cam shader(sky) ok" << endl;
 	glDetachShader(d_skyProgram, vertex_shader);
-	glDeleteShader(vertex_shader);
 	glDetachShader(d_skyProgram, fragment_shader);
 	glDeleteShader(fragment_shader);
+
+	strm.close();
+	strm.open("D:\\lightPassFrag_Point.txt");
+	ss3 << strm.rdbuf();
+	if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, ss3.str(), fragment_shader, &err)) {
+		Debug::Error("Cam Shader Compiler", "fp!");
+		return;
+	}
+
+	d_pLightProgram = glCreateProgram();
+	glAttachShader(d_pLightProgram, vertex_shader);
+	glAttachShader(d_pLightProgram, fragment_shader);
+	glLinkProgram(d_pLightProgram);
+	glGetProgramiv(d_pLightProgram, GL_LINK_STATUS, &link_result);
+	if (link_result == GL_FALSE)
+	{
+		int info_log_length = 0;
+		glGetProgramiv(d_pLightProgram, GL_INFO_LOG_LENGTH, &info_log_length);
+		vector<char> program_log(info_log_length);
+		glGetProgramInfoLog(d_pLightProgram, info_log_length, NULL, &program_log[0]);
+		cout << "cam shader(pl) error" << endl << &program_log[0] << endl;
+		glDeleteProgram(d_pLightProgram);
+		d_pLightProgram = 0;
+		return;
+	}
+	cout << "cam shader(pl) ok" << endl;
+	glDetachShader(d_pLightProgram, vertex_shader);
+	glDetachShader(d_pLightProgram, fragment_shader);
+	glDeleteShader(fragment_shader);
+
+
+	glDeleteShader(vertex_shader);
 #endif
 }
 
@@ -122,7 +150,7 @@ void Camera::ApplyGL() {
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	Quat q = glm::inverse(object->transform.rotation);
-	glMultMatrixf(glm::value_ptr(glm::perspectiveFov(fov * deg2rad, (float)Display::width, (float)Display::height, nearClip, farClip)));
+	glMultMatrixf(glm::value_ptr(glm::perspectiveFov(fov * deg2rad, (float)Display::width, (float)Display::height, 0.01f, 500.0f)));
 	glScalef(1, 1, -1);
 	glMultMatrixf(glm::value_ptr(Quat2Mat(q)));
 	Vec3 pos = -object->transform.worldPosition();
@@ -459,6 +487,68 @@ TextureRenderer::TextureRenderer(ifstream& stream, SceneObject* o, long pos) : C
 		stream.seekg(pos);
 	ASSETTYPE t;
 	_Strm2Asset(stream, Editor::instance, t, _texture);
+}
+
+void Light::DrawEditor(EB_Viewer* ebv) {
+	Vec3 verts[6] = { Vec3(-radius, 0, 0), Vec3(radius, 0, 0), Vec3(0, -radius, 0), Vec3(0, radius, 0), Vec3(0, 0, -radius), Vec3(0, 0, radius) };
+	int ids[6] = { 0, 1, 2, 3, 4, 5 };
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(3, GL_FLOAT, 0, &verts[0]);
+	glLineWidth(2);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	glColor4f(color.r, color.g, color.b, 1);
+	glDrawElements(GL_LINES, 6, GL_UNSIGNED_INT, &ids[0]);
+	glDisableClientState(GL_VERTEX_ARRAY);
+}
+
+void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
+	if (DrawComponentHeader(e, v, pos, this)) {
+		Engine::Label(v.r + 2, v.g + pos + 20, 12, "type", e->font, white());
+		pos += 17;
+
+		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Intensity", e->font, white());
+		Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos + 17, v.b * 0.3f - 1, 16, grey1());
+		Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 20, 12, to_string(intensity), e->font, white());
+		intensity = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos + 17, v.b * 0.4f - 1, 16, 0, 100, intensity, grey1(), white());
+		pos += 34;
+
+		switch (_lightType) {
+		case LIGHTTTYPE_POINT:
+			Engine::Label(v.r + 2, v.g + pos + 2, 12, "radius", e->font, white());
+			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
+			Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 2, 12, to_string(radius), e->font, white());
+			radius = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0.001f, 1, radius, grey1(), white());
+			pos += 17;
+			break;
+		}
+	}
+	else pos += 17;
+}
+
+void Light::Serialize(Editor* e, ofstream* stream) {
+	byte b = _lightType;
+	if (drawShadow) b |= 0xf0;
+	_StreamWrite(&b, stream, 1);
+	_StreamWrite(&intensity, stream, 4);
+	_StreamWrite(&radius, stream, 4);
+	_StreamWrite(&color.r, stream, 4);
+	_StreamWrite(&color.g, stream, 4);
+	_StreamWrite(&color.b, stream, 4);
+	_StreamWrite(&color.a, stream, 4);
+}
+
+Light::Light(ifstream& stream, SceneObject* o, long pos) : Component("Light", COMP_LHT, DRAWORDER_LIGHT, o) {
+	if (pos >= 0)
+		stream.seekg(pos);
+
+	_Strm2Val(stream, _lightType);
+	drawShadow = (_lightType & 0xf0) != 0;
+	_Strm2Val(stream, intensity);
+	_Strm2Val(stream, radius);
+	_Strm2Val(stream, color.r);
+	_Strm2Val(stream, color.g);
+	_Strm2Val(stream, color.b);
+	_Strm2Val(stream, color.a);
 }
 
 SceneScript::SceneScript(Editor* e, ASSETID id) : Component(e->headerAssets[id] + " (Script)", COMP_SCR, DRAWORDER_NOT), _script(id) {

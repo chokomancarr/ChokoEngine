@@ -6,25 +6,36 @@ uniform sampler2D inColor;
 uniform sampler2D inNormal;
 uniform sampler2D inSpec;
 uniform sampler2D inDepth;
+//uniform float zNear;
+//uniform float zFar;
 uniform sampler2D inSky;
 
 out vec4 fragCol;
 
 void main () {
-	vec2 uv = gl_FragCoord.xy / screenSize;
+	vec2 uv = gl_FragCoord.xy / screenSize; //screen position xy 0~1
 	vec4 dCol = texture(inColor, uv);
 	vec4 nCol = texture(inNormal, uv);
 	vec4 sCol = texture(inSpec, uv);
-	vec4 z = texture(inDepth, uv);
+	float z = texture(inDepth, uv).x;
+	float nClip = 0.01;
+	float fClip = 500.0;
 	
-	vec4 wn = normalize(_IP*vec4(nCol.xyz, 0));
+	float zLinear = (2 * nClip) / (fClip + nClip - z * (fClip - nClip)); //z normalized 0~1
+	vec4 dc = vec4(uv.x*2-1, uv.y*2-1, z*2-1, 1);
+	vec4 wPos = _IP*dc;
+	wPos *= ceil(1-z) / wPos.w; //world position
 	
-	vec3 refl = normalize(reflect(vec3(0, 0, 1), wn.xyz));
+	vec4 wn = _IP*vec4(nCol.xyz, 0); //world normal vector
+	wn /= wn.w;
+	vec4 fwd = _IP*vec4(uv.x*2-1, uv.y*2-1, 1, 0); //??
+	vec3 refl = normalize(reflect(fwd.xyz, wn.xyz)); //view refl norm vector //??
 	
 	float cx = acos(refl.x)/(3.14159*2);
 	float sy = asin(refl.y)/(3.14159);
 
 	vec4 skyCol = textureLod(inSky, vec2(cx , sy + 0.5), (1-sCol.a)*3);
 	vec4 ambCol = textureLod(inSky, vec2(cx , sy + 0.5), 1000);
-	fragCol = mix(ambCol*dCol, vec4(skyCol.rgb*sCol.rgb, 1), 0.3333*(sCol.r + sCol.g + sCol.b));
+	//fragCol = mix(ambCol*dCol, vec4(skyCol.rgb*sCol.rgb, 1), 0.3333*(sCol.r + sCol.g + sCol.b));
+	fragCol = vec4(( wPos.xyz*0.4 ), 1);
 }

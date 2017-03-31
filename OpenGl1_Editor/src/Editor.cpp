@@ -443,7 +443,7 @@ void DrawSceneObjectsOpaque(EB_Viewer* ebv, vector<SceneObject*> oo) {
 		//glRotatef(rad2deg*vvv.w, vvv.x, vvv.y, vvv.z);
 		for (Component* com : sc->_components)
 		{
-			if (com->componentType == COMP_MRD || com->componentType == COMP_CAM)
+			if (com->componentType == COMP_MRD || com->componentType == COMP_CAM || com->componentType == COMP_LHT)
 				com->DrawEditor(ebv);
 		}
 		DrawSceneObjectsOpaque(ebv, sc->children);
@@ -538,7 +538,7 @@ void EB_Viewer::Draw() {
 		//draw background
 		glDepthFunc(GL_EQUAL);
 		if (editor->activeScene->settings.sky != nullptr) {
-			Engine::DrawSky(v.x, v.y, v.z, v.w, editor->activeScene->settings.sky, rz / 360.0f, rw / 180.0f, 60, 0);
+			//Engine::DrawSky(v.x, v.y, v.z, v.w, editor->activeScene->settings.sky, rz / 360.0f, rw / 180.0f, 60, 0);
 			//Engine::DrawQuad(v.x, v.y, v.z, v.w, editor->activeScene->sky->pointer, white());
 		}
 		glDepthFunc(GL_LEQUAL);

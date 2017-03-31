@@ -15,8 +15,6 @@
 #include <math.h>
 #include <jpeglib.h>
 #include <jerror.h>
-//#include <png.h>
-//#include <zlib.h>
 #include <lodepng.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
@@ -2518,7 +2516,7 @@ void Deserialize(ifstream& stream, SceneObject* obj) {
 			Deserialize(stream, sc);
 		}
 		else if (c == 'C') {
-			stream >> c; //component type
+			c = stream.get(); //component type
 			Debug::Message("Object Deserializer", "component " + to_string(c) + " " + to_string((int)c));
 			switch (c) {
 			case COMP_CAM:
@@ -2533,6 +2531,9 @@ void Deserialize(ifstream& stream, SceneObject* obj) {
 			case COMP_TRD:
 				obj->AddComponent(new TextureRenderer(stream, obj));
 				break;
+			case (char)COMP_LHT:
+				obj->AddComponent(new Light(stream, obj));
+				break;
 			case (char)COMP_SCR:
 #ifdef IS_EDITOR
 				obj->AddComponent(new SceneScript(stream, obj));
@@ -2541,6 +2542,7 @@ void Deserialize(ifstream& stream, SceneObject* obj) {
 #endif
 				break;
 			default:
+				cout << "unknown component " << (int)c << "!" << endl;
 				char cc;
 				stream >> cc;
 				while (cc != 'c')

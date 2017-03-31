@@ -185,7 +185,7 @@ public:
 	
 	static void _DoAddObjectBl(EditorBlock* b, void* v);
 	static void _DoAddComScr(EditorBlock* b, void* v), _DoAddComRend(EditorBlock* b, void* v);
-	static void _D2AddComCam(EditorBlock*), _D2AddComMrd(EditorBlock*), _D2AddComMft(EditorBlock*);
+	static void _D2AddComCam(EditorBlock*), _D2AddComMrd(EditorBlock*), _D2AddComLht(EditorBlock*), _D2AddComMft(EditorBlock*);
 	
 	static void _AddObjAsI(EditorBlock*); //, _AddObjAsC(EditorBlock*), _AddObjAsP(EditorBlock*);
 	

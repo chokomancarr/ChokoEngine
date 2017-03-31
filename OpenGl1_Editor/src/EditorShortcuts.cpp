@@ -166,7 +166,7 @@ void EB_Viewer::_AddComMesh(EditorBlock* b) {
 	b->editor->RegisterMenu(b, "Add Mesh", vector<string>({ "Mesh Filter", "Mesh Renderer" }), vector<shortcutFunc>({ _D2AddComMft, _D2AddComMrd }), 0);
 }
 void EB_Viewer::_AddComRend(EditorBlock* b) {
-	b->editor->RegisterMenu(b, "Add Rendering", vector<string>({ "Camera", "Mesh Renderer" }), vector<shortcutFunc>({ _D2AddComCam, _D2AddComMrd }), 0);
+	b->editor->RegisterMenu(b, "Add Rendering", vector<string>({ "Camera", "Mesh Renderer", "Light" }), vector<shortcutFunc>({ _D2AddComCam, _D2AddComMrd, _D2AddComLht }), 0);
 }
 
 void AsCh(SceneObject* sc, const string& nm, vector<SceneObject*>& os, bool& found) {
@@ -323,6 +323,9 @@ void EB_Viewer::_D2AddComMft(EditorBlock* b) {
 }
 void EB_Viewer::_D2AddComMrd(EditorBlock* b) {
 	b->editor->selected->AddComponent(new MeshRenderer());
+}
+void EB_Viewer::_D2AddComLht(EditorBlock* b) {
+	b->editor->selected->AddComponent(new Light());
 }
 
 void EB_Viewer::_AddObjectE(EditorBlock* b) {

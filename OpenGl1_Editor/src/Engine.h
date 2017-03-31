@@ -161,6 +161,7 @@ class Transform;
 class Camera;
 class MeshFilter;
 class MeshRenderer;
+class Light;
 
 //see Assetmanager
 class AssetItem;

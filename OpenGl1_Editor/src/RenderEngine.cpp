@@ -50,12 +50,7 @@ void Camera::InitGBuffer() {
 	// depth
 	glBindTexture(GL_TEXTURE_2D, d_depthTex);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, Display::width, Display::height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, d_depthTex, 0);
-
-	glBindTexture(GL_TEXTURE_2D, d_dTexVis);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, Display::width, Display::height, 0, GL_RED, GL_FLOAT, NULL);
 #ifdef SHOW_GBUFFERS
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 #else
@@ -107,7 +102,7 @@ void Camera::Render(RenderTexture* target) {
 #endif
 }
 
-void Camera::_RenderSky(glm::quat mat) {
+void Camera::_RenderSky(glm::mat4 ip) {
 	GLint _IP = glGetUniformLocation(d_skyProgram, "_IP");
 	GLint diffLoc = glGetUniformLocation(d_skyProgram, "inColor");
 	GLint specLoc = glGetUniformLocation(d_skyProgram, "inNormal");
@@ -123,7 +118,7 @@ void Camera::_RenderSky(glm::quat mat) {
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, screenRectVerts);
 
-	glUniformMatrix4fv(_IP, 1, GL_FALSE, glm::value_ptr(mat));
+	glUniformMatrix4fv(_IP, 1, GL_FALSE, glm::value_ptr(ip));
 
 	glUniform2f(scrSzLoc, (GLfloat)Display::width, (GLfloat)Display::height);
 	glUniform1i(diffLoc, 0);
@@ -137,8 +132,7 @@ void Camera::_RenderSky(glm::quat mat) {
 	glBindTexture(GL_TEXTURE_2D, d_texs[2]);
 	glUniform1i(depthLoc, 3);
 	glActiveTexture(GL_TEXTURE3);
-	glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 0, 0, Display::width, Display::height, 0);
-	glBindTexture(GL_TEXTURE_2D, d_dTexVis);
+	glBindTexture(GL_TEXTURE_2D, d_depthTex);
 	glUniform1i(skyLoc, 4);
 	glActiveTexture(GL_TEXTURE4);
 	glBindTexture(GL_TEXTURE_2D, Scene::active->settings.sky->pointer);
@@ -149,6 +143,71 @@ void Camera::_RenderSky(glm::quat mat) {
 	glDisableVertexAttribArray(0);
 	glUseProgram(0);
 	glDisableClientState(GL_VERTEX_ARRAY);
+}
+
+void Camera::_DoDrawLight_Point(Light* l, glm::mat4& ip) {
+	GLint _IP = glGetUniformLocation(d_pLightProgram, "_IP");
+	GLint diffLoc = glGetUniformLocation(d_pLightProgram, "inColor");
+	GLint specLoc = glGetUniformLocation(d_pLightProgram, "inNormal");
+	GLint normLoc = glGetUniformLocation(d_pLightProgram, "inSpec");
+	GLint depthLoc = glGetUniformLocation(d_pLightProgram, "inDepth");
+	GLint scrSzLoc = glGetUniformLocation(d_pLightProgram, "screenSize");
+	GLint lPosLoc = glGetUniformLocation(d_pLightProgram, "lightPos");
+	GLint lColLoc = glGetUniformLocation(d_pLightProgram, "lightColor");
+	GLint lStrLoc = glGetUniformLocation(d_pLightProgram, "lightStrength");
+	GLint lRadLoc = glGetUniformLocation(d_pLightProgram, "lightRadius");
+
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(2, GL_FLOAT, 0, screenRectVerts);
+	glUseProgram(d_pLightProgram);
+
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, screenRectVerts);
+
+	glUniformMatrix4fv(_IP, 1, GL_FALSE, glm::value_ptr(ip));
+
+	glUniform2f(scrSzLoc, (GLfloat)Display::width, (GLfloat)Display::height);
+	glUniform1i(diffLoc, 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, d_texs[0]);
+	glUniform1i(specLoc, 1);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, d_texs[1]);
+	glUniform1i(normLoc, 2);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, d_texs[2]);
+	glUniform1i(depthLoc, 3);
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D, d_depthTex);
+	Vec3 wpos = l->object->transform.worldPosition();
+	glUniform3f(lPosLoc, wpos.x, wpos.y, wpos.z);
+	glUniform3f(lColLoc, l->color.x, l->color.y, l->color.z);
+	glUniform1f(lStrLoc, l->intensity);
+	glUniform1f(lRadLoc, l->radius);
+
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, screenRectIndices);
+
+	glDisableVertexAttribArray(0);
+	glUseProgram(0);
+	glDisableClientState(GL_VERTEX_ARRAY);
+}
+
+void Camera::_DrawLights(vector<SceneObject*> oo, glm::mat4& ip) {
+	for (SceneObject* o : oo) {
+		for (Component* c : o->_components) {
+			if (c->componentType == COMP_LHT) {
+				Light* l = (Light*)c;
+				switch (l->_lightType) {
+				case LIGHTTTYPE_POINT:
+					_DoDrawLight_Point(l, ip);
+					break;
+				}
+			}
+		}
+
+		_DrawLights(o->children, ip);
+	}
 }
 
 void Camera::RenderLights() {
@@ -162,9 +221,10 @@ void Camera::RenderLights() {
 
 	GLfloat matrix[16];
 	glGetFloatv(GL_PROJECTION_MATRIX, matrix);
-	glm::mat4 m1(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
-	glm::mat4 ip = glm::inverse(m1);
-	_RenderSky(ip);
+	glm::mat4 mat = glm::inverse(glm::mat4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]));
+
+	_RenderSky(mat);
+	_DrawLights(Scene::active->objects, mat);
 }
 
 void Camera::DumpBuffers() {

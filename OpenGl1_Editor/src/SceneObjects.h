@@ -9,6 +9,7 @@ typedef unsigned char DRAWORDER;
 #define DRAWORDER_SOLID 0x01
 #define DRAWORDER_TRANSPARENT 0x02
 #define DRAWORDER_OVERLAY 0x04
+#define DRAWORDER_LIGHT 0x08
 class Component : public Object {
 public:
 	Component(string name, COMPONENT_TYPE t, DRAWORDER drawOrder = 0x00, SceneObject* o = nullptr, vector<COMPONENT_TYPE> dep = {});
@@ -199,12 +200,15 @@ protected:
 
 	void RenderLights();
 	void DumpBuffers();
-	void _RenderSky(glm::quat mat);
+	void _RenderSky(glm::mat4 ip);
+	void _DrawLights(vector<SceneObject*> oo, glm::mat4& ip);
+	void _DoDrawLight_Point(Light* l, glm::mat4& ip);
 
 	Vec3 camVerts[6];
 	static int camVertsIds[19];
 	GLuint d_fbo, d_texs[3], d_depthTex, d_dTexVis;
-	GLuint d_skyProgram;
+	GLuint d_skyProgram, d_pLightProgram;
+
 	static const Vec2 screenRectVerts[];
 	static const int screenRectIndices[];
 
@@ -284,6 +288,36 @@ public:
 protected:
 	TextureRenderer(ifstream& stream, SceneObject* o, long pos = -1);
 	int _texture;
+};
+
+enum LIGHTTYPE : byte {
+	LIGHTTTYPE_POINT,
+	LIGHTTYPE_DIRECTIONAL,
+	LIGHTTYPE_SPOT,
+};
+#define COMP_LHT 0x20
+class Light : public Component {
+public:
+	Light() : Component("Light", COMP_LHT, DRAWORDER_LIGHT), _lightType(LIGHTTTYPE_POINT), intensity(1), radius(0.01f), color(white()), drawShadow(false) {}
+	LIGHTTYPE lightType() { return _lightType; }
+
+	float intensity;
+	float radius;
+	Vec4 color;
+	bool drawShadow;
+
+	void DrawEditor(EB_Viewer* ebv) override;
+	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
+	void Serialize(Editor* e, ofstream* stream) override;
+
+	friend int main(int argc, char **argv);
+	friend void Serialize(Editor* e, SceneObject* o, ofstream* stream);
+	friend void Deserialize(ifstream& stream, SceneObject* obj);
+	friend class Camera;
+protected:
+	LIGHTTYPE _lightType;
+protected:
+	Light(ifstream& stream, SceneObject* o, long pos = -1);
 };
 
 #define COMP_SCR 0xff
