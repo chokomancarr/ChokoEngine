@@ -475,13 +475,13 @@ float Engine::DrawSliderFill(float x, float y, float w, float h, float min, floa
 	float v = val, vv = (val - min)/(max-min);
 	if (Rect(x, y, w, h).Inside(Input::mouseDownPos)) {
 		if (Input::mouse0) {
-			vv = clamp((Input::mousePos.x - x) / w, 0, 1);
+			vv = clamp((Input::mousePos.x - (x+1)) / (w-2), 0, 1);
 			v = vv*(max - min) + min;
-			DrawQuad(x + 1, y + 1, (w - 2)*vv, h - 2, foreground);
+			DrawQuad(x + 1, y + 1, (w - 2)*vv, h - 2, foreground*white(1, 0.4f));
 			return v;
 		}
 	}
-	DrawQuad(x + 1, y + 1, (w - 2)*vv, h - 2, foreground*(Rect(x, y, w, h).Inside(Input::mousePos)? 1 : 0.8f));
+	else DrawQuad(x + 1, y + 1, (w - 2)*vv, h - 2, foreground*(Rect(x, y, w, h).Inside(Input::mousePos)? 1 : 0.8f));
 	return v;
 }
 
@@ -898,8 +898,6 @@ vector<EB_Browser_File> IO::GetFilesE (Editor* e, const string& folder)
 				string aa(fd.cFileName);
 				if ((aa.length() > 5 && aa.substr(aa.length() - 5, string::npos) == ".meta"))
 					names.push_back(EB_Browser_File(e, folder, aa.substr(0, aa.length() - 5), aa));
-				else if ((aa.length() > 2 && aa.substr(aa.length() - 2, string::npos) == ".h"))
-					names.push_back(EB_Browser_File(e, folder, aa, aa));
 				else if ((aa.length() > 4 && aa.substr(aa.length() - 4, string::npos) == ".cpp"))
 					names.push_back(EB_Browser_File(e, folder, aa, aa));
 				else if ((aa.length() > 9 && aa.substr(aa.length() - 9, string::npos) == ".material"))
@@ -1099,7 +1097,7 @@ Mesh::Mesh(ifstream& stream, uint offset) : AssetObject(ASSETTYPE_MESH), loaded(
 		delete[](c);
 
 		char cc;
-		stream.read(&cc, 1);
+		cc = stream.get();
 
 		while (cc != 0) {
 			if (cc == 'V') {
@@ -1155,7 +1153,7 @@ Mesh::Mesh(ifstream& stream, uint offset) : AssetObject(ASSETTYPE_MESH), loaded(
 			else {
 				Debug::Error("Mesh Importer", "Unknown char: " + to_string(cc));
 			}
-			stream.read(&cc, 1);
+			cc = stream.get();
 		}
 
 		if (vertexCount > 0) {
@@ -2351,16 +2349,17 @@ void Material::Save(string path) {
 	strm.close();
 }
 
-void Material::ApplyGL(glm::mat4& matrix) {
+void Material::ApplyGL(glm::mat4& _mv, glm::mat4& _p) {
 	if (shader == nullptr) {
 		glUseProgram(0);
 		return;
 	}
 	else {
 		glUseProgram(shader->pointer);
+		GLint mv = glGetUniformLocation(shader->pointer, "_M");
 		GLint mvp = glGetUniformLocation(shader->pointer, "_MVP");
-		//GLint p = glGetUniformLocation(shader->pointer, "_P");
-		glUniformMatrix4fv(mvp, 1, GL_FALSE, glm::value_ptr(matrix));
+		glUniformMatrix4fv(mv, 1, GL_FALSE, glm::value_ptr(_mv));
+		glUniformMatrix4fv(mvp, 1, GL_FALSE, glm::value_ptr(_p*_mv));
 		//glUniformMatrix4fv(p, 1, GL_FALSE, matrix2);
 		for (auto a : vals[SHADER_INT])
 			if (a.second != nullptr)
@@ -2589,7 +2588,7 @@ Scene::Scene(ifstream& stream, long pos) : sceneName("") {
 	char h1, h2;
 	stream >> h1 >> h2;
 	if (h1 != 'S' || h2 != 'N')
-		throw runtime_error("scene data corrupted");
+		Debug::Error("Scene Loader", "scene data corrupted");
 	char* cc = new char[100];
 	stream.getline(cc, 100, 0);
 	sceneName += string(cc);

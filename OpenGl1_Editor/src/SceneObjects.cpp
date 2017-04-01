@@ -316,12 +316,10 @@ void MeshRenderer::DrawEditor(EB_Viewer* ebv) {
 	glGetFloatv(GL_PROJECTION_MATRIX, matrix2);
 	glm::mat4 m1(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
 	glm::mat4 m2(matrix2[0], matrix2[1], matrix2[2], matrix2[3], matrix2[4], matrix2[5], matrix2[6], matrix2[7], matrix2[8], matrix2[9], matrix2[10], matrix2[11], matrix2[12], matrix2[13], matrix2[14], matrix2[15]);
-	glm::mat4 mat(m2*m1);
-	//glm::mat4()
 	for (uint m = 0; m < mf->mesh->materialCount; m++) {
 		if (materials[m] == nullptr)
 			continue;
-		materials[m]->ApplyGL(mat);
+		materials[m]->ApplyGL(m1, m2);
 		glEnableVertexAttribArray(0);
 		glEnableVertexAttribArray(1);
 		glEnableVertexAttribArray(2);
@@ -347,15 +345,14 @@ void MeshRenderer::DrawDeferred() {
 	glEnable(GL_CULL_FACE);
 	glVertexPointer(3, GL_FLOAT, 0, &(mf->mesh->vertices[0]));
 	GLfloat matrix[16], matrix2[16];
-	glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
-	glGetFloatv(GL_PROJECTION_MATRIX, matrix2);
+	glGetFloatv(GL_MODELVIEW_MATRIX, matrix); //model -> world
+	glGetFloatv(GL_PROJECTION_MATRIX, matrix2); //world -> screen
 	glm::mat4 m1(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
 	glm::mat4 m2(matrix2[0], matrix2[1], matrix2[2], matrix2[3], matrix2[4], matrix2[5], matrix2[6], matrix2[7], matrix2[8], matrix2[9], matrix2[10], matrix2[11], matrix2[12], matrix2[13], matrix2[14], matrix2[15]);
-	glm::mat4 mat(m2*m1);
 	for (uint m = 0; m < mf->mesh->materialCount; m++) {
 		if (materials[m] == nullptr)
 			continue;
-		materials[m]->ApplyGL(mat);
+		materials[m]->ApplyGL(m1, m2);
 		glEnableVertexAttribArray(0);
 		glEnableVertexAttribArray(1);
 		glEnableVertexAttribArray(2);
@@ -503,9 +500,14 @@ void Light::DrawEditor(EB_Viewer* ebv) {
 
 void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 	if (DrawComponentHeader(e, v, pos, this)) {
-		Engine::Label(v.r + 2, v.g + pos + 20, 12, "type", e->font, white());
 		pos += 17;
-
+		if (Engine::EButton(e->editorLayer == 0, v.r, v.g + pos, v.b * 0.33f - 1, 16, (_lightType == LIGHTTYPE_POINT) ? white(1, 0.5f) : grey1(), "Point", 12, e->font, white()) == MOUSE_RELEASE)
+			_lightType = LIGHTTYPE_POINT;
+		if (Engine::EButton(e->editorLayer == 0, v.r + v.b * 0.33f, v.g + pos, v.b * 0.34f - 1, 16, (_lightType == LIGHTTYPE_DIRECTIONAL) ? white(1, 0.5f) : grey1(), "Directional", 12, e->font, white()) == MOUSE_RELEASE)
+			_lightType = LIGHTTYPE_DIRECTIONAL;
+		if (Engine::EButton(e->editorLayer == 0, v.r + v.b * 0.67f, v.g + pos, v.b * 0.33f - 1, 16, (_lightType == LIGHTTYPE_SPOT) ? white(1, 0.5f) : grey1(), "Spot", 12, e->font, white()) == MOUSE_RELEASE)
+			_lightType = LIGHTTYPE_SPOT;
+		
 		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Intensity", e->font, white());
 		Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos + 17, v.b * 0.3f - 1, 16, grey1());
 		Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 20, 12, to_string(intensity), e->font, white());
@@ -513,11 +515,47 @@ void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 		pos += 34;
 
 		switch (_lightType) {
-		case LIGHTTTYPE_POINT:
+		case LIGHTTYPE_POINT:
 			Engine::Label(v.r + 2, v.g + pos + 2, 12, "radius", e->font, white());
 			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
 			Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 2, 12, to_string(radius), e->font, white());
 			radius = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0.001f, 1, radius, grey1(), white());
+			pos += 17;
+			break;
+		case LIGHTTYPE_DIRECTIONAL:
+			if (Engine::EButton(e->editorLayer == 0, v.r, v.g + pos, v.b * 0.5f - 1, 16, (!drawShadow) ? white(1, 0.5f) : grey1(), "No Shadow", 12, e->font, white()) == MOUSE_RELEASE)
+				drawShadow = false;
+			if (Engine::EButton(e->editorLayer == 0, v.r + v.b * 0.5f, v.g + pos, v.b * 0.5f - 1, 16, (drawShadow) ? white(1, 0.5f) : grey1(), "Shadow", 12, e->font, white()) == MOUSE_RELEASE)
+				drawShadow = true;
+			pos += 17;
+			if (drawShadow) {
+				Engine::Label(v.r + 2, v.g + pos + 2, 12, "shadow bias", e->font, white());
+				Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
+				Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 2, 12, to_string(shadowBias), e->font, white());
+				shadowBias = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 1, shadowBias, grey1(), white());
+				pos += 17;
+				Engine::Label(v.r + 2, v.g + pos + 2, 12, "shadow strength", e->font, white());
+				Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
+				Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 2, 12, to_string(shadowStrength), e->font, white());
+				shadowStrength = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 1, shadowStrength, grey1(), white());
+				pos += 17;
+			}
+			break;
+		case LIGHTTYPE_SPOT:
+			Engine::Label(v.r + 2, v.g + pos + 2, 12, "angle", e->font, white());
+			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
+			Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 2, 12, to_string(angle), e->font, white());
+			angle = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 180, angle, grey1(), white());
+			pos += 17;
+			Engine::Label(v.r + 2, v.g + pos + 2, 12, "start distance", e->font, white());
+			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
+			Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 2, 12, to_string(minDist), e->font, white());
+			minDist = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, maxDist, minDist, grey1(), white());
+			pos += 17;
+			Engine::Label(v.r + 2, v.g + pos + 2, 12, "end distance", e->font, white());
+			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
+			Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 2, 12, to_string(maxDist), e->font, white());
+			maxDist = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 100, maxDist, grey1(), white());
 			pos += 17;
 			break;
 		}

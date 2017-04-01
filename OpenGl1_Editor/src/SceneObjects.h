@@ -291,20 +291,23 @@ protected:
 };
 
 enum LIGHTTYPE : byte {
-	LIGHTTTYPE_POINT,
+	LIGHTTYPE_POINT,
 	LIGHTTYPE_DIRECTIONAL,
 	LIGHTTYPE_SPOT,
 };
 #define COMP_LHT 0x20
 class Light : public Component {
 public:
-	Light() : Component("Light", COMP_LHT, DRAWORDER_LIGHT), _lightType(LIGHTTTYPE_POINT), intensity(1), radius(0.01f), color(white()), drawShadow(false) {}
+	Light() : Component("Light", COMP_LHT, DRAWORDER_LIGHT), _lightType(LIGHTTYPE_POINT), intensity(1), radius(0.01f), color(white()), angle(45), minDist(0), maxDist(30), drawShadow(false), shadowBias(0.1f), shadowStrength(1) {}
 	LIGHTTYPE lightType() { return _lightType; }
 
 	float intensity;
-	float radius;
 	Vec4 color;
+	float radius;
+	float angle;
+	float minDist, maxDist;
 	bool drawShadow;
+	float shadowBias, shadowStrength;
 
 	void DrawEditor(EB_Viewer* ebv) override;
 	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
@@ -316,7 +319,6 @@ public:
 	friend class Camera;
 protected:
 	LIGHTTYPE _lightType;
-protected:
 	Light(ifstream& stream, SceneObject* o, long pos = -1);
 };
 

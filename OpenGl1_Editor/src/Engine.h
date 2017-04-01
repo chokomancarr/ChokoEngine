@@ -447,7 +447,7 @@ protected:
 
 	void Load();
 	void Save(string path);
-	void ApplyGL(glm::mat4& matrix);
+	void ApplyGL(glm::mat4& _mv, glm::mat4& _p);
 	void ResetVals();
 };
 

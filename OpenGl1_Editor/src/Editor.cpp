@@ -1606,7 +1606,7 @@ void Editor::DrawHandles() {
 			Engine::Label(popupPos.x + 2, popupPos.y, 12, menuTitle, font, white());
 			int off = 14;
 			for (int r = 0, q = menuNames.size(); r < q; r++) {
-				if (Engine::Button(popupPos.x, popupPos.y + off, 200, 15, white(1, 0.7f), menuNames[r], 12, font, black()) == MOUSE_RELEASE) {
+				if (Engine::Button(popupPos.x, popupPos.y + off, 200, 15, white(1, Input::KeyHold(InputKey(Key_1 + r))? 0.3f : 0.7f), "(" + to_string(r + 1) + ") " + menuNames[r], 12, font, black()) == MOUSE_RELEASE || Input::KeyUp(InputKey(Key_1 + r))) {
 					editorLayer = 0;
 					if (menuFuncIsSingle) {
 						if (menuFuncSingle != nullptr) {

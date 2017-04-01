@@ -199,7 +199,7 @@ void Camera::_DrawLights(vector<SceneObject*> oo, glm::mat4& ip) {
 			if (c->componentType == COMP_LHT) {
 				Light* l = (Light*)c;
 				switch (l->_lightType) {
-				case LIGHTTTYPE_POINT:
+				case LIGHTTYPE_POINT:
 					_DoDrawLight_Point(l, ip);
 					break;
 				}
