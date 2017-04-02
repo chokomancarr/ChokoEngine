@@ -39,6 +39,58 @@ string to_string(Quat v) {
 	return "(" + to_string(v.w) + ", " + to_string(v.x) + ", " + to_string(v.y) + ", " + to_string(v.z) + ")";
 }
 
+float Dw(float f) {
+	return (f / Display::width);
+}
+float Dh(float f) {
+	return (f / Display::height);
+}
+Vec3 Ds(Vec3 v) {
+	return Vec3(Dw(v.x) * 2 - 1, 1 - Dh(v.y) * 2, 1);
+}
+
+GLuint Color::pickerProgH = 0;
+GLuint Color::pickerProgSV = 0;
+
+void Color::DrawPicker(float x, float y, float w, float h) {
+	Vec3 quadPoss[4];
+	Vec2 quadUvs[4] {Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0)};
+	quadPoss[0].x = x;
+	quadPoss[0].y = y;
+	quadPoss[1].x = x + w;
+	quadPoss[1].y = y;
+	quadPoss[2].x = x;
+	quadPoss[2].y = y + h;
+	quadPoss[3].x = x + w;
+	quadPoss[3].y = y + h;
+	for (int y = 0; y < 4; y++) {
+		quadPoss[y].z = 1;
+		//Vec3 v = quadPoss[y];
+		quadPoss[y] = Ds(Display::uiMatrix*quadPoss[y]);
+	}
+	uint quadIndexes[4] = { 0, 1, 3, 2 };
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
+	glUseProgram(pickerProgSV);
+
+	GLint baseColLoc = glGetUniformLocation(pickerProgSV, "col");
+	glUniform3f(baseColLoc, 1, 0, 0);
+
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &quadPoss[0]);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, &quadUvs[0]);
+
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glDrawElements(GL_QUADS, 4, GL_UNSIGNED_INT, &quadIndexes[0]);
+
+	glDisableVertexAttribArray(0);
+	glDisableVertexAttribArray(1);
+	glUseProgram(0);
+
+	glDisableClientState(GL_VERTEX_ARRAY);
+}
+
 bool Rect::Inside(Vec2 v) {
 	return ((w > 0) ? (v.x > x && v.x < (x + w)) : (v.x >(x + w) && v.x < x)) && ((h > 0) ? (v.y > y && v.y < (y + h)) : (v.y >(y + h) && v.y < y));
 }
@@ -187,6 +239,37 @@ void Engine::Init(string path) {
 		glDeleteShader(fragment_shader);
 		//defaultFont = &Font("D:\\ascii 2.font");
 	}
+
+
+#ifdef IS_EDITOR
+	string colorPickerV = "#version 330 core\nlayout(location = 0) in vec3 pos;\nlayout(location = 1) in vec2 uv;\nout vec2 UV;\nvoid main(){ \ngl_Position.xyz = pos;\ngl_Position.w = 1.0;\nUV = uv;\n}";
+	string colorPickerF = "#version 330 core\nin vec2 UV;\nuniform vec3 col;\nout vec4 color;void main(){\ncolor = vec4(mix(mix(col, vec3(1, 1, 1), UV.x), vec3(0, 0, 0), 1-UV.y), 1);\n}";
+
+	Color::pickerProgSV = glCreateProgram();
+	string err;
+	if (ShaderBase::LoadShader(GL_VERTEX_SHADER, colorPickerV, vertex_shader, &err)
+		&& ShaderBase::LoadShader(GL_FRAGMENT_SHADER, colorPickerF, fragment_shader, &err)) {
+		glAttachShader(Color::pickerProgSV, vertex_shader);
+		glAttachShader(Color::pickerProgSV, fragment_shader);
+
+
+		glLinkProgram(Color::pickerProgSV);
+		glGetProgramiv(Color::pickerProgSV, GL_LINK_STATUS, &link_result);
+		if (link_result == GL_FALSE)
+		{
+			glGetProgramiv(Color::pickerProgSV, GL_INFO_LOG_LENGTH, &info_log_length);
+			vector<char> program_log(info_log_length);
+			glGetProgramInfoLog(Color::pickerProgSV, info_log_length, NULL, &program_log[0]);
+			cerr << "ColorPicker SV Shader link error" << endl << &program_log[0] << endl;
+			return;
+		}
+		glDetachShader(Color::pickerProgSV, vertex_shader);
+		glDetachShader(Color::pickerProgSV, fragment_shader);
+		glDeleteShader(fragment_shader);
+		glDeleteShader(vertex_shader);
+	}
+	else cout << err << endl;
+#endif
 }
 
 vector<ifstream*> Engine::assetStreams = vector<ifstream*>();
@@ -206,16 +289,6 @@ bool Engine::LoadDatas(string path) {
 
 
 	return true;
-}
-
-float Dw(float f) {
-	return (f / Display::width);
-}
-float Dh(float f) {
-	return (f / Display::height);
-}
-Vec3 Ds(Vec3 v) {
-	return Vec3(Dw(v.x) * 2 - 1, 1 - Dh(v.y) * 2, 1);
 }
 
 void Engine::BeginStencil(float x, float y, float w, float h) {
@@ -715,7 +788,7 @@ void Engine::DrawLine(Vec3 v1, Vec3 v2, Vec4 col, float width) {
 	for (int y = 0; y < 2; y++) {
 		quadPoss[y] = Ds(Display::uiMatrix*quadPoss[y]);
 	}
-	uint quadIndexes[4] = { 0, 1 };
+	uint quadIndexes[2] = { 0, 1 };
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
 	//glEnableVertexAttribArray(0);
@@ -731,13 +804,94 @@ void Engine::DrawLineW(Vec3 v1, Vec3 v2, Vec4 col, float width) {
 	Vec3 quadPoss[2];
 	quadPoss[0] = v1;
 	quadPoss[1] = v2;
-	uint quadIndexes[4] = { 0, 1 };
+	uint quadIndexes[2] = { 0, 1 };
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
 	glColor4f(col.r, col.g, col.b, col.a);
 	glLineWidth(width);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	glDrawElements(GL_LINES, 2, GL_UNSIGNED_INT, &quadIndexes[0]);
+	glDisableClientState(GL_VERTEX_ARRAY);
+}
+
+void Engine::DrawLineWDotted(Vec3 v1, Vec3 v2, Vec4 col, float width, float dotSz, bool app) {
+	vector<Vec3> quadPoss = vector<Vec3>();
+	vector<uint> quadIndexes = vector<uint>();
+	Vec3 p2 = v1;
+	uint aa = 0;
+	cout << Distance(p2, v1) << " " << Distance(v2, v1) << endl;
+	while (Distance(p2, v1) < Distance(v2, v1)) {
+		quadPoss.push_back(p2);
+		quadPoss.push_back(p2 + Normalize(v2-v1)*dotSz);
+		quadIndexes.push_back(aa++);
+		quadIndexes.push_back(aa++);
+		p2 += Normalize(v2 - v1)*dotSz*2.0f;
+	}
+
+	if (quadPoss.size() == 0) return;
+	if (app) {
+		quadPoss.push_back(v2);
+		quadPoss.push_back(v2 + Normalize(v1 - v2)*dotSz);
+		quadIndexes.push_back(aa++);
+		quadIndexes.push_back(aa++);
+	}
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
+	glColor4f(col.r, col.g, col.b, col.a);
+	glLineWidth(width);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	glDrawElements(GL_LINES, quadIndexes.size(), GL_UNSIGNED_INT, &quadIndexes[0]);
+	glDisableClientState(GL_VERTEX_ARRAY);
+}
+
+void Engine::DrawCircle(Vec2 c, float r, uint n, Vec4 col, float width) {
+	if (n < 3) {
+		Debug::Warning("DrawCircle", "only n of 3 and above allowed!");
+		return;
+	}
+	vector<Vec3> poss = vector<Vec3>(n);
+	vector<uint> ids = vector<uint>(n * 2 - 1);
+	for (uint y = 0; y < n; y++) {
+		Vec3 vv = Vec3(sin(y * 6.283f / (n + 1)) * r + c.x, cos(y * 6.283f / (n + 1)) * r + c.y, 0);
+		poss[y] += Ds(vv);
+		ids[y*2] += y;
+		if (y != (n-1)) ids[y*2+1] += y+1;
+	}
+	ids.push_back(0);
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(3, GL_FLOAT, 0, &poss[0]);
+	//glEnableVertexAttribArray(0);
+	//glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &quadPoss[0]);
+	glColor4f(col.r, col.g, col.b, col.a);
+	glLineWidth(width);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	glDrawElements(GL_LINES, ids.size(), GL_UNSIGNED_INT, &ids[0]);
+	//glDisableVertexAttribArray(0);
+	glDisableClientState(GL_VERTEX_ARRAY);
+}
+
+void Engine::DrawCircleW(Vec3 c, Vec3 x, Vec3 y, float r, uint n, Vec4 col, float width) {
+	if (n < 3) {
+		Debug::Warning("DrawCircle", "only n of 3 and above allowed!");
+		return;
+	}
+	vector<Vec3> poss = vector<Vec3>(n);
+	vector<uint> ids = vector<uint>(n * 2 - 1);
+	for (uint y = 0; y < n; y++) {
+		poss[y] += c + sin(y * 6.283f / (n)) * x + cos(y * 6.283f / (n)) * y;
+		ids[y * 2] += y;
+		if (y != (n - 1)) ids[y * 2 + 1] += y + 1;
+	}
+	ids.push_back(0);
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(3, GL_FLOAT, 0, &poss[0]);
+	//glEnableVertexAttribArray(0);
+	//glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &quadPoss[0]);
+	glColor4f(col.r, col.g, col.b, col.a);
+	glLineWidth(width);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	glDrawElements(GL_LINES, ids.size(), GL_UNSIGNED_INT, &ids[0]);
+	//glDisableVertexAttribArray(0);
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 

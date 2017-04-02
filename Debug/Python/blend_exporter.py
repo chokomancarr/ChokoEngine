@@ -54,7 +54,10 @@ class KTMExporter():
                 
             print ("!writing to: " + dirr + name + "_blend\\" + obj.name + ".mesh.meta")
             file = open(dirr + name + "_blend\\" + obj.name + ".mesh.meta", "wb")
-            obj.modifiers.new("tria", 'TRIANGULATE')
+            obj.modifiers.new("EdgeSplit", 'EDGE_SPLIT')
+            obj.modifiers["EdgeSplit"].split_angle = 1.0472 #60 degrees
+            obj.modifiers["EdgeSplit"].use_edge_sharp = True
+            obj.modifiers.new("Triangulate", 'TRIANGULATE')
             m = obj.to_mesh(bpy.context.scene, True, 'PREVIEW') #struct.pack("<i", len(m.loops))
             self.write(file, "KTO123" + obj.name + "\x00V") #V size4 [vert4+norm4 array] F size4 [3xface4 array] NULL
             file.write(struct.pack("<i", len(m.loops)))

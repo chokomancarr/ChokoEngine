@@ -127,14 +127,16 @@ void EB_Viewer::_Z(EditorBlock* b) {
 }
 
 void EB_Viewer::_OpenMenuAdd(EditorBlock* b) {
-	b->editor->RegisterMenu(b, "Add Scene Object", { "Empty", "Blender Object", "Camera", "Audio Source" }, { _AddObjectE, _AddObjectBl, _AddObjectCam, _AddObjectAud }, 3);
+	if (b->editor->activeScene != nullptr)
+		b->editor->RegisterMenu(b, "Add Scene Object", { "Empty", "Blender Object", "Camera", "Audio Source" }, { _AddObjectE, _AddObjectBl, _AddObjectCam, _AddObjectAud }, 3);
 }
 void EB_Viewer::_OpenMenuCom(EditorBlock* b) {
 	if (b->editor->selected != nullptr)
 		b->editor->RegisterMenu(b, "Add Component", { "Script", "Audio", "Mesh", "Rendering" }, { _AddComScr, _AddComAud, _AddComMesh, _AddComRend }, 3);
 }
 void EB_Viewer::_OpenMenuW(EditorBlock* b) {
-	b->editor->RegisterMenu(b, "Special Commands", { "(De)Select All (A)", "Dummy", "Dummy" }, { _SelectAll, nullptr, nullptr }, 2);
+	if (b->editor->activeScene != nullptr)
+		b->editor->RegisterMenu(b, "Special Commands", { "(De)Select All (A)", "Dummy", "Dummy" }, { _SelectAll, nullptr, nullptr }, 2);
 }
 
 void EB_Viewer::_OpenMenuChgMani(EditorBlock* b) {

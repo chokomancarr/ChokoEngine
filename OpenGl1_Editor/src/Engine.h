@@ -47,6 +47,7 @@ public:
 	Color(Vec4 v) : r((byte)round(v.r * 255)), g((byte)round(v.g * 255)), b((byte)round(v.b * 255)), a((byte)round(v.a * 255)) {}
 	
 	byte r, g, b, a;
+	float h, s, v;
 
 	string hex() {
 		string chs("0123456789ABCDEF");
@@ -57,9 +58,9 @@ public:
 		return Vec4(r, g, b, a);
 	}
 
-	void SetHex(string h) {
+	static GLuint pickerProgH, pickerProgSV;
 
-	}
+	static void DrawPicker(float x, float y, float w, float h);
 };
 
 class Rect {
@@ -475,6 +476,9 @@ public:
 	static void DrawLine(Vec2 v1, Vec2 v2, Vec4 col, float width);
 	static void DrawLine(Vec3 v1, Vec3 v2, Vec4 col, float width);
 	static void DrawLineW(Vec3 v1, Vec3 v2, Vec4 col, float width);
+	static void DrawLineWDotted(Vec3 v1, Vec3 v2, Vec4 col, float width, float dotSz, bool app = false);
+	static void DrawCircle(Vec2 c, float r, uint n, Vec4 col, float width);
+	static void DrawCircleW(Vec3 c, Vec3 x, Vec3 y, float r, uint n, Vec4 col, float width);
 	static void Label(float x, float y, float s, string str, Font* texture);
 	static void Label(float x, float y, float s, string str, Font* texture, Vec4 Vec4);
 	static void Label(float x, float y, float s, string str, Font* texture, Vec4 Vec4, float maxw);

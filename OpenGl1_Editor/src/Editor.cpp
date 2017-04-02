@@ -564,14 +564,17 @@ void EB_Viewer::Draw() {
 	glDepthFunc(GL_ALWAYS);
 	if (editor->selected != nullptr) {
 		if (modifying == 0) {
-			if (selectedTooltip == 0) DrawTArrows(editor->selected->transform.worldPosition(), 2);
-			else if (selectedTooltip == 1) DrawTArrows(editor->selected->transform.worldPosition(), 2);
-			else DrawSArrows(editor->selected->transform.worldPosition(), 2);
+			Vec3 wpos = editor->selected->transform.worldPosition();
+			if (selectedTooltip == 0) DrawTArrows(wpos, 2);
+			else if (selectedTooltip == 1) DrawTArrows(wpos, 2);
+			else DrawSArrows(wpos, 2);
 		}
 		else {
 			Engine::DrawLineW(editor->selected->transform.worldPosition() + modAxisDir*-100000.0f, editor->selected->transform.worldPosition() + modAxisDir*100000.0f, white(), 2);
 		}
 	}
+
+	Color::DrawPicker(50, 50, 200, 200);
 
 	glPopMatrix();
 

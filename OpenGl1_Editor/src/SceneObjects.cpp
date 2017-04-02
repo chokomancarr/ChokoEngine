@@ -496,6 +496,12 @@ void Light::DrawEditor(EB_Viewer* ebv) {
 	glColor4f(color.r, color.g, color.b, 1);
 	glDrawElements(GL_LINES, 6, GL_UNSIGNED_INT, &ids[0]);
 	glDisableClientState(GL_VERTEX_ARRAY);
+
+	switch (_lightType) {
+	case LIGHTTYPE_SPOT:
+		Engine::DrawLineWDotted(Vec3(0, 0, 1) * minDist, Vec3(0, 0, 1) * maxDist, color, 1, 0.2f, true);
+		break;
+	}
 }
 
 void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
@@ -555,7 +561,7 @@ void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 			Engine::Label(v.r + 2, v.g + pos + 2, 12, "end distance", e->font, white());
 			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
 			Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 2, 12, to_string(maxDist), e->font, white());
-			maxDist = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 100, maxDist, grey1(), white());
+			maxDist = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 50, maxDist, grey1(), white());
 			pos += 17;
 			break;
 		}
