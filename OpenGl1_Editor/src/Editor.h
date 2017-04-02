@@ -299,6 +299,7 @@ class Editor {
 public:
 	Editor();
 	static Editor* instance;
+	Color cc;
 	//prefs
 	bool _showDebugInfo = true;
 	bool _showGrid = true;

@@ -43,16 +43,12 @@ string to_string(Vec2 v), to_string(Vec3 v), to_string(Vec4 v), to_string(Quat v
 
 class Color {
 public:
-	Color() : r(0), g(0), b(0), a(0) {}
+	Color() : r(0), g(0), b(0), a(0), useA(true) {}
 	Color(Vec4 v) : r((byte)round(v.r * 255)), g((byte)round(v.g * 255)), b((byte)round(v.b * 255)), a((byte)round(v.a * 255)) {}
 	
+	bool useA;
 	byte r, g, b, a;
-	float h, s, v;
-
-	string hex() {
-		string chs("0123456789ABCDEF");
-		return "#" + chs[(r & 0xf0) >> 4] + chs[r & 0x0f] + chs[(g & 0xf0) >> 4] + chs[g & 0x0f] + chs[(b & 0xf0) >> 4] + chs[b & 0x0f] + chs[(a & 0xf0) >> 4] + chs[a & 0x0f];
-	}
+	//float h(), s(), v();
 
 	Vec4 vec4() {
 		return Vec4(r, g, b, a);
@@ -60,7 +56,14 @@ public:
 
 	static GLuint pickerProgH, pickerProgSV;
 
-	static void DrawPicker(float x, float y, float w, float h);
+	string hex();
+	static void rgb2hsv(byte r, byte g, byte b, float& h, float& s, float& v);
+
+	static void DrawPicker(float x, float y, Color& c);
+
+protected:
+
+	static void DrawSV(float x, float y, float w, float h);
 };
 
 class Rect {
@@ -478,7 +481,7 @@ public:
 	static void DrawLineW(Vec3 v1, Vec3 v2, Vec4 col, float width);
 	static void DrawLineWDotted(Vec3 v1, Vec3 v2, Vec4 col, float width, float dotSz, bool app = false);
 	static void DrawCircle(Vec2 c, float r, uint n, Vec4 col, float width);
-	static void DrawCircleW(Vec3 c, Vec3 x, Vec3 y, float r, uint n, Vec4 col, float width);
+	static void DrawCircleW(Vec3 c, Vec3 x, Vec3 y, float r, uint n, Vec4 col, float width, bool dotted = false);
 	static void Label(float x, float y, float s, string str, Font* texture);
 	static void Label(float x, float y, float s, string str, Font* texture, Vec4 Vec4);
 	static void Label(float x, float y, float s, string str, Font* texture, Vec4 Vec4, float maxw);

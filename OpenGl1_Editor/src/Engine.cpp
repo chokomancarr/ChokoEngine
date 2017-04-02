@@ -5,6 +5,8 @@
 #include <gl/GLUT.h>
 #include <vector>
 #include <string>
+#include <sstream>
+#include <iomanip>
 #include <iostream>
 #include <algorithm>
 #include <fstream>
@@ -52,7 +54,75 @@ Vec3 Ds(Vec3 v) {
 GLuint Color::pickerProgH = 0;
 GLuint Color::pickerProgSV = 0;
 
-void Color::DrawPicker(float x, float y, float w, float h) {
+string Color::hex() {
+	stringstream ss;
+	ss << "#";
+	ss << std::hex << setfill('0') << setw(2) << (int)r;
+	ss << std::hex << setfill('0') << setw(2) << (int)g;
+	ss << std::hex << setfill('0') << setw(2) << (int)b;
+	return ss.str();
+}
+
+void Color::rgb2hsv(byte r, byte g, byte b, float& h, float& s, float& v) {
+	float R = r * 0.0039216f;
+	float G = g * 0.0039216f;
+	float B = b * 0.0039216f;
+
+	float mn = min(min(R, G), B);
+	float mx = max(max(R, G), B);
+
+	v = 0.5f*(mn + mx);
+	if (mn != mx) {
+		if (v < 0.5f)
+			s = (mx - mn) / (mx + mn);
+		else
+			s = (mx - mn) / (2.0 - mx - mn);
+
+		if (R == mx) {
+			h = (G - B) / (mx - mn);
+		}
+		else if (G == mx) {
+			h = 2.0 + (B - R) / (mx - mn);
+		}
+		else {
+			h = 4.0 + (R - G) / (mx - mn);
+		}
+		h *= 60;
+	}
+}
+
+void Color::DrawPicker(float x, float y, Color& c) {
+	Engine::DrawQuad(x, y, 270, 350, white(0.8f, 0.1f));
+	DrawSV(x + 10, y + 25, 200, 200);
+	Engine::DrawQuad(x + 220, y + 25, 15, 200, white());
+	
+	Engine::Label(x + 10, y + 235, 12, "HEX", Editor::instance->font, white());
+	Engine::Label(x + 10, y + 235 + 18, 12, "R", Editor::instance->font, white());
+	Engine::Label(x + 10, y + 235 + 35, 12, "G", Editor::instance->font, white());
+	Engine::Label(x + 10, y + 235 + 52, 12, "B", Editor::instance->font, white());
+
+	Engine::DrawQuad(x + 40, y + 233, 170, 16, grey2());
+	Engine::Label(x + 42, y + 235, 12, c.hex(), Editor::instance->font, white());
+	c.r = (byte)Engine::DrawSliderFill(x + 40, y + 235 + 16, 170, 16, 0, 255, c.r, grey2(), red());
+	c.g = (byte)Engine::DrawSliderFill(x + 40, y + 235 + 33, 170, 16, 0, 255, c.g, grey2(), green());
+	c.b = (byte)Engine::DrawSliderFill(x + 40, y + 235 + 50, 170, 16, 0, 255, c.b, grey2(), blue());
+
+	Engine::DrawQuad(x + 212, y + 235 + 16, 47, 16, grey2());
+	Engine::Label(x + 214, y + 235 + 18, 12, to_string(c.r), Editor::instance->font, white());
+	Engine::DrawQuad(x + 212, y + 235 + 33, 47, 16, grey2());
+	Engine::Label(x + 214, y + 235 + 35, 12, to_string(c.g), Editor::instance->font, white());
+	Engine::DrawQuad(x + 212, y + 235 + 50, 47, 16, grey2());
+	Engine::Label(x + 214, y + 235 + 52, 12, to_string(c.b), Editor::instance->font, white());
+
+	if (c.useA) {
+		Engine::Label(x + 10, y + 235 + 69, 12, "A", Editor::instance->font, white());
+		c.a = (byte)Engine::DrawSliderFill(x + 40, y + 235 + 67, 170, 16, 0, 255, c.a, grey2(), white());
+		Engine::DrawQuad(x + 212, y + 235 + 67, 47, 16, grey2());
+		Engine::Label(x + 214, y + 235 + 69, 12, to_string(c.a), Editor::instance->font, white());
+	}
+}
+
+void Color::DrawSV(float x, float y, float w, float h) {
 	Vec3 quadPoss[4];
 	Vec2 quadUvs[4] {Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0)};
 	quadPoss[0].x = x;
@@ -819,17 +889,22 @@ void Engine::DrawLineWDotted(Vec3 v1, Vec3 v2, Vec4 col, float width, float dotS
 	vector<uint> quadIndexes = vector<uint>();
 	Vec3 p2 = v1;
 	uint aa = 0;
-	cout << Distance(p2, v1) << " " << Distance(v2, v1) << endl;
+	bool ad = true;
 	while (Distance(p2, v1) < Distance(v2, v1)) {
 		quadPoss.push_back(p2);
-		quadPoss.push_back(p2 + Normalize(v2-v1)*dotSz);
+		if (Distance(p2, v2) < dotSz) {
+			quadPoss.push_back(v2);
+			ad = false;
+		}
+		else
+			quadPoss.push_back(p2 + Normalize(v2-v1)*dotSz);
 		quadIndexes.push_back(aa++);
 		quadIndexes.push_back(aa++);
 		p2 += Normalize(v2 - v1)*dotSz*2.0f;
 	}
 
 	if (quadPoss.size() == 0) return;
-	if (app) {
+	if (ad) {
 		quadPoss.push_back(v2);
 		quadPoss.push_back(v2 + Normalize(v1 - v2)*dotSz);
 		quadIndexes.push_back(aa++);
@@ -870,17 +945,21 @@ void Engine::DrawCircle(Vec2 c, float r, uint n, Vec4 col, float width) {
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
-void Engine::DrawCircleW(Vec3 c, Vec3 x, Vec3 y, float r, uint n, Vec4 col, float width) {
+void Engine::DrawCircleW(Vec3 c, Vec3 x, Vec3 y, float r, uint n, Vec4 col, float width, bool dotted) {
 	if (n < 3) {
 		Debug::Warning("DrawCircle", "only n of 3 and above allowed!");
 		return;
 	}
 	vector<Vec3> poss = vector<Vec3>(n);
-	vector<uint> ids = vector<uint>(n * 2 - 1);
-	for (uint y = 0; y < n; y++) {
-		poss[y] += c + sin(y * 6.283f / (n)) * x + cos(y * 6.283f / (n)) * y;
-		ids[y * 2] += y;
-		if (y != (n - 1)) ids[y * 2 + 1] += y + 1;
+	vector<uint> ids = vector<uint>(dotted? n : n * 2 - 1);
+	for (uint a = 0; a < n; a++) {
+		poss[a] += c + sin(a * 6.283f / (n)) * x * r + cos(a * 6.283f / (n)) * y * r;
+		if (dotted)
+			ids[a] += a;
+		else {
+			ids[a * 2] += a;
+			if (a != (n - 1)) ids[a * 2 + 1] += a + 1;
+		}
 	}
 	ids.push_back(0);
 	glEnableClientState(GL_VERTEX_ARRAY);

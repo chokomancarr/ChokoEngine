@@ -497,9 +497,23 @@ void Light::DrawEditor(EB_Viewer* ebv) {
 	glDrawElements(GL_LINES, 6, GL_UNSIGNED_INT, &ids[0]);
 	glDisableClientState(GL_VERTEX_ARRAY);
 
-	switch (_lightType) {
+	switch (_lightType) { 
+	case LIGHTTYPE_POINT:
+		Engine::DrawCircleW(Vec3(), Vec3(1, 0, 0), Vec3(0, 1, 0), intensity*radius*0.1f, 32, white(), 1);
+		Engine::DrawCircleW(Vec3(), Vec3(1, 0, 0), Vec3(0, 0, 1), intensity*radius*0.1f, 32, white(), 1);
+		Engine::DrawCircleW(Vec3(), Vec3(0, 1, 0), Vec3(0, 0, 1), intensity*radius*0.1f, 32, white(), 1);
+		break;
 	case LIGHTTYPE_SPOT:
 		Engine::DrawLineWDotted(Vec3(0, 0, 1) * minDist, Vec3(0, 0, 1) * maxDist, color, 1, 0.2f, true);
+		float rd = minDist*tan(deg2rad*angle*0.5f);
+		float rd2 = maxDist*tan(deg2rad*angle*0.5f);
+		if (minDist > 0)
+			Engine::DrawCircleW(Vec3(0, 0, 1) * minDist, Vec3(1, 0, 0), Vec3(0, 1, 0), rd, 16, white(), 1);
+		Engine::DrawCircleW(Vec3(0, 0, 1) * maxDist, Vec3(1, 0, 0), Vec3(0, 1, 0), rd2, 16, white(), 1);
+		Engine::DrawLineW(Vec3(rd, 0, minDist), Vec3(rd2, 0, maxDist), white(), 1);
+		Engine::DrawLineW(Vec3(-rd, 0, minDist), Vec3(-rd2, 0, maxDist), white(), 1);
+		Engine::DrawLineW(Vec3(0, rd, minDist), Vec3(0, rd2, maxDist), white(), 1);
+		Engine::DrawLineW(Vec3(0, -rd, minDist), Vec3(0, -rd2, maxDist), white(), 1);
 		break;
 	}
 }

@@ -574,7 +574,7 @@ void EB_Viewer::Draw() {
 		}
 	}
 
-	Color::DrawPicker(50, 50, 200, 200);
+	//Color::DrawPicker(150, 50, editor->cc);
 
 	glPopMatrix();
 
