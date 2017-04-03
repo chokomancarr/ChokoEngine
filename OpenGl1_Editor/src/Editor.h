@@ -167,6 +167,7 @@ public:
 
 	void Draw();
 	void DrawTArrows(Vec3 pos, float size);
+	void DrawRArrows(Vec3 pos, float size);
 	void DrawSArrows(Vec3 pos, float size);
 	void Refresh() {}
 	void OnMouseM(Vec2 d) override;
@@ -392,6 +393,7 @@ public:
 	shared_ptr<Scene> activeScene = nullptr;
 	bool sceneLoaded() { return activeScene != nullptr; }
 	SceneObject* selected;
+	glm::mat4 selectedMvMatrix;
 	bool selectGlobal = false;
 	vector<string> includedScenes;
 	vector<bool> includedScenesUse;

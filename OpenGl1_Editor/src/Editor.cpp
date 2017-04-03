@@ -41,6 +41,16 @@ Vec4 accent() {
 	return Vec4(223.0f / 255, 119.0f / 255, 4.0f / 255, 1);
 }
 
+float Dw2(float f) {
+	return (f / Display::width);
+}
+float Dh2(float f) {
+	return (f / Display::height);
+}
+Vec3 Ds2(Vec3 v) {
+	return Vec3(Dw2(v.x) * 2 - 1, 1 - Dh2(v.y) * 2, 1);
+}
+
 int GetShortcutInt(InputKey key, InputKey mod1, InputKey mod2, InputKey mod3) {
 	int i = (byte)key << 4; //kkkkmcas (m=usemod?)
 	if (mod1 == Key_None)
@@ -447,6 +457,13 @@ void DrawSceneObjectsOpaque(EB_Viewer* ebv, vector<SceneObject*> oo) {
 				com->DrawEditor(ebv);
 		}
 		DrawSceneObjectsOpaque(ebv, sc->children);
+
+		if (sc == ebv->editor->selected) {
+			GLfloat matrix[16];
+			glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
+			ebv->editor->selectedMvMatrix = (glm::mat4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]));
+		}
+
 		glPopMatrix();
 	}
 }
@@ -566,16 +583,33 @@ void EB_Viewer::Draw() {
 		if (modifying == 0) {
 			Vec3 wpos = editor->selected->transform.worldPosition();
 			if (selectedTooltip == 0) DrawTArrows(wpos, 2);
-			else if (selectedTooltip == 1) DrawTArrows(wpos, 2);
+			else if (selectedTooltip == 1) DrawRArrows(wpos, 2);
 			else DrawSArrows(wpos, 2);
 		}
 		else {
-			Engine::DrawLineW(editor->selected->transform.worldPosition() + modAxisDir*-100000.0f, editor->selected->transform.worldPosition() + modAxisDir*100000.0f, white(), 2);
+			byte bb = modifying & 0xf0;
+			if (bb == 0x10)
+				Engine::DrawLineW(editor->selected->transform.worldPosition() + modAxisDir*-100000.0f, editor->selected->transform.worldPosition() + modAxisDir*100000.0f, white(), 2);
+			else if (bb == 0x20) {
+				bb = modifying & 0x0f;
+				if (bb == 1)
+					Engine::DrawCircleW(editor->selected->transform.worldPosition(), Vec3(0, 1, 0), Vec3(0, 0, 1), 2 / scale, 32, white(), 2);
+				else if (bb == 2)
+					Engine::DrawCircleW(editor->selected->transform.worldPosition(), Vec3(1, 0, 0), Vec3(0, 0, 1), 2 / scale, 32, white(), 2);
+				else
+					Engine::DrawCircleW(editor->selected->transform.worldPosition(), Vec3(0, 1, 0), Vec3(1, 0, 0), 2 / scale, 32, white(), 2);
+			}
+			else if ((modifying & 0x0f) != 0)
+				Engine::DrawLineW(editor->selected->transform.worldPosition() + modAxisDir*-100000.0f, editor->selected->transform.worldPosition() + modAxisDir*100000.0f, white(), 2);
 		}
 	}
 
 	//Color::DrawPicker(150, 50, editor->cc);
 
+	GLfloat matrix[16];
+	glGetFloatv(GL_PROJECTION_MATRIX, matrix);
+	glm::mat4 projMatrix = (glm::mat4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]));
+	
 	glPopMatrix();
 
 	Engine::EndStencil();
@@ -585,6 +619,21 @@ void EB_Viewer::Draw() {
 	//glMultMatrixf(glm::value_ptr(glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f, -100.0f, 100.0f)));
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
+
+	if (editor->selected != nullptr) {
+		Vec4 spos = projMatrix*editor->selectedMvMatrix*Vec4(0, 0, 0, 1);
+		spos /= spos.w;
+		Engine::DrawCircleW(Vec3(spos.x, spos.y, 0), Vec3(1.0f / Display::width, 0, 0), Vec3(0, 1.0f / Display::height, 0), 20, 24, white(), 2, true);
+		if (modifying == 0) {
+			if (selectedTooltip == 1) {
+				Engine::DrawCircleW(Vec3(spos.x, spos.y, 0), Vec3(1.0f / Display::width, 0, 0), Vec3(0, 1.0f / Display::height, 0), 130, 24, yellow(), 1);
+			}
+		}
+		else {
+			Engine::DrawLineWDotted(Vec3(spos.x, spos.y, 0), Vec3(Input::mousePos.x / Display::width * 2 - 1, -(Input::mousePos.y / Display::height * 2 - 1), 0), white(1, 0.1f), 1, 12.0f / Display::height);
+		}
+	}
+
 	Vec3 origin(30 + v.r, v.a + v.g - 30, 10);
 	Vec2 axesLabelPos;
 
@@ -690,6 +739,14 @@ void EB_Viewer::DrawTArrows(Vec3 pos, float size) {
 	glDepthFunc(GL_LEQUAL);
 }
 
+void EB_Viewer::DrawRArrows(Vec3 pos, float size) {
+	glDepthFunc(GL_ALWAYS);
+	Engine::DrawCircleW(pos, Vec3(0, 1, 0), Vec3(0, 0, 1), size / scale, 32, red(), 3);
+	Engine::DrawCircleW(pos, Vec3(1, 0, 0), Vec3(0, 0, 1), size / scale, 32, green(), 3);
+	Engine::DrawCircleW(pos, Vec3(0, 1, 0), Vec3(1, 0, 0), size / scale, 32, blue(), 3);
+	glDepthFunc(GL_LEQUAL);
+}
+
 void EB_Viewer::DrawSArrows(Vec3 pos, float size) {
 	glDepthFunc(GL_ALWAYS);
 	Engine::DrawLineW(pos, pos + Vec3(size / scale, 0, 0), red(), 3);
@@ -725,13 +782,6 @@ void EB_Viewer::OnMouseM(Vec2 d) {
 		modVal += Vec2(d.x / Display::width, -d.y / Display::height);
 		if (modifying >> 4 == 1) {
 			switch (modifying & 0x0f) {
-				/*
-			case 0: {
-			Vec4 c = glm::inverse(viewingMatrix)*Vec4(modVal.y, 0, -modVal.x, 0);
-			editor->selected->transform.position = preModVals + Vec3(c.x, c.y, c.z)*40.0f/scale;
-			break;
-			}
-			*/
 			case 1:
 				editor->selected->transform.position = preModVals + Vec3((modVal.x + modVal.y) * 40 / scale, 0, 0);
 				break;
@@ -745,13 +795,6 @@ void EB_Viewer::OnMouseM(Vec2 d) {
 		}
 		else if (modifying >> 4 == 2) {
 			switch (modifying & 0x0f) {
-				/*
-				case 0: {
-				Vec4 c = glm::inverse(viewingMatrix)*Vec4(modVal.y, 0, -modVal.x, 0);
-				editor->selected->transform.position = preModVals + Vec3(c.x, c.y, c.z)*40.0f/scale;
-				break;
-				}
-				*/
 			case 1:
 				editor->selected->transform.eulerRotation(preModVals + Vec3((modVal.x + modVal.y) * 360 / scale, 0, 0));
 				break;
@@ -760,6 +803,22 @@ void EB_Viewer::OnMouseM(Vec2 d) {
 				break;
 			case 3:
 				editor->selected->transform.eulerRotation(preModVals + Vec3(0, 0, (modVal.x + modVal.y) * 360 / scale));
+				break;
+			}
+		}
+		else {
+			switch (modifying & 0x0f) {
+			case 0:
+				editor->selected->transform.scale = Vec3(preModVals + Vec3(1, 1, 1)*((modVal.x + modVal.y) * 40 / scale));
+				break;
+			case 1:
+				editor->selected->transform.scale = Vec3(preModVals + Vec3((modVal.x + modVal.y) * 40 / scale, 0, 0));
+				break;
+			case 2:
+				editor->selected->transform.scale = Vec3(preModVals + Vec3(0, (modVal.x + modVal.y) * 40 / scale, 0));
+				break;
+			case 3:
+				editor->selected->transform.scale = Vec3(preModVals + Vec3(0, 0, (modVal.x + modVal.y) * 40 / scale));
 				break;
 			}
 		}

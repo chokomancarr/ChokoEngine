@@ -76,16 +76,16 @@ void Color::rgb2hsv(byte r, byte g, byte b, float& h, float& s, float& v) {
 		if (v < 0.5f)
 			s = (mx - mn) / (mx + mn);
 		else
-			s = (mx - mn) / (2.0 - mx - mn);
+			s = (mx - mn) / (2.0f - mx - mn);
 
 		if (R == mx) {
 			h = (G - B) / (mx - mn);
 		}
 		else if (G == mx) {
-			h = 2.0 + (B - R) / (mx - mn);
+			h = 2.0f + (B - R) / (mx - mn);
 		}
 		else {
-			h = 4.0 + (R - G) / (mx - mn);
+			h = 4.0f + (R - G) / (mx - mn);
 		}
 		h *= 60;
 	}

@@ -156,6 +156,7 @@ void Camera::_DoDrawLight_Point(Light* l, glm::mat4& ip) {
 	GLint lColLoc = glGetUniformLocation(d_pLightProgram, "lightColor");
 	GLint lStrLoc = glGetUniformLocation(d_pLightProgram, "lightStrength");
 	GLint lRadLoc = glGetUniformLocation(d_pLightProgram, "lightRadius");
+	GLint lDstLoc = glGetUniformLocation(d_pLightProgram, "lightDistance");
 
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(2, GL_FLOAT, 0, screenRectVerts);
@@ -183,7 +184,8 @@ void Camera::_DoDrawLight_Point(Light* l, glm::mat4& ip) {
 	glUniform3f(lPosLoc, wpos.x, wpos.y, wpos.z);
 	glUniform3f(lColLoc, l->color.x, l->color.y, l->color.z);
 	glUniform1f(lStrLoc, l->intensity);
-	glUniform1f(lRadLoc, l->radius);
+	glUniform1f(lRadLoc, l->minDist);
+	glUniform1f(lDstLoc, l->maxDist);
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, screenRectIndices);

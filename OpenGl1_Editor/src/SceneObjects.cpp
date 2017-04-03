@@ -487,21 +487,33 @@ TextureRenderer::TextureRenderer(ifstream& stream, SceneObject* o, long pos) : C
 }
 
 void Light::DrawEditor(EB_Viewer* ebv) {
-	Vec3 verts[6] = { Vec3(-radius, 0, 0), Vec3(radius, 0, 0), Vec3(0, -radius, 0), Vec3(0, radius, 0), Vec3(0, 0, -radius), Vec3(0, 0, radius) };
-	int ids[6] = { 0, 1, 2, 3, 4, 5 };
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glVertexPointer(3, GL_FLOAT, 0, &verts[0]);
-	glLineWidth(2);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	glColor4f(color.r, color.g, color.b, 1);
-	glDrawElements(GL_LINES, 6, GL_UNSIGNED_INT, &ids[0]);
-	glDisableClientState(GL_VERTEX_ARRAY);
-
 	switch (_lightType) { 
 	case LIGHTTYPE_POINT:
-		Engine::DrawCircleW(Vec3(), Vec3(1, 0, 0), Vec3(0, 1, 0), intensity*radius*0.1f, 32, white(), 1);
-		Engine::DrawCircleW(Vec3(), Vec3(1, 0, 0), Vec3(0, 0, 1), intensity*radius*0.1f, 32, white(), 1);
-		Engine::DrawCircleW(Vec3(), Vec3(0, 1, 0), Vec3(0, 0, 1), intensity*radius*0.1f, 32, white(), 1);
+		if (minDist > 0) {
+			Engine::DrawCircleW(Vec3(), Vec3(1, 0, 0), Vec3(0, 1, 0), minDist, 32, color, 1);
+			Engine::DrawCircleW(Vec3(), Vec3(1, 0, 0), Vec3(0, 0, 1), minDist, 32, color, 1);
+			Engine::DrawCircleW(Vec3(), Vec3(0, 1, 0), Vec3(0, 0, 1), minDist, 32, color, 1);
+		}
+		Engine::DrawCircleW(Vec3(), Vec3(1, 0, 0), Vec3(0, 1, 0), maxDist, 32, Lerp(color, black(), 0.5f), 1);
+		Engine::DrawCircleW(Vec3(), Vec3(1, 0, 0), Vec3(0, 0, 1), maxDist, 32, Lerp(color, black(), 0.5f), 1);
+		Engine::DrawCircleW(Vec3(), Vec3(0, 1, 0), Vec3(0, 0, 1), maxDist, 32, Lerp(color, black(), 0.5f), 1);
+		break;
+	case LIGHTTYPE_DIRECTIONAL:
+		Engine::DrawLineW(Vec3(0, 0, 0.2f), Vec3(0, 0, 1), color, 1);
+		Engine::DrawLineW(Vec3(0, 0, 1), Vec3(0, 0.2f, 0.7f), color, 1);
+		Engine::DrawLineW(Vec3(0, 0, 1), Vec3(0, -0.2f, 0.7f), color, 1);
+		Engine::DrawLineW(Vec3(0, 0, 1), Vec3(0.2f, 0, 0.7f), color, 1);
+		Engine::DrawLineW(Vec3(0, 0, 1), Vec3(-0.2f, 0, 0.7f), color, 1);
+		/*
+		Engine::DrawLineW(Vec3(0, 0, -0.3f), Vec3(0, 0, -0.5f), color, 1);
+		Engine::DrawLineW(Vec3(0, -0.3f, 0), Vec3(0, -0.5f, 0), color, 1);
+		Engine::DrawLineW(Vec3(0, 0.3f, 0), Vec3(0, 0.5f, 0), color, 1);
+		Engine::DrawLineW(Vec3(-0.3f, 0, 0), Vec3(-0.5f, 0, 0), color, 1);
+		Engine::DrawLineW(Vec3(0.3f, 0, 0), Vec3(0.5f, 0, 0), color, 1);
+		*/
+		Engine::DrawCircleW(Vec3(), Vec3(1, 0, 0), Vec3(0, 1, 0), 0.2f, 12, color, 1);
+		Engine::DrawCircleW(Vec3(), Vec3(1, 0, 0), Vec3(0, 0, 1), 0.2f, 12, color, 1);
+		Engine::DrawCircleW(Vec3(), Vec3(0, 1, 0), Vec3(0, 0, 1), 0.2f, 12, color, 1);
 		break;
 	case LIGHTTYPE_SPOT:
 		Engine::DrawLineWDotted(Vec3(0, 0, 1) * minDist, Vec3(0, 0, 1) * maxDist, color, 1, 0.2f, true);
@@ -536,10 +548,15 @@ void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 
 		switch (_lightType) {
 		case LIGHTTYPE_POINT:
-			Engine::Label(v.r + 2, v.g + pos + 2, 12, "radius", e->font, white());
+			Engine::Label(v.r + 2, v.g + pos + 2, 12, "core radius", e->font, white());
 			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-			Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 2, 12, to_string(radius), e->font, white());
-			radius = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0.001f, 1, radius, grey1(), white());
+			Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 2, 12, to_string(minDist), e->font, white());
+			minDist = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, maxDist, minDist, grey1(), white());
+			pos += 17;
+			Engine::Label(v.r + 2, v.g + pos + 2, 12, "distance", e->font, white());
+			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
+			Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 2, 12, to_string(maxDist), e->font, white());
+			maxDist = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 20, maxDist, grey1(), white());
 			pos += 17;
 			break;
 		case LIGHTTYPE_DIRECTIONAL:
@@ -588,7 +605,11 @@ void Light::Serialize(Editor* e, ofstream* stream) {
 	if (drawShadow) b |= 0xf0;
 	_StreamWrite(&b, stream, 1);
 	_StreamWrite(&intensity, stream, 4);
-	_StreamWrite(&radius, stream, 4);
+	_StreamWrite(&minDist, stream, 4);
+	_StreamWrite(&maxDist, stream, 4);
+	_StreamWrite(&angle, stream, 4);
+	_StreamWrite(&shadowBias, stream, 4);
+	_StreamWrite(&shadowStrength, stream, 4);
 	_StreamWrite(&color.r, stream, 4);
 	_StreamWrite(&color.g, stream, 4);
 	_StreamWrite(&color.b, stream, 4);
@@ -602,7 +623,11 @@ Light::Light(ifstream& stream, SceneObject* o, long pos) : Component("Light", CO
 	_Strm2Val(stream, _lightType);
 	drawShadow = (_lightType & 0xf0) != 0;
 	_Strm2Val(stream, intensity);
-	_Strm2Val(stream, radius);
+	_Strm2Val(stream, minDist);
+	_Strm2Val(stream, maxDist);
+	_Strm2Val(stream, angle);
+	_Strm2Val(stream, shadowBias);
+	_Strm2Val(stream, shadowStrength);
 	_Strm2Val(stream, color.r);
 	_Strm2Val(stream, color.g);
 	_Strm2Val(stream, color.b);

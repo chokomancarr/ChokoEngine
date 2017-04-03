@@ -296,14 +296,14 @@ enum LIGHTTYPE : byte {
 	LIGHTTYPE_SPOT,
 };
 #define COMP_LHT 0x20
+#define LIGHT_POINT_MINSTR 0.01f
 class Light : public Component {
 public:
-	Light() : Component("Light", COMP_LHT, DRAWORDER_LIGHT), _lightType(LIGHTTYPE_POINT), intensity(1), radius(0.01f), color(white()), angle(45), minDist(0), maxDist(30), drawShadow(false), shadowBias(0.1f), shadowStrength(1) {}
+	Light() : Component("Light", COMP_LHT, DRAWORDER_LIGHT), _lightType(LIGHTTYPE_POINT), intensity(1), color(white()), angle(45), minDist(0), maxDist(30), drawShadow(false), shadowBias(0.1f), shadowStrength(1) {}
 	LIGHTTYPE lightType() { return _lightType; }
 
 	float intensity;
 	Vec4 color;
-	float radius;
 	float angle;
 	float minDist, maxDist;
 	bool drawShadow;

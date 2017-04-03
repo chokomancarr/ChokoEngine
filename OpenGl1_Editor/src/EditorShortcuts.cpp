@@ -92,7 +92,7 @@ void EB_Viewer::_Scale(EditorBlock* b) {
 				break;
 			}
 		}
-		v->modifying = 0x20;
+		v->modifying = 0x30;
 		v->modVal = Vec2();
 		v->preModVals = v->editor->selected->transform.scale;
 	}
