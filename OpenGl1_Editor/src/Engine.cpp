@@ -60,10 +60,11 @@ string Color::hex() {
 	ss << std::hex << setfill('0') << setw(2) << (int)r;
 	ss << std::hex << setfill('0') << setw(2) << (int)g;
 	ss << std::hex << setfill('0') << setw(2) << (int)b;
+	ss << std::hex << setfill('0') << setw(2) << (int)a;
 	return ss.str();
 }
 
-void Color::rgb2hsv(byte r, byte g, byte b, float& h, float& s, float& v) {
+void Color::Rgb2Hsv(byte r, byte g, byte b, float& h, float& s, float& v) {
 	float R = r * 0.0039216f;
 	float G = g * 0.0039216f;
 	float B = b * 0.0039216f;
@@ -89,6 +90,16 @@ void Color::rgb2hsv(byte r, byte g, byte b, float& h, float& s, float& v) {
 		}
 		h *= 60;
 	}
+}
+
+string Color::Col2Hex(Vec4 col) {
+	stringstream ss;
+	ss << "#";
+	ss << std::hex << setfill('0') << setw(2) << (int)(col.r * 255);
+	ss << std::hex << setfill('0') << setw(2) << (int)(col.g * 255);
+	ss << std::hex << setfill('0') << setw(2) << (int)(col.b * 255);
+	ss << std::hex << setfill('0') << setw(2) << (int)(col.a * 255);
+	return ss.str();
 }
 
 void Color::DrawPicker(float x, float y, Color& c) {
@@ -1257,11 +1268,6 @@ Vec3 rotate(Vec3 v, Quat q) {
 	return (2.0f * dot(u, v) * u + (s*s - dot(u, u)) * v + 2.0f * s * cross(u, v));
 }
 
-glm::mat4 Quat2Mat(Quat q) {
-	//return glm::mat4(q.w, q.x, q.y, q.z, -q.x, q.w, q.z, -q.y, -q.y, -q.z, q.w, q.x, -q.z, q.y, -q.x, q.w);
-	return glm::mat4_cast(q);
-}
-
 //-----------------transform class-------------------
 Transform::Transform(SceneObject* sc, Vec3 pos, Quat rot, Vec3 scl) : object(sc), rotation(rot), scale(scl) {
 	Translate(pos);
@@ -1275,6 +1281,14 @@ Vec3 Transform::worldPosition() {
 		w = w*o->transform.scale + o->transform.position;
 	}
 	return w;
+}
+
+Vec3 Transform::forward() {
+	return rotate(Vec3(0, 0, 1), rotation);
+}
+
+Quat Transform::worldRotation() {
+	return Quat();
 }
 
 void Transform::eulerRotation(Vec3 r) {

@@ -54,8 +54,8 @@ class Transform : public Object {
 public:
 
 	SceneObject* object;
-	Vec3 position, worldPosition();
-	Quat rotation;
+	Vec3 position, worldPosition(), forward();
+	Quat rotation, worldRotation();
 	const Vec3& eulerRotation() const { return _eulerRotation;  }
 	void eulerRotation(Vec3 r);
 	Vec3 scale;
@@ -203,11 +203,12 @@ protected:
 	void _RenderSky(glm::mat4 ip);
 	void _DrawLights(vector<SceneObject*> oo, glm::mat4& ip);
 	void _DoDrawLight_Point(Light* l, glm::mat4& ip);
+	void _DoDrawLight_Spot(Light* l, glm::mat4& ip);
 
 	Vec3 camVerts[6];
 	static int camVertsIds[19];
-	GLuint d_fbo, d_texs[3], d_depthTex, d_dTexVis;
-	GLuint d_skyProgram, d_pLightProgram;
+	GLuint d_fbo, d_texs[3], d_depthTex;
+	GLuint d_skyProgram, d_pLightProgram, d_sLightProgram;
 
 	static const Vec2 screenRectVerts[];
 	static const int screenRectIndices[];
@@ -311,6 +312,7 @@ public:
 
 	void DrawEditor(EB_Viewer* ebv) override;
 	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
+	void DrawShadowMap();
 	void Serialize(Editor* e, ofstream* stream) override;
 
 	friend int main(int argc, char **argv);
@@ -320,6 +322,10 @@ public:
 protected:
 	LIGHTTYPE _lightType;
 	Light(ifstream& stream, SceneObject* o, long pos = -1);
+	glm::mat4 _shadowMatrix;
+
+	void InitShadow(), CalcShadowMatrix();
+	static GLuint _shadowFbo, _shadowMap;
 };
 
 #define COMP_SCR 0xff

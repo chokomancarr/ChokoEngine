@@ -453,7 +453,7 @@ void DrawSceneObjectsOpaque(EB_Viewer* ebv, vector<SceneObject*> oo) {
 		//glRotatef(rad2deg*vvv.w, vvv.x, vvv.y, vvv.z);
 		for (Component* com : sc->_components)
 		{
-			if (com->componentType == COMP_MRD || com->componentType == COMP_CAM || com->componentType == COMP_LHT)
+			if (com->componentType == COMP_MRD || com->componentType == COMP_CAM)
 				com->DrawEditor(ebv);
 		}
 		DrawSceneObjectsOpaque(ebv, sc->children);
@@ -473,8 +473,12 @@ void DrawSceneObjectsGizmos(EB_Viewer* ebv, vector<SceneObject*> oo) {
 	{
 		glPushMatrix();
 		Vec3 v = sc->transform.position;
-		//rotation matrix here
+		Vec3 vv = sc->transform.scale;
+		Quat vvv = sc->transform.rotation;
+		//glTranslatef(v.x - v2.x, v.y - v2.y, v.z - v2.z);
 		glTranslatef(v.x, v.y, v.z);
+		glScalef(vv.x, vv.y, vv.z);
+		glMultMatrixf(glm::value_ptr(Quat2Mat(vvv)));
 		for (Component* com : sc->_components)
 		{
 			if (com->componentType != COMP_MRD && com->componentType != COMP_CAM)
@@ -626,7 +630,7 @@ void EB_Viewer::Draw() {
 		Engine::DrawCircleW(Vec3(spos.x, spos.y, 0), Vec3(1.0f / Display::width, 0, 0), Vec3(0, 1.0f / Display::height, 0), 20, 24, white(), 2, true);
 		if (modifying == 0) {
 			if (selectedTooltip == 1) {
-				Engine::DrawCircleW(Vec3(spos.x, spos.y, 0), Vec3(1.0f / Display::width, 0, 0), Vec3(0, 1.0f / Display::height, 0), 130, 24, yellow(), 1);
+				Engine::DrawCircleW(Vec3(spos.x, spos.y, 0), Vec3(1.0f / Display::width, 0, 0), Vec3(0, 1.0f / Display::height, 0), 140, 24, yellow(), 2);
 			}
 		}
 		else {
@@ -1150,6 +1154,14 @@ void Editor::DrawCompSelector(float x, float y, float w, float h, Vec4 col, floa
 	labelFont->alignment = ALIGN_MIDLEFT;
 	Engine::Label(round(x + 2), round(y + 0.5f*h), labelSize, (tar->comp == nullptr) ? "undefined" : tar->path + " (" + tar->comp->name + ")", labelFont, (tar->comp == nullptr) ? Vec4(0.7f, 0.4f, 0.4f, 1) : Vec4(0.4f, 0.4f, 0.7f, 1));
 	labelFont->alignment = al;
+}
+
+void Editor::DrawColorSelector(float x, float y, float w, float h, Vec4 col, float labelSize, Font* labelFont, Vec4* tar) {
+	Engine::DrawQuad(x, y, w * 0.7f - 1, h, col);
+	Engine::Label(x + 2, y + 2, labelSize, Color::Col2Hex(*tar), labelFont, white());
+	Engine::DrawQuad(x + w*0.7f, y, w*0.3f, h*0.8f, Vec4(tar->r, tar->g, tar->b, 1));
+	Engine::DrawQuad(x + w*0.7f, y + h * 0.8f, w*0.3f, h*0.2f, black());
+	Engine::DrawQuad(x + w*0.7f, y + h * 0.8f, w*0.3f*tar->a, h*0.2f, white());
 }
 
 Editor::Editor() {

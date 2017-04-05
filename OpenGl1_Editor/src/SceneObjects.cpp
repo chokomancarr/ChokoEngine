@@ -62,18 +62,18 @@ Camera::Camera(ifstream& stream, SceneObject* o, long pos) : Camera() {
 	GLuint vertex_shader, fragment_shader;
 	string err = "";
 	ifstream strm("D:\\lightPassVert.txt");
-	stringstream ss, ss2, ss3;
+	stringstream ss, ss2, ss3, ss4;
 	ss << strm.rdbuf();
 
 	if (!ShaderBase::LoadShader(GL_VERTEX_SHADER, ss.str(), vertex_shader, &err)) {
-		Debug::Error("Cam Shader Compiler", "v!");
+		Debug::Error("Cam Shader Compiler", "v! " + err);
 		return;
 	}
 	strm.close();
 	strm.open("D:\\lightPassFrag_Sky.txt");
 	ss2 << strm.rdbuf();
 	if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, ss2.str(), fragment_shader, &err)) {
-		Debug::Error("Cam Shader Compiler", "fs!");
+		Debug::Error("Cam Shader Compiler", "fs! " + err);
 		return;
 	}
 
@@ -102,7 +102,7 @@ Camera::Camera(ifstream& stream, SceneObject* o, long pos) : Camera() {
 	strm.open("D:\\lightPassFrag_Point.txt");
 	ss3 << strm.rdbuf();
 	if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, ss3.str(), fragment_shader, &err)) {
-		Debug::Error("Cam Shader Compiler", "fp!");
+		Debug::Error("Cam Shader Compiler", "fp! " + err);
 		return;
 	}
 
@@ -125,6 +125,35 @@ Camera::Camera(ifstream& stream, SceneObject* o, long pos) : Camera() {
 	cout << "cam shader(pl) ok" << endl;
 	glDetachShader(d_pLightProgram, vertex_shader);
 	glDetachShader(d_pLightProgram, fragment_shader);
+	glDeleteShader(fragment_shader);
+
+	strm.close();
+	strm.open("D:\\lightPassFrag_Spot.txt");
+	ss4 << strm.rdbuf();
+	if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, ss4.str(), fragment_shader, &err)) {
+		Debug::Error("Cam Shader Compiler", "fc! " + err);
+		return;
+	}
+
+	d_sLightProgram = glCreateProgram();
+	glAttachShader(d_sLightProgram, vertex_shader);
+	glAttachShader(d_sLightProgram, fragment_shader);
+	glLinkProgram(d_sLightProgram);
+	glGetProgramiv(d_sLightProgram, GL_LINK_STATUS, &link_result);
+	if (link_result == GL_FALSE)
+	{
+		int info_log_length = 0;
+		glGetProgramiv(d_sLightProgram, GL_INFO_LOG_LENGTH, &info_log_length);
+		vector<char> program_log(info_log_length);
+		glGetProgramInfoLog(d_sLightProgram, info_log_length, NULL, &program_log[0]);
+		cout << "cam shader(sl) error" << endl << &program_log[0] << endl;
+		glDeleteProgram(d_sLightProgram);
+		d_pLightProgram = 0;
+		return;
+	}
+	cout << "cam shader(sl) ok" << endl;
+	glDetachShader(d_sLightProgram, vertex_shader);
+	glDetachShader(d_sLightProgram, fragment_shader);
 	glDeleteShader(fragment_shader);
 
 
@@ -516,16 +545,16 @@ void Light::DrawEditor(EB_Viewer* ebv) {
 		Engine::DrawCircleW(Vec3(), Vec3(0, 1, 0), Vec3(0, 0, 1), 0.2f, 12, color, 1);
 		break;
 	case LIGHTTYPE_SPOT:
-		Engine::DrawLineWDotted(Vec3(0, 0, 1) * minDist, Vec3(0, 0, 1) * maxDist, color, 1, 0.2f, true);
+		Engine::DrawLineWDotted(Vec3(0, 0, 1) * minDist, Vec3(0, 0, 1) * maxDist, white(0.5f, 0.5f), 1, 0.2f, true);
 		float rd = minDist*tan(deg2rad*angle*0.5f);
 		float rd2 = maxDist*tan(deg2rad*angle*0.5f);
 		if (minDist > 0)
-			Engine::DrawCircleW(Vec3(0, 0, 1) * minDist, Vec3(1, 0, 0), Vec3(0, 1, 0), rd, 16, white(), 1);
-		Engine::DrawCircleW(Vec3(0, 0, 1) * maxDist, Vec3(1, 0, 0), Vec3(0, 1, 0), rd2, 16, white(), 1);
-		Engine::DrawLineW(Vec3(rd, 0, minDist), Vec3(rd2, 0, maxDist), white(), 1);
-		Engine::DrawLineW(Vec3(-rd, 0, minDist), Vec3(-rd2, 0, maxDist), white(), 1);
-		Engine::DrawLineW(Vec3(0, rd, minDist), Vec3(0, rd2, maxDist), white(), 1);
-		Engine::DrawLineW(Vec3(0, -rd, minDist), Vec3(0, -rd2, maxDist), white(), 1);
+			Engine::DrawCircleW(Vec3(0, 0, 1) * minDist, Vec3(1, 0, 0), Vec3(0, 1, 0), rd, 16, color, 1);
+		Engine::DrawCircleW(Vec3(0, 0, 1) * maxDist, Vec3(1, 0, 0), Vec3(0, 1, 0), rd2, 32, color, 1);
+		Engine::DrawLineW(Vec3(rd, 0, minDist), Vec3(rd2, 0, maxDist), color, 1);
+		Engine::DrawLineW(Vec3(-rd, 0, minDist), Vec3(-rd2, 0, maxDist), color, 1);
+		Engine::DrawLineW(Vec3(0, rd, minDist), Vec3(0, rd2, maxDist), color, 1);
+		Engine::DrawLineW(Vec3(0, -rd, minDist), Vec3(0, -rd2, maxDist), color, 1);
 		break;
 	}
 }
@@ -539,12 +568,15 @@ void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 			_lightType = LIGHTTYPE_DIRECTIONAL;
 		if (Engine::EButton(e->editorLayer == 0, v.r + v.b * 0.67f, v.g + pos, v.b * 0.33f - 1, 16, (_lightType == LIGHTTYPE_SPOT) ? white(1, 0.5f) : grey1(), "Spot", 12, e->font, white()) == MOUSE_RELEASE)
 			_lightType = LIGHTTYPE_SPOT;
-		
+
 		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Intensity", e->font, white());
 		Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos + 17, v.b * 0.3f - 1, 16, grey1());
 		Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 20, 12, to_string(intensity), e->font, white());
-		intensity = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos + 17, v.b * 0.4f - 1, 16, 0, 100, intensity, grey1(), white());
+		intensity = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos + 17, v.b * 0.4f - 1, 16, 0, 20, intensity, grey1(), white());
 		pos += 34;
+		Engine::Label(v.r + 2, v.g + pos + 2, 12, "Color", e->font, white());
+		e->DrawColorSelector(v.r + v.b*0.3f, v.g + pos, v.b*0.7f - 1, 16, grey1(), 12, e->font, &color);
+		pos += 17;
 
 		switch (_lightType) {
 		case LIGHTTYPE_POINT:
@@ -600,6 +632,20 @@ void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 	else pos += 17;
 }
 
+void Light::CalcShadowMatrix() {
+	if (_lightType == LIGHTTYPE_SPOT) {
+		Quat q = glm::inverse(object->transform.rotation);
+		_shadowMatrix = glm::perspectiveFov(angle * deg2rad, 1024.0f, 1024.0f, minDist, maxDist);
+		Vec3 scl = object->transform.scale;
+		glScalef(scl.x, scl.y, -scl.z);
+		_shadowMatrix *= Quat2Mat(q);
+		Vec3 pos = object->transform.position;
+		_shadowMatrix *= glm::mat4(0, 0, 0, -pos.x, 0, 0, 0, -pos.y, 0, 0, 0, -pos.z, 0, 0, 0, 1);
+	}
+	else
+		_shadowMatrix = glm::mat4();
+}
+
 void Light::Serialize(Editor* e, ofstream* stream) {
 	byte b = _lightType;
 	if (drawShadow) b |= 0xf0;
@@ -622,6 +668,8 @@ Light::Light(ifstream& stream, SceneObject* o, long pos) : Component("Light", CO
 
 	_Strm2Val(stream, _lightType);
 	drawShadow = (_lightType & 0xf0) != 0;
+	if (drawShadow && _shadowMap == 0)
+		InitShadow();
 	_Strm2Val(stream, intensity);
 	_Strm2Val(stream, minDist);
 	_Strm2Val(stream, maxDist);

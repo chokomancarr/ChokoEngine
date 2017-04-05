@@ -28,6 +28,7 @@ using namespace std;
 #define Lerp(a, b, c) (a*(1-c) + b*c)
 #define Normalize(a) glm::normalize(a)
 #define Distance(a, b) glm::distance(a, b)
+#define Quat2Mat(q) glm::mat4_cast(q)
 
 typedef unsigned char byte;
 typedef unsigned int uint;
@@ -57,8 +58,9 @@ public:
 	static GLuint pickerProgH, pickerProgSV;
 
 	string hex();
-	static void rgb2hsv(byte r, byte g, byte b, float& h, float& s, float& v);
 
+	static void Rgb2Hsv(byte r, byte g, byte b, float& h, float& s, float& v);
+	static string Col2Hex(Vec4 col);
 	static void DrawPicker(float x, float y, Color& c);
 
 protected:
@@ -121,7 +123,6 @@ Vec4 LerpVec4(Vec4 a, Vec4 b, float f);
 float clamp(float f, float a, float b);
 float repeat(float f, float a, float b);
 Vec3 rotate(Vec3 v, Quat q);
-glm::mat4 Quat2Mat(Quat q);
 void _StreamWrite(const void* val, ofstream* stream, int size);
 void _StreamWriteAsset(Editor* e, ofstream* stream, ASSETTYPE t, ASSETID i);
 //void _Strm2Int(ifstream& strm, int& i), _Strm2Float(ifstream& strm, float& f), _Strm2Short(ifstream& strm, short& i);
