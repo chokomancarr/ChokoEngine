@@ -592,23 +592,7 @@ void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 			pos += 17;
 			break;
 		case LIGHTTYPE_DIRECTIONAL:
-			if (Engine::EButton(e->editorLayer == 0, v.r, v.g + pos, v.b * 0.5f - 1, 16, (!drawShadow) ? white(1, 0.5f) : grey1(), "No Shadow", 12, e->font, white()) == MOUSE_RELEASE)
-				drawShadow = false;
-			if (Engine::EButton(e->editorLayer == 0, v.r + v.b * 0.5f, v.g + pos, v.b * 0.5f - 1, 16, (drawShadow) ? white(1, 0.5f) : grey1(), "Shadow", 12, e->font, white()) == MOUSE_RELEASE)
-				drawShadow = true;
-			pos += 17;
-			if (drawShadow) {
-				Engine::Label(v.r + 2, v.g + pos + 2, 12, "shadow bias", e->font, white());
-				Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-				Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 2, 12, to_string(shadowBias), e->font, white());
-				shadowBias = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 1, shadowBias, grey1(), white());
-				pos += 17;
-				Engine::Label(v.r + 2, v.g + pos + 2, 12, "shadow strength", e->font, white());
-				Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-				Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 2, 12, to_string(shadowStrength), e->font, white());
-				shadowStrength = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 1, shadowStrength, grey1(), white());
-				pos += 17;
-			}
+			
 			break;
 		case LIGHTTYPE_SPOT:
 			Engine::Label(v.r + 2, v.g + pos + 2, 12, "angle", e->font, white());
@@ -627,6 +611,25 @@ void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 			maxDist = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 50, maxDist, grey1(), white());
 			pos += 17;
 			break;
+		}
+		if (_lightType != LIGHTTYPE_POINT) {
+			if (Engine::EButton(e->editorLayer == 0, v.r, v.g + pos, v.b * 0.5f - 1, 16, (!drawShadow) ? white(1, 0.5f) : grey1(), "No Shadow", 12, e->font, white()) == MOUSE_RELEASE)
+				drawShadow = false;
+			if (Engine::EButton(e->editorLayer == 0, v.r + v.b * 0.5f, v.g + pos, v.b * 0.5f - 1, 16, (drawShadow) ? white(1, 0.5f) : grey1(), "Shadow", 12, e->font, white()) == MOUSE_RELEASE)
+				drawShadow = true;
+			pos += 17;
+			if (drawShadow) {
+				Engine::Label(v.r + 2, v.g + pos + 2, 12, "shadow bias", e->font, white());
+				Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
+				Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 2, 12, to_string(shadowBias), e->font, white());
+				shadowBias = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 0.1f, shadowBias, grey1(), white());
+				pos += 17;
+				Engine::Label(v.r + 2, v.g + pos + 2, 12, "shadow strength", e->font, white());
+				Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
+				Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 2, 12, to_string(shadowStrength), e->font, white());
+				shadowStrength = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 1, shadowStrength, grey1(), white());
+				pos += 17;
+			}
 		}
 	}
 	else pos += 17;
@@ -668,6 +671,8 @@ Light::Light(ifstream& stream, SceneObject* o, long pos) : Component("Light", CO
 
 	_Strm2Val(stream, _lightType);
 	drawShadow = (_lightType & 0xf0) != 0;
+	_lightType = LIGHTTYPE(_lightType & 0x0f);
+	cout << drawShadow << endl;
 	if (drawShadow && _shadowMap == 0)
 		InitShadow();
 	_Strm2Val(stream, intensity);

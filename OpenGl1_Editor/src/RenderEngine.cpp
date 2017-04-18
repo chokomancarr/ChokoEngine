@@ -208,6 +208,10 @@ void Camera::_DoDrawLight_Spot(Light* l, glm::mat4& ip) {
 	GLint lCosLoc = glGetUniformLocation(d_sLightProgram, "lightCosAngle");
 	GLint lMinLoc = glGetUniformLocation(d_sLightProgram, "lightMinDist");
 	GLint lMaxLoc = glGetUniformLocation(d_sLightProgram, "lightMaxDist");
+	GLint lDepLoc = glGetUniformLocation(d_sLightProgram, "lightDepth");
+	GLint lDepBaiLoc = glGetUniformLocation(d_sLightProgram, "lightDepthBias");
+	GLint lDepStrLoc = glGetUniformLocation(d_sLightProgram, "lightDepthStrength");
+	GLint lDepMatLoc = glGetUniformLocation(d_sLightProgram, "lightDepthMatrix");
 
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(2, GL_FLOAT, 0, screenRectVerts);
@@ -231,6 +235,9 @@ void Camera::_DoDrawLight_Spot(Light* l, glm::mat4& ip) {
 	glUniform1i(depthLoc, 3);
 	glActiveTexture(GL_TEXTURE3);
 	glBindTexture(GL_TEXTURE_2D, d_depthTex);
+	glUniform1i(lDepLoc, 4);
+	glActiveTexture(GL_TEXTURE4);
+	glBindTexture(GL_TEXTURE_2D, l->_shadowMap);
 	Vec3 wpos = l->object->transform.worldPosition();
 	glUniform3f(lPosLoc, wpos.x, wpos.y, wpos.z);
 	Vec3 dir = l->object->transform.forward();
@@ -240,6 +247,9 @@ void Camera::_DoDrawLight_Spot(Light* l, glm::mat4& ip) {
 	glUniform1f(lCosLoc, cos(deg2rad*0.5f*l->angle));
 	glUniform1f(lMinLoc, l->minDist*l->minDist);
 	glUniform1f(lMaxLoc, l->maxDist*l->maxDist);
+	glUniformMatrix4fv(lDepMatLoc, 1, GL_FALSE, glm::value_ptr(l->_shadowMatrix));
+	glUniform1f(lDepBaiLoc, l->shadowBias);
+	glUniform1f(lDepStrLoc, l->shadowStrength);
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, screenRectIndices);
@@ -254,6 +264,8 @@ void Camera::_DrawLights(vector<SceneObject*> oo, glm::mat4& ip) {
 		for (Component* c : o->_components) {
 			if (c->componentType == COMP_LHT) {
 				Light* l = (Light*)c;
+				if (l->drawShadow)
+					l->DrawShadowMap();
 				switch (l->_lightType) {
 				case LIGHTTYPE_POINT:
 					_DoDrawLight_Point(l, ip);
