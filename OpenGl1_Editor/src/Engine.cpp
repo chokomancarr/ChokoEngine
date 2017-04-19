@@ -2636,6 +2636,54 @@ void Material::ApplyGL(glm::mat4& _mv, glm::mat4& _p) {
 	}
 }
 
+float BezierSolve(Vec2& v1, Vec2& v2, Vec3& v3, Vec3& v4, float x) { //x is between v1.x & v2.x
+	if (x < v1.x)
+		return v1.y;
+	else if (x > v4.x)
+		return v4.y;
+	float a = v4.x - 3 * v3.x + 3 * v2.x - v1.x;
+	float b = 3 * v3.x - 6 * v2.x + 3 * v1.x;
+	float c = 3 * v2.x - 3 * v1.x;
+	float d = v1.x - x;
+	b /= a;
+	c /= a;
+	d /= a;
+	float disc, q, r, dum1, s, t, term1, r13;
+	q = (3 * c - b*b) / 9.0f;
+	r = (-27 * d + b*(9 * c - 2 * b*b)) / 54.0f;
+	disc = q*q*q + r*r;
+	float t1, t2, t3;
+	q = -q;
+	dum1 = q*q*q;
+	dum1 = acos(r / sqrt(dum1));
+	r13 = 2 * sqrt(q);
+	t1 = -term1 + r13*cos(dum1 / 3.0f);
+	t2 = -term1 + r13*cos((dum1 + 2 * pi) / 3.0f);
+	t3 = -term1 + r13*cos((dum1 + 4 * pi) / 3.0f);
+
+	float t = 0;
+	if (t1 > 0 && t1 < 1)
+		t += t1;
+	else if (t2 > 0 && t2 < 1)
+		t += t2;
+	else if (t3 > 0 && t3 < 1)
+		t += t3;
+	else {
+		Debug::Error("Bezier solver", "Cannot solve for t!");
+		return 0;
+	}
+
+	a = v4.y - 3 * v3.y + 3 * v2.y - v1.y;
+	b = 3 * v3.y - 6 * v2.y + 3 * v1.y;
+	c = 3 * v2.y - 3 * v1.y;
+	d = v1.y;
+	return t*t*t*a + t*t*b + t*c + d;
+}
+
+float FCurve::Eval(float t, float repeat) {
+
+}
+
 void _StreamWrite(const void* val, ofstream* stream, int size) {
 	stream->write(reinterpret_cast<char const *>(val), size);
 }

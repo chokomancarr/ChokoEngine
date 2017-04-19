@@ -21,6 +21,7 @@
 
 using namespace std;
 
+#define pi 3.1415926535f
 #define rad2deg 57.2958f
 #define deg2rad 0.0174533f
 #define char0 (char)0
@@ -463,6 +464,17 @@ public:
 	static long long millis;
 	static double time;
 	static float delta;
+};
+
+class FCurve_Key {
+	Vec2 point, left, right;
+};
+
+class FCurve {
+	vector<FCurve_Key> keys;
+	uint keyCount;
+	float startTime, endTime;
+	float Eval(float t, float repeat = false);
 };
 
 class AnimClip;
