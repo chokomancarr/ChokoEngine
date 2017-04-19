@@ -101,6 +101,10 @@ protected:
 	//void Load();
 };
 
+class AnimClip : public AssetObject {
+
+};
+
 class RenderTexture : public AssetObject {
 public:
 	uint width, height;
@@ -289,6 +293,32 @@ public:
 protected:
 	TextureRenderer(ifstream& stream, SceneObject* o, long pos = -1);
 	int _texture;
+};
+
+class SkinnedMeshRenderer : public Component {
+public:
+	SkinnedMeshRenderer();
+
+	vector<Material*> materials;
+	Animator* anim;
+
+	void DrawEditor(EB_Viewer* ebv) override;
+	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
+
+	void Serialize(Editor* e, ofstream* stream) override;
+	void Refresh() override;
+
+	friend class Editor;
+	friend void Deserialize(ifstream& stream, SceneObject* obj);
+	friend void DrawSceneObjectsOpaque(vector<SceneObject*> oo);
+protected:
+	SkinnedMeshRenderer(ifstream& stream, SceneObject* o, long pos = -1);
+
+	void DrawDeferred();
+
+	vector<ASSETID> _materials;
+	static void _UpdateMat(void* i);
+	static void _UpdateTex(void* i);
 };
 
 enum LIGHTTYPE : byte {

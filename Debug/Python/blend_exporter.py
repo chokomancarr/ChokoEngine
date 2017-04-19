@@ -1,5 +1,4 @@
 import bpy
-#import mathutils
 import os
 import sys
 import struct
@@ -90,11 +89,81 @@ class KTMExporter():
             #        self.write(file, "    shp " + block.name + "\r\n")
             file.close()
         file2.close()
-
+        self.execute_anim(dirr + name + "_blend\\")
+    
+    #pose.bones["foo"].location 0x10 ~ 0x12
+    #pose.bones["foo"].rotation_quaternion 0x13 ~ 0x16
+    #pose.bones["foo"].scale 0x17 ~ 0x19
+    #key_blocks["foo"].value 0x20
+    #location 0xf0 ~ 0xf2
+    #rotation_euler 0xf3 ~ 0xf5
+    #scale 0xf7 ~ 0xf9
+    def execute_anim(self, path):
+        for action in bpy.data.actions:
+            if len(action.fcurves) == 0:
+                continue
+            print ("!writing to: " + path + action.name + ".animclip")
+            file = open(path + action.name + ".animclip", "wb")
+            curr_dim = 0
+            for curve in action.fcurves:
+                data_range = curve.range()
+                typeint = 0
+                if curve.data_path == "location":
+                    typeint = 240 + curr_dim
+                    curr_dim += 1
+                    if curr_dim == 3:
+                        curr_dim = 0
+                    file.write(struct.pack("<B", curr_dim))
+                    self.write(file, "\x00")
+                elif curve.data_path == "rotation_euler":
+                    typeint = 240 + curr_dim + 3
+                    curr_dim += 1
+                    if curr_dim == 3:
+                        curr_dim = 0
+                    file.write(struct.pack("<B", curr_dim))
+                    self.write(file, "\x00")
+                elif curve.data_path == "scale":
+                    typeint = 240 + curr_dim + 7
+                    curr_dim += 1
+                    if curr_dim == 3:
+                        curr_dim = 0
+                    file.write(struct.pack("<B", curr_dim))
+                    self.write(file, "\x00")
+                else:
+                    spl1 = curve.data_path.split("\"")
+                    if len(spl1) < 3:
+                        continue;
+                    if spl1[0] == "key_blocks[" and spl1[2] == "].value":
+                        typeint = 32
+                    elif spl1[0] == "pose.bones[":
+                        if spl1[2] == "].location":
+                            typeint = 16 + curr_dim
+                            curr_dim += 1
+                            if curr_dim == 3:
+                                curr_dim = 0
+                        elif spl1[2] == "].rotation_quaternion":
+                            typeint = 16 + curr_dim + 3
+                            curr_dim += 1
+                            if curr_dim == 4:
+                                curr_dim = 0
+                        elif spl1[2] == "].scale":
+                            typeint = 16 + curr_dim + 7
+                            curr_dim += 1
+                            if curr_dim == 3:
+                                curr_dim = 0
+                    else:
+                        continue
+                    file.write(struct.pack("<B", typeint))
+                    self.write(file, spl1[1] + "\x00")
+                
+                file.write(struct.pack("<B", len(curve.keyframe_points)))
+                for key in curve.keyframe_points:
+                    file.write(struct.pack("<ff", key.co[0], key.co[1]))
+                    file.write(struct.pack("<ffff", key.handle_left[0], key.handle_left[1], key.handle_right[0], key.handle_right[1]))
+            file.close()
+    
     def write (self, file, _str):
         file.write(_str.encode())
 
 if __name__ == "__main__":
-    #print("----- start " + datetime.datetime.now().strftime("%H:%M:%S") + " -----")
     KTMExporter().execute()
-    #print("----- end   " + datetime.datetime.now().strftime("%H:%M:%S") + " -----")

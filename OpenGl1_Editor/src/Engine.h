@@ -182,6 +182,7 @@ class AssetManager;
 #define ASSETTYPE_MATERIAL 0x10
 #define ASSETTYPE_BLEND 0x20
 #define ASSETTYPE_MESH 0x21
+#define ASSETTYPE_ANIMCLIP 0x30
 #define ASSETTYPE_SCRIPT_H 0xfe
 #define ASSETTYPE_SCRIPT_CPP 0xff
 class AssetObject;
@@ -462,6 +463,58 @@ public:
 	static long long millis;
 	static double time;
 	static float delta;
+};
+
+class AnimClip;
+
+class AnimFrameItem {
+public:
+	AnimFrameItem();
+	friend class Animator;
+	friend class Anim_State;
+protected:
+	byte type;
+	string name;
+	Vec3 transform, scale;
+	Quat rotation;
+};
+
+class Anim_State {
+public:
+	Anim_State();
+	friend class Animator;
+protected:
+	bool blend;
+	float speed, length, time;
+	float Eval(); //increments time automatically
+
+	AnimClip* clip;
+	ASSETID _clip;
+
+	vector<AnimClip*> blendClips;
+	vector<ASSETID> _blendClips;
+	vector<float> blendOffsets;
+};
+
+class Anim_Transition {
+public:
+	Anim_Transition();
+	friend class Animator;
+protected:
+	bool canInterrupt;
+	float length, time;
+
+};
+
+class Animator {
+	Animator();
+
+protected:
+	uint activeState, nextState;
+	float stateTransition;
+
+	vector <Anim_State> states;
+	vector <Anim_Transition> transitions;
 };
 
 enum DrawTex_Scaling {
