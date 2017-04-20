@@ -515,6 +515,372 @@ TextureRenderer::TextureRenderer(ifstream& stream, SceneObject* o, long pos) : C
 	_Strm2Asset(stream, Editor::instance, t, _texture);
 }
 
+//-----------------mesh class------------------------
+Mesh::Mesh(Editor* e, int i) : AssetObject(ASSETTYPE_MESH) {
+	Mesh* m2 = _GetCache<Mesh>(type, i);
+	vertices = m2->vertices;
+	vertexCount = m2->vertexCount;
+	normals = m2->normals;
+	triangles = m2->triangles;
+	triangleCount = m2->triangleCount;
+	loaded = m2->loaded;
+}
+
+Mesh::Mesh(ifstream& stream, uint offset) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0), triangleCount(0), materialCount(0) {
+	if (stream.is_open()) {
+		stream.seekg(offset);
+
+		char* c = new char[100];
+		stream.read(c, 6);
+		c[6] = (char)0;
+		if (string(c) != "KTO123") {
+			Debug::Error("Mesh importer", "file not supported");
+			return;
+		}
+		stream.getline(c, 100, 0);
+		name += string(c);
+		delete[](c);
+
+		char cc;
+		cc = stream.get();
+
+		while (cc != 0) {
+			if (cc == 'V') {
+				_Strm2Val(stream, vertexCount);
+				for (uint vc = 0; vc < vertexCount; vc++) {
+					Vec3 v;
+					_Strm2Val(stream, v.x);
+					_Strm2Val(stream, v.y);
+					_Strm2Val(stream, v.z);
+					vertices.push_back(v);
+					_Strm2Val(stream, v.x);
+					_Strm2Val(stream, v.y);
+					_Strm2Val(stream, v.z);
+					normals.push_back(v);
+				}
+			}
+			else if (cc == 'F') {
+				_Strm2Val(stream, triangleCount);
+				for (uint fc = 0; fc < triangleCount; fc++) {
+					byte m;
+					_Strm2Val(stream, m);
+					while (materialCount <= m) {
+						_matTriangles.push_back(vector<int>());
+						materialCount++;
+					}
+					uint i;
+					_Strm2Val(stream, i);
+					_matTriangles[m].push_back(i);
+					_Strm2Val(stream, i);
+					_matTriangles[m].push_back(i);
+					_Strm2Val(stream, i);
+					_matTriangles[m].push_back(i);
+				}
+			}
+			else if (cc == 'U') {
+				byte c;
+				_Strm2Val(stream, c);
+				for (uint vc = 0; vc < vertexCount; vc++) {
+					Vec2 i;
+					_Strm2Val(stream, i.x);
+					_Strm2Val(stream, i.y);
+					uv0.push_back(i);
+				}
+				if (c > 1) {
+					for (uint vc = 0; vc < vertexCount; vc++) {
+						Vec2 i;
+						_Strm2Val(stream, i.x);
+						_Strm2Val(stream, i.y);
+						uv1.push_back(i);
+					}
+				}
+			}
+			else {
+				Debug::Error("Mesh Importer", "Unknown char: " + to_string(cc));
+			}
+			cc = stream.get();
+		}
+
+		if (vertexCount > 0) {
+			if (normals.size() != vertexCount) {
+				Debug::Error("Mesh Importer", "mesh metadata corrupted (normals incomplete)!");
+				return;
+			}
+			else if (uv0.size() == 0)
+				uv0.resize(vertexCount);
+			else if (uv0.size() != vertexCount){
+				Debug::Error("Mesh Importer", "mesh metadata corrupted (uv0 incomplete)!");
+				return;
+			}
+			if (uv1.size() == 0)
+				uv1.resize(vertexCount);
+			else if (uv1.size() != vertexCount) {
+				Debug::Error("Mesh Importer", "mesh metadata corrupted (uv1 incomplete)!");
+				return;
+			}
+			loaded = true;
+		}
+		return;
+	}
+}
+
+Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0), triangleCount(0), materialCount(0) {
+	string p = Editor::instance->projectFolder + "Assets\\" + path + ".mesh.meta";
+	ifstream stream(p.c_str(), ios::in | ios::binary);
+	if (!stream.good()) {
+		cout << "mesh file not found!" << endl;
+		return;
+	}
+
+	char* c = new char[100];
+	stream.read(c, 6);
+	c[6] = (char)0;
+	if (string(c) != "KTO123") {
+		Debug::Error("Mesh importer", "file not supported");
+		return;
+	}
+	stream.getline(c, 100, 0);
+	name += string(c);
+	delete[](c);
+
+	char cc;
+	stream.read(&cc, 1);
+
+	while (cc != 0) {
+		if (cc == 'V') {
+			_Strm2Val(stream, vertexCount);
+			for (uint vc = 0; vc < vertexCount; vc++) {
+				Vec3 v;
+				_Strm2Val(stream, v.x);
+				_Strm2Val(stream, v.y);
+				_Strm2Val(stream, v.z);
+				vertices.push_back(v);
+				_Strm2Val(stream, v.x);
+				_Strm2Val(stream, v.y);
+				_Strm2Val(stream, v.z);
+				normals.push_back(v);
+			}
+		}
+		else if (cc == 'F') {
+			_Strm2Val(stream, triangleCount);
+			for (uint fc = 0; fc < triangleCount; fc++) {
+				byte m;
+				_Strm2Val(stream, m);
+				while (materialCount <= m) {
+					_matTriangles.push_back(vector<int>());
+					materialCount++;
+				}
+				uint i;
+				_Strm2Val(stream, i);
+				_matTriangles[m].push_back(i);
+				_Strm2Val(stream, i);
+				_matTriangles[m].push_back(i);
+				_Strm2Val(stream, i);
+				_matTriangles[m].push_back(i);
+			}
+		}
+		else if (cc == 'U') {
+			byte c;
+			_Strm2Val(stream, c);
+			for (uint vc = 0; vc < vertexCount; vc++) {
+				Vec2 i;
+				_Strm2Val(stream, i.x);
+				_Strm2Val(stream, i.y);
+				uv0.push_back(i);
+			}
+			if (c > 1) {
+				for (uint vc = 0; vc < vertexCount; vc++) {
+					Vec2 i;
+					_Strm2Val(stream, i.x);
+					_Strm2Val(stream, i.y);
+					uv1.push_back(i);
+				}
+			}
+		}
+		else {
+			Debug::Error("Mesh Importer", "Unknown char: " + to_string(cc));
+		}
+		stream.read(&cc, 1);
+	}
+
+	if (vertexCount > 0) {
+		if (normals.size() != vertexCount) {
+			Debug::Error("Mesh Importer", "mesh metadata corrupted (normals incomplete)!");
+			return;
+		}
+		else if (uv0.size() == 0)
+			uv0.resize(vertexCount);
+		else if (uv0.size() != vertexCount){
+			Debug::Error("Mesh Importer", "mesh metadata corrupted (uv0 incomplete)!");
+			return;
+		}
+		if (uv1.size() == 0)
+			uv1.resize(vertexCount);
+		else if (uv1.size() != vertexCount) {
+			Debug::Error("Mesh Importer", "mesh metadata corrupted (uv1 incomplete)!");
+			return;
+		}
+		loaded = true;
+	}
+	return;
+}
+
+bool Mesh::ParseBlend(Editor* e, string s) {
+	SECURITY_ATTRIBUTES sa;
+	sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+	sa.bInheritHandle = TRUE;
+	sa.lpSecurityDescriptor = NULL;
+	HANDLE stdOutR, stdOutW, stdInR, stdInW;
+	if (!CreatePipe(&stdInR, &stdInW, &sa, 0)) {
+		cout << "failed to create pipe for stdin!";
+		return false;
+	}
+	if (!SetHandleInformation(stdInW, HANDLE_FLAG_INHERIT, 0)){
+		cout << "failed to set handle for stdin!";
+		return false;
+	}
+	if (!CreatePipe(&stdOutR, &stdOutW, &sa, 0)) {
+		cout << "failed to create pipe for stdout!";
+		return false;
+	}
+	if (!SetHandleInformation(stdOutR, HANDLE_FLAG_INHERIT, 0)){
+		cout << "failed to set handle for stdout!";
+		return false;
+	}
+	STARTUPINFO startInfo;
+	PROCESS_INFORMATION processInfo;
+	ZeroMemory(&startInfo, sizeof(STARTUPINFO));
+	ZeroMemory(&processInfo, sizeof(PROCESS_INFORMATION));
+	startInfo.cb = sizeof(STARTUPINFO);
+	startInfo.hStdInput = stdInR;
+	startInfo.hStdOutput = stdOutW;
+	startInfo.dwFlags |= STARTF_USESTDHANDLES;
+
+	//create meta directory
+	string ss = s.substr(0, s.find_last_of('.'));
+	string sss = ss + "_blend";
+	if (!CreateDirectory(sss.c_str(), NULL)) {
+		for (string file : IO::GetFiles(sss))
+			DeleteFile(file.c_str());
+	}
+	SetFileAttributes(sss.c_str(), FILE_ATTRIBUTE_HIDDEN);
+	string ms(s + ".meta");
+	DeleteFile(ms.c_str());
+
+	bool failed = true;
+	string cmd1(e->_blenderInstallationPath.substr(0, 2) + "\n"); //root
+	string cmd2("cd " + e->_blenderInstallationPath.substr(0, e->_blenderInstallationPath.find_last_of("\\")) + "\n");
+	string cmd3("blender \"" + s + "\" --background --python \"" + e->dataPath + "\\Python\\blend_exporter.py\" -- \"" + s.substr(0, s.find_last_of('\\')) + "?" + ss.substr(ss.find_last_of('\\') + 1, string::npos) + "\"\n");
+	//outputs object list, and meshes in subdir
+	if (CreateProcess("C:\\Windows\\System32\\cmd.exe", 0, NULL, NULL, true, CREATE_NO_WINDOW, NULL, "D:\\TestProject\\", &startInfo, &processInfo) != 0) {
+		cout << "executing Blender..." << endl;
+		bool bSuccess = false;
+		DWORD dwWrite;
+		bSuccess = WriteFile(stdInW, cmd1.c_str(), cmd1.size(), &dwWrite, NULL) != 0;
+		if (!bSuccess || dwWrite == 0) {
+			cout << "can't get to root!" << endl;
+			return false;
+		}
+		bSuccess = WriteFile(stdInW, cmd2.c_str(), cmd2.size(), &dwWrite, NULL) != 0;
+		if (!bSuccess || dwWrite == 0) {
+			cout << "can't navigate to blender dir!" << endl;
+			return false;
+		}
+		bSuccess = WriteFile(stdInW, cmd3.c_str(), cmd3.size(), &dwWrite, NULL) != 0;
+		if (!bSuccess || dwWrite == 0) {
+			cout << "can't execute blender!" << endl;
+			return false;
+		}
+		DWORD w;
+		bool finish = false;
+		do {
+			w = WaitForSingleObject(processInfo.hProcess, DWORD(200));
+			DWORD dwRead;
+			CHAR chBuf[4096];
+			string out = "";
+			bSuccess = ReadFile(stdOutR, chBuf, 4096, &dwRead, NULL) != 0;
+			if (bSuccess && dwRead > 0) {
+				string s(chBuf, dwRead);
+				out += s;
+			}
+			for (uint r = 0; r < out.size();) {
+				int rr = out.find_first_of('\n', r);
+				if (rr == string::npos)
+					rr = out.size() - 1;
+				string sss = out.substr(r, rr - r);
+				cout << sss << endl;
+				r = rr + 1;
+				if (sss.size() > 1 && sss[0] == '!')
+					e->_Message("Blender", sss.substr(1, string::npos));
+				if (sss.size() > 12 && sss.substr(0, 12) == "Blender quit"){
+					TerminateProcess(processInfo.hProcess, 0);
+					failed = false;
+					finish = true;
+				}
+			}
+		} while (w == WAIT_TIMEOUT && !finish);
+		CloseHandle(processInfo.hProcess);
+		CloseHandle(processInfo.hThread);
+		if (failed)
+			return false;
+	}
+	else {
+		cout << "Cannot start Blender!" << endl;
+		CloseHandle(stdOutR);
+		CloseHandle(stdOutW);
+		CloseHandle(stdInR);
+		CloseHandle(stdInW);
+		return false;
+	}
+	CloseHandle(stdOutR);
+	CloseHandle(stdOutW);
+	SetFileAttributes(ms.c_str(), FILE_ATTRIBUTE_HIDDEN);
+	return true;
+}
+
+
+AnimClip::AnimClip(string path) : AssetObject(ASSETTYPE_ANIMCLIP) {
+	string p = Editor::instance->projectFolder + "Assets\\" + path + ".animclip.meta";
+	ifstream stream(p.c_str(), ios::in | ios::binary);
+	if (!stream.good()) {
+		cout << "animclip file not found!" << endl;
+		return;
+	}
+
+	char* c = new char[100];
+	stream.read(c, 4);
+	c[4] = (char)0;
+	if (string(c) != "ANIM") {
+		Debug::Error("AnimClip importer", "file not supported");
+		return;
+	}
+
+	_Strm2Val(stream, curveLength);
+	for (ushort aa = 0; aa < curveLength; aa++) {
+		if (stream.eof()) {
+			Debug::Error("AnimClip", "Unexpected eof");
+			return;
+		}
+		curves.push_back(FCurve());
+		_Strm2Val(stream, curves[aa].type);
+		stream.getline(c, 100, 0);
+		curves[aa].name += string(c);
+		_Strm2Val(stream, curves[aa].keyCount);
+		for (ushort bb = 0; bb < curves[aa].keyCount; bb++) {
+			float ax, ay, bx, by, cx, cy;
+			_Strm2Val(stream, ax);
+			_Strm2Val(stream, ay);
+			_Strm2Val(stream, bx);
+			_Strm2Val(stream, by);
+			_Strm2Val(stream, cx);
+			_Strm2Val(stream, cy);
+			curves[aa].keys.push_back(FCurve_Key(Vec2(ax, ay), Vec2(bx, by), Vec2(cx, cy)));
+		}
+		curves[aa].startTime += curves[aa].keys[0].point.x;
+		curves[aa].endTime += curves[aa].keys[curves[aa].keyCount-1].point.x;
+	}
+}
+
 void Light::DrawEditor(EB_Viewer* ebv) {
 	switch (_lightType) { 
 	case LIGHTTYPE_POINT:

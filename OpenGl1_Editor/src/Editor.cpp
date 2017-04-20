@@ -88,6 +88,8 @@ int GetFormatEnum(string ext) {
 		return ASSETTYPE_BLEND;
 	else if (ext == ".material")
 		return ASSETTYPE_MATERIAL;
+	else if (ext == ".animclip")
+		return ASSETTYPE_ANIMCLIP;
 	else if (ext == ".hdr")
 		return ASSETTYPE_HDRI;
 	else if (ext == ".bmp" || ext == ".jpg" || ext == ".png")
@@ -952,6 +954,7 @@ void EBI_DrawAss_Mat(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 		Engine::DrawTexture(v.r + 2, off, 16, 16, editor->matVarTexs[mat->valOrders[q]]);
 		Engine::Label(v.r + 19, off + 2, 12, mat->valNames[mat->valOrders[q]][mat->valOrderIds[q]], editor->font, white());
 		void* bbs = mat->vals[mat->valOrders[q]][mat->valOrderGLIds[q]];
+		assert(bbs != nullptr);
 		switch (mat->valOrders[q]) {
 		case SHADER_INT:
 			Engine::Button(v.r + v.b * 0.3f + 17, off, v.b*0.7f - 17, 16, grey1(), to_string(*(int*)bbs), 12, editor->font, white());
@@ -1300,6 +1303,14 @@ void Editor::LoadDefaultAssets() {
 	orientTexs.push_back(GetRes("orien_local"));
 	orientTexs.push_back(GetRes("orien_view"));
 
+	ebIconTexs.emplace(0, checkers);
+	ebIconTexs.emplace(1, GetRes("eb icon browser", "png"));
+	ebIconTexs.emplace(2, GetRes("eb icon viewer", "png"));
+	ebIconTexs.emplace(3, GetRes("eb icon inspector", "png"));
+	ebIconTexs.emplace(4, GetRes("eb icon hierarchy", "png"));
+	ebIconTexs.emplace(5, GetRes("eb icon anim", "png"));
+	ebIconTexs.emplace(10, GetRes("eb icon hierarchy", "png"));
+
 	checkbox = GetRes("checkbox");
 	keylock = GetRes("keylock");
 
@@ -1313,6 +1324,7 @@ void Editor::LoadDefaultAssets() {
 	assetIconsExt.push_back("shade");
 	assetIconsExt.push_back("txt");
 	assetIconsExt.push_back("mesh");
+	assetIconsExt.push_back("animclip");
 	assetIconsExt.push_back("bmp jpg png");
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_header.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_blend.bmp", false));
@@ -1321,6 +1333,7 @@ void Editor::LoadDefaultAssets() {
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_shade.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_txt.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_mesh.bmp", false));
+	assetIcons.push_back(new Texture(dataPath + "res\\asset_animclip.jpg", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_tex.bmp", false));
 
 	matVarTexs.emplace(SHADER_INT, GetRes("mat_i"));
@@ -1369,10 +1382,14 @@ void Editor::LoadDefaultAssets() {
 	assetTypes.emplace("shade", ASSETTYPE_SHADER);
 	assetTypes.emplace("material", ASSETTYPE_MATERIAL);
 	assetTypes.emplace("bmp", ASSETTYPE_TEXTURE);
+	assetTypes.emplace("png", ASSETTYPE_TEXTURE);
+	assetTypes.emplace("jpg", ASSETTYPE_TEXTURE);
 	assetTypes.emplace("hdr", ASSETTYPE_HDRI);
+	assetTypes.emplace("animclip", ASSETTYPE_ANIMCLIP);
 	
 	allAssets.emplace(ASSETTYPE_SCENE, vector<string>());
 	allAssets.emplace(ASSETTYPE_MESH, vector<string>());
+	allAssets.emplace(ASSETTYPE_ANIMCLIP, vector<string>());
 	allAssets.emplace(ASSETTYPE_MATERIAL, vector<string>());
 	allAssets.emplace(ASSETTYPE_TEXTURE, vector<string>());
 	allAssets.emplace(ASSETTYPE_HDRI, vector<string>());
@@ -1838,14 +1855,14 @@ void Editor::RegisterMenu(EditorBlock* block, string title, vector<string> names
 	menuPadding = padding;
 }
 
-Texture* Editor::GetRes(string name) {
-	return GetRes(name, false, false);
+Texture* Editor::GetRes(string name, string ext) {
+	return GetRes(name, false, false, ext);
 }
-Texture* Editor::GetRes(string name, bool mipmap) {
-	return GetRes(name, mipmap, false);
+Texture* Editor::GetRes(string name, bool mipmap, string ext) {
+	return GetRes(name, mipmap, false, ext);
 }
-Texture* Editor::GetRes(string name, bool mipmap, bool nearest) {
-	return new Texture(dataPath + "res\\" + name + ".bmp", mipmap, nearest? TEX_FILTER_POINT : TEX_FILTER_TRILINEAR, 0);
+Texture* Editor::GetRes(string name, bool mipmap, bool nearest, string ext) {
+	return new Texture(dataPath + "res\\" + name + "." + ext, mipmap, nearest? TEX_FILTER_POINT : TEX_FILTER_TRILINEAR, 0);
 }
 
 void Editor::_Message(string a, string b) {
@@ -1999,12 +2016,14 @@ void Editor::ResetAssetMap() {
 	normalAssets[ASSETTYPE_MATERIAL] = vector<string>();
 	normalAssets[ASSETTYPE_MESH] = vector<string>();
 	normalAssets[ASSETTYPE_BLEND] = vector<string>();
+	normalAssets[ASSETTYPE_ANIMCLIP] = vector<string>();
 
 	normalAssetCaches[ASSETTYPE_TEXTURE] = vector<void*>(); //Texture*
 	normalAssetCaches[ASSETTYPE_HDRI] = vector<void*>(); //Background*
 	normalAssetCaches[ASSETTYPE_RENDERTEXTURE] = vector<void*>(); //RenderTexture*
 	normalAssetCaches[ASSETTYPE_MATERIAL] = vector<void*>(); //Material*
 	normalAssetCaches[ASSETTYPE_MESH] = vector<void*>(); //Mesh*
+	normalAssetCaches[ASSETTYPE_ANIMCLIP] = vector<void*>(); //AnimClip*
 }
 
 void Editor::ReloadAssets(string path, bool recursive) {
@@ -2127,6 +2146,9 @@ void* Editor::GenCache(ASSETTYPE type, int i) {
 	switch (type) {
 	case ASSETTYPE_MESH:
 		normalAssetCaches[type][i] = new Mesh(normalAssets[type][i]);
+		break;
+	case ASSETTYPE_ANIMCLIP:
+		normalAssetCaches[type][i] = new AnimClip(normalAssets[type][i]);
 		break;
 	case ASSETTYPE_SHADER:
 		normalAssetCaches[type][i] = new ShaderBase(normalAssets[type][i]);
@@ -2318,7 +2340,8 @@ bool DoMsBuild(Editor* e) {
 		*/
 		bool failed = true;
 		byte FINISH = 0;
-		_putenv("MSBUILDDISABLENODEREUSE=1");
+		if (_putenv("MSBUILDDISABLENODEREUSE=1") == -1)
+			cout << "Putenv failed for msbuilder!" << endl;
 		if (CreateProcess(ss.c_str(), "D:\\TestProject2\\TestProject2.vcxproj /nr:false /t:Build /p:Configuration=Release /v:n /nologo /fl /flp:LogFile=D:\\TestProject2\\BuildLog.txt", NULL, NULL, true, 0, NULL, "D:\\TestProject2\\", &startInfo, &processInfo) != 0) {
 			e->AddBuildLog(e, "Compiling from " + ss);
 			cout << "compiling" << endl;
@@ -2352,6 +2375,9 @@ bool DoMsBuild(Editor* e) {
 				if (FINISH == 1 && e->buildLog[e->buildLog.size() - 1].substr(0, 13) == "Time Elapsed ")
 					FINISH = 2;
 			} while (w == WAIT_TIMEOUT && FINISH != 2);
+
+			CloseHandle(processInfo.hProcess);
+			CloseHandle(processInfo.hThread);
 
 			//DWORD ii;
 			//GetExitCodeProcess(processInfo.hProcess, &ii);
@@ -2485,105 +2511,21 @@ void Editor::DoCompile() {
 	//else SetBuildFail(this);
 }
 
-/*
-EBI_Asset::EBI_Asset(string str, string nm) {
-string noEd = nm.substr(0, nm.find_last_of('.'));
-string ed = nm.substr(nm.find_last_of('.'), nm.size()-1);
-if (ed == ".h") {
-/*
-#include "Engine.h"
-class TestScript : public SceneScript {
-public:
-TestScript() {}
-int foo = 0;
-int boo= 1;
-int koo =2;
-int roo= 3;
-Vec2 v2 = Vec2(1, 2);
-void Start();
-};
-/
-ifstream f;
-f.open(str);
-string s;
-string cs = "class" + noEd + ":publicSceneScript{";
-bool corrClass = false;
-int brackets = 0;
-while (!f.eof()){
-getline(f, s);
-if (!corrClass) {
-s.erase(remove(s.begin(), s.end(), ' '), s.end());
-s.erase(remove(s.begin(), s.end(), '\t'), s.end());
-if (s.size() >= cs.size()) {
-if (s.substr(0, cs.size()) == cs) {
-corrClass = true;
-correct = true;
-brackets = 1;
-continue;
-}
-}
-}
-else {
-while (s.find_first_of(' ') == 0 || s.find_first_of('\t') == 0)
-s = s.substr(1, s.size());
-int fs = s.find_first_of(' ');
-string ss = s.substr(0, fs);
-size_t eq = s.find_first_of('=');
-string nm = s.substr(fs + 1, min(eq, s.size()) - 1 - fs);
-nm.erase(remove(nm.begin(), nm.end(), ' '), nm.end());
-nm.erase(remove(nm.begin(), nm.end(), '\t'), nm.end());
-if (ss == "int") {
-if (eq != string::npos) {
-vals.push_back(new EBI_Value<int>(nm, 1, 1, stoi(s.substr(eq + 1, s.size() - 1)), 0, 0, 0));
-}
-else {
-vals.push_back(new EBI_Value<int>(nm, 1, 1, 0, 0, 0, 0));
-}
-}
-if (ss == "Vec2") {
-if (eq != string::npos) {
-string v = s.substr(eq + 1, s.size() - 1);
-v.erase(remove(v.begin(), v.end(), ' '), v.end());
-int bb = v.find_first_of('(');
-int bc = v.find_first_of(',');
-int be = v.find_first_of(')');
-vals.push_back(new EBI_Value<float>(nm, 2, 1, stof(v.substr(bb + 1, bc - bb - 1)), stof(v.substr(bc + 1, be - bc - 1)), 0, 0));
-}
-else {
-vals.push_back(new EBI_Value<float>(nm, 2, 1, 0, 0, 0, 0));
-}
-}
-s.erase(remove(s.begin(), s.end(), ' '), s.end());
-s.erase(remove(s.begin(), s.end(), '\t'), s.end());
-brackets += count(s.begin(), s.end(), '{');
-brackets -= count(s.begin(), s.end(), '}');
-if (brackets == 0) {
-corrClass = false;
-}
-}
-}
-f.close();
-}
+void BlockCombo::Set() {
+	for (EditorBlock* b : blocks) {
+		b->hidden = true;
+	}
+	blocks[active]->hidden = false;
 }
 
-void EBI_Asset::Draw(Editor* e, EditorBlock* b, Vec4* v) {
-int allH = 0;
-for each (I_EBI_Value* val in vals)
-{
-e->font->alignment = ALIGN_MIDLEFT;
-Engine::Label(v->r + 3, v->g + EB_HEADER_SIZE + 1 + 26 * (allH + 0.5f), 22, val->name, e->font, white());
-e->font->alignment = ALIGN_TOPLEFT;
-switch (val->type) {
-case 1:
-Engine::EButton((e->editorLayer == 0), v->r + v->b*0.3f + 1, v->g + EB_HEADER_SIZE + 1 + 26 * allH, v->b*0.7f - 2, 25, white(1, 0.7f), to_string(((EBI_Value<int>*)val)->a), 22, e->font, black());
-break;
-case 2:
-Engine::EButton((e->editorLayer == 0), v->r + v->b*0.3f + 1, v->g + EB_HEADER_SIZE + 1 + 26 * allH, v->b*0.35f - 1, 25, white(1, 0.7f), to_string(((EBI_Value<float>*)val)->a), 22, e->font, black());
-Engine::EButton((e->editorLayer == 0), v->r + v->b*0.65f + 1, v->g + EB_HEADER_SIZE + 1 + 26 * allH, v->b*0.35f - 2, 25, white(1, 0.7f), to_string(((EBI_Value<float>*)val)->b), 22, e->font, black());
-break;
+void BlockCombo::Draw() {
+	Editor* editor = blocks[0]->editor;
+	Vec4 v = Vec4(Display::width*editor->xPoss[blocks[0]->x1], Display::height*editor->yPoss[blocks[0]->y1], Display::width*editor->xPoss[blocks[0]->x2], Display::height*editor->yPoss[blocks[0]->y2]);
+	CalcV(v);
+	for (uint x = blocks.size(); x > 0; x--) {
+		if (Engine::EButton(editor->editorLayer == 0, v.r + v.b - EB_HEADER_PADDING - 2 - EB_HEADER_SIZE*(x - 1), v.g + 1, EB_HEADER_SIZE - 2, EB_HEADER_SIZE - 2, editor->ebIconTexs[blocks[x - 1]->editorType], white((x - 1 == active) ? 1 : 0.7f)) == MOUSE_RELEASE) {
+			active = x - 1;
+			Set();
+		}
+	}
 }
-
-allH += val->sizeH;
-}
-}
-*/

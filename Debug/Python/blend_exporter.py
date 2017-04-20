@@ -104,6 +104,7 @@ class KTMExporter():
                 continue
             print ("!writing to: " + path + action.name + ".animclip")
             file = open(path + action.name + ".animclip", "wb")
+            self.write(file, "ANIM")
             curr_dim = 0
             for curve in action.fcurves:
                 data_range = curve.range()

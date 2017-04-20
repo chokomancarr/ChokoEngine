@@ -159,6 +159,8 @@ int main(int argc, char **argv)
 		editor->ReadPrefs();
 		editor->ReloadAssets(editor->projectFolder + "Assets\\", true);
 		editor->blocks = vector<EditorBlock*>({ new EB_Inspector(editor, 2, 0, 1, 3), new EB_Inspector(editor, 2, 3, 1, 1), new EB_Browser(editor, 0, 2, 4, 1, editor->projectFolder + "Assets\\"), new EB_Debug(editor, 4, 2, 2, 1), new EB_Viewer(editor, 0, 0, 3, 2), new EB_Hierarchy(editor, 3, 0, 2, 2) }); //path.substr(0, path.find_last_of('\\') + 1)
+		editor->blockCombos.push_back(new BlockCombo());
+		editor->blockCombos[0]->blocks.push_back(editor->blocks[2]);
 		//editor->activeScene.sky = new Background(editor->dataPath + "res\\bg_refl.hdr");
 		editor->SetBackground(editor->dataPath + "res\\chino.jpg", 0.3f);
 		font = editor->font;
@@ -354,6 +356,26 @@ void renderScene()
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
 		DrawOverlay();
+
+		FCurve curve = FCurve();
+		curve.keys.push_back(FCurve_Key(Vec2(0, 0), Vec2(-30, 20), Vec2(30, -20)));
+		curve.keys.push_back(FCurve_Key(Vec2(50, 50), Vec2(35, 50), Vec2(65, 50)));
+		curve.keys.push_back(FCurve_Key(Vec2(100, 20), Vec2(90, 50), Vec2(110, -10)));
+		curve.keys.push_back(FCurve_Key(Vec2(150, 120), Vec2(120, 120), Vec2(180, 120)));
+		curve.keyCount = 4;
+		curve.startTime = 0;
+		curve.endTime = 150;
+		Engine::DrawLine(Vec2(150, 150), Vec2(450, 150), white(), 2);
+		for (int a = 0; a < 150; a++) {
+			Engine::DrawLine(Vec2(a * 2 + 150, curve.Eval((float)a) * 2 + 150), Vec2((a + 1) * 2 + 150, curve.Eval(a + 1.0f) * 2 + 150), red(), 2);
+		}
+		for (FCurve_Key k : curve.keys) {
+			Engine::DrawLine(k.point* 2.0f + Vec2(150, 150), k.left* 2.0f + Vec2(150, 150), green(), 1);
+			Engine::DrawLine(k.point* 2.0f + Vec2(150, 150), k.right* 2.0f + Vec2(150, 150), green(), 1);
+			Engine::DrawCircle(k.left* 2.0f + Vec2(150, 150), 5, 24, green(), 1.5f);
+			Engine::DrawCircle(k.right* 2.0f + Vec2(150, 150), 5, 24, green(), 1.5f);
+		}
+
 		glutSwapBuffers();
 		redrawn = true;
 	}

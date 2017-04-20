@@ -44,6 +44,7 @@ public:
 	byte editorType;
 	Editor* editor;
 	ShortcutMap shortcuts;
+	bool hidden = false;
 
 	//bool clipM0, clipM1, clipM2;
 
@@ -205,37 +206,6 @@ public:
 	string name;
 };
 
-/*
-class I_EBI_ValueCollection {
-public:
-	vector<I_EBI_Value> vals;
-};
-
-template <class T>
-class EBI_Value : public I_EBI_Value {
-public:
-	EBI_Value(string name, byte type, byte sizeH, T a, T b, T c, T d) : I_EBI_Value(name, type, sizeH), a(a), b(b), c(c), d(d) {}
-	T a, b, c, d;
-};
-
-class EBI_Asset {
-public:
-	//EBI_Asset(string str, string nm);
-
-	bool correct;
-	vector<I_EBI_Value> vals;
-
-	virtual void Draw(Editor* e, EditorBlock* b, Vec4* v) = 0;
-};
-
-class EBIA_Shader : public EBI_Asset {
-public:
-	EBIA_Shader(string path);
-
-	void Draw(Editor* e, EditorBlock* b, Vec4* v);
-};
-*/
-
 class EB_Inspector : public EditorBlock {
 public:
 	EB_Inspector(Editor* e, int x1, int y1, int x2, int y2);
@@ -261,6 +231,16 @@ public:
 	static void _ApplyTexFilter0(EditorBlock* e), _ApplyTexFilter1(EditorBlock* e), _ApplyTexFilter2(EditorBlock* e);
 	static void _ApplyMatShader(void* v), _ApplySky(void* v);
 	//static void DrawTexture(Editor* e, Vec4 v, string label, Texture* tex, Vec4& uv);
+};
+
+class EB_AnimEditor : public EditorBlock {
+public:
+	EB_AnimEditor(Editor* e, int x1, int y1, int x2, int y2);
+
+	
+
+	void Refresh() {}
+	void Draw();
 };
 
 class EB_ColorPicker : public EditorBlock {
@@ -291,6 +271,7 @@ public:
 	string path;
 };
 
+class BlockCombo;
 class xPossLerper;
 class yPossLerper;
 class xPossMerger;
@@ -321,6 +302,7 @@ public:
 	vector<yPossLerper> yLerper;
 	vector<Int2> xLimits, yLimits; //not include 0 1
 	vector<EditorBlock*> blocks;
+	vector<BlockCombo*> blockCombos;
 	Vec2 popupPos;
 
 	EditorBlock* dialogBlock;
@@ -417,6 +399,7 @@ public:
 	vector<Texture*> shadingTexs;
 	vector<Texture*> orientTexs;
 	unordered_map<SHADER_VARTYPE, Texture*> matVarTexs;
+	unordered_map<byte, Texture*> ebIconTexs;
 
 	vector<string> assetIconsExt;
 	vector<Texture*> assetIcons;
@@ -446,9 +429,9 @@ public:
 	void RegisterMenu(EditorBlock* block, string title, vector<string> names, vector<shortcutFunc> funcs, int padding, Vec2 pos = Input::mousePos);
 	void RegisterMenu(EditorBlock* block, string title, vector<string> names, dataFunc func, vector<void*> vals, int padding, Vec2 pos = Input::mousePos);
 
-	static Texture* GetRes(string name);
-	static Texture* GetRes(string name, bool mipmap);
-	static Texture* GetRes(string name, bool mipmap, bool nearest);
+	static Texture* GetRes(string name, string ext = "bmp");
+	static Texture* GetRes(string name, bool mipmap, string ext = "bmp");
+	static Texture* GetRes(string name, bool mipmap, bool nearest, string ext = "bmp");
 
 	vector<pair<string, string>> messages;
 	vector<byte> messageTypes;
@@ -477,6 +460,14 @@ public:
 private:
 	Editor(Editor const &);
 	Editor& operator= (Editor const &);
+};
+
+class BlockCombo {
+public:
+	BlockCombo() : active(0) {}
+	vector<EditorBlock*> blocks;
+	uint active;
+	void Set(), Draw();
 };
 
 class xPossLerper {

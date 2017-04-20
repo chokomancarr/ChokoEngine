@@ -102,7 +102,15 @@ protected:
 };
 
 class AnimClip : public AssetObject {
+	vector<FCurve> curves;
+	uint curveLength;
 
+	friend class Editor;
+	friend class AssetManager;
+protected:
+	AnimClip(Editor* e, int i);
+	AnimClip(ifstream& strm, uint offset);
+	AnimClip(string path);
 };
 
 class RenderTexture : public AssetObject {
@@ -295,6 +303,7 @@ protected:
 	int _texture;
 };
 
+#define COMP_SRD 0x12
 class SkinnedMeshRenderer : public Component {
 public:
 	SkinnedMeshRenderer();
@@ -356,6 +365,36 @@ protected:
 
 	void InitShadow(), CalcShadowMatrix();
 	static GLuint _shadowFbo, _shadowMap;
+};
+
+#define COMP_ARM 0x30
+class ArmatureBone {
+public:
+	SceneObject* obj;
+	//transform is local
+	Vec3 position, restPosition;
+	Quat rotation, restRotation;
+	Vec3 scale, restScale;
+};
+class Armature : public Component {
+public:
+	Armature() : _anim(-1), Component("Armature", COMP_ARM, DRAWORDER_OVERLAY) {}
+
+	Animator* anim;
+
+	Vec3 position, restPosition;
+	Quat rotation, restRotation;
+	Vec3 scale, restScale;
+
+	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
+	void Serialize(Editor* e, ofstream* stream) override;
+
+	friend int main(int argc, char **argv);
+	friend void Serialize(Editor* e, SceneObject* o, ofstream* stream);
+	friend void Deserialize(ifstream& stream, SceneObject* obj);
+protected:
+	Armature(ifstream& stream, SceneObject* o, long pos = -1);
+	ASSETID _anim;
 };
 
 #define COMP_SCR 0xff
