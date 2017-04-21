@@ -90,6 +90,8 @@ int GetFormatEnum(string ext) {
 		return ASSETTYPE_MATERIAL;
 	else if (ext == ".animclip")
 		return ASSETTYPE_ANIMCLIP;
+	else if (ext == ".animator")
+		return ASSETTYPE_ANIMATOR;
 	else if (ext == ".hdr")
 		return ASSETTYPE_HDRI;
 	else if (ext == ".bmp" || ext == ".jpg" || ext == ".png")
@@ -1115,6 +1117,57 @@ void EB_Inspector::_ApplySky(void* v) {
 	sc->settings.sky = _GetCache<Background>(ASSETTYPE_HDRI, sc->settings.skyId);
 }
 
+EB_AnimEditor::EB_AnimEditor(Editor* e, int x1, int y1, int x2, int y2) {
+	editorType = 5;
+	editor = e;
+	this->x1 = x1;
+	this->y1 = y1;
+	this->x2 = x2;
+	this->y2 = y2;
+	_editingAnim = -1;
+}
+
+void EB_AnimEditor::Draw() {
+	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
+	CalcV(v);
+	DrawHeaders(editor, this, &v, "Animation Editor");
+	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
+
+	Engine::DrawQuad(v.r, v.g + EB_HEADER_SIZE, v.b, v.a, white(0.1f, 0.4f));
+	float scl = 1/scale;
+	scl *= scl;
+	float scl2 = scl;
+	while (scl2 < 0.2f)
+		scl2 *= 5;
+	while (scl2 > 25)
+		scl2 *= 0.2f;
+	for (float x = v.r; x < (v.r + v.b); x+=scl2*32) {
+		Engine::DrawLine(Vec2(x, v.g - EB_HEADER_SIZE - 1), Vec2(x, v.g + v.a), black(0.3f), 1);
+	}
+	for (float y = v.g; y < (v.g + v.a); y += scl2 * 32) {
+		Engine::DrawLine(Vec2(v.r, y), Vec2(v.r + v.b, y), black(0.3f), 1);
+	}
+	for (float x = v.r; x < (v.r + v.b); x += scl2 * 160) {
+		Engine::DrawLine(Vec2(x, v.g - EB_HEADER_SIZE - 1), Vec2(x, v.g + v.a), black(0.6f), 1);
+	}
+	for (float y = v.g; y < (v.g + v.a); y += scl2 * 160) {
+		Engine::DrawLine(Vec2(v.r, y), Vec2(v.r + v.b, y), black(0.6f), 1);
+	}
+	Engine::Label(v.r + 5, v.g + v.a - 16, 12, to_string(scale), editor->font);
+
+	editor->DrawAssetSelector(v.r, v.g + EB_HEADER_SIZE + 1, v.b * 0.5f, 14, grey2(), ASSETTYPE_ANIMATOR, 12, editor->font, &_editingAnim, &_SetAnim, this);
+	Engine::EndStencil();
+}
+
+void EB_AnimEditor::OnMouseScr(bool up) {
+	scale += (up ? 0.1f : -0.1f);
+	scale = min(max(scale, 1), 5);
+}
+
+void EB_AnimEditor::_SetAnim(void* v) {
+	EB_AnimEditor* b = (EB_AnimEditor*)v;
+	b->editingAnim = _GetCache<Animator>(ASSETTYPE_ANIMATOR, b->_editingAnim);
+}
 
 void EB_ColorPicker::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
@@ -1304,12 +1357,12 @@ void Editor::LoadDefaultAssets() {
 	orientTexs.push_back(GetRes("orien_view"));
 
 	ebIconTexs.emplace(0, checkers);
-	ebIconTexs.emplace(1, GetRes("eb icon browser", "png"));
-	ebIconTexs.emplace(2, GetRes("eb icon viewer", "png"));
-	ebIconTexs.emplace(3, GetRes("eb icon inspector", "png"));
-	ebIconTexs.emplace(4, GetRes("eb icon hierarchy", "png"));
-	ebIconTexs.emplace(5, GetRes("eb icon anim", "png"));
-	ebIconTexs.emplace(10, GetRes("eb icon hierarchy", "png"));
+	ebIconTexs.emplace(1, GetResExt("eb icon browser", "png"));
+	ebIconTexs.emplace(2, GetResExt("eb icon viewer", "png"));
+	ebIconTexs.emplace(3, GetResExt("eb icon inspector", "png"));
+	ebIconTexs.emplace(4, GetResExt("eb icon hierarchy", "png"));
+	ebIconTexs.emplace(5, GetResExt("eb icon anim", "png"));
+	ebIconTexs.emplace(10, GetResExt("eb icon hierarchy", "png"));
 
 	checkbox = GetRes("checkbox");
 	keylock = GetRes("keylock");
@@ -1325,6 +1378,7 @@ void Editor::LoadDefaultAssets() {
 	assetIconsExt.push_back("txt");
 	assetIconsExt.push_back("mesh");
 	assetIconsExt.push_back("animclip");
+	assetIconsExt.push_back("animator");
 	assetIconsExt.push_back("bmp jpg png");
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_header.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_blend.bmp", false));
@@ -1334,6 +1388,7 @@ void Editor::LoadDefaultAssets() {
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_txt.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_mesh.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_animclip.jpg", false));
+	assetIcons.push_back(new Texture(dataPath + "res\\asset_animator.jpg", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_tex.bmp", false));
 
 	matVarTexs.emplace(SHADER_INT, GetRes("mat_i"));
@@ -1386,10 +1441,12 @@ void Editor::LoadDefaultAssets() {
 	assetTypes.emplace("jpg", ASSETTYPE_TEXTURE);
 	assetTypes.emplace("hdr", ASSETTYPE_HDRI);
 	assetTypes.emplace("animclip", ASSETTYPE_ANIMCLIP);
+	assetTypes.emplace("animator", ASSETTYPE_ANIMATOR);
 	
 	allAssets.emplace(ASSETTYPE_SCENE, vector<string>());
 	allAssets.emplace(ASSETTYPE_MESH, vector<string>());
 	allAssets.emplace(ASSETTYPE_ANIMCLIP, vector<string>());
+	allAssets.emplace(ASSETTYPE_ANIMATOR, vector<string>());
 	allAssets.emplace(ASSETTYPE_MATERIAL, vector<string>());
 	allAssets.emplace(ASSETTYPE_TEXTURE, vector<string>());
 	allAssets.emplace(ASSETTYPE_HDRI, vector<string>());
@@ -1640,6 +1697,10 @@ void Editor::DrawHandles() {
 		r++;
 	}
 
+	for (BlockCombo* c : blockCombos) {
+		c->Draw();
+	}
+
 	// adjust lines
 	if (activeX == -1 && activeY == -1) {
 		byte b;
@@ -1855,7 +1916,10 @@ void Editor::RegisterMenu(EditorBlock* block, string title, vector<string> names
 	menuPadding = padding;
 }
 
-Texture* Editor::GetRes(string name, string ext) {
+Texture* Editor::GetRes(string name) {
+	return GetRes(name, false, false);
+}
+Texture* Editor::GetResExt(string name, string ext) {
 	return GetRes(name, false, false, ext);
 }
 Texture* Editor::GetRes(string name, bool mipmap, string ext) {
@@ -2017,6 +2081,7 @@ void Editor::ResetAssetMap() {
 	normalAssets[ASSETTYPE_MESH] = vector<string>();
 	normalAssets[ASSETTYPE_BLEND] = vector<string>();
 	normalAssets[ASSETTYPE_ANIMCLIP] = vector<string>();
+	normalAssets[ASSETTYPE_ANIMATOR] = vector<string>();
 
 	normalAssetCaches[ASSETTYPE_TEXTURE] = vector<void*>(); //Texture*
 	normalAssetCaches[ASSETTYPE_HDRI] = vector<void*>(); //Background*
@@ -2024,6 +2089,7 @@ void Editor::ResetAssetMap() {
 	normalAssetCaches[ASSETTYPE_MATERIAL] = vector<void*>(); //Material*
 	normalAssetCaches[ASSETTYPE_MESH] = vector<void*>(); //Mesh*
 	normalAssetCaches[ASSETTYPE_ANIMCLIP] = vector<void*>(); //AnimClip*
+	normalAssetCaches[ASSETTYPE_ANIMATOR] = vector<void*>(); //Animator*
 }
 
 void Editor::ReloadAssets(string path, bool recursive) {
@@ -2149,6 +2215,9 @@ void* Editor::GenCache(ASSETTYPE type, int i) {
 		break;
 	case ASSETTYPE_ANIMCLIP:
 		normalAssetCaches[type][i] = new AnimClip(normalAssets[type][i]);
+		break;
+	case ASSETTYPE_ANIMATOR:
+		normalAssetCaches[type][i] = new Animator(normalAssets[type][i]);
 		break;
 	case ASSETTYPE_SHADER:
 		normalAssetCaches[type][i] = new ShaderBase(normalAssets[type][i]);
@@ -2522,10 +2591,15 @@ void BlockCombo::Draw() {
 	Editor* editor = blocks[0]->editor;
 	Vec4 v = Vec4(Display::width*editor->xPoss[blocks[0]->x1], Display::height*editor->yPoss[blocks[0]->y1], Display::width*editor->xPoss[blocks[0]->x2], Display::height*editor->yPoss[blocks[0]->y2]);
 	CalcV(v);
-	for (uint x = blocks.size(); x > 0; x--) {
-		if (Engine::EButton(editor->editorLayer == 0, v.r + v.b - EB_HEADER_PADDING - 2 - EB_HEADER_SIZE*(x - 1), v.g + 1, EB_HEADER_SIZE - 2, EB_HEADER_SIZE - 2, editor->ebIconTexs[blocks[x - 1]->editorType], white((x - 1 == active) ? 1 : 0.7f)) == MOUSE_RELEASE) {
-			active = x - 1;
-			Set();
+	if (Rect(v.r, v.g, v.b, v.a).Inside(Input::mousePos)) {
+		for (uint x = 0, y = blocks.size(); x < y; x++) {
+			if (Engine::EButton(editor->editorLayer == 0, v.r + v.b - EB_HEADER_PADDING - 2 - EB_HEADER_SIZE*(y - x)*1.2f, v.g + 1, EB_HEADER_SIZE - 2, EB_HEADER_SIZE - 2, editor->ebIconTexs[blocks[x]->editorType], white((x == active) ? 1 : 0.7f)) == MOUSE_RELEASE) {
+				active = x;
+				Set();
+			}
+		}
+		if (Engine::EButton(editor->editorLayer == 0, v.r + v.b - EB_HEADER_PADDING - 2 - EB_HEADER_SIZE*(blocks.size() + 1)*1.2f, v.g + 1, EB_HEADER_SIZE - 2, EB_HEADER_SIZE - 2, editor->buttonPlus, white()) == MOUSE_RELEASE) {
+
 		}
 	}
 }

@@ -184,6 +184,7 @@ class AssetManager;
 #define ASSETTYPE_BLEND 0x20
 #define ASSETTYPE_MESH 0x21
 #define ASSETTYPE_ANIMCLIP 0x30
+#define ASSETTYPE_ANIMATOR 0x31
 #define ASSETTYPE_SCRIPT_H 0xfe
 #define ASSETTYPE_SCRIPT_CPP 0xff
 class AssetObject;
@@ -463,92 +464,6 @@ public:
 	static long long millis;
 	static double time;
 	static float delta;
-};
-
-class FCurve_Key {
-public:
-	FCurve_Key(Vec2 a, Vec2 b, Vec2 c) : point(a), left(b), right(c) {}
-	Vec2 point, left, right;
-};
-
-enum FCurveType : byte {
-	FC_Undef = 0x00,
-	FC_BoneLoc_X = 0x10,
-	FC_BoneLoc_Y, FC_BoneLoc_Z,
-	FC_BoneQuat_W, FC_BoneQuat_X, FC_BoneQuat_Y, FC_BoneQuat_Z,
-	FC_BoneScl_X, FC_BoneScl_Y, FC_BoneScl_Z,
-	FC_ShapeKey = 0x20,
-	FC_Location_X = 0xf0,
-	FC_Location_Y, FC_Location_Z,
-	FC_Rotation_X, FC_Rotation_Y, FC_Rotation_Z,
-	FC_Scale_X = 0xf7,
-	FC_Scale_Y, FC_Scale_Z,
-};
-class FCurve {
-public:
-	FCurve() : type(FC_Undef), name(""), keys(), keyCount(0), startTime(0), endTime(0) {}
-	FCurveType type;
-	string name;
-	vector<FCurve_Key> keys;
-	byte keyCount;
-	float startTime, endTime;
-	float Eval(float t, float repeat = false);
-};
-
-class AnimClip;
-
-class AnimFrameItem {
-public:
-	AnimFrameItem();
-	friend class Animator;
-	friend class Anim_State;
-protected:
-	byte type;
-	string name;
-	Vec3 transform, scale;
-	Quat rotation;
-};
-
-class Anim_State {
-public:
-	Anim_State();
-	friend class Animator;
-protected:
-	bool blend;
-	float speed, length, time;
-	float Eval(); //increments time automatically
-
-	AnimClip* clip;
-	ASSETID _clip;
-
-	vector<AnimClip*> blendClips;
-	vector<ASSETID> _blendClips;
-	vector<float> blendOffsets;
-};
-
-class Anim_Transition {
-public:
-	Anim_Transition();
-	friend class Animator;
-protected:
-	bool canInterrupt;
-	float length, time;
-
-};
-
-class Animator {
-
-	friend class EB_AnimEditor;
-protected:
-	Animator(string s);
-	Animator(ifstream& stream, uint offset);
-	uint activeState, nextState;
-	float stateTransition;
-
-	vector <Anim_State> states;
-	vector <Anim_Transition> transitions;
-
-	void Save(string s);
 };
 
 enum DrawTex_Scaling {

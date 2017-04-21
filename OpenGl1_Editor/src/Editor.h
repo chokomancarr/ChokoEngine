@@ -237,10 +237,18 @@ class EB_AnimEditor : public EditorBlock {
 public:
 	EB_AnimEditor(Editor* e, int x1, int y1, int x2, int y2);
 
-	
+	float scale = 1;
+
+	Animator* editingAnim;
+	ASSETID _editingAnim;
+	uint selected;
+	bool selectingTransition;
 
 	void Refresh() {}
 	void Draw();
+	void OnMouseScr(bool up) override;
+
+	static void _SetAnim(void* b);
 };
 
 class EB_ColorPicker : public EditorBlock {
@@ -429,7 +437,8 @@ public:
 	void RegisterMenu(EditorBlock* block, string title, vector<string> names, vector<shortcutFunc> funcs, int padding, Vec2 pos = Input::mousePos);
 	void RegisterMenu(EditorBlock* block, string title, vector<string> names, dataFunc func, vector<void*> vals, int padding, Vec2 pos = Input::mousePos);
 
-	static Texture* GetRes(string name, string ext = "bmp");
+	static Texture* GetRes(string name);
+	static Texture* GetResExt(string name, string ext = "bmp");
 	static Texture* GetRes(string name, bool mipmap, string ext = "bmp");
 	static Texture* GetRes(string name, bool mipmap, bool nearest, string ext = "bmp");
 

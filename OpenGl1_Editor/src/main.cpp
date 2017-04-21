@@ -158,9 +158,11 @@ int main(int argc, char **argv)
 		editor->LoadDefaultAssets();
 		editor->ReadPrefs();
 		editor->ReloadAssets(editor->projectFolder + "Assets\\", true);
-		editor->blocks = vector<EditorBlock*>({ new EB_Inspector(editor, 2, 0, 1, 3), new EB_Inspector(editor, 2, 3, 1, 1), new EB_Browser(editor, 0, 2, 4, 1, editor->projectFolder + "Assets\\"), new EB_Debug(editor, 4, 2, 2, 1), new EB_Viewer(editor, 0, 0, 3, 2), new EB_Hierarchy(editor, 3, 0, 2, 2) }); //path.substr(0, path.find_last_of('\\') + 1)
+		editor->blocks = vector<EditorBlock*>({ new EB_Inspector(editor, 2, 0, 1, 3), new EB_Inspector(editor, 2, 3, 1, 1), new EB_Browser(editor, 0, 2, 4, 1, editor->projectFolder + "Assets\\"), new EB_AnimEditor(editor, 0, 2, 4, 1), new EB_Debug(editor, 4, 2, 2, 1), new EB_Viewer(editor, 0, 0, 3, 2), new EB_Hierarchy(editor, 3, 0, 2, 2) }); //path.substr(0, path.find_last_of('\\') + 1)
 		editor->blockCombos.push_back(new BlockCombo());
 		editor->blockCombos[0]->blocks.push_back(editor->blocks[2]);
+		editor->blockCombos[0]->blocks.push_back(editor->blocks[3]);
+		editor->blockCombos[0]->Set();
 		//editor->activeScene.sky = new Background(editor->dataPath + "res\\bg_refl.hdr");
 		editor->SetBackground(editor->dataPath + "res\\chino.jpg", 0.3f);
 		font = editor->font;
@@ -264,19 +266,22 @@ void DoUpdate() {
 	int i = -1, k = 0;
 	editor->mouseOn = 0;
 	for (EditorBlock* e : editor->blocks) {
-		Vec4 v = Vec4(Display::width*editor->xPoss[e->x1], Display::height*editor->yPoss[e->y1], Display::width*editor->xPoss[e->x2], Display::height*editor->yPoss[e->y2]);
-		v.a = round(v.a - v.g) - 1;
-		v.b = round(v.b - v.r) - 1;
-		v.g = round(v.g) + 1;
-		v.r = round(v.r) + 1;
-		if (Engine::Button(v.r, v.g, v.b, v.a) && MOUSE_HOVER_FLAG) {
-			i = k;
-			editor->mouseOn = i;
-			break;
+		if (!e->hidden) {
+			Vec4 v = Vec4(Display::width*editor->xPoss[e->x1], Display::height*editor->yPoss[e->y1], Display::width*editor->xPoss[e->x2], Display::height*editor->yPoss[e->y2]);
+			v.a = round(v.a - v.g) - 1;
+			v.b = round(v.b - v.r) - 1;
+			v.g = round(v.g) + 1;
+			v.r = round(v.r) + 1;
+			if (Engine::Button(v.r, v.g, v.b, v.a) && MOUSE_HOVER_FLAG) {
+				i = k;
+				editor->mouseOn = i;
+				cout << i << endl;
+				break;
+			}
+			if (editor->WAITINGREFRESHFLAG) //deleted
+				return;
 		}
 		k++;
-		if (editor->WAITINGREFRESHFLAG) //deleted
-			return;
 	}
 	if (i != -1) {
 		if (editor->mousePressType == -1) {
@@ -334,7 +339,8 @@ void DrawOverlay() {
 	if (editor->backgroundTex != nullptr)
 		Engine::DrawTexture(0, 0, (float)Display::width, (float)Display::height, editor->backgroundTex, editor->backgroundAlpha*0.01f);
 	for (int i = editor->blocks.size() - 1; i >= 0; i--) {
-		editor->blocks[i]->Draw();
+		if (!editor->blocks[i]->hidden)
+			editor->blocks[i]->Draw();
 	}
 	if (editor->dialogBlock) {
 		editor->dialogBlock->Draw();

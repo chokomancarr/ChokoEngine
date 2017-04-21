@@ -1332,6 +1332,15 @@ Transform* Transform::Scale(Vec3 v) {
 	scale += v;
 	return this;
 }
+
+Animator::Animator() : AssetObject(ASSETTYPE_ANIMATOR), activeState(0), nextState(0), stateTransition(0), states(), transitions() {
+	
+}
+
+Animator::Animator(string s) : Animator() {
+
+}
+
 //-----------------texture class---------------------
 bool LoadJPEG(string fileN, uint &x, uint &y, byte& channels, byte** data)
 {
