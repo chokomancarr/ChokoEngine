@@ -157,10 +157,10 @@ protected:
 
 class Anim_State {
 public:
-	Anim_State();
+	Anim_State(bool blend = false) : isBlend(blend), speed(1), length(0), time(0), _clip(-1), editorPos(Vec2()) {}
 	friend class Animator;
 protected:
-	bool blend;
+	bool isBlend;
 	float speed, length, time;
 	float Eval(); //increments time automatically
 
@@ -194,8 +194,8 @@ protected:
 	uint activeState, nextState;
 	float stateTransition;
 
-	vector <Anim_State> states;
-	vector <Anim_Transition> transitions;
+	vector <Anim_State*> states;
+	vector <Anim_Transition*> transitions;
 
 	void Save(string s);
 };

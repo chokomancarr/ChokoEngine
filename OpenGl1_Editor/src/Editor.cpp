@@ -1125,6 +1125,8 @@ EB_AnimEditor::EB_AnimEditor(Editor* e, int x1, int y1, int x2, int y2) {
 	this->x2 = x2;
 	this->y2 = y2;
 	_editingAnim = -1;
+
+	shortcuts.emplace(GetShortcutInt(Key_A, Key_Shift), &_AddState);
 }
 
 void EB_AnimEditor::Draw() {
@@ -1167,6 +1169,11 @@ void EB_AnimEditor::OnMouseScr(bool up) {
 void EB_AnimEditor::_SetAnim(void* v) {
 	EB_AnimEditor* b = (EB_AnimEditor*)v;
 	b->editingAnim = _GetCache<Animator>(ASSETTYPE_ANIMATOR, b->_editingAnim);
+}
+
+void EB_AnimEditor::_AddEmpty(void* v) {
+	EB_AnimEditor* b = (EB_AnimEditor*)v;
+	b->editingAnim->states.push_back(new Anim_State());
 }
 
 void EB_ColorPicker::Draw() {

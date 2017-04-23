@@ -249,6 +249,8 @@ public:
 	void OnMouseScr(bool up) override;
 
 	static void _SetAnim(void* b);
+	static void _AddState(EditorBlock* eb);
+	static void _AddEmpty(void* b), _AddBlend(void* b);
 };
 
 class EB_ColorPicker : public EditorBlock {

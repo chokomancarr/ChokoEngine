@@ -441,6 +441,11 @@ void EB_Viewer::_Escape(EditorBlock* b) {
 }
 
 
+void EB_AnimEditor::_AddState(EditorBlock* eb) {
+	EB_AnimEditor* b = (EB_AnimEditor*)eb;
+	b->editor->RegisterMenu(b, "Add State", { "Single", "Blend Tree" }, { &_AddEmpty, &_AddBlend }, 0);
+}
+
 void Editor::DeleteActive(Editor* e) {
 	if (e->selected)
 		e->RegisterMenu(e->blocks[0], "Confirm?", { "Delete" }, { &DoDeleteActive }, 0);
