@@ -196,6 +196,10 @@ void LoadMeshMeta(vector<SceneObject*>& os, string& path) {
 			}
 			r++;
 		}
+		string anm = path + o->name + ".arma.meta";
+		if (IO::HasFile(anm.c_str())) {
+			o->AddComponent(new Armature(anm, o));
+		}
 		LoadMeshMeta(o->children, path);
 	}
 }
@@ -444,6 +448,23 @@ void EB_Viewer::_Escape(EditorBlock* b) {
 void EB_AnimEditor::_AddState(EditorBlock* eb) {
 	EB_AnimEditor* b = (EB_AnimEditor*)eb;
 	b->editor->RegisterMenu(b, "Add State", { "Single", "Blend Tree" }, { &_AddEmpty, &_AddBlend }, 0);
+}
+
+void EB_AnimEditor::_SetAnim(void* v) {
+	EB_AnimEditor* b = (EB_AnimEditor*)v;
+	b->editingAnim = _GetCache<Animator>(ASSETTYPE_ANIMATOR, b->_editingAnim);
+}
+
+void EB_AnimEditor::_AddEmpty(EditorBlock* v) {
+	EB_AnimEditor* b = (EB_AnimEditor*)v;
+	if (b->editingAnim != nullptr)
+		b->editingAnim->states.push_back(new Anim_State(Vec2()));
+}
+
+void EB_AnimEditor::_AddBlend(EditorBlock* v) {
+	EB_AnimEditor* b = (EB_AnimEditor*)v;
+	if (b->editingAnim != nullptr)
+		b->editingAnim->states.push_back(new Anim_State(Vec2(), true));
 }
 
 void Editor::DeleteActive(Editor* e) {

@@ -38,58 +38,99 @@ class KTMExporter():
         file2 = open(dirr + name + ".blend.meta", "wb")
         self.write(file2, "KTM123\n")
         for obj in self.scene.objects:
-            if obj.type != 'MESH':
-                continue
-            print ("obj " + obj.name)
-            self.write(file2, "obj " + obj.name)
-            if obj.parent:
-                self.write(file2, " \x00prt " + obj.parent.name)
-            poss = obj.location
-            self.write(file2, " \x00pos {:f} {:f} {:f}".format(poss[0], poss[2], poss[1]))
-            rott = obj.rotation_quaternion
-            self.write(file2, " \x00rot {:f} {:f} {:f} {:f}".format(rott[0], rott[1], rott[2], rott[3]))
-            scll = obj.scale
-            self.write(file2, " \x00scl {:f} {:f} {:f}\n".format(scll[0], scll[2], scll[1]))
-                
-            print ("!writing to: " + dirr + name + "_blend\\" + obj.name + ".mesh.meta")
-            file = open(dirr + name + "_blend\\" + obj.name + ".mesh.meta", "wb")
-            obj.modifiers.new("EdgeSplit", 'EDGE_SPLIT')
-            obj.modifiers["EdgeSplit"].split_angle = 1.0472 #60 degrees
-            obj.modifiers["EdgeSplit"].use_edge_sharp = True
-            obj.modifiers.new("Triangulate", 'TRIANGULATE')
-            m = obj.to_mesh(bpy.context.scene, True, 'PREVIEW') #struct.pack("<i", len(m.loops))
-            self.write(file, "KTO123" + obj.name + "\x00V") #V size4 [vert4+norm4 array] F size4 [3xface4 array] NULL
-            file.write(struct.pack("<i", len(m.loops)))
-            for loop in m.loops:
-                vert = m.vertices[loop.vertex_index]
-                #self.write(file, "    vrt {} {:f} {:f} {:f}\r\n".format(loop.index, vert.co[0], vert.co[2], vert.co[1]))
-                file.write(struct.pack("<fff", vert.co[0], vert.co[2], vert.co[1]))
-                #self.write(file, "    nrm {} {:f} {:f} {:f}\r\n".format(loop.index, vert.normal[0], vert.normal[2], vert.normal[1]))
-                file.write(struct.pack("<fff", vert.normal[0], vert.normal[2], vert.normal[1]))
-            self.write(file, "F")
-            file.write(struct.pack("<i", len(m.polygons)))
-            for poly in m.polygons:
-                #self.write(file, "    tri {} ".format(poly.material_index))
-                #for loop_index in poly.loop_indices:
-                #self.write(file, " {} {} {}".format(poly.loop_indices[0], poly.loop_indices[2], poly.loop_indices[1]))
-                #self.write(file, "\r\n")
-                file.write(struct.pack("<B", poly.material_index))
-                file.write(struct.pack("<iii", poly.loop_indices[0], poly.loop_indices[2], poly.loop_indices[1]))
-            if len(m.uv_layers) > 0:
-                self.write(file, "U")
-                file.write(struct.pack("<B", len(m.uv_layers)))
-                for uvl in m.uv_layers[0].data:
-                    file.write(struct.pack("<ff", uvl.uv[0], uvl.uv[1]))
-                if len(m.uv_layers) > 1:
-                    for uvl in m.uv_layers[1].data:
+            if obj.type == 'MESH':
+                print ("obj " + obj.name)
+                self.write(file2, "obj " + obj.name)
+                if obj.parent:
+                    self.write(file2, " \x00prt " + obj.parent.name)
+                poss = obj.location
+                self.write(file2, " \x00pos {:f} {:f} {:f}".format(poss[0], poss[2], poss[1]))
+                rott = obj.rotation_quaternion
+                self.write(file2, " \x00rot {:f} {:f} {:f} {:f}".format(rott[0], rott[1], rott[2], rott[3]))
+                scll = obj.scale
+                self.write(file2, " \x00scl {:f} {:f} {:f}\n".format(scll[0], scll[2], scll[1]))
+                    
+                print ("!writing to: " + dirr + name + "_blend\\" + obj.name + ".mesh.meta")
+                file = open(dirr + name + "_blend\\" + obj.name + ".mesh.meta", "wb")
+                obj.modifiers.new("EdgeSplit", 'EDGE_SPLIT')
+                obj.modifiers["EdgeSplit"].split_angle = 1.0472 #60 degrees
+                obj.modifiers["EdgeSplit"].use_edge_sharp = True
+                obj.modifiers.new("Triangulate", 'TRIANGULATE')
+                m = obj.to_mesh(bpy.context.scene, True, 'PREVIEW') #struct.pack("<i", len(m.loops))
+                self.write(file, "KTO123" + obj.name + "\x00V") #V size4 [vert4+norm4 array] F size4 [3xface4 array] NULL
+                file.write(struct.pack("<i", len(m.loops)))
+                for loop in m.loops:
+                    vert = m.vertices[loop.vertex_index]
+                    #self.write(file, "    vrt {} {:f} {:f} {:f}\r\n".format(loop.index, vert.co[0], vert.co[2], vert.co[1]))
+                    file.write(struct.pack("<fff", vert.co[0], vert.co[2], vert.co[1]))
+                    #self.write(file, "    nrm {} {:f} {:f} {:f}\r\n".format(loop.index, vert.normal[0], vert.normal[2], vert.normal[1]))
+                    file.write(struct.pack("<fff", vert.normal[0], vert.normal[2], vert.normal[1]))
+                self.write(file, "F")
+                file.write(struct.pack("<i", len(m.polygons)))
+                for poly in m.polygons:
+                    #self.write(file, "    tri {} ".format(poly.material_index))
+                    #for loop_index in poly.loop_indices:
+                    #self.write(file, " {} {} {}".format(poly.loop_indices[0], poly.loop_indices[2], poly.loop_indices[1]))
+                    #self.write(file, "\r\n")
+                    file.write(struct.pack("<B", poly.material_index))
+                    file.write(struct.pack("<iii", poly.loop_indices[0], poly.loop_indices[2], poly.loop_indices[1]))
+                if len(m.uv_layers) > 0:
+                    self.write(file, "U")
+                    file.write(struct.pack("<B", len(m.uv_layers)))
+                    for uvl in m.uv_layers[0].data:
                         file.write(struct.pack("<ff", uvl.uv[0], uvl.uv[1]))
-            self.write(file, "\x00")
-            #if obj.type == 'MESH' and m.shape_keys:
-            #    for block in m.shape_keys.key_blocks:
-            #        self.write(file, "    shp " + block.name + "\r\n")
-            file.close()
+                    if len(m.uv_layers) > 1:
+                        for uvl in m.uv_layers[1].data:
+                            file.write(struct.pack("<ff", uvl.uv[0], uvl.uv[1]))
+                self.write(file, "\x00")
+                #if obj.type == 'MESH' and m.shape_keys:
+                #    for block in m.shape_keys.key_blocks:
+                #        self.write(file, "    shp " + block.name + "\r\n")
+                file.close()
+            elif obj.type == "ARMATURE"
+                export_arm(file, obj)
         file2.close()
         self.execute_anim(dirr + name + "_blend\\")
+    
+    def export_arm(self, file, obj)
+        print ("arm " + obj.name)
+        self.write(file2, "arm " + obj.name)
+        if obj.parent:
+            self.write(file2, " \x00prt " + obj.parent.name)
+        poss = obj.location
+        self.write(file2, " \x00pos {:f} {:f} {:f}".format(poss[0], poss[2], poss[1]))
+        rott = obj.rotation_quaternion
+        self.write(file2, " \x00rot {:f} {:f} {:f} {:f}".format(rott[0], rott[1], rott[2], rott[3]))
+        scll = obj.scale
+        self.write(file2, " \x00scl {:f} {:f} {:f}\n".format(scll[0], scll[2], scll[1]))
+        
+        print ("!writing to: " + dirr + name + "_blend\\" + obj.name + ".arma.meta")
+        file = open(dirr + name + "_blend\\" + obj.name + ".arma.meta", "wb")
+        file.write("ARM\x00")
+        self.write_bone(file, obj.bones)
+        file.close()
+    
+    def write_bone(self, file, bones):
+        for bone in bones:
+            file.write("B" + bone.name + "\x00")
+            file.write(struct.pack("<fff", bone.head[0], bone.head[1], bone.head[2]))
+            file.write(struct.pack("<fff", bone.vector[0], bone.vector[1], bone.vector[2]))
+            file.write(struct.pack("<fff", bone.x_axis[0], bone.x_axis[1], bone.x_axis[2]))
+            datamask = 0
+            if dot(cross(bone.x_axis, bone.vector), bone.z_axis) > 0:
+                datamask += 240
+            if bone.use_connect:
+                datamask += 15
+            file.write(struct.pack("<B", datamask))
+            write_bone(bone.children)
+            file.write("b")
+    
+    def cross(a, b):
+        c = [a[1]*b[2] - a[2]*b[1], a[2]*b[0] - a[0]*b[2], a[0]*b[1] - a[1]*b[0]]
+        return c
+    
+    def dot(a, b):
+        return a[0]*b[0] + a[1]*b[1] + a[2]*b[2]
     
     #pose.bones["foo"].location 0x10 ~ 0x12
     #pose.bones["foo"].rotation_quaternion 0x13 ~ 0x16

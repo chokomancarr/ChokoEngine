@@ -144,7 +144,7 @@ unsigned char *hdr::read_hdr(const char *filename, unsigned int *w, unsigned int
         /* Start by reading the first four bytes of every scanline */
         if (fread(col, 1, 4, fp) != 4) {
             fprintf(stderr, "read_hdr(): unexpected EOF reading data\n");
-            delete[](imagergbe);
+            free(imagergbe);
             return NULL;
         }
 

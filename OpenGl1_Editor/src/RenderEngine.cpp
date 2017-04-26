@@ -75,6 +75,9 @@ void Camera::InitGBuffer() {
 
 const Vec2 Camera::screenRectVerts[] = { Vec2(-1, -1), Vec2(-1, 1), Vec2(1, -1), Vec2(1, 1) };
 const int Camera::screenRectIndices[] = { 0, 1, 2, 1, 3, 2 };
+GLuint Camera::d_skyProgram = 0;
+GLuint Camera::d_pLightProgram = 0;
+GLuint Camera::d_sLightProgram = 0;
 
 void Camera::Render(RenderTexture* target) {
 	//enable deferred
@@ -102,6 +105,10 @@ void Camera::Render(RenderTexture* target) {
 }
 
 void Camera::_RenderSky(glm::mat4 ip) {
+	if (d_skyProgram == 0) {
+		Debug::Error("SkyLightPass", "Fatal: Shader not initialized!");
+		abort();
+	}
 	GLint _IP = glGetUniformLocation(d_skyProgram, "_IP");
 	GLint diffLoc = glGetUniformLocation(d_skyProgram, "inColor");
 	GLint specLoc = glGetUniformLocation(d_skyProgram, "inNormal");
@@ -145,6 +152,10 @@ void Camera::_RenderSky(glm::mat4 ip) {
 }
 
 void Camera::_DoDrawLight_Point(Light* l, glm::mat4& ip) {
+	if (d_pLightProgram == 0) {
+		Debug::Error("PointLightPass", "Fatal: Shader not initialized!");
+		abort();
+	}
 	GLint _IP = glGetUniformLocation(d_pLightProgram, "_IP");
 	GLint diffLoc = glGetUniformLocation(d_pLightProgram, "inColor");
 	GLint specLoc = glGetUniformLocation(d_pLightProgram, "inNormal");
@@ -195,6 +206,10 @@ void Camera::_DoDrawLight_Point(Light* l, glm::mat4& ip) {
 }
 
 void Camera::_DoDrawLight_Spot(Light* l, glm::mat4& ip) {
+	if (d_sLightProgram == 0) {
+		Debug::Error("PointLightPass", "Fatal: Shader not initialized!");
+		abort();
+	}
 	GLint _IP = glGetUniformLocation(d_sLightProgram, "_IP");
 	GLint diffLoc = glGetUniformLocation(d_sLightProgram, "inColor");
 	GLint specLoc = glGetUniformLocation(d_sLightProgram, "inNormal");
@@ -235,9 +250,9 @@ void Camera::_DoDrawLight_Spot(Light* l, glm::mat4& ip) {
 	glUniform1i(depthLoc, 3);
 	glActiveTexture(GL_TEXTURE3);
 	glBindTexture(GL_TEXTURE_2D, d_depthTex);
-	glUniform1i(lDepLoc, 4);
-	glActiveTexture(GL_TEXTURE4);
-	glBindTexture(GL_TEXTURE_2D, l->_shadowMap);
+	//glUniform1i(lDepLoc, 4);
+	//glActiveTexture(GL_TEXTURE4);
+	//glBindTexture(GL_TEXTURE_2D, l->_shadowMap);
 	Vec3 wpos = l->object->transform.worldPosition();
 	glUniform3f(lPosLoc, wpos.x, wpos.y, wpos.z);
 	Vec3 dir = l->object->transform.forward();
@@ -247,9 +262,9 @@ void Camera::_DoDrawLight_Spot(Light* l, glm::mat4& ip) {
 	glUniform1f(lCosLoc, cos(deg2rad*0.5f*l->angle));
 	glUniform1f(lMinLoc, l->minDist*l->minDist);
 	glUniform1f(lMaxLoc, l->maxDist*l->maxDist);
-	glUniformMatrix4fv(lDepMatLoc, 1, GL_FALSE, glm::value_ptr(l->_shadowMatrix));
-	glUniform1f(lDepBaiLoc, l->shadowBias);
-	glUniform1f(lDepStrLoc, l->shadowStrength);
+	//glUniformMatrix4fv(lDepMatLoc, 1, GL_FALSE, glm::value_ptr(l->_shadowMatrix));
+	//glUniform1f(lDepBaiLoc, l->shadowBias);
+	//glUniform1f(lDepStrLoc, l->shadowStrength);
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, screenRectIndices);
@@ -337,6 +352,7 @@ void Light::InitShadow() {
 
 	if (Status != GL_FRAMEBUFFER_COMPLETE) {
 		Debug::Error("ShadowMap", "FB error:" + Status);
+		abort();
 	}
 	else {
 		Debug::Message("ShadowMap", "FB ok");
@@ -347,9 +363,14 @@ void Light::InitShadow() {
 }
 
 void Light::DrawShadowMap() {
+	if (_shadowFbo == 0) {
+		Debug::Error("RenderShadow", "Fatal: Fbo not set up!");
+		abort();
+	}
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _shadowFbo);
 	//clear
+	glClear(GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
 	glDepthMask(true);
@@ -365,4 +386,6 @@ void Light::DrawShadowMap() {
 
 	glDisable(GL_DEPTH_TEST);
 	glDepthMask(false);
+	glEnable(GL_BLEND);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 }

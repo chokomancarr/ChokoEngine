@@ -1117,14 +1117,13 @@ void EB_Inspector::_ApplySky(void* v) {
 	sc->settings.sky = _GetCache<Background>(ASSETTYPE_HDRI, sc->settings.skyId);
 }
 
-EB_AnimEditor::EB_AnimEditor(Editor* e, int x1, int y1, int x2, int y2) {
+EB_AnimEditor::EB_AnimEditor(Editor* e, int x1, int y1, int x2, int y2): _editingAnim(-1), scale(2), offset(Vec2()) {
 	editorType = 5;
 	editor = e;
 	this->x1 = x1;
 	this->y1 = y1;
 	this->x2 = x2;
 	this->y2 = y2;
-	_editingAnim = -1;
 
 	shortcuts.emplace(GetShortcutInt(Key_A, Key_Shift), &_AddState);
 }
@@ -1143,11 +1142,13 @@ void EB_AnimEditor::Draw() {
 		scl2 *= 5;
 	while (scl2 > 25)
 		scl2 *= 0.2f;
+
+	Vec2 off0 = offset*scl + Vec2(v.r, v.g) + 0.5f*Vec2(v.b, v.a);
 	for (float x = v.r; x < (v.r + v.b); x+=scl2*32) {
-		Engine::DrawLine(Vec2(x, v.g - EB_HEADER_SIZE - 1), Vec2(x, v.g + v.a), black(0.3f), 1);
+		Engine::DrawLine(Vec2(x, v.g - EB_HEADER_SIZE - 1), Vec2(x, v.g + v.a), black(0.6f*(scl2-0.2f)/0.8f), 1);
 	}
 	for (float y = v.g; y < (v.g + v.a); y += scl2 * 32) {
-		Engine::DrawLine(Vec2(v.r, y), Vec2(v.r + v.b, y), black(0.3f), 1);
+		Engine::DrawLine(Vec2(v.r, y), Vec2(v.r + v.b, y), black(0.6f*(scl2 - 0.2f) / 0.8f), 1);
 	}
 	for (float x = v.r; x < (v.r + v.b); x += scl2 * 160) {
 		Engine::DrawLine(Vec2(x, v.g - EB_HEADER_SIZE - 1), Vec2(x, v.g + v.a), black(0.6f), 1);
@@ -1155,9 +1156,40 @@ void EB_AnimEditor::Draw() {
 	for (float y = v.g; y < (v.g + v.a); y += scl2 * 160) {
 		Engine::DrawLine(Vec2(v.r, y), Vec2(v.r + v.b, y), black(0.6f), 1);
 	}
-	Engine::Label(v.r + 5, v.g + v.a - 16, 12, to_string(scale), editor->font);
 
 	editor->DrawAssetSelector(v.r, v.g + EB_HEADER_SIZE + 1, v.b * 0.5f, 14, grey2(), ASSETTYPE_ANIMATOR, 12, editor->font, &_editingAnim, &_SetAnim, this);
+	
+	if (editingAnim != nullptr) {
+		for (Anim_State* state : editingAnim->states) {
+			Vec2 poss = off0 + state->editorPos;
+			Engine::DrawQuad(poss.x, poss.y, scl * 320, scl * 32, grey2());
+			Engine::DrawTriangle(Vec2(poss.x + scl * 16, poss.y + scl * 16), state->editorExpand ? Vec2(0, scl * 13) : Vec2(scl * 13, 0), white());
+			if (Engine::Button(poss.x, poss.y, scl * 32, scl * 32) == MOUSE_RELEASE)
+				state->editorExpand = !state->editorExpand;
+			Engine::EButton(editor->editorLayer == 0, poss.x + scl * 34, poss.y + scl * 2, scl * 284, scl * 28, grey1(), state->name, scl * 24, editor->font, white());
+			if (state->editorExpand) {
+				Engine::DrawQuad(poss.x, poss.y + scl * 32, scl * 320, (state->isBlend && state->editorShowGraph)? scl*320 : scl * 256, grey1());
+				state->isBlend = Engine::DrawToggle(poss.x + scl * 6, poss.y + scl * 34, scl * 28, editor->checkbox, state->isBlend, white(), ORIENT_HORIZONTAL);
+				Engine::Label(poss.x + scl * 36, poss.y + scl * 36, scl * 24, "Blending", editor->font, white());
+				float off = poss.y + scl * 64;
+				if (state->isBlend) {
+					if (Engine::EButton(editor->editorLayer == 0, poss.x + scl * 290, poss.y + scl * 34, scl * 28, scl * 28, white(1, state->editorShowGraph ? 0.5f : 0.2f)) == MOUSE_RELEASE) {
+						state->editorShowGraph = !state->editorShowGraph;
+					}
+					if (state->editorShowGraph) {
+						Engine::DrawQuad(poss.x + scl * 2, off, scl * 316, scl * 64, black());
+						off += scl * 66;
+					}
+
+				}
+				else {
+					editor->DrawAssetSelector(poss.x + scl * 2, off, scl * 316, scl * 28, grey2(), ASSETTYPE_ANIMCLIP, scl * 24, editor->font, &state->_clip);
+				}
+			}
+		}
+	}
+
+	Engine::Label(v.r + 5, v.g + v.a - 16, 12, to_string(scl), editor->font);
 	Engine::EndStencil();
 }
 
@@ -1166,15 +1198,6 @@ void EB_AnimEditor::OnMouseScr(bool up) {
 	scale = min(max(scale, 1), 5);
 }
 
-void EB_AnimEditor::_SetAnim(void* v) {
-	EB_AnimEditor* b = (EB_AnimEditor*)v;
-	b->editingAnim = _GetCache<Animator>(ASSETTYPE_ANIMATOR, b->_editingAnim);
-}
-
-void EB_AnimEditor::_AddEmpty(void* v) {
-	EB_AnimEditor* b = (EB_AnimEditor*)v;
-	b->editingAnim->states.push_back(new Anim_State());
-}
 
 void EB_ColorPicker::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
@@ -1977,7 +2000,7 @@ void DoScanAssetsGet(Editor* e, vector<string>& list, string p, bool rec) {
 				e->normalAssets[type].push_back(ww.substr(0, ww.find_last_of('\\')) + ww.substr(ww.find_last_of('\\') + 1, string::npos));
 				e->normalAssetCaches[type].push_back(nullptr);
 			}
-			if (type == ASSETTYPE_MATERIAL || type == ASSETTYPE_SCENE)
+			if (type == ASSETTYPE_MATERIAL || type == ASSETTYPE_SCENE || type == ASSETTYPE_ANIMATOR) //no meta file
 				continue;
 			if (IO::HasFile(ss.c_str())) {
 				FILETIME metaTime, realTime;
@@ -2330,14 +2353,14 @@ bool MergeAssets(Editor* e) {
 				string nmm;
 				if (it.first == ASSETTYPE_MESH)
 					nmm = e->projectFolder + "Assets\\" + s + ".mesh.meta";
-				else if (it.first == ASSETTYPE_MATERIAL)
+				else if (it.first == ASSETTYPE_MATERIAL || it.first == ASSETTYPE_ANIMATOR)
 					nmm = e->projectFolder + "Assets\\" + s;
 				else
 					nmm = e->projectFolder + "Assets\\" + s + ".meta";
 				ifstream f2(nmm.c_str(), ios::in | ios::binary);
 				if (!f2.is_open()) {
 					e->_Error("Asset Compiler", "Asset not found! " + nmm);
-					continue;
+					return false;
 				}
 				//file2 << (char)it.first;
 				//_StreamWrite(&i, &file2, 2);
@@ -2598,15 +2621,14 @@ void BlockCombo::Draw() {
 	Editor* editor = blocks[0]->editor;
 	Vec4 v = Vec4(Display::width*editor->xPoss[blocks[0]->x1], Display::height*editor->yPoss[blocks[0]->y1], Display::width*editor->xPoss[blocks[0]->x2], Display::height*editor->yPoss[blocks[0]->y2]);
 	CalcV(v);
-	if (Rect(v.r, v.g, v.b, v.a).Inside(Input::mousePos)) {
-		for (uint x = 0, y = blocks.size(); x < y; x++) {
-			if (Engine::EButton(editor->editorLayer == 0, v.r + v.b - EB_HEADER_PADDING - 2 - EB_HEADER_SIZE*(y - x)*1.2f, v.g + 1, EB_HEADER_SIZE - 2, EB_HEADER_SIZE - 2, editor->ebIconTexs[blocks[x]->editorType], white((x == active) ? 1 : 0.7f)) == MOUSE_RELEASE) {
-				active = x;
-				Set();
-			}
+	float a = Rect(v.r, v.g, v.b, v.a).Inside(Input::mousePos)? 1 : 0.3f;
+	for (uint x = 0, y = blocks.size(); x < y; x++) {
+		if (Engine::EButton(editor->editorLayer == 0, v.r + v.b - EB_HEADER_PADDING - 2 - EB_HEADER_SIZE*(y - x)*1.2f, v.g + 1, EB_HEADER_SIZE - 2, EB_HEADER_SIZE - 2, editor->ebIconTexs[blocks[x]->editorType], white(((x == active) ? 1 : 0.7f)*a)) == MOUSE_RELEASE) {
+			active = x;
+			Set();
 		}
-		if (Engine::EButton(editor->editorLayer == 0, v.r + v.b - EB_HEADER_PADDING - 2 - EB_HEADER_SIZE*(blocks.size() + 1)*1.2f, v.g + 1, EB_HEADER_SIZE - 2, EB_HEADER_SIZE - 2, editor->buttonPlus, white()) == MOUSE_RELEASE) {
+	}
+	if (Engine::EButton(editor->editorLayer == 0, v.r + v.b - EB_HEADER_PADDING - 2 - EB_HEADER_SIZE*(blocks.size() + 1)*1.2f, v.g + 1, EB_HEADER_SIZE - 2, EB_HEADER_SIZE - 2, editor->buttonPlus, white(a)) == MOUSE_RELEASE) {
 
-		}
 	}
 }

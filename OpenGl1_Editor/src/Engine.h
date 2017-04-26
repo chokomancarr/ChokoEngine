@@ -270,7 +270,7 @@ enum InputKey {
 	Key_Escape = 0x1B,
 	Key_Space = 0x20,
 	Key_LeftArrow = 0x25, Key_UpArrow, Key_RightArrow, Key_DownArrow,
-	Key_Delete = 0x2E, 
+	Key_Delete = 0x2E,
 	Key_0 = 0x30, Key_1, Key_2, Key_3, Key_4, Key_5, Key_6, Key_7, Key_8, Key_9,
 	Key_A = 0x41, Key_B, Key_C, Key_D, Key_E, Key_F, Key_G, Key_H, Key_I, Key_J, Key_K, Key_L, Key_M, Key_N, Key_O, Key_P, Key_Q, Key_R, Key_S, Key_T, Key_U, Key_V, Key_W, Key_X, Key_Y, Key_Z,
 	Key_NumPad0 = 0x60, Key_NumPad1, Key_NumPad2, Key_NumPad3, Key_NumPad4, Key_NumPad5, Key_NumPad6, Key_NumPad7, Key_NumPad8, Key_NumPad9,
@@ -483,6 +483,8 @@ public:
 	static void DrawLine(Vec3 v1, Vec3 v2, Vec4 col, float width);
 	static void DrawLineW(Vec3 v1, Vec3 v2, Vec4 col, float width);
 	static void DrawLineWDotted(Vec3 v1, Vec3 v2, Vec4 col, float width, float dotSz, bool app = false);
+	static void DrawTriangle(Vec2 v1, Vec2 v2, Vec2 v3, Vec4 col, bool fill = true, float width = 1);
+	static void DrawTriangle(Vec2 centre, Vec2 dir, Vec4 col, bool fill = true, float width = 1);
 	static void DrawCircle(Vec2 c, float r, uint n, Vec4 col, float width);
 	static void DrawCircleW(Vec3 c, Vec3 x, Vec3 y, float r, uint n, Vec4 col, float width, bool dotted = false);
 	static void Label(float x, float y, float s, string str, Font* texture);

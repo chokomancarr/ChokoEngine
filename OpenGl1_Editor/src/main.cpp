@@ -227,6 +227,8 @@ void CheckShortcuts() {
 			}
 		}
 		for (EditorBlock* e : editor->blocks) {
+			if (e->hidden)
+				continue;
 			Vec4 v = Vec4(Display::width*editor->xPoss[e->x1], Display::height*editor->yPoss[e->y1], Display::width*editor->xPoss[e->x2], Display::height*editor->yPoss[e->y2]);
 			v.a = round(v.a - v.g) - 1;
 			v.b = round(v.b - v.r) - 1;
@@ -275,7 +277,6 @@ void DoUpdate() {
 			if (Engine::Button(v.r, v.g, v.b, v.a) && MOUSE_HOVER_FLAG) {
 				i = k;
 				editor->mouseOn = i;
-				cout << i << endl;
 				break;
 			}
 			if (editor->WAITINGREFRESHFLAG) //deleted

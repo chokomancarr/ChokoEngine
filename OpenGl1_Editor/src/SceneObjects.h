@@ -5,7 +5,7 @@
 
 typedef unsigned char COMPONENT_TYPE;
 typedef unsigned char DRAWORDER;
-#define DRAWORDER_NOT 0x00
+#define DRAWORDER_NONE 0x00
 #define DRAWORDER_SOLID 0x01
 #define DRAWORDER_TRANSPARENT 0x02
 #define DRAWORDER_OVERLAY 0x04
@@ -157,9 +157,12 @@ protected:
 
 class Anim_State {
 public:
-	Anim_State(bool blend = false) : isBlend(blend), speed(1), length(0), time(0), _clip(-1), editorPos(Vec2()) {}
+	Anim_State(bool blend = false) : name(blend? "newBlendState" : "newState"), isBlend(blend), speed(1), length(0), time(0), _clip(-1), editorPos(Vec2()), editorExpand(true) {}
 	friend class Animator;
+	friend class EB_AnimEditor;
 protected:
+	Anim_State(Vec2 pos, bool blend = false) : name(blend ? "newBlendState" : "newState"), isBlend(blend), speed(1), length(0), time(0), _clip(-1), editorPos(pos), editorExpand(true) {}
+	string name;
 	bool isBlend;
 	float speed, length, time;
 	float Eval(); //increments time automatically
@@ -167,6 +170,7 @@ protected:
 	AnimClip* clip;
 	ASSETID _clip;
 	Vec2 editorPos;
+	bool editorExpand, editorShowGraph;
 
 	vector<AnimClip*> blendClips;
 	vector<ASSETID> _blendClips;
@@ -307,7 +311,7 @@ protected:
 	Vec3 camVerts[6];
 	static int camVertsIds[19];
 	GLuint d_fbo, d_texs[3], d_depthTex;
-	GLuint d_skyProgram, d_pLightProgram, d_sLightProgram;
+	static GLuint d_skyProgram, d_pLightProgram, d_sLightProgram;
 
 	static const Vec2 screenRectVerts[];
 	static const int screenRectIndices[];
@@ -459,29 +463,45 @@ class ArmatureBone {
 public:
 	SceneObject* obj;
 	//transform is local
-	Vec3 position, restPosition;
-	Quat rotation, restRotation;
-	Vec3 scale, restScale;
+	Vec3 position;
+	Vec3 const restPosition;
+	Quat rotation;
+	Quat const restRotation;
+	Vec3 scale;
+	Vec3 const restScale;
+	bool const connected;
+	vector<ArmatureBone*> children() { return _children; }
+
+	friend class Armature;
+protected:
+	ArmatureBone(Vec3 pos, Quat rot, Vec3 scl, bool conn) : position(pos), restPosition(pos), rotation(rot), restRotation(rot), scale(scl), restScale(scl), connected(conn) {}
+	vector<ArmatureBone*> _children;
 };
 class Armature : public Component {
 public:
-	Armature() : _anim(-1), Component("Armature", COMP_ARM, DRAWORDER_OVERLAY) {}
+	//Armature() : _anim(-1), Component("Armature", COMP_ARM, DRAWORDER_OVERLAY) {}
 
 	Animator* anim;
 
-	Vec3 position, restPosition;
-	Quat rotation, restRotation;
-	Vec3 scale, restScale;
+	bool overridePos;
+	Vec3 restPosition;
+	Quat restRotation;
+	Vec3 restScale;
+	vector<ArmatureBone*> bones() { return _bones; }
 
-	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
-	void Serialize(Editor* e, ofstream* stream) override;
+	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override {}
+	void Serialize(Editor* e, ofstream* stream) override {}
 
 	friend int main(int argc, char **argv);
 	friend void Serialize(Editor* e, SceneObject* o, ofstream* stream);
 	friend void Deserialize(ifstream& stream, SceneObject* obj);
+	friend void LoadMeshMeta(vector<SceneObject*>& os, string& path);
 protected:
+	Armature(string s, SceneObject* o);
 	Armature(ifstream& stream, SceneObject* o, long pos = -1);
+	static void AddBone(ifstream& stream, vector<ArmatureBone*>& bones);
 	ASSETID _anim;
+	vector<ArmatureBone*> _bones;
 };
 
 #define COMP_SCR 0xff
@@ -513,7 +533,7 @@ public:
 protected:
 	SceneScript(Editor* e, ASSETID id);
 	SceneScript(ifstream& strm, SceneObject* o);
-	SceneScript() : Component("", COMP_SCR, DRAWORDER_NOT) {}
+	SceneScript() : Component("", COMP_SCR, DRAWORDER_NONE) {}
 	
 	ASSETID _script;
 	vector<pair<string, pair<SCR_VARTYPE, void*>>> _vals;

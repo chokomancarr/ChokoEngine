@@ -43,7 +43,7 @@ COMPONENT_TYPE Component::Name2Type(string nm) {
 
 int Camera::camVertsIds[19] = { 0, 1, 0, 2, 0, 3, 0, 4, 1, 2, 2, 4, 4, 3, 3, 1, 1, 2, 5 };
 
-Camera::Camera() : Component("Camera", COMP_CAM, DRAWORDER_NOT), ortographic(false), fov(60), orthoSize(10), screenPos(0.3f, 0.1f, 0.6f, 0.4f), clearType(CAM_CLEAR_COLOR), clearColor(black(1)), _tarRT(-1), nearClip(0.01f), farClip(500) {
+Camera::Camera() : Component("Camera", COMP_CAM, DRAWORDER_NONE), ortographic(false), fov(60), orthoSize(10), screenPos(0.3f, 0.1f, 0.6f, 0.4f), clearType(CAM_CLEAR_COLOR), clearColor(black(1)), _tarRT(-1), nearClip(0.01f), farClip(500) {
 	UpdateCamVerts();
 	InitGBuffer();
 }
@@ -58,106 +58,108 @@ Camera::Camera(ifstream& stream, SceneObject* o, long pos) : Camera() {
 	_Strm2Val(stream, screenPos.h);
 
 #ifndef IS_EDITOR
-	int link_result = 0;
-	GLuint vertex_shader, fragment_shader;
-	string err = "";
-	ifstream strm("D:\\lightPassVert.txt");
-	stringstream ss, ss2, ss3, ss4;
-	ss << strm.rdbuf();
+	if (d_skyProgram == 0) {
+		int link_result = 0;
+		GLuint vertex_shader, fragment_shader;
+		string err = "";
+		ifstream strm("D:\\lightPassVert.txt");
+		stringstream ss, ss2, ss3, ss4;
+		ss << strm.rdbuf();
 
-	if (!ShaderBase::LoadShader(GL_VERTEX_SHADER, ss.str(), vertex_shader, &err)) {
-		Debug::Error("Cam Shader Compiler", "v! " + err);
-		return;
+		if (!ShaderBase::LoadShader(GL_VERTEX_SHADER, ss.str(), vertex_shader, &err)) {
+			Debug::Error("Cam Shader Compiler", "v! " + err);
+			abort();
+		}
+		strm.close();
+		strm.open("D:\\lightPassFrag_Sky.txt");
+		ss2 << strm.rdbuf();
+		if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, ss2.str(), fragment_shader, &err)) {
+			Debug::Error("Cam Shader Compiler", "fs! " + err);
+			abort();
+		}
+
+		d_skyProgram = glCreateProgram();
+		glAttachShader(d_skyProgram, vertex_shader);
+		glAttachShader(d_skyProgram, fragment_shader);
+		glLinkProgram(d_skyProgram);
+		glGetProgramiv(d_skyProgram, GL_LINK_STATUS, &link_result);
+		if (link_result == GL_FALSE)
+		{
+			int info_log_length = 0;
+			glGetProgramiv(d_skyProgram, GL_INFO_LOG_LENGTH, &info_log_length);
+			vector<char> program_log(info_log_length);
+			glGetProgramInfoLog(d_skyProgram, info_log_length, NULL, &program_log[0]);
+			cout << "cam shader(sky) error" << endl << &program_log[0] << endl;
+			glDeleteProgram(d_skyProgram);
+			d_skyProgram = 0;
+			abort();
+		}
+		cout << "cam shader(sky) ok" << endl;
+		glDetachShader(d_skyProgram, vertex_shader);
+		glDetachShader(d_skyProgram, fragment_shader);
+		glDeleteShader(fragment_shader);
+
+		strm.close();
+		strm.open("D:\\lightPassFrag_Point.txt");
+		ss3 << strm.rdbuf();
+		if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, ss3.str(), fragment_shader, &err)) {
+			Debug::Error("Cam Shader Compiler", "fp! " + err);
+			abort();
+		}
+
+		d_pLightProgram = glCreateProgram();
+		glAttachShader(d_pLightProgram, vertex_shader);
+		glAttachShader(d_pLightProgram, fragment_shader);
+		glLinkProgram(d_pLightProgram);
+		glGetProgramiv(d_pLightProgram, GL_LINK_STATUS, &link_result);
+		if (link_result == GL_FALSE)
+		{
+			int info_log_length = 0;
+			glGetProgramiv(d_pLightProgram, GL_INFO_LOG_LENGTH, &info_log_length);
+			vector<char> program_log(info_log_length);
+			glGetProgramInfoLog(d_pLightProgram, info_log_length, NULL, &program_log[0]);
+			cout << "cam shader(pl) error" << endl << &program_log[0] << endl;
+			glDeleteProgram(d_pLightProgram);
+			d_pLightProgram = 0;
+			abort();
+		}
+		cout << "cam shader(pl) ok" << endl;
+		glDetachShader(d_pLightProgram, vertex_shader);
+		glDetachShader(d_pLightProgram, fragment_shader);
+		glDeleteShader(fragment_shader);
+
+		strm.close();
+		strm.open("D:\\lightPassFrag_Spot.txt");
+		ss4 << strm.rdbuf();
+		if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, ss4.str(), fragment_shader, &err)) {
+			Debug::Error("Cam Shader Compiler", "fc! " + err);
+			abort();
+		}
+
+		d_sLightProgram = glCreateProgram();
+		glAttachShader(d_sLightProgram, vertex_shader);
+		glAttachShader(d_sLightProgram, fragment_shader);
+		glLinkProgram(d_sLightProgram);
+		glGetProgramiv(d_sLightProgram, GL_LINK_STATUS, &link_result);
+		if (link_result == GL_FALSE)
+		{
+			int info_log_length = 0;
+			glGetProgramiv(d_sLightProgram, GL_INFO_LOG_LENGTH, &info_log_length);
+			vector<char> program_log(info_log_length);
+			glGetProgramInfoLog(d_sLightProgram, info_log_length, NULL, &program_log[0]);
+			cout << "cam shader(sl) error" << endl << &program_log[0] << endl;
+			glDeleteProgram(d_sLightProgram);
+			d_sLightProgram = 0;
+			abort();
+		}
+		cout << "cam shader(sl) ok" << endl;
+		glDetachShader(d_sLightProgram, vertex_shader);
+		glDetachShader(d_sLightProgram, fragment_shader);
+		glDeleteShader(fragment_shader);
+
+
+		glDeleteShader(vertex_shader);
 	}
-	strm.close();
-	strm.open("D:\\lightPassFrag_Sky.txt");
-	ss2 << strm.rdbuf();
-	if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, ss2.str(), fragment_shader, &err)) {
-		Debug::Error("Cam Shader Compiler", "fs! " + err);
-		return;
-	}
-
-	d_skyProgram = glCreateProgram();
-	glAttachShader(d_skyProgram, vertex_shader);
-	glAttachShader(d_skyProgram, fragment_shader);
-	glLinkProgram(d_skyProgram);
-	glGetProgramiv(d_skyProgram, GL_LINK_STATUS, &link_result);
-	if (link_result == GL_FALSE)
-	{
-		int info_log_length = 0;
-		glGetProgramiv(d_skyProgram, GL_INFO_LOG_LENGTH, &info_log_length);
-		vector<char> program_log(info_log_length);
-		glGetProgramInfoLog(d_skyProgram, info_log_length, NULL, &program_log[0]);
-		cout << "cam shader(sky) error" << endl << &program_log[0] << endl;
-		glDeleteProgram(d_skyProgram);
-		d_skyProgram = 0;
-		return;
-	}
-	cout << "cam shader(sky) ok" << endl;
-	glDetachShader(d_skyProgram, vertex_shader);
-	glDetachShader(d_skyProgram, fragment_shader);
-	glDeleteShader(fragment_shader);
-
-	strm.close();
-	strm.open("D:\\lightPassFrag_Point.txt");
-	ss3 << strm.rdbuf();
-	if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, ss3.str(), fragment_shader, &err)) {
-		Debug::Error("Cam Shader Compiler", "fp! " + err);
-		return;
-	}
-
-	d_pLightProgram = glCreateProgram();
-	glAttachShader(d_pLightProgram, vertex_shader);
-	glAttachShader(d_pLightProgram, fragment_shader);
-	glLinkProgram(d_pLightProgram);
-	glGetProgramiv(d_pLightProgram, GL_LINK_STATUS, &link_result);
-	if (link_result == GL_FALSE)
-	{
-		int info_log_length = 0;
-		glGetProgramiv(d_pLightProgram, GL_INFO_LOG_LENGTH, &info_log_length);
-		vector<char> program_log(info_log_length);
-		glGetProgramInfoLog(d_pLightProgram, info_log_length, NULL, &program_log[0]);
-		cout << "cam shader(pl) error" << endl << &program_log[0] << endl;
-		glDeleteProgram(d_pLightProgram);
-		d_pLightProgram = 0;
-		return;
-	}
-	cout << "cam shader(pl) ok" << endl;
-	glDetachShader(d_pLightProgram, vertex_shader);
-	glDetachShader(d_pLightProgram, fragment_shader);
-	glDeleteShader(fragment_shader);
-
-	strm.close();
-	strm.open("D:\\lightPassFrag_Spot.txt");
-	ss4 << strm.rdbuf();
-	if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, ss4.str(), fragment_shader, &err)) {
-		Debug::Error("Cam Shader Compiler", "fc! " + err);
-		return;
-	}
-
-	d_sLightProgram = glCreateProgram();
-	glAttachShader(d_sLightProgram, vertex_shader);
-	glAttachShader(d_sLightProgram, fragment_shader);
-	glLinkProgram(d_sLightProgram);
-	glGetProgramiv(d_sLightProgram, GL_LINK_STATUS, &link_result);
-	if (link_result == GL_FALSE)
-	{
-		int info_log_length = 0;
-		glGetProgramiv(d_sLightProgram, GL_INFO_LOG_LENGTH, &info_log_length);
-		vector<char> program_log(info_log_length);
-		glGetProgramInfoLog(d_sLightProgram, info_log_length, NULL, &program_log[0]);
-		cout << "cam shader(sl) error" << endl << &program_log[0] << endl;
-		glDeleteProgram(d_sLightProgram);
-		d_pLightProgram = 0;
-		return;
-	}
-	cout << "cam shader(sl) ok" << endl;
-	glDetachShader(d_sLightProgram, vertex_shader);
-	glDetachShader(d_sLightProgram, fragment_shader);
-	glDeleteShader(fragment_shader);
-
-
-	glDeleteShader(vertex_shader);
 #endif
 }
 
@@ -262,7 +264,7 @@ void Camera::_SetClear3(EditorBlock* b) {
 	Editor::instance->selected->GetComponent<Camera>()->clearType = CAM_CLEAR_SKY;
 }
 
-MeshFilter::MeshFilter() : Component("Mesh Filter", COMP_MFT, DRAWORDER_NOT), _mesh(-1) {
+MeshFilter::MeshFilter() : Component("Mesh Filter", COMP_MFT, DRAWORDER_NONE), _mesh(-1) {
 
 }
 
@@ -299,7 +301,7 @@ void MeshFilter::Serialize(Editor* e, ofstream* stream) {
 	_StreamWriteAsset(e, stream, ASSETTYPE_MESH, _mesh);
 }
 
-MeshFilter::MeshFilter(ifstream& stream, SceneObject* o, long pos) : Component("Mesh Filter", COMP_MFT, DRAWORDER_NOT, o), _mesh(-1) {
+MeshFilter::MeshFilter(ifstream& stream, SceneObject* o, long pos) : Component("Mesh Filter", COMP_MFT, DRAWORDER_NONE, o), _mesh(-1) {
 	if (pos >= 0)
 		stream.seekg(pos);
 	ASSETTYPE t;
@@ -881,6 +883,50 @@ AnimClip::AnimClip(string path) : AssetObject(ASSETTYPE_ANIMCLIP) {
 	}
 }
 
+Animator::Animator() : AssetObject(ASSETTYPE_ANIMATOR), activeState(0), nextState(0), stateTransition(0), states(), transitions() {
+
+}
+
+Animator::Animator(string path) : Animator() {
+	string p = Editor::instance->projectFolder + "Assets\\" + path;
+	ifstream stream(p.c_str());
+	if (!stream.good()) {
+		cout << "animator not found!" << endl;
+		return;
+	}
+	char* c = new char[4];
+	stream.read(c, 3);
+	c[3] = (char)0;
+	string ss(c);
+	if (ss != "ANT") {
+		cerr << "file not supported" << endl;
+		return;
+	}
+	byte stateCount, transCount;
+	_Strm2Val(stream, stateCount);
+	for (byte a = 0; a < stateCount; a++) {
+		states.push_back(new Anim_State());
+		_Strm2Val(stream, states[a]->isBlend);
+		ASSETTYPE t;
+		if (!states[a]->isBlend) {
+			_Strm2Asset(stream, Editor::instance, t, states[a]->_clip);
+		}
+		else {
+			byte bc;
+			_Strm2Val(stream, bc);
+			for (byte c = 0; c < bc; c++) {
+				states[a]->_blendClips.push_back(-1);
+				_Strm2Asset(stream, Editor::instance, t, states[a]->_blendClips[c]);
+			}
+		}
+		_Strm2Val(stream, states[a]->speed);
+		_Strm2Val(stream, states[a]->editorPos.x);
+		_Strm2Val(stream, states[a]->editorPos.y);
+	}
+	_Strm2Val(stream, transCount);
+	
+}
+
 void Light::DrawEditor(EB_Viewer* ebv) {
 	switch (_lightType) { 
 	case LIGHTTYPE_POINT:
@@ -1053,7 +1099,50 @@ Light::Light(ifstream& stream, SceneObject* o, long pos) : Component("Light", CO
 	_Strm2Val(stream, color.a);
 }
 
-SceneScript::SceneScript(Editor* e, ASSETID id) : Component(e->headerAssets[id] + " (Script)", COMP_SCR, DRAWORDER_NOT), _script(id) {
+Armature::Armature(string path, SceneObject* o) : Component("Armature", COMP_ARM, DRAWORDER_OVERLAY), overridePos(false), restPosition(o->transform.position), restRotation(o->transform.rotation), restScale(o->transform.scale), _anim(-1) {
+	ifstream strm(path);
+	if (!strm.is_open()) {
+		Debug::Error("Armature", "File not found!");
+		return;
+	}
+	char* c = new char[4];
+	strm.getline(c, 4, 0);
+	string s(c);
+	if (s != "ARM") {
+		Debug::Error("Armature", "File signature wrong!");
+		return;
+	}
+	delete[](c);
+	char b = strm.get();
+	while (b == 'B') {
+		AddBone(strm, _bones);
+	}
+}
+
+Armature::Armature(ifstream& stream, SceneObject* o, long pos) : Component("Armature", COMP_ARM, DRAWORDER_OVERLAY) {
+
+}
+
+void Armature::AddBone(ifstream& strm, vector<ArmatureBone*>& bones) {
+	char* c = new char[100];
+	strm.getline(c, 100, 0);
+	Vec3 pos, fwd, rht;
+	Quat rot;
+	byte mask;
+	_Strm2Val(strm, pos.x);
+	_Strm2Val(strm, pos.y);
+	_Strm2Val(strm, pos.z);
+	_Strm2Val(strm, fwd.x);
+	_Strm2Val(strm, fwd.y);
+	_Strm2Val(strm, fwd.z);
+	_Strm2Val(strm, rht.x);
+	_Strm2Val(strm, rht.y);
+	_Strm2Val(strm, rht.z);
+	mask = strm.get();
+	bones.push_back(new ArmatureBone(pos, Quat(), Vec3(), (mask & 0xf0) != 0));
+}
+
+SceneScript::SceneScript(Editor* e, ASSETID id) : Component(e->headerAssets[id] + " (Script)", COMP_SCR, DRAWORDER_NONE), _script(id) {
 	if (id < 0) {
 		name = "missing script!";
 		return;
@@ -1095,7 +1184,7 @@ SceneScript::SceneScript(Editor* e, ASSETID id) : Component(e->headerAssets[id] 
 	}
 }
 
-SceneScript::SceneScript(ifstream& strm, SceneObject* o) : Component("(Script)", COMP_SCR, DRAWORDER_NOT), _script(-1) {
+SceneScript::SceneScript(ifstream& strm, SceneObject* o) : Component("(Script)", COMP_SCR, DRAWORDER_NONE), _script(-1) {
 	char* c = new char[100];
 	strm.getline(c, 100, 0);
 	string s(c);

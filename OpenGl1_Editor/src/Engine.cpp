@@ -946,6 +946,30 @@ void Engine::DrawLineWDotted(Vec3 v1, Vec3 v2, Vec4 col, float width, float dotS
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
+void Engine::DrawTriangle(Vec2 v1, Vec2 v2, Vec2 v3, Vec4 col, bool fill, float width) {
+	Vec3 quadPoss[] = { Vec3(v1.x, v1.y, 1), Vec3(v2.x, v2.y, 1), Vec3(v3.x, v3.y, 1) };
+	for (int y = 0; y < 3; y++) {
+		quadPoss[y] = Ds(Display::uiMatrix*quadPoss[y]);
+	}
+	uint quadIndexes[3] = {0, 1, 2};
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
+	glColor4f(col.r, col.g, col.b, col.a);
+	glLineWidth(width);
+	glPolygonMode(GL_FRONT_AND_BACK, fill? GL_FILL : GL_LINE);
+	glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, &quadIndexes[0]);
+	glDisableClientState(GL_VERTEX_ARRAY);
+}
+
+void Engine::DrawTriangle(Vec2 centre, Vec2 dir, Vec4 col, bool fill, float width) {
+	Vec2 x1(centre + dir);
+	float a120 = PI*0.6666667f;
+	float a240 = PI*1.3333333f;
+	Vec2 x2(centre + glm::mat2(cos(a120), sin(a120), -sin(a120), cos(a120))*dir);
+	Vec2 x3(centre + glm::mat2(cos(a240), sin(a240), -sin(a240), cos(a240))*dir);
+	DrawTriangle(x1, x2, x3, col, fill, width);
+}
+
 void Engine::DrawCircle(Vec2 c, float r, uint n, Vec4 col, float width) {
 	if (n < 3) {
 		Debug::Warning("DrawCircle", "only n of 3 and above allowed!");
@@ -1331,14 +1355,6 @@ Transform* Transform::Rotate(Vec3 v) {
 Transform* Transform::Scale(Vec3 v) {
 	scale += v;
 	return this;
-}
-
-Animator::Animator() : AssetObject(ASSETTYPE_ANIMATOR), activeState(0), nextState(0), stateTransition(0), states(), transitions() {
-	
-}
-
-Animator::Animator(string s) : Animator() {
-
 }
 
 //-----------------texture class---------------------
@@ -2750,7 +2766,7 @@ void AssetManager::Init(string dpath) {
 	ifstream* strm = Scene::strm;
 	if (!strm->is_open()) {
 		Debug::Error("AssetManager", "Fatal: cannot open data file 0!");
-		return;
+		abort();
 	}
 
 	byte numDat = 0, id;
@@ -2761,7 +2777,7 @@ void AssetManager::Init(string dpath) {
 	*strm >> c[0] >> c[1];
 	if (c[0] != 'D' || c[1] != '0') {
 		Debug::Error("AssetManager", "Fatal: file 0 has wrong signature!");
-		return;
+		abort();
 	}
 	_Strm2Val(*strm, num);
 	for (ushort a = 0; a < num; a++) {
@@ -2769,6 +2785,7 @@ void AssetManager::Init(string dpath) {
 		_Strm2Val(*strm, id);
 		_Strm2Val(*strm, pos);
 		strm->getline(c, 100, (char)0);
+		cout << (int)type << " " << (int)id << " " << pos << ": " << string(c) << endl;
 		numDat = max(numDat, id);
 		dataLocs[type].push_back(pair<byte, uint>(id - 1, pos));
 		dataCaches[type].push_back(nullptr);
@@ -2780,8 +2797,10 @@ void AssetManager::Init(string dpath) {
 		streams.push_back(new ifstream(pp.c_str(), ios::in | ios::binary));
 		if (streams[a]->is_open())
 			Debug::Message("AssetManager", "Streaming data" + to_string(a+1));
-		else
-			Debug::Error("AssetManager", "Failed to open data" + to_string(a+1) + "!");
+		else {
+			Debug::Error("AssetManager", "Fatal: Failed to open data" + to_string(a + 1) + "!");
+			abort();
+		}
 	}
 
 	for (auto aa : dataLocs) {

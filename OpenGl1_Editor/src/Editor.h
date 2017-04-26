@@ -25,6 +25,7 @@ typedef void(*dataFunc)(EditorBlock*, void*);
 typedef void(*shortcutFunc)(EditorBlock*);
 typedef void(*shortcutFuncGlobal)(Editor*);
 typedef void(*callbackFunc)(void*);
+typedef string(*editCallbackFunc)(string);
 typedef pair<string, shortcutFunc> funcMap;
 typedef pair<string, shortcutFunc> funcMapGlobal;
 typedef unordered_map<int, shortcutFunc> ShortcutMap;
@@ -238,6 +239,7 @@ public:
 	EB_AnimEditor(Editor* e, int x1, int y1, int x2, int y2);
 
 	float scale = 1;
+	Vec2 offset;
 
 	Animator* editingAnim;
 	ASSETID _editingAnim;
@@ -250,7 +252,7 @@ public:
 
 	static void _SetAnim(void* b);
 	static void _AddState(EditorBlock* eb);
-	static void _AddEmpty(void* b), _AddBlend(void* b);
+	static void _AddEmpty(EditorBlock* b), _AddBlend(EditorBlock* b);
 };
 
 class EB_ColorPicker : public EditorBlock {
@@ -332,6 +334,7 @@ public:
 	Rect editingArea;
 	Vec4 editingCol;
 	void SetEditing(byte t, string val, Rect a, Vec4 c2 = white());
+	editCallbackFunc editingCallback;
 
 	string backgroundPath;
 	Texture* backgroundTex;
