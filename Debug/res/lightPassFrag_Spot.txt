@@ -6,8 +6,6 @@ uniform sampler2D inColor;
 uniform sampler2D inNormal;
 uniform sampler2D inSpec;
 uniform sampler2D inDepth;
-//uniform float zNear;
-//uniform float zFar;
 
 uniform vec3 lightPos;
 uniform vec3 lightDir;
@@ -63,9 +61,4 @@ void main () {
 	
 	float drefl = max(1-(1-dot(-refl, dir))*(1.0/(1-sCol.a*sCol.a)), 0);
 	fragCol = vec4(vec3(1, 1, 1)*lightColor*dCol.rgb*insideCone*isInMin*isInMax*natten*ceil(d1-d2), 0);
-	
-	//fragCol = vec4(1,1,1,0)*texture(lightDepth, vec2(cpos.x*0.5 + 0.5, (cpos.y*0.5 + 0.5)));
-	//fragCol = vec4(1,1,1,0)*(ceil(cpos.y*0.5));
-	//fragCol = vec4(1,1,1,0)*ceil(d1-d2);
-	//fragCol = vec4(1,1,1,0)*texture(lightDepth, uv).x*ceil(uv.y-0.5);
 }
