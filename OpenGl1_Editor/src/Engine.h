@@ -547,9 +547,10 @@ protected:
 
 class SceneSettings {
 public:
-	SceneSettings(): sky(nullptr), skyId(-1) {}
+	SceneSettings(): sky(nullptr), skyId(-1), skyStrength(1) {}
 	
 	Background* sky;
+	float skyStrength;
 	Color ambientCol;
 
 	friend class Editor;

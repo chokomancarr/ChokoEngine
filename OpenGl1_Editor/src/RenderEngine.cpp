@@ -115,6 +115,7 @@ void Camera::_RenderSky(glm::mat4 ip) {
 	GLint normLoc = glGetUniformLocation(d_skyProgram, "inSpec");
 	GLint depthLoc = glGetUniformLocation(d_skyProgram, "inDepth");
 	GLint skyLoc = glGetUniformLocation(d_skyProgram, "inSky");
+	GLint skyStrLoc = glGetUniformLocation(d_skyProgram, "skyStrength");
 	GLint scrSzLoc = glGetUniformLocation(d_skyProgram, "screenSize");
 
 	glEnableClientState(GL_VERTEX_ARRAY);
@@ -142,6 +143,7 @@ void Camera::_RenderSky(glm::mat4 ip) {
 	glUniform1i(skyLoc, 4);
 	glActiveTexture(GL_TEXTURE4);
 	glBindTexture(GL_TEXTURE_2D, Scene::active->settings.sky->pointer);
+	glUniform1f(skyStrLoc, Scene::active->settings.skyStrength);
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, screenRectIndices);
@@ -263,8 +265,8 @@ void Camera::_DoDrawLight_Spot(Light* l, glm::mat4& ip, glm::mat4& lp) {
 	glUniform1f(lMinLoc, l->minDist*l->minDist);
 	glUniform1f(lMaxLoc, l->maxDist*l->maxDist);
 	glUniformMatrix4fv(lDepMatLoc, 1, GL_FALSE, glm::value_ptr(lp));
-	//glUniform1f(lDepBaiLoc, l->shadowBias);
-	//glUniform1f(lDepStrLoc, l->shadowStrength);
+	glUniform1f(lDepBaiLoc, l->shadowBias);
+	glUniform1f(lDepStrLoc, l->shadowStrength);
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, screenRectIndices);
@@ -284,7 +286,7 @@ void Camera::_DrawLights(vector<SceneObject*> oo, glm::mat4& ip) {
 					l->DrawShadowMap();
 					GLfloat matrix[16];
 					glGetFloatv(GL_PROJECTION_MATRIX, matrix);
-					mat *= glm::inverse(glm::mat4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]));
+					mat *= glm::mat4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
 				}
 				switch (l->_lightType) {
 				case LIGHTTYPE_POINT:
