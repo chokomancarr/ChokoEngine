@@ -205,7 +205,7 @@ void Camera::_DoDrawLight_Point(Light* l, glm::mat4& ip) {
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
-void Camera::_DoDrawLight_Spot(Light* l, glm::mat4& ip) {
+void Camera::_DoDrawLight_Spot(Light* l, glm::mat4& ip, glm::mat4& lp) {
 	if (d_sLightProgram == 0) {
 		Debug::Error("PointLightPass", "Fatal: Shader not initialized!");
 		abort();
@@ -226,7 +226,7 @@ void Camera::_DoDrawLight_Spot(Light* l, glm::mat4& ip) {
 	GLint lDepLoc = glGetUniformLocation(d_sLightProgram, "lightDepth");
 	GLint lDepBaiLoc = glGetUniformLocation(d_sLightProgram, "lightDepthBias");
 	GLint lDepStrLoc = glGetUniformLocation(d_sLightProgram, "lightDepthStrength");
-	GLint lDepMatLoc = glGetUniformLocation(d_sLightProgram, "lightDepthMatrix");
+	GLint lDepMatLoc = glGetUniformLocation(d_sLightProgram, "_LD");
 
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(2, GL_FLOAT, 0, screenRectVerts);
@@ -250,9 +250,9 @@ void Camera::_DoDrawLight_Spot(Light* l, glm::mat4& ip) {
 	glUniform1i(depthLoc, 3);
 	glActiveTexture(GL_TEXTURE3);
 	glBindTexture(GL_TEXTURE_2D, d_depthTex);
-	//glUniform1i(lDepLoc, 4);
-	//glActiveTexture(GL_TEXTURE4);
-	//glBindTexture(GL_TEXTURE_2D, l->_shadowMap);
+	glUniform1i(lDepLoc, 4);
+	glActiveTexture(GL_TEXTURE4);
+	glBindTexture(GL_TEXTURE_2D, l->_shadowMap);
 	Vec3 wpos = l->object->transform.worldPosition();
 	glUniform3f(lPosLoc, wpos.x, wpos.y, wpos.z);
 	Vec3 dir = l->object->transform.forward();
@@ -262,7 +262,7 @@ void Camera::_DoDrawLight_Spot(Light* l, glm::mat4& ip) {
 	glUniform1f(lCosLoc, cos(deg2rad*0.5f*l->angle));
 	glUniform1f(lMinLoc, l->minDist*l->minDist);
 	glUniform1f(lMaxLoc, l->maxDist*l->maxDist);
-	//glUniformMatrix4fv(lDepMatLoc, 1, GL_FALSE, glm::value_ptr(l->_shadowMatrix));
+	glUniformMatrix4fv(lDepMatLoc, 1, GL_FALSE, glm::value_ptr(lp));
 	//glUniform1f(lDepBaiLoc, l->shadowBias);
 	//glUniform1f(lDepStrLoc, l->shadowStrength);
 
@@ -279,14 +279,19 @@ void Camera::_DrawLights(vector<SceneObject*> oo, glm::mat4& ip) {
 		for (Component* c : o->_components) {
 			if (c->componentType == COMP_LHT) {
 				Light* l = (Light*)c;
-				if (l->drawShadow)
+				glm::mat4 mat = glm::mat4();
+				if (l->drawShadow) {
 					l->DrawShadowMap();
+					GLfloat matrix[16];
+					glGetFloatv(GL_PROJECTION_MATRIX, matrix);
+					mat *= glm::inverse(glm::mat4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]));
+				}
 				switch (l->_lightType) {
 				case LIGHTTYPE_POINT:
 					_DoDrawLight_Point(l, ip);
 					break;
 				case LIGHTTYPE_SPOT:
-					_DoDrawLight_Spot(l, ip);
+					_DoDrawLight_Spot(l, ip, mat);
 					break;
 				}
 			}
@@ -358,7 +363,6 @@ void Light::InitShadow() {
 		Debug::Message("ShadowMap", "FB ok");
 	}
 
-	// restore default FBO
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 }
 
@@ -367,25 +371,30 @@ void Light::DrawShadowMap() {
 		Debug::Error("RenderShadow", "Fatal: Fbo not set up!");
 		abort();
 	}
+	glViewport(0, 0, 1024, 1024);
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _shadowFbo);
-	//clear
-	glClear(GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
 	glDepthMask(true);
 	glDisable(GL_BLEND);
-	CalcShadowMatrix();
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glMultMatrixf(glm::value_ptr(_shadowMatrix));
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	//render opaque
-	DrawSceneObjectsOpaque(Scene::active->objects);
+	glClearColor(1, 0, 0, 0);
+	glClear(GL_COLOR_BUFFER_BIT);
+	glClearDepth(1);
+	glClear(GL_DEPTH_BUFFER_BIT);
+	switch (_lightType) {
+	case LIGHTTYPE_SPOT:
+	case LIGHTTYPE_DIRECTIONAL:
+		CalcShadowMatrix();
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+		DrawSceneObjectsOpaque(Scene::active->objects);
+		break;
+	}
 
 	glDisable(GL_DEPTH_TEST);
 	glDepthMask(false);
 	glEnable(GL_BLEND);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+	glViewport(0, 0, Display::width, Display::height);
 }

@@ -8,12 +8,18 @@ uniform sampler2D inSpec;
 uniform sampler2D inDepth;
 //uniform float zNear;
 //uniform float zFar;
-uniform sampler2D inSky;
+
+uniform vec3 lightPos;
+uniform vec3 lightColor;
+uniform float lightStrength;
+uniform float lightRadius2;
+uniform float lightDistance;
+//uniform float haloIntensity;
 
 out vec4 fragCol;
 
-//notes
-//input normal is world space, use directly
+//d2 = (distance2 - radius2) / (maxDistance2 - radius2)
+//atten = intensity*(1 - d2)
 
 void main () {
 	vec2 uv = gl_FragCoord.xy / screenSize; //screen position xy 0~1
@@ -34,12 +40,17 @@ void main () {
 	vec3 fwd = normalize((wPos - wPos2).xyz);
 	vec3 refl = normalize(reflect(fwd, nCol.xyz)); //view refl norm vector
 	
-	float cx = acos(refl.x)/(3.14159*2);
-	float sy = asin(refl.y)/(3.14159);
+	vec3 ds = wPos.xyz - lightPos;
+	vec3 dir = normalize(ds);
+	float dist = length(ds);
+	float mdist = lightDistance - dist;
+	float atten = lightStrength*(((mdist*mdist - lightRadius2)/(lightDistance*lightDistance - lightRadius2)));
+	atten = min(atten, lightStrength);
+	float natten = max(dot(-dir, nCol.xyz), 0);
 	
-	vec4 skyCol = textureLod(inSky, vec2(cx , sy + 0.5), (1-sCol.a)*3);
-	vec4 ambCol = textureLod(inSky, vec2(cx , sy + 0.5), 1000);
-	fragCol = mix(ambCol*dCol, vec4(skyCol.rgb*sCol.rgb, 1), 0.3333*(sCol.r + sCol.g + sCol.b));
-	//fragCol.rgb *= 0.3;
-	//fragCol = vec4(0, 0, 0, 1);
+	float drefl = max(1-(1-dot(-refl, dir))*(1.0/(1-sCol.a*sCol.a)), 0);
+	
+	fragCol = vec4(vec3(1, 1, 1)*lightColor*dCol.rgb*atten*natten, 0);
+	//fragCol = vec4(0, 0, 0, 0);
+	//fragCol += vec4(drefl*lightColor*sCol.rgb, 0);
 }

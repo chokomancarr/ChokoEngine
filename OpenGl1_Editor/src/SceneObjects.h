@@ -306,7 +306,7 @@ protected:
 	void _RenderSky(glm::mat4 ip);
 	void _DrawLights(vector<SceneObject*> oo, glm::mat4& ip);
 	void _DoDrawLight_Point(Light* l, glm::mat4& ip);
-	void _DoDrawLight_Spot(Light* l, glm::mat4& ip);
+	void _DoDrawLight_Spot(Light* l, glm::mat4& ip, glm::mat4& lp);
 
 	Vec3 camVerts[6];
 	static int camVertsIds[19];
@@ -452,7 +452,7 @@ public:
 protected:
 	LIGHTTYPE _lightType;
 	Light(ifstream& stream, SceneObject* o, long pos = -1);
-	glm::mat4 _shadowMatrix;
+	//glm::mat4 _shadowMatrix;
 
 	void InitShadow(), CalcShadowMatrix();
 	static GLuint _shadowFbo, _shadowMap;

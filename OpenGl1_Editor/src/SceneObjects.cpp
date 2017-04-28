@@ -1048,17 +1048,18 @@ void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 }
 
 void Light::CalcShadowMatrix() {
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
 	if (_lightType == LIGHTTYPE_SPOT) {
 		Quat q = glm::inverse(object->transform.rotation);
-		_shadowMatrix = glm::perspectiveFov(angle * deg2rad, 1024.0f, 1024.0f, minDist, maxDist);
-		Vec3 scl = object->transform.scale;
-		glScalef(scl.x, scl.y, -scl.z);
-		_shadowMatrix *= Quat2Mat(q);
-		Vec3 pos = object->transform.position;
-		_shadowMatrix *= glm::mat4(0, 0, 0, -pos.x, 0, 0, 0, -pos.y, 0, 0, 0, -pos.z, 0, 0, 0, 1);
+		glMultMatrixf(glm::value_ptr(glm::perspectiveFov(angle * deg2rad, 1024.0f, 1024.0f, minDist, maxDist)));
+		glScalef(1, 1, -1);
+		glMultMatrixf(glm::value_ptr(Quat2Mat(q)));
+		Vec3 pos = -object->transform.worldPosition();
+		glTranslatef(pos.x, pos.y, pos.z);
 	}
-	else
-		_shadowMatrix = glm::mat4();
+	//else
+		//_shadowMatrix = glm::mat4();
 }
 
 void Light::Serialize(Editor* e, ofstream* stream) {
@@ -1084,8 +1085,7 @@ Light::Light(ifstream& stream, SceneObject* o, long pos) : Component("Light", CO
 	_Strm2Val(stream, _lightType);
 	drawShadow = (_lightType & 0xf0) != 0;
 	_lightType = LIGHTTYPE(_lightType & 0x0f);
-	cout << drawShadow << endl;
-	if (drawShadow && _shadowMap == 0)
+	if (drawShadow)
 		InitShadow();
 	_Strm2Val(stream, intensity);
 	_Strm2Val(stream, minDist);
