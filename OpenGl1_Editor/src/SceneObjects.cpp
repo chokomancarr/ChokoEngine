@@ -1448,7 +1448,7 @@ SceneScript::SceneScript(ifstream& strm, SceneObject* o) : Component("(Script)",
 		_Strm2Val<byte>(strm, tp);
 		strm.getline(c, 100, 0);
 		string ss(c);
-		for (auto vl : _vals) {
+		for (auto& vl : _vals) {
 			if (vl.first == ss && vl.second.first == SCR_VARTYPE(tp)) {
 				switch (vl.second.first) {
 				case SCR_VAR_INT:
@@ -1481,7 +1481,7 @@ SceneScript::SceneScript(ifstream& strm, SceneObject* o) : Component("(Script)",
 
 SceneScript::~SceneScript() {
 #ifdef IS_EDITOR
-	for (auto a : _vals) {
+	for (auto& a : _vals) {
 		delete(a.second.second);
 	}
 #endif
@@ -1491,7 +1491,7 @@ void SceneScript::Serialize(Editor* e, ofstream* stream) {
 	_StreamWriteAsset(e, stream, ASSETTYPE_SCRIPT_H, _script);
 	ushort sz = (ushort)_vals.size();
 	_StreamWrite(&sz, stream, 2);
-	for (auto a : _vals) {
+	for (auto& a : _vals) {
 		_StreamWrite(&a.second.first, stream, 1);
 		*stream << a.first << char0;
 		switch (a.second.first) {
@@ -1509,7 +1509,7 @@ void SceneScript::Serialize(Editor* e, ofstream* stream) {
 void SceneScript::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 	SceneScript* scr = (SceneScript*)c;
 	if (DrawComponentHeader(e, v, pos, this)) {
-		for (auto p : _vals){
+		for (auto& p : _vals){
 			Engine::Label(v.r + 20, v.g + pos + 19, 12, p.first, e->font, white(1, (p.second.first == SCR_VAR_COMMENT)? 0.5f : 1));
 			switch (p.second.first) {
 			case SCR_VAR_FLOAT:

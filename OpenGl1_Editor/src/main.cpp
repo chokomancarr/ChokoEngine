@@ -223,13 +223,13 @@ void CheckShortcuts() {
 		bool cDn = Input::KeyHold(Key_Control);
 		bool aDn = Input::KeyHold(Key_Alt);
 		bool sDn = Input::KeyHold(Key_Shift);
-		for (auto g = editor->globalShorts.begin(); g != editor->globalShorts.end(); g++) {
-			if (ShortcutTriggered(g->first, cDn, aDn, sDn)) {
-				g->second(editor);
+		for (auto& g : editor->globalShorts) {
+			if (ShortcutTriggered(g.first, cDn, aDn, sDn)) {
+				g.second(editor);
 				return;
 			}
-			if ((g->first & 0xff00) == 0) {
-				cout << hex << g->first;
+			if ((g.first & 0xff00) == 0) {
+				cout << hex << g.first;
 			}
 		}
 		for (EditorBlock* e : editor->blocks) {
@@ -241,9 +241,9 @@ void CheckShortcuts() {
 			v.g = round(v.g) + 1;
 			v.r = round(v.r) + 1;
 			if (Engine::Button(v.r, v.g, v.b, v.a) && MOUSE_HOVER_FLAG) {
-				for (auto g2 = e->shortcuts.begin(); g2 != e->shortcuts.end(); g2++) {
-					if (ShortcutTriggered(g2->first, cDn, aDn, sDn)) {
-						g2->second(e);
+				for (auto& g2 : e->shortcuts) {
+					if (ShortcutTriggered(g2.first, cDn, aDn, sDn)) {
+						g2.second(e);
 						//return;
 					}
 				}
@@ -370,6 +370,7 @@ void renderScene()
 		glLoadIdentity();
 		DrawOverlay();
 
+		/*
 		FCurve curve = FCurve();
 		curve.keys.push_back(FCurve_Key(Vec2(0, 0), Vec2(-30, 20), Vec2(30, -20)));
 		curve.keys.push_back(FCurve_Key(Vec2(50, 50), Vec2(35, 50), Vec2(65, 50)));
@@ -388,6 +389,7 @@ void renderScene()
 			Engine::DrawCircle(k.left* 2.0f + Vec2(150, 150), 5, 24, green(), 1.5f);
 			Engine::DrawCircle(k.right* 2.0f + Vec2(150, 150), 5, 24, green(), 1.5f);
 		}
+		*/
 
 		glutSwapBuffers();
 		redrawn = true;

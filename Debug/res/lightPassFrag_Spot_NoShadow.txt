@@ -15,10 +15,6 @@ uniform float lightCosAngle;
 uniform float lightMinDist;
 uniform float lightMaxDist;
 
-uniform sampler2D lightDepth;
-uniform float lightDepthStrength;
-uniform mat4 _LD;
-
 out vec4 fragCol;
 
 void main () {
@@ -51,22 +47,9 @@ void main () {
 	
 	float natten = max(dot(-dir, nCol.xyz), 0);
 	
-	//float depthTmp = texture(lightDepth, uv).x;
-	//float depthTmp2 = (2 * lightMinDist) / (lightMaxDist + lightMinDist - depthTmp * (lightMaxDist - lightMinDist));
-	
 	vec4 cpos = _LD*wPos;
 	cpos /= cpos.w;
 	
-	float d1 = texture(lightDepth, vec2(cpos.x*0.5 + 0.5, (cpos.y*0.5 + 0.5))).x;
-	float d2 = cpos.z;
-	float notShadow = ceil(d1-d2);
-	notShadow = mix(1, notShadow, lightDepthStrength);
-	
 	float drefl = max(1-(1-dot(-refl, dir))*(1.0/(1-sCol.a*sCol.a)), 0);
-	fragCol = vec4(vec3(1, 1, 1)*lightColor*lightStrength*dCol.rgb*insideCone*isInMin*isInMax*natten*notShadow, 0);
-	
-	//fragCol = vec4(1,1,1,0)*texture(lightDepth, vec2(cpos.x*0.5 + 0.5, (cpos.y*0.5 + 0.5)));
-	//fragCol = vec4(1,1,1,0)*ceil(d1-d2);
-	//fragCol = vec4(1,1,1,0)*texture(lightDepth, uv).x;
-	//fragCol = vec4(0, 0, 0, 1);
+	fragCol = vec4(vec3(1, 1, 1)*lightColor*lightStrength*dCol.rgb*insideCone*isInMin*isInMax*natten, 0);
 }

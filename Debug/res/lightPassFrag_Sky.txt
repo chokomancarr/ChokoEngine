@@ -9,6 +9,7 @@ uniform sampler2D inDepth;
 //uniform float zNear;
 //uniform float zFar;
 uniform sampler2D inSky;
+uniform float skyStrength;
 
 out vec4 fragCol;
 
@@ -27,7 +28,7 @@ void main () {
 	float zLinear = (2 * nClip) / (fClip + nClip - z * (fClip - nClip)); //z normalized 0~1
 	vec4 dc = vec4(uv.x*2-1, uv.y*2-1, z*2-1, 1);
 	vec4 wPos = _IP*dc;
-	wPos *= ceil(1-z) / wPos.w; //world position
+	wPos /= wPos.w; //world position
 	vec4 wPos2 = _IP*vec4(dc.x, dc.y, -1, 1);
 	wPos2 *= ceil(1-z) / wPos2.w; //world position (camera)
 	
@@ -35,11 +36,26 @@ void main () {
 	vec3 refl = normalize(reflect(fwd, nCol.xyz)); //view refl norm vector
 	
 	float cx = acos(refl.x)/(3.14159*2);
+	cx = mix(cx, 1-cx, round(refl.z*0.5 + 0.5));
 	float sy = asin(refl.y)/(3.14159);
 	
-	vec4 skyCol = textureLod(inSky, vec2(cx , sy + 0.5), (1-sCol.a)*3);
+	vec4 skyCol = textureLod(inSky, vec2(cx , sy + 0.5), (1-sCol.a)*6);
 	vec4 ambCol = textureLod(inSky, vec2(cx , sy + 0.5), 1000);
-	fragCol = mix(ambCol*dCol, vec4(skyCol.rgb*sCol.rgb, 1), 0.3333*(sCol.r + sCol.g + sCol.b));
-	//fragCol.rgb *= 0.3;
+	
+	//skybox
+	vec4 wpos0 = _IP*vec4(uv.x*2-1, uv.y*2-1, -1, 1);
+	wpos0 /= wpos0.w;
+	vec4 wpos1 = _IP*vec4(uv.x*2-1, uv.y*2-1, 1, 1);
+	wpos1 /= wpos1.w;
+	vec4 dir1 = normalize(wpos1 - wpos0);
+	float cx1 = acos(dir1.x)/(3.14159*2);
+	cx1 = mix(cx1, 1-cx1, round(dir1.z*0.5 + 0.5));
+	float sy1 = asin(dir1.y)/(3.14159);
+	vec4 skyBoxCol = textureLod(inSky, vec2(cx1, sy1 + 0.5), 0);
+	
+	fragCol = mix(mix(ambCol*dCol, vec4(skyCol.rgb*sCol.rgb, 1), 0.3333*(sCol.r + sCol.g + sCol.b)), skyBoxCol, floor(z));
+	//fragCol = vec4(refl.x, refl.y, 0, 1);
+	fragCol.rgb *= skyStrength;
 	//fragCol = vec4(0, 0, 0, 1);
+	//fragCol = vec4(zLinear, 0, 0, 1);
 }

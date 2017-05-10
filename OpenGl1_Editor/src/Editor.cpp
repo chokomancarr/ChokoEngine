@@ -563,8 +563,7 @@ void EB_Viewer::Draw() {
 		//draw background
 		glDepthFunc(GL_EQUAL);
 		if (editor->activeScene->settings.sky != nullptr) {
-			//Engine::DrawSky(v.x, v.y, v.z, v.w, editor->activeScene->settings.sky, rz / 360.0f, rw / 180.0f, 60, 0);
-			//Engine::DrawQuad(v.x, v.y, v.z, v.w, editor->activeScene->sky->pointer, white());
+			
 		}
 		glDepthFunc(GL_LEQUAL);
 	}
@@ -1265,7 +1264,7 @@ ASSETID Editor::GetAssetInfoH(string p) {
 }
 
 ASSETID Editor::GetAssetInfo(string p, ASSETTYPE &type, ASSETID& i) {
-	for (auto t : normalAssets) {
+	for (auto& t : normalAssets) {
 		ushort x = 0;
 		for (auto u : t.second) {
 			if (u == p) {
@@ -1303,7 +1302,7 @@ ASSETID Editor::GetAssetId(void* i, ASSETTYPE&) {
 	if (i == nullptr)
 		return -1;
 	else {
-		for (auto a : normalAssetCaches) {
+		for (auto& a : normalAssetCaches) {
 			for (int b = a.second.size()-1; b >= 0; b--) {
 				if (a.second[b] == i){
 					return b;
@@ -2290,7 +2289,7 @@ bool MergeAssets(Editor* e) {
 	ushort xx = 0;
 	long long poss1 = file.tellp();
 	file << "00";
-	for (auto as : e->normalAssets) {
+	for (auto& as : e->normalAssets) {
 		//ushort ii = 0;
 		for (auto as2 : as.second) {
 			file << (char)as.first;
@@ -2345,7 +2344,7 @@ bool MergeAssets(Editor* e) {
 		return false;
 	}
 	uint xxx = 0;
-	for (auto it : e->normalAssets) {
+	for (auto& it : e->normalAssets) {
 		if (it.second.size() > 0) {
 			ushort i = 0;
 			for (string s : it.second) {

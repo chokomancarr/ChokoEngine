@@ -508,8 +508,6 @@ public:
 	static float DrawSliderFill(float x, float y, float w, float h, float min, float max, float val, Vec4 background, Vec4 foreground);
 	//scaleType: 0=scale, 1=clip, 2=tile
 	static void DrawProgressBar(float x, float y, float w, float h, float progress, Vec4 background, Texture* foreground, Vec4 tint, int padding, byte scaleType);
-	static void DrawSky(Background* sky, float forX, float forY, float angleW, float rot);
-	static void DrawSky(float x, float y, float w, float h, Background* sky, float forX, float forY, float angleW, float rot);
 
 	static void RotateUI(float a, Vec2 point);
 	static void ResetUIMatrix();

@@ -702,65 +702,6 @@ void Engine::DrawProgressBar(float x, float y, float w, float h, float progress,
 	DrawQuad(x + padding, y + padding, w*progress - 2 * padding, h - 2 * padding, foreground->pointer, Vec2(0, 1), Vec2(tx, 1), Vec2(0, 0), Vec2(tx, 0), false, tint);
 }
 
-void Engine::DrawSky(float x, float y, float w, float h, Background* sky, float forX, float forY, float angleW, float rot) { //forward: x (-90~90), y (0~360), can repeat
-	Vec3 quadPoss[4];
-	quadPoss[0].x = x;
-	quadPoss[0].y = y;
-	quadPoss[1].x = x + w;
-	quadPoss[1].y = y;
-	quadPoss[2].x = x;
-	quadPoss[2].y = y + h;
-	quadPoss[3].x = x + w;
-	quadPoss[3].y = y + h;
-	for (int y = 0; y < 4; y++) {
-		quadPoss[y].z = 1;
-		//Vec3 v = quadPoss[y];
-		quadPoss[y] = Ds(Display::uiMatrix*quadPoss[y]);
-	}
-	float w2h = h / w;
-	void* uvP;
-	if (w2h < 1) {
-		Vec2 quadUv[4]{Vec2(-0.5f, w2h / 2), Vec2(0.5f, w2h / 2), Vec2(-0.5f, -w2h / 2), Vec2(0.5f, -w2h / 2)};
-		uvP = &quadUv[0];
-	}
-	else {
-		Vec2 quadUv[4]{Vec2(-0.5f / w2h, 0.5f), Vec2(0.5f / w2h, 0.5f), Vec2(-0.5f / w2h, -0.5f), Vec2(0.5f / w2h, -0.5f)};
-		uvP = &quadUv[0];
-	}
-	uint quadIndexes[4] = { 0, 1, 3, 2 };
-	uint prog = skyProgram;
-
-	GLint baseImageLoc = glGetUniformLocation(prog, "sampler");
-	glUniform1i(baseImageLoc, 0);
-	glEnableClientState(GL_VERTEX_ARRAY);
-
-	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
-	glUseProgram(prog);
-
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, sky->pointer);
-
-	GLint dirLoc = glGetUniformLocation(prog, "dir");
-	glUniform2f(dirLoc, forX, -forY);
-	GLint lLoc = glGetUniformLocation(prog, "length");
-	glUniform1f(lLoc, 0.5f/sin(angleW*3.14159f/360));
-
-	glEnableVertexAttribArray(0);
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &quadPoss[0]);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, uvP);
-
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glDrawElements(GL_QUADS, 4, GL_UNSIGNED_INT, &quadIndexes[0]);
-
-	glDisableVertexAttribArray(0);
-	glDisableVertexAttribArray(1);
-	glUseProgram(0);
-
-	glDisableClientState(GL_VERTEX_ARRAY);
-
-}
-
 void Engine::RotateUI(float aa, Vec2 point) {
 	float a = -3.1415926535f*aa / 180.0f;
 	//Display::uiMatrix = glm::mat3(1, 0, 0, 0, 1, 0, point2.x * 2 - 1, point2.y * 2 - 1, 1)*glm::mat3(cos(a), -sin(a), 0, sin(a), cos(a), 0, 0, 0, 1)*glm::mat3(1, 0, 0, 0, 1, 0, -point2.x * 2 + 1, -point2.y * 2 + 1, 1)*Display::uiMatrix;
@@ -2391,8 +2332,8 @@ Material::Material(ifstream& stream, uint offset) : AssetObject(ASSETTYPE_MATERI
 }
 
 Material::~Material() {
-	for (auto a : vals) {
-		for (auto b : a.second)
+	for (auto& a : vals) {
+		for (auto& b : a.second)
 			delete(b.second);
 	}
 }
@@ -2431,7 +2372,7 @@ void Material::Save(string path) {
 	long long p1 = strm.tellp();
 	strm << "0000";
 	//_StreamWrite(&i, &strm, 4);
-	for (auto v : vals[SHADER_INT]) {
+	for (auto& v : vals[SHADER_INT]) {
 		t = SHADER_INT;
 		strm << t;
 		strm << valNames[SHADER_INT][j] << (char)0;
@@ -2441,7 +2382,7 @@ void Material::Save(string path) {
 		j++;
 	}
 	j = 0;
-	for (auto v : vals[SHADER_FLOAT]) {
+	for (auto& v : vals[SHADER_FLOAT]) {
 		t = SHADER_FLOAT;
 		strm << t;
 		strm << valNames[SHADER_FLOAT][j] << (char)0;
@@ -2451,7 +2392,7 @@ void Material::Save(string path) {
 		j++;
 	}
 	j = 0;
-	for (auto v : vals[SHADER_SAMPLER]) {
+	for (auto& v : vals[SHADER_SAMPLER]) {
 		if (v.second == nullptr)
 			continue;
 		t = SHADER_SAMPLER;
@@ -2478,20 +2419,20 @@ void Material::ApplyGL(glm::mat4& _mv, glm::mat4& _p) {
 		glUniformMatrix4fv(mv, 1, GL_FALSE, glm::value_ptr(_mv));
 		glUniformMatrix4fv(mvp, 1, GL_FALSE, glm::value_ptr(_p*_mv));
 		//glUniformMatrix4fv(p, 1, GL_FALSE, matrix2);
-		for (auto a : vals[SHADER_INT])
+		for (auto& a : vals[SHADER_INT])
 			if (a.second != nullptr)
 				glUniform1i(a.first, *(int*)a.second);
-		for (auto a : vals[SHADER_FLOAT])
+		for (auto& a : vals[SHADER_FLOAT])
 			if (a.second != nullptr)
 				glUniform1f(a.first, *(float*)a.second);
-		for (auto a : vals[SHADER_VEC2]) {
+		for (auto& a : vals[SHADER_VEC2]) {
 			if (a.second == nullptr)
 				continue;
 			Vec2* v2 = (Vec2*)a.second;
 			glUniform2f(a.first, v2->x, v2->y);
 		}
 		int ti = -1;
-		for (auto a : vals[SHADER_SAMPLER]) {
+		for (auto& a : vals[SHADER_SAMPLER]) {
 			ti++;
 			if (a.second == nullptr)
 				continue;
@@ -2962,9 +2903,9 @@ void AssetManager::Init(string dpath) {
 		}
 	}
 
-	for (auto aa : dataLocs) {
+	for (auto& aa : dataLocs) {
 		ushort s = 0;
-		for (auto bb : aa.second) {
+		for (auto& bb : aa.second) {
 			streams[bb.first]->seekg(bb.second);
 			uint sz;
 			_Strm2Val(*streams[bb.first], sz);
@@ -2979,7 +2920,7 @@ void AssetManager::Init(string dpath) {
 
 void* AssetManager::CacheFromName(string nm) {
 	//ASSETTYPE t;
-	for (auto t : names) {
+	for (auto& t : names) {
 		for (uint a = names[t.first].size(); a > 0; a--) {
 			if (names[t.first][a-1] == nm) {
 				return GetCache(t.first, a-1);
@@ -2991,7 +2932,7 @@ void* AssetManager::CacheFromName(string nm) {
 }
 
 ASSETID AssetManager::GetAssetId(string nm, ASSETTYPE &t) {
-	for (auto q : names) {
+	for (auto& q : names) {
 		for (uint a = q.second.size(); a > 0; a--) {
 			if (q.second[a-1] == nm) {
 				t = q.first;

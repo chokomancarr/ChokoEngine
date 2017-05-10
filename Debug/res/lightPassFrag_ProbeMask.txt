@@ -1,0 +1,35 @@
+#version 330
+
+uniform mat4 _IP;
+uniform vec2 screenSize;
+uniform sampler2D inDepth;
+uniform vec3 probePos;
+uniform vec3 range;
+uniform float softness;
+
+out vec4 fragCol;
+
+//notes
+//input normal is world space, use directly
+
+void main () {
+	vec2 uv = gl_FragCoord.xy / screenSize; //screen position xy 0~1
+	float z = texture(inDepth, uv).x;
+	float nClip = 0.01;
+	float fClip = 500.0;
+	
+	float zLinear = (2 * nClip) / (fClip + nClip - z * (fClip - nClip)); //z normalized 0~1
+	vec4 dc = vec4(uv.x*2-1, uv.y*2-1, z*2-1, 1);
+	vec4 wPos = _IP*dc;
+	wPos *= ceil(1-z) / wPos.w; //world position
+	
+	vec3 off = wPos.xyz - probePos;
+	vec3 dist;
+	dist.x = 1-(abs(off.x) / range.x);
+	dist.y = 1-(abs(off.y) / range.y);
+	dist.z = 1-(abs(off.z) / range.z);
+	float soft = softness + 0.001;
+	//fragCol = vec4(max(min(dist.x / (softness+0.001), 1), 0), 0, 0, 1);
+	fragCol = vec4(0, 0, 0, max(min(dist.x / soft, 1), 0)*max(min(dist.y / soft, 1), 0)*max(min(dist.z / soft, 1), 0)*0.25);
+	//fragCol = vec4(fragCol.a, 0, 0, 1);
+}
