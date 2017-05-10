@@ -203,6 +203,7 @@ uint Engine::unlitProgram = 0;
 uint Engine::unlitProgramA = 0;
 uint Engine::unlitProgramC = 0;
 uint Engine::skyProgram = 0;
+uint Engine::blurProgram = 0;
 Font* Engine::defaultFont;//&Font("D:\\ascii 2.font");
 bool Input::mouse0 = false;
 bool Input::mouse1 = false;
@@ -254,6 +255,8 @@ void Engine::Init(string path) {
 		Debug::Error("Engine", "Fatal: Cannot init vert shader!");
 		abort();
 	}
+	glDeleteShader(fragment_shader);
+
 	GLuint fragment_shaderA;
 	if (ShaderBase::LoadShader(GL_FRAGMENT_SHADER, fragcode2, fragment_shaderA)) {
 		unlitProgramA = glCreateProgram();
@@ -280,6 +283,8 @@ void Engine::Init(string path) {
 		Debug::Error("Engine", "Fatal: Cannot init frag shader1!");
 		abort();
 	}
+	glDeleteShader(fragment_shaderA);
+
 	GLuint fragment_shaderC;
 	if (ShaderBase::LoadShader(GL_FRAGMENT_SHADER, fragcode3, fragment_shaderC)) {
 		unlitProgramC = glCreateProgram();
@@ -307,6 +312,8 @@ void Engine::Init(string path) {
 		Debug::Error("Engine", "Fatal: Cannot init frag shader2!");
 		abort();
 	}
+	glDeleteShader(fragment_shaderC);
+
 	GLuint fragment_shaderS;
 	if (ShaderBase::LoadShader(GL_FRAGMENT_SHADER, fragcodeSky, fragment_shaderS)) {
 		skyProgram = glCreateProgram();
@@ -326,17 +333,50 @@ void Engine::Init(string path) {
 			cerr << "Sky shader link error" << endl << &program_log[0] << endl;
 			abort();
 		}
-		glDetachShader(unlitProgramC, vertex_shader);
-		glDetachShader(unlitProgramC, fragment_shaderC);
+		glDetachShader(skyProgram, vertex_shader);
+		glDetachShader(skyProgram, fragment_shaderS);
 		//defaultFont = &Font("D:\\ascii 2.font");
 	}
 	else {
 		Debug::Error("Engine", "Fatal: Cannot init frag shader3!");
 		abort();
 	}
+	glDeleteShader(fragment_shaderS);
+
+	GLuint fragment_shaderB;
+	ifstream strm("D:\\blurPassFrag.txt");
+	stringstream ss;
+	ss << strm.rdbuf();
+	string error = "";
+	if (ShaderBase::LoadShader(GL_FRAGMENT_SHADER, ss.str(), fragment_shaderB, &error)) {
+		blurProgram = glCreateProgram();
+		glAttachShader(blurProgram, vertex_shader);
+		glAttachShader(blurProgram, fragment_shaderB);
+
+		link_result = 0;
+
+		glLinkProgram(blurProgram);
+		glGetProgramiv(blurProgram, GL_LINK_STATUS, &link_result);
+		if (link_result == GL_FALSE)
+		{
+			int info_log_length = 0;
+			glGetProgramiv(blurProgram, GL_INFO_LOG_LENGTH, &info_log_length);
+			vector<char> program_log(info_log_length);
+			glGetProgramInfoLog(blurProgram, info_log_length, NULL, &program_log[0]);
+			cerr << "Blur shader link error" << endl << &program_log[0] << endl;
+			abort();
+		}
+		glDetachShader(blurProgram, vertex_shader);
+		glDetachShader(blurProgram, fragment_shaderB);
+		//defaultFont = &Font("D:\\ascii 2.font");
+	}
+	else {
+		Debug::Error("Engine", "Fatal: Cannot init blur shader! " + error);
+		abort();
+	}
+	glDeleteShader(fragment_shaderB);
 
 	glDeleteShader(vertex_shader);
-	glDeleteShader(fragment_shader);
 
 #ifdef IS_EDITOR
 	string colorPickerV = "#version 330 core\nlayout(location = 0) in vec3 pos;\nlayout(location = 1) in vec2 uv;\nout vec2 UV;\nvoid main(){ \ngl_Position.xyz = pos;\ngl_Position.w = 1.0;\nUV = uv;\n}";
@@ -1796,6 +1836,83 @@ Background::Background(ifstream& strm, uint offset) : width(0), height(0), Asset
 	//cout << "HDR Image loaded: " << width << "x" << height << endl;
 }
 
+/*
+vector<float> Background::Downsample(vector<float>& data, uint w, uint h, uint& w2, uint& h2) {
+	glViewport(0, 0, w*0.5f, h*0.5f);
+	GLuint fbo, tex, inTex, outTex;
+	glGenTextures(1, &tex);
+
+	glBindTexture(GL_TEXTURE_2D, inTex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, w, h, 0, GL_RGB, GL_FLOAT, &data[0]);
+	glGenTextures(1, &outTex);
+	glBindTexture(GL_TEXTURE_2D, tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, w*0.5f, h*0.5f, 0, GL_RGB, GL_FLOAT, NULL);
+	glGenTextures(1, &inTex);
+	glBindTexture(GL_TEXTURE_2D, outTex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, w*0.5f, h*0.5f, 0, GL_RGB, GL_FLOAT, NULL);
+
+	glGenFramebuffers(1, &fbo);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
+
+	glBindTexture(GL_TEXTURE_2D, tex);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	glBindTexture(GL_TEXTURE_2D, outTex);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, outTex, 0);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	GLenum DrawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+	glDrawBuffers(2, DrawBuffers);
+
+	GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+
+	if (Status != GL_FRAMEBUFFER_COMPLETE) {
+		Debug::Error("Background", "FB error:" + Status);
+		abort();
+	}
+
+	GLint scrSzLoc = glGetUniformLocation(Engine::blurProgram, "screenSize");
+	GLint inTexLoc = glGetUniformLocation(Engine::blurProgram, "tex");
+	GLint isYLoc = glGetUniformLocation(Engine::blurProgram, "isY");
+
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(2, GL_FLOAT, 0, Camera::screenRectVerts);
+	glUseProgram(Engine::blurProgram);
+
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, Camera::screenRectVerts);
+
+	glUniform2f(scrSzLoc, w*0.5f, h*0.5f);
+
+	//blur x
+	glUniform1i(inTexLoc, 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, inTex);
+	glUniform1f(isYLoc, false);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, Camera::screenRectIndices);
+
+	//blur y
+	glUniform1i(inTexLoc, 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, tex);
+	glUniform1f(isYLoc, true);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, Camera::screenRectIndices);
+
+	glDisableVertexAttribArray(0);
+	glUseProgram(0);
+	glDisableClientState(GL_VERTEX_ARRAY);
+
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glViewport(0, 0, Display::width, Display::height);
+}
+*/
+//*
 vector<float> Background::Downsample(vector<float>& data, uint w, uint h, uint& w2, uint& h2) {
 	if (w % 2 != 0) w--;
 	if (h % 2 != 0) h--;
@@ -1847,6 +1964,40 @@ vector<float> Background::Downsample(vector<float>& data, uint w, uint h, uint& 
 	}
 
 	return oImg;
+}
+//*/
+
+CubeMap::CubeMap(ushort size, bool mips, GLenum type, byte dataSize, GLenum format, GLenum dataType) : size(size), AssetObject(ASSETTYPE_HDRI), loaded(false) {
+	if (size != 64 && size != 128 && size != 256 && size != 512 && size != 1024 && size != 2048) {
+		Debug::Error("Cubemap", "CubeMaps must be sized POT between 64 and 2048! (" + to_string(size) + ")");
+		abort();
+	}
+	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+	glGenTextures(1, &pointer);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, pointer);
+	//vector<byte> data = vector<byte>(size*size*dataSize, 0);
+	glGenTextures(6, facePointers);
+	for (byte aa = 0; aa < 6; aa++) {
+		glBindTexture(GL_TEXTURE_CUBE_MAP_POSITIVE_X + aa, facePointers[aa]);
+		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + aa, 0, type, size, size, 0, format, dataType, NULL);
+		if (mips) {
+			for (byte aaa = 1; aaa < 7; aaa++) {
+				facePointerMips[aa].push_back(0);
+				glGenTextures(1, &facePointerMips[aa][aaa - 1]);
+				glBindTexture(GL_TEXTURE_CUBE_MAP_POSITIVE_X + aa, facePointers[aa]);
+				glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + aa, aaa, type, size / (2 * aaa), size / (2 * aaa), 0, format, dataType, NULL);
+			}
+			glTexParameteri(GL_TEXTURE_CUBE_MAP_POSITIVE_X + aa, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+			glTexParameteri(GL_TEXTURE_CUBE_MAP_POSITIVE_X + aa, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_CUBE_MAP_POSITIVE_X + aa, GL_TEXTURE_MAX_LEVEL, 6);
+		}
+		else {
+			glTexParameteri(GL_TEXTURE_CUBE_MAP_POSITIVE_X + aa, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_CUBE_MAP_POSITIVE_X + aa, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		}
+	}
+	glBindTexture(GL_TEXTURE_2D, 0);
+	loaded = true;
 }
 
 bool Background::Parse(string path) {
@@ -2561,7 +2712,7 @@ void Deserialize(ifstream& stream, SceneObject* obj) {
 	_Strm2Val(stream, obj->transform.scale.x);
 	_Strm2Val(stream, obj->transform.scale.y);
 	_Strm2Val(stream, obj->transform.scale.z);
-	stream >> c;
+	c = stream.get();
 	while (c != 'o') {
 		Debug::Message("Object Deserializer", to_string(c) + " " + to_string(stream.tellg()));
 		if (c == 'O') {
@@ -2588,6 +2739,9 @@ void Deserialize(ifstream& stream, SceneObject* obj) {
 			case (char)COMP_LHT:
 				obj->AddComponent(new Light(stream, obj));
 				break;
+			case (char)COMP_RDP:
+				obj->AddComponent(new ReflectionProbe(stream, obj));
+				break;
 			case (char)COMP_SCR:
 #ifdef IS_EDITOR
 				obj->AddComponent(new SceneScript(stream, obj));
@@ -2598,20 +2752,25 @@ void Deserialize(ifstream& stream, SceneObject* obj) {
 			default:
 				cout << "unknown component " << (int)c << "!" << endl;
 				char cc;
-				stream >> cc;
+				cc = stream.get();
 				while (cc != 'c')
 					stream >> cc;
 				long long ss = stream.tellg();
-				stream.seekg(ss-1);
+				stream.seekg(ss - 1);
 				break;
 			}
 			Debug::Message("Object Deserializer", "2 " + to_string(stream.tellg()));
-			stream >> c;
-			if (c != 'c')
+			c = stream.get();
+			if (c != 'c') {
 				Debug::Error("Object Deserializer", "scene data corrupted(component)");
+				abort();
+			}
 		}
-		else Debug::Error("Object Deserializer", "scene data corrupted(2)");
-		stream >> c;
+		else {
+			Debug::Error("Object Deserializer", "scene data corrupted(2)");
+			abort();
+		}
+		c = stream.get();
 	}
 }
 

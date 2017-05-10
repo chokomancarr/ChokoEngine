@@ -63,13 +63,15 @@ Camera::Camera(ifstream& stream, SceneObject* o, long pos) : Camera() {
 		GLuint vertex_shader, fragment_shader;
 		string err = "";
 		ifstream strm("D:\\lightPassVert.txt");
-		stringstream ss, ss2, ss3, ss4;
+		stringstream ss, ss2, ss3, ss4, ss5, ss6;
 		ss << strm.rdbuf();
 
 		if (!ShaderBase::LoadShader(GL_VERTEX_SHADER, ss.str(), vertex_shader, &err)) {
 			Debug::Error("Cam Shader Compiler", "v! " + err);
 			abort();
 		}
+
+		//sky
 		strm.close();
 		strm.open("D:\\lightPassFrag_Sky.txt");
 		ss2 << strm.rdbuf();
@@ -99,6 +101,7 @@ Camera::Camera(ifstream& stream, SceneObject* o, long pos) : Camera() {
 		glDetachShader(d_skyProgram, fragment_shader);
 		glDeleteShader(fragment_shader);
 
+		//point light
 		strm.close();
 		strm.open("D:\\lightPassFrag_Point.txt");
 		ss3 << strm.rdbuf();
@@ -128,6 +131,7 @@ Camera::Camera(ifstream& stream, SceneObject* o, long pos) : Camera() {
 		glDetachShader(d_pLightProgram, fragment_shader);
 		glDeleteShader(fragment_shader);
 
+		//spotlight
 		strm.close();
 		strm.open("D:\\lightPassFrag_Spot.txt");
 		ss4 << strm.rdbuf();
@@ -157,6 +161,66 @@ Camera::Camera(ifstream& stream, SceneObject* o, long pos) : Camera() {
 		glDetachShader(d_sLightProgram, fragment_shader);
 		glDeleteShader(fragment_shader);
 
+		//probe mask
+		strm.close();
+		strm.open("D:\\lightPassFrag_ProbeMask.txt");
+		ss5 << strm.rdbuf();
+		if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, ss5.str(), fragment_shader, &err)) {
+			Debug::Error("Cam Shader Compiler", "pm! " + err);
+			abort();
+		}
+
+		d_probeMaskProgram = glCreateProgram();
+		glAttachShader(d_probeMaskProgram, vertex_shader);
+		glAttachShader(d_probeMaskProgram, fragment_shader);
+		glLinkProgram(d_probeMaskProgram);
+		glGetProgramiv(d_probeMaskProgram, GL_LINK_STATUS, &link_result);
+		if (link_result == GL_FALSE)
+		{
+			int info_log_length = 0;
+			glGetProgramiv(d_probeMaskProgram, GL_INFO_LOG_LENGTH, &info_log_length);
+			vector<char> program_log(info_log_length);
+			glGetProgramInfoLog(d_probeMaskProgram, info_log_length, NULL, &program_log[0]);
+			cout << "cam shader(pm) error" << endl << &program_log[0] << endl;
+			glDeleteProgram(d_probeMaskProgram);
+			d_probeMaskProgram = 0;
+			abort();
+		}
+		cout << "cam shader(pm) ok" << endl;
+		glDetachShader(d_probeMaskProgram, vertex_shader);
+		glDetachShader(d_probeMaskProgram, fragment_shader);
+		glDeleteShader(fragment_shader);
+
+		/*probe
+		strm.close();
+		strm.open("D:\\lightPassFrag_Probe.txt");
+		ss5 << strm.rdbuf();
+		if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, ss5.str(), fragment_shader, &err)) {
+			Debug::Error("Cam Shader Compiler", "pm! " + err);
+			abort();
+		}
+
+		d_probeMaskProgram = glCreateProgram();
+		glAttachShader(d_probeMaskProgram, vertex_shader);
+		glAttachShader(d_probeMaskProgram, fragment_shader);
+		glLinkProgram(d_probeMaskProgram);
+		glGetProgramiv(d_probeMaskProgram, GL_LINK_STATUS, &link_result);
+		if (link_result == GL_FALSE)
+		{
+			int info_log_length = 0;
+			glGetProgramiv(d_probeMaskProgram, GL_INFO_LOG_LENGTH, &info_log_length);
+			vector<char> program_log(info_log_length);
+			glGetProgramInfoLog(d_probeMaskProgram, info_log_length, NULL, &program_log[0]);
+			cout << "cam shader(pm) error" << endl << &program_log[0] << endl;
+			glDeleteProgram(d_probeMaskProgram);
+			d_probeMaskProgram = 0;
+			abort();
+		}
+		cout << "cam shader(pm) ok" << endl;
+		glDetachShader(d_probeMaskProgram, vertex_shader);
+		glDetachShader(d_probeMaskProgram, fragment_shader);
+		glDeleteShader(fragment_shader);
+		*/
 
 		glDeleteShader(vertex_shader);
 	}
@@ -523,6 +587,8 @@ Mesh::Mesh(Editor* e, int i) : AssetObject(ASSETTYPE_MESH) {
 	vertices = m2->vertices;
 	vertexCount = m2->vertexCount;
 	normals = m2->normals;
+	tangents = m2->tangents;
+	bitangents = m2->bitangents;
 	triangles = m2->triangles;
 	triangleCount = m2->triangleCount;
 	loaded = m2->loaded;
@@ -573,10 +639,13 @@ Mesh::Mesh(ifstream& stream, uint offset) : AssetObject(ASSETTYPE_MESH), loaded(
 					uint i;
 					_Strm2Val(stream, i);
 					_matTriangles[m].push_back(i);
+					triangles.push_back(i);
 					_Strm2Val(stream, i);
 					_matTriangles[m].push_back(i);
+					triangles.push_back(i);
 					_Strm2Val(stream, i);
 					_matTriangles[m].push_back(i);
+					triangles.push_back(i);
 				}
 			}
 			else if (cc == 'U') {
@@ -620,6 +689,7 @@ Mesh::Mesh(ifstream& stream, uint offset) : AssetObject(ASSETTYPE_MESH), loaded(
 				Debug::Error("Mesh Importer", "mesh metadata corrupted (uv1 incomplete)!");
 				return;
 			}
+			CalcTangents();
 			loaded = true;
 		}
 		return;
@@ -675,10 +745,13 @@ Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCoun
 				uint i;
 				_Strm2Val(stream, i);
 				_matTriangles[m].push_back(i);
+				triangles.push_back(i);
 				_Strm2Val(stream, i);
 				_matTriangles[m].push_back(i);
+				triangles.push_back(i);
 				_Strm2Val(stream, i);
 				_matTriangles[m].push_back(i);
+				triangles.push_back(i);
 			}
 		}
 		else if (cc == 'U') {
@@ -722,9 +795,55 @@ Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCoun
 			Debug::Error("Mesh Importer", "mesh metadata corrupted (uv1 incomplete)!");
 			return;
 		}
+		CalcTangents();
 		loaded = true;
 	}
 	return;
+}
+
+void Mesh::CalcTangents() {
+	vector<bool> found(vertices.size());
+	tangents = vector<Vec3>(vertices.size());
+	bitangents = vector<Vec3>(vertices.size());
+	for (uint a = 0; a < triangleCount; a++) {
+		Vec2 u0, u1, u2;
+		u0 = uv0[a * 3];
+		u1 = uv0[a * 3 + 1];
+		u2 = uv0[a * 3 + 2];
+		if (u1 != u0 && u2 != u0) {
+			if ((glm::normalize(u1 - u0) != glm::normalize(u2 - u0)) && (glm::normalize(u0 - u1) != glm::normalize(u2 - u0))) {
+				if (!found[triangles[a*3]]) {
+					found[triangles[a * 3]] = true;
+					Vec2 _v1 = u1 - u0;
+					Vec2 _v2 = u2 - u0;
+					float _b = 1.0f/(_v2.x - (_v1.x*_v2.y/_v1.y));
+					float _a = -_b*_v2.y / _v1.y;
+					tangents[a * 3] = Normalize(_a*(vertices[a * 3 + 1] - vertices[a * 3]) + _b*(vertices[a * 3 + 2] - vertices[a * 3]));
+					_b = 1.0f / (_v2.y - (_v1.y*_v2.x / _v1.x));
+					_a = -_b*_v2.x / _v1.x;
+					bitangents[a * 3] = Normalize(_a*(vertices[a * 3 + 1] - vertices[a * 3]) + _b*(vertices[a * 3 + 2] - vertices[a * 3]));
+
+					_v1 = u0 - u1;
+					_v2 = u2 - u1;
+					_b = 1.0f / (_v2.x - (_v1.x*_v2.y / _v1.y));
+					_a = -_b*_v2.y / _v1.y;
+					tangents[a * 3 + 1] = Normalize(_a*(vertices[a * 3] - vertices[a * 3 + 1]) + _b*(vertices[a * 3 + 2] - vertices[a * 3 + 1]));
+					_b = 1.0f / (_v2.y - (_v1.y*_v2.x / _v1.x));
+					_a = -_b*_v2.x / _v1.x;
+					bitangents[a * 3 + 1] = Normalize(_a*(vertices[a * 3] - vertices[a * 3 + 1]) + _b*(vertices[a * 3 + 2] - vertices[a * 3 + 1]));
+
+					_v1 = u1 - u2;
+					_v2 = u0 - u2;
+					_b = 1.0f / (_v2.x - (_v1.x*_v2.y / _v1.y));
+					_a = -_b*_v2.y / _v1.y;
+					tangents[a * 3 + 2] = Normalize(_a*(vertices[a * 3 + 1] - vertices[a * 3 + 2]) + _b*(vertices[a * 3] - vertices[a * 3 + 2]));
+					_b = 1.0f / (_v2.y - (_v1.y*_v2.x / _v1.x));
+					_a = -_b*_v2.x / _v1.x;
+					bitangents[a * 3 + 2] = Normalize(_a*(vertices[a * 3 + 1] - vertices[a * 3 + 2]) + _b*(vertices[a * 3] - vertices[a * 3 + 2]));
+				}
+			}
+		}
+	}
 }
 
 bool Mesh::ParseBlend(Editor* e, string s) {
@@ -957,16 +1076,18 @@ void Light::DrawEditor(EB_Viewer* ebv) {
 		Engine::DrawCircleW(Vec3(), Vec3(0, 1, 0), Vec3(0, 0, 1), 0.2f, 12, color, 1);
 		break;
 	case LIGHTTYPE_SPOT:
-		Engine::DrawLineWDotted(Vec3(0, 0, 1) * minDist, Vec3(0, 0, 1) * maxDist, white(0.5f, 0.5f), 1, 0.2f, true);
-		float rd = minDist*tan(deg2rad*angle*0.5f);
-		float rd2 = maxDist*tan(deg2rad*angle*0.5f);
-		if (minDist > 0)
-			Engine::DrawCircleW(Vec3(0, 0, 1) * minDist, Vec3(1, 0, 0), Vec3(0, 1, 0), rd, 16, color, 1);
-		Engine::DrawCircleW(Vec3(0, 0, 1) * maxDist, Vec3(1, 0, 0), Vec3(0, 1, 0), rd2, 32, color, 1);
-		Engine::DrawLineW(Vec3(rd, 0, minDist), Vec3(rd2, 0, maxDist), color, 1);
-		Engine::DrawLineW(Vec3(-rd, 0, minDist), Vec3(-rd2, 0, maxDist), color, 1);
-		Engine::DrawLineW(Vec3(0, rd, minDist), Vec3(0, rd2, maxDist), color, 1);
-		Engine::DrawLineW(Vec3(0, -rd, minDist), Vec3(0, -rd2, maxDist), color, 1);
+		if (ebv->editor->selected == object) {
+			Engine::DrawLineWDotted(Vec3(0, 0, 1) * minDist, Vec3(0, 0, 1) * maxDist, white(0.5f, 0.5f), 1, 0.2f, true);
+			float rd = minDist*tan(deg2rad*angle*0.5f);
+			float rd2 = maxDist*tan(deg2rad*angle*0.5f);
+			if (minDist > 0)
+				Engine::DrawCircleW(Vec3(0, 0, 1) * minDist, Vec3(1, 0, 0), Vec3(0, 1, 0), rd, 16, color, 1);
+			Engine::DrawCircleW(Vec3(0, 0, 1) * maxDist, Vec3(1, 0, 0), Vec3(0, 1, 0), rd2, 32, color, 1);
+			Engine::DrawLineW(Vec3(rd, 0, minDist), Vec3(rd2, 0, maxDist), color, 1);
+			Engine::DrawLineW(Vec3(-rd, 0, minDist), Vec3(-rd2, 0, maxDist), color, 1);
+			Engine::DrawLineW(Vec3(0, rd, minDist), Vec3(0, rd2, maxDist), color, 1);
+			Engine::DrawLineW(Vec3(0, -rd, minDist), Vec3(0, -rd2, maxDist), color, 1);
+		}
 		break;
 	}
 }
@@ -1097,6 +1218,93 @@ Light::Light(ifstream& stream, SceneObject* o, long pos) : Component("Light", CO
 	_Strm2Val(stream, color.g);
 	_Strm2Val(stream, color.b);
 	_Strm2Val(stream, color.a);
+}
+
+void ReflectionProbe::DrawEditor(EB_Viewer* ebv) {
+	Engine::DrawCircleW(Vec3(), Vec3(1, 0, 0), Vec3(0, 1, 0), 0.2f, 12, Vec4(1, 0.76f, 0.80, 1), 1);
+	Engine::DrawCircleW(Vec3(), Vec3(0, 1, 0), Vec3(0, 0, 1), 0.2f, 12, Vec4(1, 0.76f, 0.80, 1), 1);
+	Engine::DrawCircleW(Vec3(), Vec3(0, 0, 1), Vec3(1, 0, 0), 0.2f, 12, Vec4(1, 0.76f, 0.80, 1), 1);
+
+	if (ebv->editor->selected == object) {
+		Engine::DrawLineWDotted(range*Vec3(1, 1, -1), range*Vec3(1, 1, 1), white(), 1, 0.1f);
+		Engine::DrawLineWDotted(range*Vec3(1, 1, 1), range*Vec3(-1, 1, 1), white(), 1, 0.1f);
+		Engine::DrawLineWDotted(range*Vec3(-1, 1, 1), range*Vec3(-1, 1, -1), white(), 1, 0.1f);
+		Engine::DrawLineWDotted(range*Vec3(-1, 1, -1), range*Vec3(1, 1, -1), white(), 1, 0.1f);
+
+		Engine::DrawLineWDotted(range*Vec3(1, 1, 1), range*Vec3(1, -1, 1), white(), 1, 0.1f);
+		Engine::DrawLineWDotted(range*Vec3(1, 1, -1), range*Vec3(1, -1, -1), white(), 1, 0.1f);
+		Engine::DrawLineWDotted(range*Vec3(-1, 1, 1), range*Vec3(-1, -1, 1), white(), 1, 0.1f);
+		Engine::DrawLineWDotted(range*Vec3(-1, 1, -1), range*Vec3(-1, -1, -1), white(), 1, 0.1f);
+
+		Engine::DrawLineWDotted(range*Vec3(1, -1, -1), range*Vec3(1, -1, 1), white(), 1, 0.1f);
+		Engine::DrawLineWDotted(range*Vec3(1, -1, 1), range*Vec3(-1, -1, 1), white(), 1, 0.1f);
+		Engine::DrawLineWDotted(range*Vec3(-1, -1, 1), range*Vec3(-1, -1, -1), white(), 1, 0.1f);
+		Engine::DrawLineWDotted(range*Vec3(-1, -1, -1), range*Vec3(1, -1, -1), white(), 1, 0.1f);
+	}
+
+	/*
+	glPushMatrix();
+	Vec3 v = object->transform.position;
+	Vec3 vv = object->transform.scale;
+	Quat vvv = object->transform.rotation;
+	glTranslatef(v.x, v.y, v.z);
+	glScalef(vv.x, vv.y, vv.z);
+	glMultMatrixf(glm::value_ptr(Quat2Mat(vvv)));
+	glPopMatrix();
+	*/
+}
+
+ReflectionProbe::ReflectionProbe(ushort size) : Component("Reflection Probe", COMP_RDP, DRAWORDER_LIGHT), size(size), map(new CubeMap(size, true)), updateMode(ReflProbe_UpdateMode_Start), intensity(1), clearType(ReflProbe_Clear_Sky), clearColor(), range(1, 1, 1), softness(0) {
+	glGenFramebuffers(7, mipFbos);
+	for (byte a = 0; a < 7; a++) {
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, mipFbos[a]);
+		for (byte i = 0; i < 7; i++) {
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, (a == 0) ? map->facePointers[i] : map->facePointerMips[i][a-1], 0);
+		}
+
+		GLenum DrawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5 };
+		glDrawBuffers(6, DrawBuffers);
+
+		GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+
+		if (Status != GL_FRAMEBUFFER_COMPLETE)
+			Debug::Error("ReflProbe (" + name + ")", "FB error:" + Status);
+	}
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+}
+
+ReflectionProbe::ReflectionProbe(ifstream& stream, SceneObject* o, long pos) : Component("Reflection Probe", COMP_RDP, DRAWORDER_LIGHT) {
+	if (pos >= 0)
+		stream.seekg(pos);
+	_Strm2Val(stream, size);
+	_Strm2Val(stream, updateMode);
+	_Strm2Val(stream, intensity);
+	_Strm2Val(stream, clearType);
+	_Strm2Val(stream, clearColor.r);
+	_Strm2Val(stream, clearColor.g);
+	_Strm2Val(stream, clearColor.b);
+	_Strm2Val(stream, clearColor.a);
+	_Strm2Val(stream, range.x);
+	_Strm2Val(stream, range.y);
+	_Strm2Val(stream, range.z);
+	_Strm2Val(stream, softness);
+
+	map = new CubeMap(size);
+}
+
+void ReflectionProbe::Serialize(Editor* e, ofstream* stream) {
+	_StreamWrite(&size, stream, 2);
+	_StreamWrite(&updateMode, stream, 1);
+	_StreamWrite(&intensity, stream, 4);
+	_StreamWrite(&clearType, stream, 1);
+	_StreamWrite(&clearColor.r, stream, 4);
+	_StreamWrite(&clearColor.g, stream, 4);
+	_StreamWrite(&clearColor.b, stream, 4);
+	_StreamWrite(&clearColor.a, stream, 4);
+	_StreamWrite(&range.x, stream, 4);
+	_StreamWrite(&range.y, stream, 4);
+	_StreamWrite(&range.z, stream, 4);
+	_StreamWrite(&softness, stream, 4);
 }
 
 Armature::Armature(string path, SceneObject* o) : Component("Armature", COMP_ARM, DRAWORDER_OVERLAY), overridePos(false), restPosition(o->transform.position), restRotation(o->transform.rotation), restScale(o->transform.scale), _anim(-1) {

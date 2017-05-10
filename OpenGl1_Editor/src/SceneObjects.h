@@ -79,7 +79,7 @@ public:
 	bool loaded;
 
 	vector<Vec3> vertices;
-	vector<Vec3> normals;
+	vector<Vec3> normals, tangents, bitangents;
 	vector<int> triangles;
 	vector<Vec2> uv0, uv1;
 
@@ -94,6 +94,8 @@ protected:
 	Mesh(Editor* e, int i);
 	Mesh(ifstream& strm, uint offset);
 	Mesh(string path);
+
+	void CalcTangents();
 
 	static bool ParseBlend(Editor* e, string s);
 	vector<vector<int>> _matTriangles;
@@ -259,7 +261,21 @@ private:
 	static vector<float> Downsample(vector<float>&, uint, uint, uint&, uint&);
 };
 
+class CubeMap : public AssetObject {
+public:
+	const ushort size;
+	bool loaded;
+	CubeMap(ushort size, bool mips = false, GLenum type = GL_RGBA, byte dataSize = 4, GLenum format = GL_RGBA, GLenum dataType = GL_UNSIGNED_BYTE);
+	friend class ReflectionProbe;
+protected:
+	uint pointer;
+	uint facePointers[6];
+	vector<uint> facePointerMips[6]; //[face id] [mip level]
+};
+
 #define COMP_UNDEF 0x00
+
+class ReflectionProbe;
 
 #define COMP_CAM 0x01
 enum CAM_CLEARTYPE : byte {
@@ -298,25 +314,33 @@ public:
 	friend void Deserialize(ifstream& stream, SceneObject* obj);
 	friend class EB_Viewer;
 	friend class EB_Inspector;
+	friend class Background;
 protected:
 	Camera(ifstream& stream, SceneObject* o, long pos = -1);
 
 	void RenderLights();
 	void DumpBuffers();
+	void _RenderProbesMask(vector<SceneObject*>& objs, glm::mat4 mat, vector<ReflectionProbe*>& probes), _RenderProbes(vector<ReflectionProbe*>& probes, glm::mat4 mat);
+	void _DoRenderProbeMask(ReflectionProbe* p, glm::mat4& ip), _DoRenderProbe(ReflectionProbe* p, glm::mat4& ip);
 	void _RenderSky(glm::mat4 ip);
-	void _DrawLights(vector<SceneObject*> oo, glm::mat4& ip);
+	void _DrawLights(vector<SceneObject*>& oo, glm::mat4& ip);
 	void _DoDrawLight_Point(Light* l, glm::mat4& ip);
 	void _DoDrawLight_Spot(Light* l, glm::mat4& ip, glm::mat4& lp);
 
 	Vec3 camVerts[6];
 	static int camVertsIds[19];
 	GLuint d_fbo, d_texs[3], d_depthTex;
-	static GLuint d_skyProgram, d_pLightProgram, d_sLightProgram;
+	static GLuint d_probeMaskProgram, d_probeProgram, d_skyProgram, d_pLightProgram, d_sLightProgram;
 
 	static const Vec2 screenRectVerts[];
 	static const int screenRectIndices[];
 
 	int _tarRT;
+
+	static unordered_map<string, GLuint> fetchTextures;
+	static vector<string> fetchTexturesUpdated;
+	static GLuint DoFetchTexture(string s);
+	static void ClearFetchTextures();
 	
 	void ApplyGL();
 
@@ -443,7 +467,6 @@ public:
 	void DrawEditor(EB_Viewer* ebv) override;
 	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
 	void DrawShadowMap();
-	void Serialize(Editor* e, ofstream* stream) override;
 
 	friend int main(int argc, char **argv);
 	friend void Serialize(Editor* e, SceneObject* o, ofstream* stream);
@@ -453,9 +476,52 @@ protected:
 	LIGHTTYPE _lightType;
 	Light(ifstream& stream, SceneObject* o, long pos = -1);
 	//glm::mat4 _shadowMatrix;
+	void Serialize(Editor* e, ofstream* stream) override;
 
 	void InitShadow(), CalcShadowMatrix();
 	static GLuint _shadowFbo, _shadowMap;
+	static CubeMap* _shadowCube;
+};
+
+#define COMP_RDP 0x25
+enum ReflProbe_UpdateMode : byte {
+	ReflProbe_UpdateMode_Start,
+	ReflProbe_UpdateMode_Realtime,
+	ReflProbe_UpdateMode_Manual
+};
+enum ReflProbe_ClearType : byte {
+	ReflProbe_Clear_Sky,
+	ReflProbe_Clear_Color
+};
+class ReflectionProbe : public Component {
+public:
+	ReflectionProbe(ushort size = 256);
+	~ReflectionProbe() { delete(map); }
+	ushort size;
+	ReflProbe_UpdateMode updateMode;
+	float intensity;
+	ReflProbe_ClearType clearType;
+	Vec4 clearColor;
+	Vec3 range;
+	float softness;
+
+	void Update() { _pendingUpdate = true; }
+
+	friend int main(int argc, char **argv);
+	friend void Serialize(Editor* e, SceneObject* o, ofstream* stream);
+	friend void Deserialize(ifstream& stream, SceneObject* obj);
+	friend class Camera;
+protected:
+	ReflectionProbe(ifstream& stream, SceneObject* o, long pos = -1);
+	bool _pendingUpdate;
+	CubeMap* map;
+	GLuint mipFbos[7];
+
+	void DrawEditor(EB_Viewer* ebv) override;
+	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override {}
+	void Serialize(Editor* e, ofstream* stream) override;
+
+	void _DoUpdate();
 };
 
 #define COMP_ARM 0x30

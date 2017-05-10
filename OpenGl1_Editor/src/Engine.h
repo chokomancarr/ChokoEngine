@@ -178,6 +178,7 @@ class AssetManager;
 #define ASSETTYPE_SCENE 0xf0
 #define ASSETTYPE_TEXTURE 0x01
 #define ASSETTYPE_HDRI 0x02
+#define ASSETTYPE_TEXCUBE 0x03
 #define ASSETTYPE_RENDERTEXTURE 0x03
 #define ASSETTYPE_SHADER 0x05
 #define ASSETTYPE_MATERIAL 0x10
@@ -514,6 +515,7 @@ public:
 	static void ResetUIMatrix();
 
 	static uint unlitProgram, unlitProgramA, unlitProgramC, skyProgram;
+	static uint blurProgram;
 	static Font* defaultFont;
 	
 	static ulong GetNewId();

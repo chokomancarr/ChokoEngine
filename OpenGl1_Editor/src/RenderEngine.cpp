@@ -48,7 +48,7 @@ void Camera::InitGBuffer() {
 
 	// depth
 	glBindTexture(GL_TEXTURE_2D, d_depthTex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, Display::width, Display::height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, Display::width, Display::height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, d_depthTex, 0);
 #ifdef SHOW_GBUFFERS
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -75,9 +75,29 @@ void Camera::InitGBuffer() {
 
 const Vec2 Camera::screenRectVerts[] = { Vec2(-1, -1), Vec2(-1, 1), Vec2(1, -1), Vec2(1, 1) };
 const int Camera::screenRectIndices[] = { 0, 1, 2, 1, 3, 2 };
+GLuint Camera::d_probeMaskProgram = 0;
+GLuint Camera::d_probeProgram = 0;
 GLuint Camera::d_skyProgram = 0;
 GLuint Camera::d_pLightProgram = 0;
 GLuint Camera::d_sLightProgram = 0;
+unordered_map<string, GLuint> Camera::fetchTextures = unordered_map<string, GLuint>();
+vector<string> Camera::fetchTexturesUpdated = vector<string>();
+
+GLuint Camera::DoFetchTexture (string s) {
+	if (s == "") {
+		ushort a = 0;
+		s = "temp_fetch_" + a;
+		while (fetchTextures[s] != 0)
+			s = "temp_fetch_" + (++a);
+	}
+	if (fetchTextures[s] == 0) {
+		glGenTextures(1, &fetchTextures[s]);
+		glBindTexture(GL_TEXTURE_2D, fetchTextures[s]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, Display::width, Display::height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	}
+
+	return 0;
+}
 
 void Camera::Render(RenderTexture* target) {
 	//enable deferred
@@ -102,6 +122,63 @@ void Camera::Render(RenderTexture* target) {
 #else
 	RenderLights();
 #endif
+}
+
+void Camera::_DoRenderProbeMask(ReflectionProbe* p, glm::mat4& ip) {
+	GLint _IP = glGetUniformLocation(d_probeMaskProgram, "_IP");
+	GLint scrSzLoc = glGetUniformLocation(d_probeMaskProgram, "screenSize");
+	GLint prbPosLoc = glGetUniformLocation(d_probeMaskProgram, "probePos");
+	GLint prbRngLoc = glGetUniformLocation(d_probeMaskProgram, "range");
+	GLint prbSftLoc = glGetUniformLocation(d_probeMaskProgram, "softness");
+	GLint depthLoc = glGetUniformLocation(d_probeMaskProgram, "inDepth");
+
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(2, GL_FLOAT, 0, screenRectVerts);
+	glUseProgram(d_probeMaskProgram);
+
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, screenRectVerts);
+
+	glUniformMatrix4fv(_IP, 1, GL_FALSE, glm::value_ptr(ip));
+
+	glUniform2f(scrSzLoc, (GLfloat)Display::width, (GLfloat)Display::height);
+	Vec3 wpos = p->object->transform.worldPosition();
+	glUniform3f(prbPosLoc, wpos.x, wpos.y, wpos.z);
+	glUniform3f(prbRngLoc, p->range.x, p->range.y, p->range.z);
+	glUniform1f(prbSftLoc, p->softness);
+
+	glUniform1i(depthLoc, 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, d_depthTex);
+
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, screenRectIndices);
+
+	glDisableVertexAttribArray(0);
+	glUseProgram(0);
+	glDisableClientState(GL_VERTEX_ARRAY);
+}
+
+//mask shaded parts with alpha += influence/4
+void Camera::_RenderProbesMask(vector<SceneObject*>& objs, glm::mat4 mat, vector<ReflectionProbe*>& probes) {
+	for (SceneObject* o : objs) {
+		if (!o->active)
+			continue;
+		for (Component* c : o->_components) {
+			if (c->componentType == COMP_RDP) {
+				probes.push_back((ReflectionProbe*)c);
+				_DoRenderProbeMask((ReflectionProbe*)c, mat);
+			}
+		}
+		_RenderProbesMask(o->children, mat, probes);
+	}
+}
+
+//strength decided from influence / (alpha*4)
+void Camera::_RenderProbes(vector<ReflectionProbe*>& probes, glm::mat4 mat) {
+	for (ReflectionProbe* p : probes) {
+		//_DoRenderProbe(p, mat);
+	}
 }
 
 void Camera::_RenderSky(glm::mat4 ip) {
@@ -276,8 +353,10 @@ void Camera::_DoDrawLight_Spot(Light* l, glm::mat4& ip, glm::mat4& lp) {
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
-void Camera::_DrawLights(vector<SceneObject*> oo, glm::mat4& ip) {
+void Camera::_DrawLights(vector<SceneObject*>& oo, glm::mat4& ip) {
 	for (SceneObject* o : oo) {
+		if (!o->active)
+			continue;
 		for (Component* c : o->_components) {
 			if (c->componentType == COMP_LHT) {
 				Light* l = (Light*)c;
@@ -316,6 +395,10 @@ void Camera::RenderLights() {
 	glGetFloatv(GL_PROJECTION_MATRIX, matrix);
 	glm::mat4 mat = glm::inverse(glm::mat4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]));
 
+	//clear alpha here
+	vector<ReflectionProbe*> probes;
+	_RenderProbesMask(Scene::active->objects, mat, probes);
+	_RenderProbes(probes, mat);
 	_RenderSky(mat);
 	_DrawLights(Scene::active->objects, mat);
 }
@@ -399,4 +482,24 @@ void Light::DrawShadowMap() {
 	glEnable(GL_BLEND);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 	glViewport(0, 0, Display::width, Display::height);
+}
+
+void ReflectionProbe::_DoUpdate() {
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, mipFbos[0]);
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LEQUAL);
+	glDepthMask(true);
+	glDisable(GL_BLEND);
+	for (byte a = 0; a < 6; a++) {
+		glReadBuffer(GL_COLOR_ATTACHMENT0 + a);
+		//clear
+		//ApplyGL();
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+		//render opaque
+		DrawSceneObjectsOpaque(Scene::active->objects);
+	}
+	glDisable(GL_DEPTH_TEST);
+	glDepthMask(false);
 }

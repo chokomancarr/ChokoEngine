@@ -23,6 +23,7 @@ class KTMExporter():
     frame_offset = 0
 
     def execute(self):
+        print("python start")
         pos0 = self.arg.index("?")
         dirr = self.arg[:pos0]
         print (dirr)
@@ -87,12 +88,12 @@ class KTMExporter():
                 #    for block in m.shape_keys.key_blocks:
                 #        self.write(file, "    shp " + block.name + "\r\n")
                 file.close()
-            elif obj.type == "ARMATURE"
-                export_arm(file, obj)
+            #elif obj.type == "ARMATURE"
+            #    export_arm(file, obj)
         file2.close()
-        self.execute_anim(dirr + name + "_blend\\")
+        #self.execute_anim(dirr + name + "_blend\\")
     
-    def export_arm(self, file, obj)
+    def export_arm(self, file, obj):
         print ("arm " + obj.name)
         self.write(file2, "arm " + obj.name)
         if obj.parent:

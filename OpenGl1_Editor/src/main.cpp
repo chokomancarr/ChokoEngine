@@ -20,6 +20,7 @@
 #include "SceneObjects.h"
 #include "Compressors.h"
 #include <sstream>
+//#include <signal.h>
 using namespace std;
 
 void InitGL(int argc, char* argv[]);
@@ -49,15 +50,20 @@ int q = 0;
 
 string path;
 Editor* editor;
-HWND hwnd, hwnd2;
+static HWND hwnd = NULL, hwnd2 = NULL;
 mutex lockMutex;
 
-//PC loc: C:\Users\Pua Kai\Documents\GitHub\OpenGl_Engine\Debug
+//extern "C" void abort_func(int signum)
+//{
+//	MessageBox(hwnd, "aaa", "title", MB_OK);
+//}
 
 int main(int argc, char **argv)
 {
 	path = argv[0];
 	hwnd = GetForegroundWindow();
+	//signal(SIGABRT, &abort_func);
+
 	editor = new Editor();
 	editor->dataPath = path.substr(0, path.find_last_of('\\') + 1);
 	editor->lockMutex = &lockMutex;

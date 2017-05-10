@@ -2603,7 +2603,7 @@ void Editor::DoCompile() {
 		buildLabel = "Build: complete.";
 		buildProgressVec4 = green(1, 0.7f);
 		AddBuildLog(this, "Build finished: press Escape to exit.");
-		string ss = " /select," + projectFolder + "Release\\TestProject.exe";
+		string ss = " /select,\"" + projectFolder + "Release\\TestProject2.exe\"";
 		ShellExecute(NULL, "open", "explorer", ss.c_str(), NULL, SW_SHOW);
 	}
 	buildEnd = true;
