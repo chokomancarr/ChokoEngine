@@ -421,15 +421,16 @@ bool ShaderBase::Parse(ifstream* stream, string path) {
 				/*VARSTART
 				int range(0, 100) foo = 1;
 				float range(-20.0, 200.0) boo = 2.5;
-				texture mytex;
+				texture mytex = white;
 				*/
-				bool nr = false;
+				bool nr = false; //range disallowed?
 				byte vt = 0; //i, f
 				vrs.push_back(new ShaderVariable());
 				vrSize++;
-				vrs[vrSize]->val = ShaderValue();
 				vrs[vrSize]->min = numeric_limits<float>::lowest();
 				vrs[vrSize]->max = numeric_limits<float>::infinity();
+				vrs[vrSize]->val = ShaderValue();
+				vrs[vrSize]->def = ShaderValue();
 				if (x == "int") {
 					vrs[vrSize]->type = SHADER_INT;
 				}
@@ -441,6 +442,10 @@ bool ShaderBase::Parse(ifstream* stream, string path) {
 					vrs[vrSize]->type = SHADER_SAMPLER;
 					vrs[vrSize]->val.i = -1;
 					nr = true;
+				}
+				else {
+					Editor::instance->_Error("Shader Importer", "Unknown variable string (" + x + ")!");
+					return false;
 				}
 
 				sstream >> x;
@@ -479,16 +484,44 @@ bool ShaderBase::Parse(ifstream* stream, string path) {
 				string r;
 				while (x.find(';') == string::npos) {
 					sstream >> r;
+					if (sstream.eof()) {
+						Editor::instance->_Error("Shader Importer", "Unexpected EOF in variables!");
+						return false;
+					}
 					x += r;
-
 				}
 				int y = x.find('=');
 				if (y != string::npos) {
 					vrs[vrSize]->name = x.substr(0, y);
-
+					string def = x.substr(y + 1, x.find(';') - y - 1);
+					try {
+						if (vrs[vrSize]->type == SHADER_INT)
+							vrs[vrSize]->def.i = stoi(def);
+						else if (vrs[vrSize]->type == SHADER_FLOAT)
+							vrs[vrSize]->def.x = stof(def);
+						else if (vrs[vrSize]->type == SHADER_SAMPLER) {
+							if (def == "black")
+								vrs[vrSize]->def.i = Material::defTex_Black;
+							else if (def == "grey")
+								vrs[vrSize]->def.i = Material::defTex_Grey;
+							else if (def == "white")
+								vrs[vrSize]->def.i = Material::defTex_White;
+							else
+								Editor::instance->_Error("Shader Importer", "Default variable value (" + def + ") cannot be parsed!");
+							return false;
+						}
+					}
+					catch (...) {
+						Editor::instance->_Error("Shader Importer", "Default variable value (" + def + ") cannot be parsed!");
+						return false;
+					}
 				}
-				else 
+				else {
 					vrs[vrSize]->name = x.substr(0, x.find(';'));
+					if (vrs[vrSize]->type == SHADER_SAMPLER) { //sampler default is black
+						vrs[vrSize]->def.i = Material::defTex_Black;
+					}
+				}
 			}
 		}
 		else if (readingType == 2) {

@@ -220,6 +220,8 @@ void Engine::Init(string path) {
 			cout << "cannot load fallback texture!" << endl;
 	}
 
+	Light::InitShadow();
+
 	string vertcode = "#version 330 core\nlayout(location = 0) in vec3 pos;\nlayout(location = 1) in vec2 uv;\nout vec2 UV;\nvoid main(){ \ngl_Position.xyz = pos;\ngl_Position.w = 1.0;\nUV = uv;\n}";
 	string fragcode = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = texture(sampler, UV)*col;\n}"; //out vec3 Vec4;\n
 	string fragcode2 = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = vec4(1, 1, 1, texture(sampler, UV).r)*col;\n}"; //out vec3 Vec4;\n
@@ -1273,6 +1275,7 @@ float clamp(float f, float a, float b) {
 }
 
 float repeat(float f, float a, float b) {
+	assert(b > a);
 	while (f >= b)
 		f -= (b-a);
 	while (f < a)
@@ -2359,6 +2362,56 @@ void Material::SetTexture(string name, Texture * texture) {
 }
 void Material::SetTexture(GLint id, Texture * texture) {
 	vals[SHADER_SAMPLER][id] = texture;
+}
+
+GLuint Material::defTex_Black = 0;
+GLuint Material::defTex_Grey = 0;
+GLuint Material::defTex_White = 0;
+GLuint Material::defTex_Red = 0;
+GLuint Material::defTex_Green = 0;
+GLuint Material::defTex_Blue = 0;
+
+void Material::LoadOris() {
+	vector<byte> data(3);
+
+	data[0] = 0;
+	data[1] = 0;
+	data[2] = 0;
+	glGenTextures(1, &defTex_Black);
+	glBindTexture(GL_TEXTURE_2D, defTex_Black);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 2, 2, 0, GL_RGB, GL_UNSIGNED_BYTE, &data[0]);
+	data[0] = 0x80;
+	data[1] = 0x80;
+	data[2] = 0x80;
+	glGenTextures(1, &defTex_Grey);
+	glBindTexture(GL_TEXTURE_2D, defTex_Grey);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 2, 2, 0, GL_RGB, GL_UNSIGNED_BYTE, &data[0]);
+	data[0] = 0xFF;
+	data[1] = 0xFF;
+	data[2] = 0xFF;
+	glGenTextures(1, &defTex_White);
+	glBindTexture(GL_TEXTURE_2D, defTex_White);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 2, 2, 0, GL_RGB, GL_UNSIGNED_BYTE, &data[0]);
+	data[0] = 0xFF;
+	data[1] = 0;
+	data[2] = 0;
+	glGenTextures(1, &defTex_Red);
+	glBindTexture(GL_TEXTURE_2D, defTex_Red);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 2, 2, 0, GL_RGB, GL_UNSIGNED_BYTE, &data[0]);
+	data[0] = 0;
+	data[1] = 0xFF;
+	data[2] = 0;
+	glGenTextures(1, &defTex_Green);
+	glBindTexture(GL_TEXTURE_2D, defTex_Green);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 2, 2, 0, GL_RGB, GL_UNSIGNED_BYTE, &data[0]);
+	data[0] = 0;
+	data[1] = 0;
+	data[2] = 0xFF;
+	glGenTextures(1, &defTex_Blue);
+	glBindTexture(GL_TEXTURE_2D, defTex_Blue);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 2, 2, 0, GL_RGB, GL_UNSIGNED_BYTE, &data[0]);
+
+	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void Material::Save(string path) {

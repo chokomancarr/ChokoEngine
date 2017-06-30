@@ -230,6 +230,7 @@ void Camera::_RenderSky(glm::mat4 ip) {
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
+/*
 void Camera::_DoDrawLight_Point(Light* l, glm::mat4& ip) {
 	if (d_pLightProgram == 0) {
 		Debug::Error("PointLightPass", "Fatal: Shader not initialized!");
@@ -283,8 +284,34 @@ void Camera::_DoDrawLight_Point(Light* l, glm::mat4& ip) {
 	glUseProgram(0);
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
+*/
 
-void Camera::_DoDrawLight_Spot(Light* l, glm::mat4& ip, glm::mat4& lp) {
+void Camera::_DoDrawLight_Point(Light* l, glm::mat4& ip) {
+	//draw 6 spotlights
+	l->angle = 45;
+	_DoDrawLight_Spot(l, ip);
+	l->object->transform.Rotate(0, 0, 90);
+	_DoDrawLight_Spot(l, ip);
+	l->object->transform.Rotate(0, 0, 90);
+	_DoDrawLight_Spot(l, ip);
+	l->object->transform.Rotate(0, 0, 90);
+	_DoDrawLight_Spot(l, ip);
+	l->object->transform.Rotate(0, 90, 90);
+	_DoDrawLight_Spot(l, ip);
+	l->object->transform.Rotate(0, 180, 0);
+	_DoDrawLight_Spot(l, ip);
+	l->object->transform.Rotate(0, 90, 0);
+}
+
+void Camera::_DoDrawLight_Spot(Light* l, glm::mat4& ip) {
+	glm::mat4 lp = glm::mat4();
+	if (l->drawShadow) {
+		l->DrawShadowMap();
+		GLfloat matrix[16];
+		glGetFloatv(GL_PROJECTION_MATRIX, matrix);
+		lp *= glm::mat4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
+	}
+
 	if (d_sLightProgram == 0) {
 		Debug::Error("PointLightPass", "Fatal: Shader not initialized!");
 		abort();
@@ -360,19 +387,12 @@ void Camera::_DrawLights(vector<SceneObject*>& oo, glm::mat4& ip) {
 		for (Component* c : o->_components) {
 			if (c->componentType == COMP_LHT) {
 				Light* l = (Light*)c;
-				glm::mat4 mat = glm::mat4();
-				if (l->drawShadow) {
-					l->DrawShadowMap();
-					GLfloat matrix[16];
-					glGetFloatv(GL_PROJECTION_MATRIX, matrix);
-					mat *= glm::mat4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
-				}
 				switch (l->_lightType) {
 				case LIGHTTYPE_POINT:
 					_DoDrawLight_Point(l, ip);
 					break;
 				case LIGHTTYPE_SPOT:
-					_DoDrawLight_Spot(l, ip, mat);
+					_DoDrawLight_Spot(l, ip);
 					break;
 				}
 			}
@@ -467,15 +487,15 @@ void Light::DrawShadowMap() {
 	glClear(GL_COLOR_BUFFER_BIT);
 	glClearDepth(1);
 	glClear(GL_DEPTH_BUFFER_BIT);
-	switch (_lightType) {
-	case LIGHTTYPE_SPOT:
-	case LIGHTTYPE_DIRECTIONAL:
+	//switch (_lightType) {
+	//case LIGHTTYPE_SPOT:
+	//case LIGHTTYPE_DIRECTIONAL:
 		CalcShadowMatrix();
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
 		DrawSceneObjectsOpaque(Scene::active->objects);
-		break;
-	}
+	//	break;
+	//}
 
 	glDisable(GL_DEPTH_TEST);
 	glDepthMask(false);

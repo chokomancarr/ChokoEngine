@@ -377,7 +377,7 @@ public:
 
 	SHADER_VARTYPE type;
 	string name;
-	ShaderValue val;
+	ShaderValue val, def;
 
 	float min, max;
 };
@@ -442,6 +442,7 @@ public:
 	friend class MeshRenderer;
 	friend class Scene;
 	friend class AssetManager;
+	friend class ShaderBase;
 	friend int main(int argc, char **argv);
 	friend void EBI_DrawAss_Mat(Vec4 v, Editor* editor, EB_Inspector* b, float &off);
 protected:
@@ -453,6 +454,9 @@ protected:
 	vector<SHADER_VARTYPE> valOrders;
 	vector<byte> valOrderIds;
 	vector<byte> valOrderGLIds;
+
+	static void LoadOris();
+	static GLuint defTex_White, defTex_Black, defTex_Red, defTex_Green, defTex_Blue, defTex_Grey;
 
 	void Save(string path);
 	void ApplyGL(glm::mat4& _mv, glm::mat4& _p);

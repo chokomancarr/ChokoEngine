@@ -1145,7 +1145,7 @@ void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 			pos += 17;
 			break;
 		}
-		if (_lightType != LIGHTTYPE_POINT) {
+		if (_lightType != LIGHTTYPE_DIRECTIONAL) {
 			if (Engine::EButton(e->editorLayer == 0, v.r, v.g + pos, v.b * 0.5f - 1, 16, (!drawShadow) ? white(1, 0.5f) : grey1(), "No Shadow", 12, e->font, white()) == MOUSE_RELEASE)
 				drawShadow = false;
 			if (Engine::EButton(e->editorLayer == 0, v.r + v.b * 0.5f, v.g + pos, v.b * 0.5f - 1, 16, (drawShadow) ? white(1, 0.5f) : grey1(), "Shadow", 12, e->font, white()) == MOUSE_RELEASE)
@@ -1171,7 +1171,7 @@ void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 void Light::CalcShadowMatrix() {
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	if (_lightType == LIGHTTYPE_SPOT) {
+	if (_lightType == LIGHTTYPE_SPOT || _lightType == LIGHTTYPE_POINT) {
 		Quat q = glm::inverse(object->transform.rotation);
 		glMultMatrixf(glm::value_ptr(glm::perspectiveFov(angle * deg2rad, 1024.0f, 1024.0f, minDist, maxDist)));
 		glScalef(1, 1, -1);
@@ -1206,8 +1206,6 @@ Light::Light(ifstream& stream, SceneObject* o, long pos) : Component("Light", CO
 	_Strm2Val(stream, _lightType);
 	drawShadow = (_lightType & 0xf0) != 0;
 	_lightType = LIGHTTYPE(_lightType & 0x0f);
-	if (drawShadow)
-		InitShadow();
 	_Strm2Val(stream, intensity);
 	_Strm2Val(stream, minDist);
 	_Strm2Val(stream, maxDist);
@@ -1252,6 +1250,16 @@ void ReflectionProbe::DrawEditor(EB_Viewer* ebv) {
 	glMultMatrixf(glm::value_ptr(Quat2Mat(vvv)));
 	glPopMatrix();
 	*/
+}
+
+void ReflectionProbe::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
+	if (DrawComponentHeader(e, v, pos, this)) {
+		pos += 17;
+		
+		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Intensity", e->font, white());
+		pos += 17;
+	}
+	else pos += 17;
 }
 
 ReflectionProbe::ReflectionProbe(ushort size) : Component("Reflection Probe", COMP_RDP, DRAWORDER_LIGHT), size(size), map(new CubeMap(size, true)), updateMode(ReflProbe_UpdateMode_Start), intensity(1), clearType(ReflProbe_Clear_Sky), clearColor(), range(1, 1, 1), softness(0) {
