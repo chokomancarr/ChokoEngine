@@ -1,4 +1,5 @@
 #include "Engine.h"
+#include "Editor.h"
 
 void CheckGLOK() {
 	int err = glGetError();
@@ -26,17 +27,17 @@ void DrawSceneObjectsOpaque(vector<SceneObject*> oo) {
 	}
 }
 
-void Camera::InitGBuffer() {
-	glGenFramebuffers(1, &d_fbo);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, d_fbo);
+void _InitGBuffer(GLuint* d_fbo, GLuint* d_texs, GLuint* d_depthTex, float w = Display::width, float h = Display::height) {
+	glGenFramebuffers(1, d_fbo);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, *d_fbo);
 
 	// Create the gbuffer textures
 	glGenTextures(3, d_texs);
-	glGenTextures(1, &d_depthTex);
+	glGenTextures(1, d_depthTex);
 
 	for (uint i = 0; i < 3; i++) {
 		glBindTexture(GL_TEXTURE_2D, d_texs[i]);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, Display::width, Display::height, 0, GL_RGBA, GL_FLOAT, NULL);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, w, h, 0, GL_RGBA, GL_FLOAT, NULL);
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, d_texs[i], 0);
 #ifdef SHOW_GBUFFERS
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -47,9 +48,9 @@ void Camera::InitGBuffer() {
 	}
 
 	// depth
-	glBindTexture(GL_TEXTURE_2D, d_depthTex);
+	glBindTexture(GL_TEXTURE_2D, *d_depthTex);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, Display::width, Display::height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, d_depthTex, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, *d_depthTex, 0);
 #ifdef SHOW_GBUFFERS
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 #else
@@ -59,17 +60,31 @@ void Camera::InitGBuffer() {
 
 	GLenum DrawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3 };
 	glDrawBuffers(4, DrawBuffers);
+}
 
+void Camera::InitGBuffer() {
+	_InitGBuffer(&d_fbo, d_texs, &d_depthTex);
 	GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-
 	if (Status != GL_FRAMEBUFFER_COMPLETE) {
 		Debug::Error("Camera (" + name + ")", "FB error:" + Status);
 	}
 	else {
 		Debug::Message("Camera (" + name + ")", "FB ok");
 	}
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+}
 
-	// restore default FBO
+void EB_Previewer::InitGBuffer() {
+	if (d_fbo != 0) {
+		glDeleteTextures(3, d_texs);
+		glDeleteTextures(1, &d_depthTex);
+		glDeleteFramebuffers(1, &d_fbo);
+	}
+	_InitGBuffer(&d_fbo, d_texs, &d_depthTex, previewWidth, previewHeight);
+	GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if (Status != GL_FRAMEBUFFER_COMPLETE) {
+		Debug::Error("Previewer", "Fatal FB error:" + Status);
+	}
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 }
 
@@ -122,6 +137,58 @@ void Camera::Render(RenderTexture* target) {
 #else
 	RenderLights();
 #endif
+}
+
+void EB_Previewer::DrawPreview(Vec4 v) {
+	//enable deferred
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, d_fbo);
+	//clear
+	float zero[] = {0,0,0,0};
+	float one = 1;
+	//glDrawBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_DIFFUSE);
+	glClearBufferfv(GL_COLOR, 0, zero);
+	glClearBufferfv(GL_DEPTH, 0, &one);
+	glClearBufferfv(GL_COLOR, 1, zero);
+	glClearBufferfv(GL_COLOR, 2, zero);
+	glClearBufferfv(GL_COLOR, 3, zero);
+	//glDrawBuffer(0);
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LEQUAL);
+	glDepthMask(true);
+	glDisable(GL_BLEND);
+
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	//render opaque
+
+	glViewport(0, 0, previewWidth, previewHeight);
+	DrawSceneObjectsOpaque(editor->activeScene->objects);
+	glViewport(0, 0, Display::width, Display::height);
+
+	//glDisable(GL_DEPTH_TEST);
+	//glDepthMask(false);
+
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, d_fbo);
+	//*
+	//glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	GLsizei HalfWidth = (GLsizei)(previewWidth / 2.0f);
+	GLsizei HalfHeight = (GLsizei)(previewHeight / 2.0f);
+
+	glReadBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_DIFFUSE);
+	glBlitFramebuffer(0, 0, previewWidth, previewHeight, v.r, Display::height - v.g - v.a*0.5f, v.b*0.5f + v.r, Display::height - v.g - EB_HEADER_SIZE - 2, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+	
+	glReadBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_SPEC_GLOSS);
+	glBlitFramebuffer(0, 0, previewWidth, previewHeight, v.r + v.b*0.5f + 1, Display::height - v.g - v.a*0.5f, v.b + v.r, Display::height - v.g - EB_HEADER_SIZE - 2, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+
+	glReadBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_NORMAL);
+	glBlitFramebuffer(0, 0, previewWidth, previewHeight, v.r, Display::height - v.g - v.a, v.b + v.r*0.5f, Display::height - v.g - v.a*0.5f - 1, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+	//*/
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+	glEnable(GL_BLEND);
 }
 
 void Camera::_DoRenderProbeMask(ReflectionProbe* p, glm::mat4& ip) {

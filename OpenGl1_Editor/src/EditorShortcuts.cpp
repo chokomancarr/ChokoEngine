@@ -507,4 +507,5 @@ void Editor::DoOpenScene(EditorBlock* b, void* v) {
 	string nm = Editor::instance->projectFolder + "Assets\\" + *(string*)v;
 	ifstream s(nm.c_str(), ios::binary | ios::in);
 	Editor::instance->activeScene = make_shared<Scene>(s, 0);
+	Scene::active = Editor::instance->activeScene;
 }

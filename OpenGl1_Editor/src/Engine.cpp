@@ -1297,7 +1297,7 @@ Transform::Transform(SceneObject* sc, Vec3 pos, Quat rot, Vec3 scl) : object(sc)
 	Translate(pos);
 }
 
-Vec3 Transform::worldPosition() {
+const Vec3 Transform::worldPosition() {
 	Vec3 w = position;
 	SceneObject* o = object;
 	while (o->parent != nullptr) {
@@ -1307,11 +1307,11 @@ Vec3 Transform::worldPosition() {
 	return w;
 }
 
-Vec3 Transform::forward() {
+const Vec3 Transform::forward() {
 	return rotate(Vec3(0, 0, 1), rotation);
 }
 
-Quat Transform::worldRotation() {
+const Quat Transform::worldRotation() {
 	return Quat();
 }
 
@@ -2855,7 +2855,7 @@ void Scene::DeleteObject(SceneObject* o) {
 	delete(o);
 }
 
-Scene* Scene::active = nullptr;
+shared_ptr<Scene> Scene::active = nullptr;
 ifstream* Scene::strm = nullptr;
 vector<string> Scene::sceneNames = {};
 vector<long> Scene::scenePoss = {};
@@ -2874,9 +2874,8 @@ void Scene::Load(uint i) {
 		Debug::Error("Scene Loader", "Scene ID (" + to_string(i) + ") out of range!");
 		return;
 	}
-	delete(active);
 	Debug::Message("Scene Loader", "Loading scene " + to_string(i) + "...");
-	active = new Scene(*strm, scenePoss[i]);
+	active = make_shared<Scene>(*strm, scenePoss[i]);
 	active->sceneId = i;
 	Debug::Message("Scene Loader", "Loaded scene " + to_string(i) + "(" + sceneNames[i] + ")");
 }

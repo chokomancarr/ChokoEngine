@@ -502,7 +502,8 @@ void EB_Viewer::Draw() {
 	CalcV(v);
 	DrawHeaders(editor, this, &v, "Viewer: SceneNameHere");
 
-	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
+	//Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
+	glViewport(v.r, Display::height - v.g - v.a, v.b, v.a - EB_HEADER_SIZE - 2);
 
 	Vec2 v2 = Vec2(Display::width, Display::height)*0.03f;
 	Engine::DrawQuad(0, 0, (float)Display::width, (float)Display::height, white(1, 0.2f));//editor->checkers->pointer, Vec2(), Vec2(v2.x, 0), Vec2(0, v2.y), v2, true, white(0.05f));
@@ -516,9 +517,8 @@ void EB_Viewer::Draw() {
 	float h40 = 40 * (hh*Display::height) / (ww*Display::width);
 	float mww = max(ww, 0.3f) * scale;
 	if (seeingCamera == nullptr) {
-		glMultMatrixf(glm::value_ptr(glm::ortho(-20 * ww, 40.0f - 20 * ww, -40.0f + 20 * hh, 20 * hh, 0.01f, 1000.0f)));
-		//glMultMatrixf(glm::value_ptr(glm::perspectiveFov(30.0f, 20*ww, 20*hh, 0.01f, 1000.0f)));
-		glScalef(-mww, mww*Display::width / Display::height, mww);
+		glMultMatrixf(glm::value_ptr(glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, 0.01f, 1000.0f)));
+		glScalef(-mww*Display::width / v.b, mww*Display::width / v.a, mww);
 		glTranslatef(0, 0, -30);
 	}
 	else {
@@ -619,8 +619,6 @@ void EB_Viewer::Draw() {
 	
 	glPopMatrix();
 
-	Engine::EndStencil();
-
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	//glMultMatrixf(glm::value_ptr(glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f, -100.0f, 100.0f)));
@@ -640,6 +638,9 @@ void EB_Viewer::Draw() {
 			Engine::DrawLineWDotted(Vec3(spos.x, spos.y, 0), Vec3(Input::mousePos.x / Display::width * 2 - 1, -(Input::mousePos.y / Display::height * 2 - 1), 0), white(1, 0.1f), 1, 12.0f / Display::height);
 		}
 	}
+
+	//Engine::EndStencil();
+	glViewport(0, 0, Display::width, Display::height);
 
 	Vec3 origin(30 + v.r, v.a + v.g - 30, 10);
 	Vec2 axesLabelPos;
@@ -1198,6 +1199,91 @@ void EB_AnimEditor::OnMouseScr(bool up) {
 }
 
 
+GLuint EB_Previewer::d_fbo = 0;
+GLuint EB_Previewer::d_texs[] = {0, 0, 0};
+GLuint EB_Previewer::d_depthTex = 0;
+
+EB_Previewer::EB_Previewer(Editor* e, int x1, int y1, int x2, int y2) {
+	editorType = 6;
+	editor = e;
+	this->x1 = x1;
+	this->y1 = y1;
+	this->x2 = x2;
+	this->y2 = y2;
+
+	if (d_fbo == 0) {
+		InitGBuffer();
+	}
+}
+
+void EB_Previewer::FindEditor() {
+	for (auto b : editor->blocks) {
+		if (b->editorType == 2) {
+			viewer = (EB_Viewer*)b;
+			break;
+		}
+	}
+}
+
+void EB_Previewer::Draw() {
+	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
+	CalcV(v);
+	DrawHeaders(editor, this, &v, "Previewer");
+
+	
+	if (viewer == nullptr) FindEditor();
+	Camera* seeingCamera = viewer->seeingCamera;
+	float scale = viewer->scale;
+
+	previewWidth = v.b;
+	previewHeight = v.a;
+
+	//glViewport(v.r, Display::height - v.g - v.a, v.b, v.a - EB_HEADER_SIZE - 2);
+	Vec2 v2 = Vec2(Display::width, Display::height)*0.03f;
+	//Engine::DrawQuad(0, 0, (float)Display::width, (float)Display::height, black());
+	if (editor->sceneLoaded()) {
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		float ww1 = editor->xPoss[x1];
+		float hh1 = editor->yPoss[y1];
+		float ww = editor->xPoss[x2] - ww1;
+		float hh = editor->yPoss[y2] - hh1;
+		//if (!persp) {
+		float h40 = 40 * (hh*Display::height) / (ww*Display::width);
+		float mww = max(ww, 0.3f) * scale;
+		if (seeingCamera == nullptr) {
+			glMultMatrixf(glm::value_ptr(glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, 0.01f, 1000.0f)));
+			glScalef(-mww*Display::width / v.b, mww*Display::width / v.a, mww);
+			glTranslatef(0, 0, -30);
+
+			float csz = cos(-viewer->rz*3.14159265f / 180.0f);
+			float snz = sin(-viewer->rz*3.14159265f / 180.0f);
+			float csw = cos(viewer->rw*3.14159265f / 180.0f);
+			float snw = sin(viewer->rw*3.14159265f / 180.0f);
+			glm::mat4 mMatrix = glm::mat4(1, 0, 0, 0, 0, csw, snw, 0, 0, -snw, csw, 0, 0, 0, 0, 1) * glm::mat4(csz, 0, -snz, 0, 0, 1, 0, 0, snz, 0, csz, 0, 0, 0, 0, 1);
+			glMultMatrixf(glm::value_ptr(mMatrix));
+		}
+		else {
+			Quat q = glm::inverse(seeingCamera->object->transform.rotation);
+			glScalef(scale, -scale, 1);
+			glMultMatrixf(glm::value_ptr(glm::perspectiveFov(seeingCamera->fov * deg2rad, (float)Display::width, (float)Display::height, seeingCamera->nearClip, seeingCamera->farClip)));
+			glScalef(1, -1, -1);
+			glMultMatrixf(glm::value_ptr(Quat2Mat(q)));
+			Vec3 pos = -seeingCamera->object->transform.worldPosition();
+			glTranslatef(pos.x, pos.y, pos.z);
+		}
+
+		if (previewWidth != previewWidth_o || previewHeight != previewHeight_o) {
+			previewWidth_o = previewWidth;
+			previewHeight_o = previewHeight;
+			InitGBuffer();
+		}
+		DrawPreview(v);
+	}
+	//glViewport(0, 0, Display::width, Display::height);
+}
+
+
 void EB_ColorPicker::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	CalcV(v);
@@ -1391,6 +1477,7 @@ void Editor::LoadDefaultAssets() {
 	ebIconTexs.emplace(3, GetResExt("eb icon inspector", "png"));
 	ebIconTexs.emplace(4, GetResExt("eb icon hierarchy", "png"));
 	ebIconTexs.emplace(5, GetResExt("eb icon anim", "png"));
+	ebIconTexs.emplace(6, GetResExt("eb icon previewer", "png"));
 	ebIconTexs.emplace(10, GetResExt("eb icon hierarchy", "png"));
 
 	checkbox = GetRes("checkbox");

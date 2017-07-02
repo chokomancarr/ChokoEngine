@@ -255,6 +255,24 @@ public:
 	static void _AddEmpty(EditorBlock* b), _AddBlend(EditorBlock* b);
 };
 
+class EB_Previewer : public EditorBlock {
+public:
+	EB_Previewer(Editor* e, int x1, int y1, int x2, int y2);
+
+	void Draw();
+	void Refresh() {}
+
+protected:
+	void FindEditor();
+	EB_Viewer* viewer;
+	void InitGBuffer();
+	void DrawPreview(Vec4 v);
+
+	float previewWidth, previewHeight;
+	float previewWidth_o, previewHeight_o;
+	static GLuint d_fbo, d_texs[3], d_depthTex;
+};
+
 class EB_ColorPicker : public EditorBlock {
 public:
 	EB_ColorPicker(Editor* e, int x1, int y1, int x2, int y2, Color* tar): target(tar) {

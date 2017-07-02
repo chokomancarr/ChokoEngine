@@ -11,6 +11,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <memory>
 #include <unordered_map>
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
@@ -567,7 +568,7 @@ public:
 	Scene() : sceneName("newScene") {}
 	Scene(ifstream& stream, long pos);
 	~Scene() {}
-	static Scene* active; //for use in-game
+	static shared_ptr<Scene> active;
 	static bool loaded() {
 		return active != nullptr;
 	}

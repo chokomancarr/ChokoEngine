@@ -54,8 +54,10 @@ class Transform : public Object {
 public:
 
 	SceneObject* object;
-	Vec3 position, worldPosition(), forward();
-	Quat rotation, worldRotation();
+	Vec3 position;
+	const Vec3 worldPosition(), forward();
+	Quat rotation;
+	const Quat worldRotation();
 	const Vec3& eulerRotation() { return _eulerRotation;  }
 	void eulerRotation(Vec3 r);
 	Vec3 scale;
@@ -314,6 +316,7 @@ public:
 	friend void Deserialize(ifstream& stream, SceneObject* obj);
 	friend class EB_Viewer;
 	friend class EB_Inspector;
+	friend class EB_Previewer;
 	friend class Background;
 protected:
 	Camera(ifstream& stream, SceneObject* o, long pos = -1);
