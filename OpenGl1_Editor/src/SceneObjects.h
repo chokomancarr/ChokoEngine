@@ -318,24 +318,25 @@ public:
 	friend class EB_Inspector;
 	friend class EB_Previewer;
 	friend class Background;
+	friend class Engine;
 protected:
 	Camera(ifstream& stream, SceneObject* o, long pos = -1);
 
-	void RenderLights();
+	void RenderLights(GLuint targetFbo = 0);
 	void DumpBuffers();
 	void _RenderProbesMask(vector<SceneObject*>& objs, glm::mat4 mat, vector<ReflectionProbe*>& probes), _RenderProbes(vector<ReflectionProbe*>& probes, glm::mat4 mat);
 	void _DoRenderProbeMask(ReflectionProbe* p, glm::mat4& ip), _DoRenderProbe(ReflectionProbe* p, glm::mat4& ip);
 	void _RenderSky(glm::mat4 ip);
-	void _DrawLights(vector<SceneObject*>& oo, glm::mat4& ip);
-	void _DoDrawLight_Point(Light* l, glm::mat4& ip);
-	void _DoDrawLight_Spot(Light* l, glm::mat4& ip);
+	void _DrawLights(vector<SceneObject*>& oo, glm::mat4& ip, GLuint targetFbo = 0);
+	static void _DoDrawLight_Point(Light* l, glm::mat4& ip, GLuint d_texs[], GLuint d_depthTex, float w = Display::width, float h = Display::height, GLuint targetFbo = 0);
+	static void _DoDrawLight_Spot(Light* l, glm::mat4& ip, GLuint d_texs[], GLuint d_depthTex, float w = Display::width, float h = Display::height, GLuint targetFbo = 0);
 
 	Vec3 camVerts[6];
 	static int camVertsIds[19];
 	GLuint d_fbo, d_texs[3], d_depthTex;
 	static GLuint d_probeMaskProgram, d_probeProgram, d_skyProgram, d_pLightProgram, d_sLightProgram;
 
-	static const Vec2 screenRectVerts[];
+	static Vec2 screenRectVerts[];
 	static const int screenRectIndices[];
 
 	int _tarRT;
@@ -347,6 +348,7 @@ protected:
 	
 	void ApplyGL();
 
+	static void InitShaders();
 	void UpdateCamVerts();
 	void InitGBuffer();
 	void DrawEditor(EB_Viewer* ebv) override;
@@ -468,13 +470,14 @@ public:
 	float shadowBias, shadowStrength;
 
 	void DrawEditor(EB_Viewer* ebv) override;
-	void DrawShadowMap();
+	void DrawShadowMap(GLuint tar = 0);
 
 	friend int main(int argc, char **argv);
 	friend void Serialize(Editor* e, SceneObject* o, ofstream* stream);
 	friend void Deserialize(ifstream& stream, SceneObject* obj);
 	friend class Camera;
 	friend class Engine;
+	friend class EB_Previewer;
 protected:
 	LIGHTTYPE _lightType;
 	Light(ifstream& stream, SceneObject* o, long pos = -1);

@@ -49,7 +49,7 @@ void _InitGBuffer(GLuint* d_fbo, GLuint* d_texs, GLuint* d_depthTex, float w = D
 
 	// depth
 	glBindTexture(GL_TEXTURE_2D, *d_depthTex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, Display::width, Display::height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, w, h, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, *d_depthTex, 0);
 #ifdef SHOW_GBUFFERS
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -74,21 +74,151 @@ void Camera::InitGBuffer() {
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 }
 
+void EB_Previewer::_InitDummyBBuffer() {
+	glGenFramebuffers(1, &b_fbo);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, b_fbo);
+
+	glGenTextures(2, b_texs);
+
+	glBindTexture(GL_TEXTURE_2D, b_texs[0]);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, previewWidth, previewHeight, 0, GL_RGBA, GL_FLOAT, NULL);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, b_texs[0], 0);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	glBindTexture(GL_TEXTURE_2D, b_texs[1]);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, previewWidth, previewHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, b_texs[1], 0);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	GLenum DrawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+	glDrawBuffers(2, DrawBuffers);
+}
+
 void EB_Previewer::InitGBuffer() {
 	if (d_fbo != 0) {
 		glDeleteTextures(3, d_texs);
 		glDeleteTextures(1, &d_depthTex);
 		glDeleteFramebuffers(1, &d_fbo);
+		glDeleteTextures(2, b_texs);
+		glDeleteFramebuffers(1, &b_fbo);
 	}
 	_InitGBuffer(&d_fbo, d_texs, &d_depthTex, previewWidth, previewHeight);
 	GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	if (Status != GL_FRAMEBUFFER_COMPLETE) {
-		Debug::Error("Previewer", "Fatal FB error:" + Status);
+		Debug::Error("Previewer", "Fatal FB (MRT) error:" + Status);
+	}
+	_InitDummyBBuffer();
+	Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if (Status != GL_FRAMEBUFFER_COMPLETE) {
+		Debug::Error("Previewer", "Fatal FB (back) error:" + Status);
 	}
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 }
 
-const Vec2 Camera::screenRectVerts[] = { Vec2(-1, -1), Vec2(-1, 1), Vec2(1, -1), Vec2(1, 1) };
+void EB_Previewer::DrawPreview(Vec4 v) {
+	float zero[] = { 0,0,0,0 };
+	float one = 1;
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, b_fbo);
+	glClearBufferfv(GL_COLOR, 0, zero);
+	glClearBufferfv(GL_DEPTH, 0, &one);
+
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, d_fbo);
+	//glDrawBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_DIFFUSE);
+	glClearBufferfv(GL_COLOR, 0, zero);
+	glClearBufferfv(GL_DEPTH, 0, &one);
+	glClearBufferfv(GL_COLOR, 1, zero);
+	glClearBufferfv(GL_COLOR, 2, zero);
+	glClearBufferfv(GL_COLOR, 3, zero);
+	//glDrawBuffer(0);
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LEQUAL);
+	glDepthMask(true);
+	glDisable(GL_BLEND);
+
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	//render opaque
+
+	glViewport(0, 0, previewWidth, previewHeight);
+	DrawSceneObjectsOpaque(editor->activeScene->objects);
+
+	//*glDisable(GL_DEPTH_TEST);
+	//glDepthMask(false);
+	if (showBuffers) {
+		glViewport(0, 0, Display::width, Display::height);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, d_fbo);
+
+		glReadBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_DIFFUSE);
+		glBlitFramebuffer(0, 0, previewWidth, previewHeight, v.r, Display::height - v.g - v.a*0.5f, v.b*0.5f + v.r, Display::height - v.g - EB_HEADER_SIZE - 2, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+
+		glReadBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_SPEC_GLOSS);
+		glBlitFramebuffer(0, 0, previewWidth, previewHeight, v.r + v.b*0.5f + 1, Display::height - v.g - v.a*0.5f, v.b + v.r, Display::height - v.g - EB_HEADER_SIZE - 2, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+
+		glReadBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_NORMAL);
+		glBlitFramebuffer(0, 0, previewWidth, previewHeight, v.r, Display::height - v.g - v.a, v.b + v.r*0.5f, Display::height - v.g - v.a*0.5f - 1, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+	}
+	else {
+		_RenderLights(v);
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, b_fbo);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+		glReadBuffer(GL_COLOR_ATTACHMENT0);
+		glViewport(0, 0, Display::width, Display::height);
+		glBlitFramebuffer(0, 0, previewWidth, previewHeight, v.r, Display::height - v.g - v.a, v.b + v.r, Display::height - v.g - EB_HEADER_SIZE - 2, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+	}
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+	//glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+	glEnable(GL_BLEND);
+	glDisable(GL_DEPTH_TEST);
+	glDepthMask(false);
+}
+
+void EB_Previewer::_RenderLights(Vec4 v) {
+	glDisable(GL_DEPTH_TEST);
+	glDepthMask(false);
+	glEnable(GL_BLEND);
+	glBlendEquation(GL_FUNC_ADD);
+	glBlendFunc(GL_ONE, GL_ONE);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, b_fbo);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, b_fbo);
+
+	GLfloat matrix[16];
+	glGetFloatv(GL_PROJECTION_MATRIX, matrix);
+	glm::mat4 mat = glm::inverse(glm::mat4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]));
+
+	//_RenderSky(mat); //wont work on ortho, TODO
+	//glViewport(v.r, Display::height - v.g - v.a, v.b, v.a - EB_HEADER_SIZE - 2);
+	_DrawLights(Scene::active->objects, mat);
+	//glViewport(0, 0, Display::width, Display::height);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+}
+
+void EB_Previewer::_DrawLights(vector<SceneObject*> oo, glm::mat4 ip) {
+	for (SceneObject* o : oo) {
+		if (!o->active)
+			continue;
+		for (Component* c : o->_components) {
+			if (c->componentType == COMP_LHT) {
+				Light* l = (Light*)c;
+				switch (l->_lightType) {
+				case LIGHTTYPE_POINT:
+					Camera::_DoDrawLight_Point(l, ip, d_texs, d_depthTex, previewWidth, previewHeight, b_fbo);
+					break;
+				case LIGHTTYPE_SPOT:
+					Camera::_DoDrawLight_Spot(l, ip, d_texs, d_depthTex, previewWidth, previewHeight, b_fbo);
+					break;
+				}
+			}
+		}
+
+		_DrawLights(o->children, ip);
+	}
+}
+
+Vec2 Camera::screenRectVerts[] = { Vec2(-1, -1), Vec2(-1, 1), Vec2(1, -1), Vec2(1, 1) };
 const int Camera::screenRectIndices[] = { 0, 1, 2, 1, 3, 2 };
 GLuint Camera::d_probeMaskProgram = 0;
 GLuint Camera::d_probeProgram = 0;
@@ -98,7 +228,7 @@ GLuint Camera::d_sLightProgram = 0;
 unordered_map<string, GLuint> Camera::fetchTextures = unordered_map<string, GLuint>();
 vector<string> Camera::fetchTexturesUpdated = vector<string>();
 
-GLuint Camera::DoFetchTexture (string s) {
+GLuint Camera::DoFetchTexture(string s) {
 	if (s == "") {
 		ushort a = 0;
 		s = "temp_fetch_" + a;
@@ -135,60 +265,9 @@ void Camera::Render(RenderTexture* target) {
 #ifdef SHOW_GBUFFERS
 	DumpBuffers();
 #else
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 	RenderLights();
 #endif
-}
-
-void EB_Previewer::DrawPreview(Vec4 v) {
-	//enable deferred
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, d_fbo);
-	//clear
-	float zero[] = {0,0,0,0};
-	float one = 1;
-	//glDrawBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_DIFFUSE);
-	glClearBufferfv(GL_COLOR, 0, zero);
-	glClearBufferfv(GL_DEPTH, 0, &one);
-	glClearBufferfv(GL_COLOR, 1, zero);
-	glClearBufferfv(GL_COLOR, 2, zero);
-	glClearBufferfv(GL_COLOR, 3, zero);
-	//glDrawBuffer(0);
-	glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_LEQUAL);
-	glDepthMask(true);
-	glDisable(GL_BLEND);
-
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	//render opaque
-
-	glViewport(0, 0, previewWidth, previewHeight);
-	DrawSceneObjectsOpaque(editor->activeScene->objects);
-	glViewport(0, 0, Display::width, Display::height);
-
-	//glDisable(GL_DEPTH_TEST);
-	//glDepthMask(false);
-
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, d_fbo);
-	//*
-	//glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
-	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	GLsizei HalfWidth = (GLsizei)(previewWidth / 2.0f);
-	GLsizei HalfHeight = (GLsizei)(previewHeight / 2.0f);
-
-	glReadBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_DIFFUSE);
-	glBlitFramebuffer(0, 0, previewWidth, previewHeight, v.r, Display::height - v.g - v.a*0.5f, v.b*0.5f + v.r, Display::height - v.g - EB_HEADER_SIZE - 2, GL_COLOR_BUFFER_BIT, GL_LINEAR);
-	
-	glReadBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_SPEC_GLOSS);
-	glBlitFramebuffer(0, 0, previewWidth, previewHeight, v.r + v.b*0.5f + 1, Display::height - v.g - v.a*0.5f, v.b + v.r, Display::height - v.g - EB_HEADER_SIZE - 2, GL_COLOR_BUFFER_BIT, GL_LINEAR);
-
-	glReadBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_NORMAL);
-	glBlitFramebuffer(0, 0, previewWidth, previewHeight, v.r, Display::height - v.g - v.a, v.b + v.r*0.5f, Display::height - v.g - v.a*0.5f - 1, GL_COLOR_BUFFER_BIT, GL_LINEAR);
-	//*/
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-	glEnable(GL_BLEND);
 }
 
 void Camera::_DoRenderProbeMask(ReflectionProbe* p, glm::mat4& ip) {
@@ -297,92 +376,38 @@ void Camera::_RenderSky(glm::mat4 ip) {
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
-/*
-void Camera::_DoDrawLight_Point(Light* l, glm::mat4& ip) {
-	if (d_pLightProgram == 0) {
-		Debug::Error("PointLightPass", "Fatal: Shader not initialized!");
-		abort();
-	}
-	GLint _IP = glGetUniformLocation(d_pLightProgram, "_IP");
-	GLint diffLoc = glGetUniformLocation(d_pLightProgram, "inColor");
-	GLint specLoc = glGetUniformLocation(d_pLightProgram, "inNormal");
-	GLint normLoc = glGetUniformLocation(d_pLightProgram, "inSpec");
-	GLint depthLoc = glGetUniformLocation(d_pLightProgram, "inDepth");
-	GLint scrSzLoc = glGetUniformLocation(d_pLightProgram, "screenSize");
-	GLint lPosLoc = glGetUniformLocation(d_pLightProgram, "lightPos");
-	GLint lColLoc = glGetUniformLocation(d_pLightProgram, "lightColor");
-	GLint lStrLoc = glGetUniformLocation(d_pLightProgram, "lightStrength");
-	GLint lRadLoc = glGetUniformLocation(d_pLightProgram, "lightRadius2");
-	GLint lDstLoc = glGetUniformLocation(d_pLightProgram, "lightDistance");
-
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glVertexPointer(2, GL_FLOAT, 0, screenRectVerts);
-	glUseProgram(d_pLightProgram);
-
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, screenRectVerts);
-
-	glUniformMatrix4fv(_IP, 1, GL_FALSE, glm::value_ptr(ip));
-
-	glUniform2f(scrSzLoc, (GLfloat)Display::width, (GLfloat)Display::height);
-	glUniform1i(diffLoc, 0);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, d_texs[0]);
-	glUniform1i(specLoc, 1);
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, d_texs[1]);
-	glUniform1i(normLoc, 2);
-	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_2D, d_texs[2]);
-	glUniform1i(depthLoc, 3);
-	glActiveTexture(GL_TEXTURE3);
-	glBindTexture(GL_TEXTURE_2D, d_depthTex);
-	Vec3 wpos = l->object->transform.worldPosition();
-	glUniform3f(lPosLoc, wpos.x, wpos.y, wpos.z);
-	glUniform3f(lColLoc, l->color.x, l->color.y, l->color.z);
-	glUniform1f(lStrLoc, l->intensity);
-	glUniform1f(lRadLoc, l->minDist*l->minDist);
-	glUniform1f(lDstLoc, l->maxDist*l->maxDist);
-
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, screenRectIndices);
-
-	glDisableVertexAttribArray(0);
-	glUseProgram(0);
-	glDisableClientState(GL_VERTEX_ARRAY);
-}
-*/
-
-void Camera::_DoDrawLight_Point(Light* l, glm::mat4& ip) {
+void Camera::_DoDrawLight_Point(Light* l, glm::mat4& ip, GLuint d_texs[], GLuint d_depthTex, float w, float h, GLuint tar) {
 	//draw 6 spotlights
 	l->angle = 45;
-	_DoDrawLight_Spot(l, ip);
+	_DoDrawLight_Spot(l, ip, d_texs, d_depthTex, w, h, tar);
 	l->object->transform.Rotate(0, 0, 90);
-	_DoDrawLight_Spot(l, ip);
+	_DoDrawLight_Spot(l, ip, d_texs, d_depthTex, w, h, tar);
 	l->object->transform.Rotate(0, 0, 90);
-	_DoDrawLight_Spot(l, ip);
+	_DoDrawLight_Spot(l, ip, d_texs, d_depthTex, w, h, tar);
 	l->object->transform.Rotate(0, 0, 90);
-	_DoDrawLight_Spot(l, ip);
+	_DoDrawLight_Spot(l, ip, d_texs, d_depthTex, w, h, tar);
 	l->object->transform.Rotate(0, 90, 90);
-	_DoDrawLight_Spot(l, ip);
+	_DoDrawLight_Spot(l, ip, d_texs, d_depthTex, w, h, tar);
 	l->object->transform.Rotate(0, 180, 0);
-	_DoDrawLight_Spot(l, ip);
+	_DoDrawLight_Spot(l, ip, d_texs, d_depthTex, w, h, tar);
 	l->object->transform.Rotate(0, 90, 0);
 }
 
-void Camera::_DoDrawLight_Spot(Light* l, glm::mat4& ip) {
+void Camera::_DoDrawLight_Spot(Light* l, glm::mat4& ip, GLuint d_texs[], GLuint d_depthTex, float w, float h, GLuint tar) {
 	glm::mat4 lp = glm::mat4();
 	if (l->drawShadow) {
-		l->DrawShadowMap();
+		l->DrawShadowMap(tar);
+		glViewport(0, 0, w, h); //shadow map modifies viewport
 		GLfloat matrix[16];
 		glGetFloatv(GL_PROJECTION_MATRIX, matrix);
 		lp *= glm::mat4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
 	}
 
 	if (d_sLightProgram == 0) {
-		Debug::Error("PointLightPass", "Fatal: Shader not initialized!");
+		Debug::Error("SpotLightPass", "Fatal: Shader not initialized!");
 		abort();
 	}
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, tar);
 	GLint _IP = glGetUniformLocation(d_sLightProgram, "_IP");
 	GLint diffLoc = glGetUniformLocation(d_sLightProgram, "inColor");
 	GLint specLoc = glGetUniformLocation(d_sLightProgram, "inNormal");
@@ -410,7 +435,7 @@ void Camera::_DoDrawLight_Spot(Light* l, glm::mat4& ip) {
 
 	glUniformMatrix4fv(_IP, 1, GL_FALSE, glm::value_ptr(ip));
 
-	glUniform2f(scrSzLoc, (GLfloat)Display::width, (GLfloat)Display::height);
+	glUniform2f(scrSzLoc, w, h);
 	glUniform1i(diffLoc, 0);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, d_texs[0]);
@@ -447,7 +472,7 @@ void Camera::_DoDrawLight_Spot(Light* l, glm::mat4& ip) {
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
-void Camera::_DrawLights(vector<SceneObject*>& oo, glm::mat4& ip) {
+void Camera::_DrawLights(vector<SceneObject*>& oo, glm::mat4& ip, GLuint targetFbo) {
 	for (SceneObject* o : oo) {
 		if (!o->active)
 			continue;
@@ -456,10 +481,10 @@ void Camera::_DrawLights(vector<SceneObject*>& oo, glm::mat4& ip) {
 				Light* l = (Light*)c;
 				switch (l->_lightType) {
 				case LIGHTTYPE_POINT:
-					_DoDrawLight_Point(l, ip);
+					_DoDrawLight_Point(l, ip, d_texs, d_depthTex, targetFbo);
 					break;
 				case LIGHTTYPE_SPOT:
-					_DoDrawLight_Spot(l, ip);
+					_DoDrawLight_Spot(l, ip, d_texs, d_depthTex, targetFbo);
 					break;
 				}
 			}
@@ -469,12 +494,10 @@ void Camera::_DrawLights(vector<SceneObject*>& oo, glm::mat4& ip) {
 	}
 }
 
-void Camera::RenderLights() {
+void Camera::RenderLights(GLuint targetFbo) {
 	glEnable(GL_BLEND);
 	glBlendEquation(GL_FUNC_ADD);
 	glBlendFunc(GL_ONE, GL_ONE);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 	glClearColor(0, 0, 0, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -487,7 +510,7 @@ void Camera::RenderLights() {
 	_RenderProbesMask(Scene::active->objects, mat, probes);
 	_RenderProbes(probes, mat);
 	_RenderSky(mat);
-	_DrawLights(Scene::active->objects, mat);
+	_DrawLights(Scene::active->objects, mat, targetFbo);
 }
 
 void Camera::DumpBuffers() {
@@ -538,22 +561,26 @@ void Light::InitShadow() {
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 }
 
-void Light::DrawShadowMap() {
+void Light::DrawShadowMap(GLuint tar) {
 	if (_shadowFbo == 0) {
 		Debug::Error("RenderShadow", "Fatal: Fbo not set up!");
 		abort();
 	}
 	glViewport(0, 0, 1024, 1024);
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, tar);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _shadowFbo);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
 	glDepthMask(true);
 	glDisable(GL_BLEND);
-	glClearColor(1, 0, 0, 0);
-	glClear(GL_COLOR_BUFFER_BIT);
-	glClearDepth(1);
-	glClear(GL_DEPTH_BUFFER_BIT);
+	//glClearColor(1, 0, 0, 0);
+	//glClear(GL_COLOR_BUFFER_BIT);
+	//glClearDepth(1);
+	//glClear(GL_DEPTH_BUFFER_BIT);
+	float zero[] = { 0,0,0,0 };
+	float one = 1;
+	glClearBufferfv(GL_COLOR, 0, zero);
+	glClearBufferfv(GL_DEPTH, 0, &one);
 	//switch (_lightType) {
 	//case LIGHTTYPE_SPOT:
 	//case LIGHTTYPE_DIRECTIONAL:
@@ -567,8 +594,8 @@ void Light::DrawShadowMap() {
 	glDisable(GL_DEPTH_TEST);
 	glDepthMask(false);
 	glEnable(GL_BLEND);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-	glViewport(0, 0, Display::width, Display::height);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, tar);
+	//glViewport(0, 0, Display::width, Display::height);
 }
 
 void ReflectionProbe::_DoUpdate() {
