@@ -19,6 +19,7 @@
 ![Dd]ebug/Python/
 ![Dd]ebug/res/
 ![Dd]ebug/ShaderIncludes/
+![Dd]ebug/fallback.bmp
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/
@@ -28,6 +29,8 @@ bld/
 [Bb]in/
 [Oo]bj/
 [Ll]og/
+
+OpenGl1_Editor/Debug/
 
 # Visual Studio 2015 cache/options directory
 .vs/

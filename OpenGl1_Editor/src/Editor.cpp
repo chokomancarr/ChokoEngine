@@ -635,7 +635,7 @@ void EB_Viewer::Draw() {
 			}
 		}
 		else {
-			Engine::DrawLineWDotted(Vec3(spos.x, spos.y, 0), Vec3(Input::mousePos.x / Display::width * 2 - 1, -(Input::mousePos.y / Display::height * 2 - 1), 0), white(1, 0.1f), 1, 12.0f / Display::height);
+			Engine::DrawLineWDotted(Vec3(spos.x, spos.y, 0), Vec3(Input::mousePos.x / v.b * 2 - 1, -(Input::mousePos.y / v.a * 2 - 1), 0), white(1, 0.1f), 1, 12.0f / Display::height);
 		}
 	}
 
