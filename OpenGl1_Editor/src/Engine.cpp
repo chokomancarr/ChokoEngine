@@ -478,21 +478,23 @@ void Engine::DrawTexture(float x, float y, float w, float h, Texture* texture, V
 	DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint);
 }
 
-void AddQuad(float x, float y, float w, float h, Vec2 uv0, Vec2 uv1, Vec2 uv2, Vec2 uv3, vector<Vec3>* poss, vector<uint>* indexes, vector<Vec2>* uvs, uint i) {
-	poss->push_back(Vec3(x, y, 0));
-	poss->push_back(Vec3(x + w, y, 0));
-	poss->push_back(Vec3(x, y + h, 0));
-	poss->push_back(Vec3(x + w, y + h, 0));
-	indexes->push_back(i);
-	indexes->push_back(i + 1);
-	indexes->push_back(i + 3);
-	indexes->push_back(i + 2);
-	uvs->push_back(uv0);
-	uvs->push_back(uv1);
-	uvs->push_back(uv2);
-	uvs->push_back(uv3);
+void AddQuad(uint& i, float x, float y, float w, float h, Vec2& uv0, Vec2& uv1, Vec2& uv2, Vec2& uv3, vector<Vec3>* poss, vector<uint>* indexes, vector<Vec2>* uvs, uint d) {
+	(*poss)[i] = (Vec3(x, y, 0));
+	(*poss)[i+1] = (Vec3(x + w, y, 0));
+	(*poss)[i+2] = (Vec3(x, y + h, 0));
+	(*poss)[i+3] = (Vec3(x + w, y + h, 0));
+	(*indexes)[i] = (d);
+	(*indexes)[i+1] = (d + 1);
+	(*indexes)[i+2] = (d + 3);
+	(*indexes)[i+3] = (d + 2);
+	(*uvs)[i] = (uv0);
+	(*uvs)[i+1] = (uv1);
+	(*uvs)[i+2] = (uv2);
+	(*uvs)[i+3] = (uv3);
+	i += 4;
 }
 
+//!TODO -- change to TTF rendering (current one too slow)
 void Engine::Label(float x, float y, float s, string st, Font* font) {
 	Label(x, y, s, st, font, Vec4(0, 0, 0, 1));
 }
@@ -500,65 +502,64 @@ void Engine::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4) 
 	Label(x, y, s, st, font, Vec4, -1);
 }
 void Engine::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4, float maxw) {
-	if (st == "")
+	if (st == "" || !font->loaded)
 		return;
 	const char* str = st.c_str();
-	
-	vector<Vec3> quadPoss;
-	vector<uint> indexes;
-	vector<Vec2> uvs;
+	float w = (1 - (font->gpadding(s)*1.0f / font->gwidth(s)));
 
-	if (font->loaded) {
-		for (uint a = 0; a < strlen(str); a++) {
-			int o = str[a];
-			float h = (o*1.0f / font->gchars(s));
-			float w = (1 - (font->gpadding(s)*1.0f / font->gwidth(s)));
-
-			if (maxw > 0) {
-				if ((a + 3)*s*font->gw2h(s)*w > maxw) {
-					o = '.';
-					h = (o*1.0f / font->gchars(s));
-					w = (1 - (font->gpadding(s)*1.0f / font->gwidth(s)));
-					DrawQuad(x + a*s*font->gw2h(s)*w - (s*font->gw2h(s)*w*st.size()*(font->alignment & 0x0f)*0.5f), y - s*(1 - ((font->alignment & 0xf0) >> 4)*0.5f), s*font->gw2h(s)*w, s, font->getpointer(s), Vec2(0, h + (1.0f / font->gchars(s))), Vec2(w, h + (1.0f / font->gchars(s))), Vec2(0, h), Vec2(w, h), true, Vec4);
-					a++;
-					DrawQuad(x + a*s*font->gw2h(s)*w - (s*font->gw2h(s)*w*st.size()*(font->alignment & 0x0f)*0.5f), y - s*(1 - ((font->alignment & 0xf0) >> 4)*0.5f), s*font->gw2h(s)*w, s, font->getpointer(s), Vec2(0, h + (1.0f / font->gchars(s))), Vec2(w, h + (1.0f / font->gchars(s))), Vec2(0, h), Vec2(w, h), true, Vec4);
-					break;
-				}
-			}
-			int x0 = (int)(x + a*s*font->gw2h(s)*w - (s*font->gw2h(s)*w*st.size()*(font->alignment & 0x0f)*0.5f));
-			if (x0 > Display::width)
+	uint strln = strlen(str);
+	uint c = 0;
+	vector<Vec3> quadPoss(strln*4 + 4);
+	vector<uint> indexes(strln*4 + 4);
+	vector<Vec2> uvs(strln*4 + 4);
+	uint gchars = font->gchars(s);
+	float gw2h = font->gw2h(s);
+	for (uint a = 0; a < strln; a++) {
+		int o = str[a];
+		float h = (o*1.0f / gchars);
+		if (maxw > 0) {
+			if ((a + 3)*s*gw2h*w > maxw) {
+				o = '.';
+				h = (o*1.0f / gchars);
+				w = (1 - (font->gpadding(s)*1.0f / font->gwidth(s)));
+				AddQuad(c, x + a*s*gw2h*w - (s*gw2h*w*st.size()*(font->alignment & 0x0f)*0.5f), round(y - s*(1 - ((font->alignment & 0xf0) >> 4)*0.5f)), s*gw2h*w, s, Vec2(0, h + (1.0f / gchars)), Vec2(w, h + (1.0f / font->gchars(s))), Vec2(0, h), Vec2(w, h), &quadPoss, &indexes, &uvs, a * 4);
+				a++;
+				AddQuad(c, x + a*s*gw2h*w - (s*gw2h*w*st.size()*(font->alignment & 0x0f)*0.5f), round(y - s*(1 - ((font->alignment & 0xf0) >> 4)*0.5f)), s*gw2h*w, s, Vec2(0, h + (1.0f / gchars)), Vec2(w, h + (1.0f / font->gchars(s))), Vec2(0, h), Vec2(w, h), &quadPoss, &indexes, &uvs, a * 4);
 				break;
-
-			float r = Display::height * 1.0f / Display::width; //(x2 + a*s2*font->w2h*w*r) * 2 - 1, (1 - y2) * 2 - 1, s2*font->w2h * 2 * w*r, -s2 * 2
-			//DrawQuad(x + a*s*font->gw2h(s)*w - (s*font->gw2h(s)*w*st.size()*(font->alignment & 0x0f)*0.5f), y - s*(1 - ((font->alignment & 0xf0) >> 4)*0.5f), s*font->gw2h(s)*w, s, font->getpointer(s), Vec2(0, h + (1.0f / font->gchars(s))), Vec2(w, h + (1.0f / font->gchars(s))), Vec2(0, h), Vec2(w, h), true, Vec4);//Vec2(0, 0.49), Vec2(1, 0.49));//(1.0f / font->chars)), Vec2(1, h - (1.0f / font->chars)));
-			AddQuad((float)x0, round(y - s*(1 - ((font->alignment & 0xf0) >> 4)*0.5f)), s*font->gw2h(s)*w, s, Vec2(0, h + (1.0f / font->gchars(s))), Vec2(w, h + (1.0f / font->gchars(s))), Vec2(0, h), Vec2(w, h), &quadPoss, &indexes, &uvs, a * 4);
+			}
 		}
-		if (quadPoss.size() == 0) //happens if click showdesktop
-			return;
-		for (int y = quadPoss.size()-1; y >= 0; y--) {
-			quadPoss[y] = Ds(Display::uiMatrix*quadPoss[y]);
-		}
-		uint prog = unlitProgramA;
-		GLint baseImageLoc = glGetUniformLocation(prog, "sampler");
-		glEnableClientState(GL_VERTEX_ARRAY);
-		glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
-		glUseProgram(prog);
-		glUniform1i(baseImageLoc, 0);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, font->getpointer(s));
-		GLint baseColLoc = glGetUniformLocation(prog, "col");
-		glUniform4f(baseColLoc, Vec4.r, Vec4.g, Vec4.b, Vec4.a);
-		glEnableVertexAttribArray(0);
-		glEnableVertexAttribArray(1);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &quadPoss[0]);
-		glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, &uvs[0]);
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-		glDrawElements(GL_QUADS, indexes.size(), GL_UNSIGNED_INT, &indexes[0]);
-		glDisableVertexAttribArray(0);
-		glDisableVertexAttribArray(1);
-		glUseProgram(0);
-		glDisableClientState(GL_VERTEX_ARRAY);
+		int x0 = (int)(x + a*s*gw2h*w - (s*gw2h*w*st.size()*(font->alignment & 0x0f)*0.5f));
+		if (x0 > Display::width)
+			break;
+		float r = Display::height * 1.0f / Display::width; //(x2 + a*s2*font->w2h*w*r) * 2 - 1, (1 - y2) * 2 - 1, s2*font->w2h * 2 * w*r, -s2 * 2
+		AddQuad(c, (float)x0, round(y - s*(1 - ((font->alignment & 0xf0) >> 4)*0.5f)), s*gw2h*w, s, Vec2(0, h + (1.0f / gchars)), Vec2(w, h + (1.0f / font->gchars(s))), Vec2(0, h), Vec2(w, h), &quadPoss, &indexes, &uvs, a * 4);
 	}
+
+	if (c == 0) //happens if click showdesktop
+		return;
+	for (uint y = 0; y < c; y++) {
+		quadPoss[y] = Ds(Display::uiMatrix*quadPoss[y]);
+	}
+	uint prog = unlitProgramA;
+	GLint baseImageLoc = glGetUniformLocation(prog, "sampler");
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
+	glUseProgram(prog);
+	glUniform1i(baseImageLoc, 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, font->getpointer(s));
+	GLint baseColLoc = glGetUniformLocation(prog, "col");
+	glUniform4f(baseColLoc, Vec4.r, Vec4.g, Vec4.b, Vec4.a);
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &quadPoss[0]);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, &uvs[0]);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glDrawElements(GL_QUADS, c, GL_UNSIGNED_INT, &indexes[0]);
+	glDisableVertexAttribArray(0);
+	glDisableVertexAttribArray(1);
+	glUseProgram(0);
+	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
 byte Engine::Button(float x, float y, float w, float h) {

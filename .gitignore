@@ -15,7 +15,7 @@
 *.userprefs
 
 # Build results
-[Dd]ebug/*
+[Dd]ebug/
 ![Dd]ebug/Python/
 ![Dd]ebug/res/
 ![Dd]ebug/ShaderIncludes/
@@ -31,6 +31,7 @@ bld/
 [Ll]og/
 
 OpenGl1_Editor/Debug/
+OpenGl1_Painter/Debug/
 
 # Visual Studio 2015 cache/options directory
 .vs/
