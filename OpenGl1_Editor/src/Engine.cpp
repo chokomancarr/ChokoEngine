@@ -224,6 +224,7 @@ void Engine::Init(string path) {
 #ifdef IS_EDITOR
 	Camera::InitShaders();
 #endif
+	Font::Init();
 
 	string vertcode = "#version 330 core\nlayout(location = 0) in vec3 pos;\nlayout(location = 1) in vec2 uv;\nout vec2 UV;\nvoid main(){ \ngl_Position.xyz = pos;\ngl_Position.w = 1.0;\nUV = uv;\n}";
 	string fragcode = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = texture(sampler, UV)*col;\n}"; //out vec3 Vec4;\n
@@ -502,64 +503,7 @@ void Engine::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4) 
 	Label(x, y, s, st, font, Vec4, -1);
 }
 void Engine::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4, float maxw) {
-	if (st == "" || !font->loaded)
-		return;
-	const char* str = st.c_str();
-	float w = (1 - (font->gpadding(s)*1.0f / font->gwidth(s)));
-
-	uint strln = strlen(str);
-	uint c = 0;
-	vector<Vec3> quadPoss(strln*4 + 4);
-	vector<uint> indexes(strln*4 + 4);
-	vector<Vec2> uvs(strln*4 + 4);
-	uint gchars = font->gchars(s);
-	float gw2h = font->gw2h(s);
-	for (uint a = 0; a < strln; a++) {
-		int o = str[a];
-		float h = (o*1.0f / gchars);
-		if (maxw > 0) {
-			if ((a + 3)*s*gw2h*w > maxw) {
-				o = '.';
-				h = (o*1.0f / gchars);
-				w = (1 - (font->gpadding(s)*1.0f / font->gwidth(s)));
-				AddQuad(c, x + a*s*gw2h*w - (s*gw2h*w*st.size()*(font->alignment & 0x0f)*0.5f), round(y - s*(1 - ((font->alignment & 0xf0) >> 4)*0.5f)), s*gw2h*w, s, Vec2(0, h + (1.0f / gchars)), Vec2(w, h + (1.0f / font->gchars(s))), Vec2(0, h), Vec2(w, h), &quadPoss, &indexes, &uvs, a * 4);
-				a++;
-				AddQuad(c, x + a*s*gw2h*w - (s*gw2h*w*st.size()*(font->alignment & 0x0f)*0.5f), round(y - s*(1 - ((font->alignment & 0xf0) >> 4)*0.5f)), s*gw2h*w, s, Vec2(0, h + (1.0f / gchars)), Vec2(w, h + (1.0f / font->gchars(s))), Vec2(0, h), Vec2(w, h), &quadPoss, &indexes, &uvs, a * 4);
-				break;
-			}
-		}
-		int x0 = (int)(x + a*s*gw2h*w - (s*gw2h*w*st.size()*(font->alignment & 0x0f)*0.5f));
-		if (x0 > Display::width)
-			break;
-		float r = Display::height * 1.0f / Display::width; //(x2 + a*s2*font->w2h*w*r) * 2 - 1, (1 - y2) * 2 - 1, s2*font->w2h * 2 * w*r, -s2 * 2
-		AddQuad(c, (float)x0, round(y - s*(1 - ((font->alignment & 0xf0) >> 4)*0.5f)), s*gw2h*w, s, Vec2(0, h + (1.0f / gchars)), Vec2(w, h + (1.0f / font->gchars(s))), Vec2(0, h), Vec2(w, h), &quadPoss, &indexes, &uvs, a * 4);
-	}
-
-	if (c == 0) //happens if click showdesktop
-		return;
-	for (uint y = 0; y < c; y++) {
-		quadPoss[y] = Ds(Display::uiMatrix*quadPoss[y]);
-	}
-	uint prog = unlitProgramA;
-	GLint baseImageLoc = glGetUniformLocation(prog, "sampler");
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
-	glUseProgram(prog);
-	glUniform1i(baseImageLoc, 0);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, font->getpointer(s));
-	GLint baseColLoc = glGetUniformLocation(prog, "col");
-	glUniform4f(baseColLoc, Vec4.r, Vec4.g, Vec4.b, Vec4.a);
-	glEnableVertexAttribArray(0);
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &quadPoss[0]);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, &uvs[0]);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glDrawElements(GL_QUADS, c, GL_UNSIGNED_INT, &indexes[0]);
-	glDisableVertexAttribArray(0);
-	glDisableVertexAttribArray(1);
-	glUseProgram(0);
-	glDisableClientState(GL_VERTEX_ARRAY);
+	return;
 }
 
 byte Engine::Button(float x, float y, float w, float h) {
@@ -1969,102 +1913,41 @@ bool Background::Parse(string path) {
 
 
 //-----------------font class---------------------
-Font::Font(const string& pathb, const string& paths, int size) : loaded(false), alignment(ALIGN_TOPLEFT), sizeToggle(size) {
-	if (paths != "") {
-		//cout << "opening font at " << paths << endl;
-		unsigned char header[6];
-		//unsigned int charSize;
-		unsigned char *data;
-
-		FILE *file;
-
-		fopen_s(&file, paths.c_str(), "rb");
-
-		if (!file){
-			cout << "Font could not be opened! " << paths << endl;
-			return;
-		}
-		if (fread(header, 1, 6, file) != 6){
-			cout << "font header wrong! " << paths << endl;
-			return;
-		}
-		if (header[0] != 'f' || header[1] != 'o' || header[2] != 'n' || header[3] != 't'){
-			cout << "Not a font file! " << paths << endl;
-			return;
-		}
-		width = header[4];
-		uint ii = 2;
-		while (ii < width)
-			ii *= 2;
-		padding = ii - width;
-		width = ii;
-		height = header[5];
-		chars = 125;
-		w2h = width * 1.0f / height;
-		data = new unsigned char[chars * width*height];
-		if (fread(data, 1, chars * width*height, file) != chars * width*height) {
-			cout << "font data incomplete! " << paths << endl;
-			return;
-		}
-		fclose(file);
-
-		glGenTextures(1, &pointer);
-		glBindTexture(GL_TEXTURE_2D, pointer);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, width, height*chars, 0, GL_RED, GL_UNSIGNED_BYTE, data);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glBindTexture(GL_TEXTURE_2D, 0);
-		delete[](data);
-		//cout << "font loaded: " << width << "x" << height << endl;
-		//loaded = true;
+FT_Library Font::_ftlib = nullptr;
+void Font::Init() {
+	int err = FT_Init_FreeType(&_ftlib);
+	if (err != FT_Err_Ok) {
+		Debug::Error("Font", "Fatal: Initializing freetype failed!");
+		runtime_error("Fatal: Initializing freetype failed!");
 	}
-	//cout << "opening font at " << pathb << endl;
-	unsigned char header[6];
-	//unsigned int charSize;
-	unsigned char *data;
+}
 
-	FILE *file;
-
-	fopen_s(&file, pathb.c_str(), "rb");
-
-	if (!file){
-		printf("Font could not be opened\n");
+Font::Font(const string& path, int size) {
+	if (!FT_New_Face(_ftlib, path.c_str(), 0, &_face)) {
+		Debug::Error("Font", "Failed to load font!");
 		return;
 	}
-	if (fread(header, 1, 6, file) != 6){
-		printf("font header wrong\n");
-		return;
-	}
-	if (header[0] != 'f' || header[1] != 'o' || header[2] != 'n' || header[3] != 't'){
-		printf("Not a font file\n");
-		return;
-	}
-	width2 = header[4];
-	uint ii = 2;
-	while (ii < width2)
-		ii *= 2;
-	padding2 = ii - width2;
-	width2 = ii;
-	height2 = header[5];
-	chars2 = 125;
-	w2h2 = width2 * 1.0f / height2;
-	data = new unsigned char[chars2 * width2*height2];
-	if (fread(data, 1, chars2 * width2*height2, file) != chars2 * width2*height2) {
-		printf("font data incomplete\n");
-		return;
-	}
-	fclose(file);
+	FT_Set_Char_Size(_face, 0, (FT_F26Dot6)(size / 64.0f), Display::dpi, 0); // set pixel size based on dpi
+	//FT_Set_Pixel_Sizes(_face, 0, size); // set pixel size directly
+	CreateGlyph(size);
+}
 
-	glGenTextures(1, &pointer2);
-	glBindTexture(GL_TEXTURE_2D, pointer2);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, width2, height2*chars, 0, GL_RED, GL_UNSIGNED_BYTE, data);
-	glGenerateMipmap(GL_TEXTURE_2D);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+GLuint Font::CreateGlyph(uint size) {
+	_glyphs.emplace(size, 0);
+	glBindTexture(GL_TEXTURE_2D, _glyphs[size]);
+	uint sz = _face->size->metrics.height;
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, sz * 16, sz * 16, 0, GL_RGBA, GL_FLOAT, NULL);
+	for (short a = 0; a < 256; a++) {
+		uint gi = FT_Get_Char_Index(_face, a);
+		if (!FT_Load_Glyph(_face, gi, 0)) continue;
+		if (_face->glyph->format != FT_GLYPH_FORMAT_BITMAP) {
+			if (!FT_Render_Glyph(_face->glyph, FT_RENDER_MODE_NORMAL)) continue;
+		}
+		byte x = a % 16, y = a / 16;
+		glTexSubImage2D(GL_TEXTURE_2D, 0, sz * x, sz * y, _face->glyph->bitmap.width, _face->glyph->bitmap.rows, GL_RED, GL_BYTE, _face->glyph->bitmap.buffer);
+	}
 	glBindTexture(GL_TEXTURE_2D, 0);
-	delete[](data);
-	loaded = true;
-	//cout << "font loaded: " << width2 << "x" << height2 << endl;
+	return _glyphs[size];
 }
 
 Font* Font::Align(ALIGNMENT a) {
@@ -2072,13 +1955,10 @@ Font* Font::Align(ALIGNMENT a) {
 	return this;
 }
 
-GLuint Font::getpointer(float f) {
-	return (f > sizeToggle) ? pointer2 : pointer;
-}
-
 //--------------------Display class--------------
 int Display::width = 512;
 int Display::height = 512;
+int Display::dpi = 72;
 glm::mat3 Display::uiMatrix = glm::mat3();
 
 //--------------------Input class--------------

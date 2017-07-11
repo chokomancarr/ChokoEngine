@@ -37,7 +37,7 @@ void _InitGBuffer(GLuint* d_fbo, GLuint* d_texs, GLuint* d_depthTex, float w = D
 
 	for (uint i = 0; i < 3; i++) {
 		glBindTexture(GL_TEXTURE_2D, d_texs[i]);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, w, h, 0, GL_RGBA, GL_FLOAT, NULL);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, (int)w, (int)h, 0, GL_RGBA, GL_FLOAT, NULL);
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, d_texs[i], 0);
 #ifdef SHOW_GBUFFERS
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -49,7 +49,7 @@ void _InitGBuffer(GLuint* d_fbo, GLuint* d_texs, GLuint* d_depthTex, float w = D
 
 	// depth
 	glBindTexture(GL_TEXTURE_2D, *d_depthTex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, w, h, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, (int)w, (int)h, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, *d_depthTex, 0);
 #ifdef SHOW_GBUFFERS
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -81,13 +81,13 @@ void EB_Previewer::_InitDummyBBuffer() {
 	glGenTextures(2, b_texs);
 
 	glBindTexture(GL_TEXTURE_2D, b_texs[0]);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, previewWidth, previewHeight, 0, GL_RGBA, GL_FLOAT, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, (int)previewWidth, (int)previewHeight, 0, GL_RGBA, GL_FLOAT, NULL);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, b_texs[0], 0);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
 	glBindTexture(GL_TEXTURE_2D, b_texs[1]);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, previewWidth, previewHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, (int)previewWidth, (int)previewHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, b_texs[1], 0);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -142,7 +142,7 @@ void EB_Previewer::DrawPreview(Vec4 v) {
 	glLoadIdentity();
 	//render opaque
 
-	glViewport(0, 0, previewWidth, previewHeight);
+	glViewport(0, 0, (int)previewWidth, (int)previewHeight);
 	DrawSceneObjectsOpaque(editor->activeScene->objects);
 
 	//*glDisable(GL_DEPTH_TEST);
@@ -153,13 +153,13 @@ void EB_Previewer::DrawPreview(Vec4 v) {
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, d_fbo);
 
 		glReadBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_DIFFUSE);
-		glBlitFramebuffer(0, 0, previewWidth, previewHeight, v.r, Display::height - v.g - v.a*0.5f, v.b*0.5f + v.r, Display::height - v.g - EB_HEADER_SIZE - 2, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+		glBlitFramebuffer(0, 0, (int)previewWidth, (int)previewHeight, v.r, Display::height - v.g - v.a*0.5f, v.b*0.5f + v.r, Display::height - v.g - EB_HEADER_SIZE - 2, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
 		glReadBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_SPEC_GLOSS);
-		glBlitFramebuffer(0, 0, previewWidth, previewHeight, v.r + v.b*0.5f + 1, Display::height - v.g - v.a*0.5f, v.b + v.r, Display::height - v.g - EB_HEADER_SIZE - 2, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+		glBlitFramebuffer(0, 0, (int)previewWidth, (int)previewHeight, v.r + v.b*0.5f + 1, Display::height - v.g - v.a*0.5f, v.b + v.r, Display::height - v.g - EB_HEADER_SIZE - 2, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
 		glReadBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_NORMAL);
-		glBlitFramebuffer(0, 0, previewWidth, previewHeight, v.r, Display::height - v.g - v.a, v.b + v.r*0.5f, Display::height - v.g - v.a*0.5f - 1, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+		glBlitFramebuffer(0, 0, (int)previewWidth, (int)previewHeight, v.r, Display::height - v.g - v.a, v.b + v.r*0.5f, Display::height - v.g - v.a*0.5f - 1, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 	}
 	else {
 		_RenderLights(v);
@@ -167,7 +167,7 @@ void EB_Previewer::DrawPreview(Vec4 v) {
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 		glReadBuffer(GL_COLOR_ATTACHMENT0);
 		glViewport(0, 0, Display::width, Display::height);
-		glBlitFramebuffer(0, 0, previewWidth, previewHeight, v.r, Display::height - v.g - v.a, v.b + v.r, Display::height - v.g - EB_HEADER_SIZE - 2, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+		glBlitFramebuffer(0, 0, (int)previewWidth, (int)previewHeight, v.r, Display::height - v.g - v.a, v.b + v.r, Display::height - v.g - EB_HEADER_SIZE - 2, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 	}
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 	//glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
@@ -397,7 +397,7 @@ void Camera::_DoDrawLight_Spot(Light* l, glm::mat4& ip, GLuint d_texs[], GLuint 
 	glm::mat4 lp = glm::mat4();
 	if (l->drawShadow) {
 		l->DrawShadowMap(tar);
-		glViewport(0, 0, w, h); //shadow map modifies viewport
+		glViewport(0, 0, (int)w, (int)h); //shadow map modifies viewport
 		GLfloat matrix[16];
 		glGetFloatv(GL_PROJECTION_MATRIX, matrix);
 		lp *= glm::mat4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
@@ -481,10 +481,10 @@ void Camera::_DrawLights(vector<SceneObject*>& oo, glm::mat4& ip, GLuint targetF
 				Light* l = (Light*)c;
 				switch (l->_lightType) {
 				case LIGHTTYPE_POINT:
-					_DoDrawLight_Point(l, ip, d_texs, d_depthTex, targetFbo);
+					_DoDrawLight_Point(l, ip, d_texs, d_depthTex, (float)Display::width, (float)Display::height, targetFbo);
 					break;
 				case LIGHTTYPE_SPOT:
-					_DoDrawLight_Spot(l, ip, d_texs, d_depthTex, targetFbo);
+					_DoDrawLight_Spot(l, ip, d_texs, d_depthTex, (float)Display::width, (float)Display::height, targetFbo);
 					break;
 				}
 			}

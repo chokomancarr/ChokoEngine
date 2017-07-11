@@ -18,6 +18,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <Windows.h>
+#include <ft2build.h>
+#include FT_FREETYPE_H
 #include "Defines.h"
 
 using namespace std;
@@ -240,24 +242,24 @@ public:
 
 class Font {
 public:
-	Font(const string& pathb, const string& paths = "", int size = 0);
-	bool loaded;
-	uint width, padding, height, chars;
-	float w2h;
-	uint width2, padding2, height2, chars2;
-	uint gwidth(float s) { return (s > sizeToggle) ? width2 : width; }
-	uint gheight(float s) { return (s > sizeToggle) ? height2 : height; }
-	uint gpadding(float s) { return (s > sizeToggle) ? padding2 : padding; }
-	uint gchars(float s) { return (s > sizeToggle) ? chars2 : chars; }
-	float w2h2;
-	GLuint pointer;
-	GLuint pointer2;
-	int sizeToggle;
-	GLuint getpointer(float size);
-	float gw2h(float s) { return (s > sizeToggle) ? w2h2 : w2h; }
+	Font(const string& path, int size = 12);
+	bool loaded = false;
+	//bool useSubpixel; //glyphs are rgba if true, else r (does it look good in games?)
+	float w2h[256];
+	GLuint glyph(uint size) { if (_glyphs.count(size) == 1) return _glyphs[size]; else return CreateGlyph(size); }
+
 	ALIGNMENT alignment;
 
 	Font* Align(ALIGNMENT a);
+
+	friend class Engine;
+protected:
+	static FT_Library _ftlib;
+	static void Init();
+	FT_Face _face;
+
+	unordered_map<uint, GLuint> _glyphs; //each glyph size is fontSize*16
+	GLuint CreateGlyph (uint size);
 };
 
 enum InputKey {
@@ -299,6 +301,7 @@ private:
 class Display {
 public:
 	static int width, height;
+	static int dpi;
 	static glm::mat3 uiMatrix;
 
 	static void Resize(int x, int y, bool maximize = false);

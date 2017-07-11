@@ -503,7 +503,7 @@ void EB_Viewer::Draw() {
 	DrawHeaders(editor, this, &v, "Viewer: SceneNameHere");
 
 	//Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
-	glViewport(v.r, Display::height - v.g - v.a, v.b, v.a - EB_HEADER_SIZE - 2);
+	glViewport((int)v.r, (int)(Display::height - v.g - v.a), (int)v.b, (int)(v.a - EB_HEADER_SIZE - 2));
 
 	Vec2 v2 = Vec2(Display::width, Display::height)*0.03f;
 	Engine::DrawQuad(0, 0, (float)Display::width, (float)Display::height, white(1, 0.2f));//editor->checkers->pointer, Vec2(), Vec2(v2.x, 0), Vec2(0, v2.y), v2, true, white(0.05f));
@@ -1446,7 +1446,7 @@ void Editor::SavePrefs() {
 }
 
 void Editor::LoadDefaultAssets() {
-	font = new Font(dataPath + "res\\default_l.font", dataPath + "res\\default_s.font", 17);
+	font = new Font(dataPath + "res\\default.ttf");
 
 	buttonX = GetRes("xbutton");
 	buttonExt = GetRes("extbutton");
