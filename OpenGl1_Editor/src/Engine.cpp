@@ -204,7 +204,7 @@ uint Engine::unlitProgramA = 0;
 uint Engine::unlitProgramC = 0;
 uint Engine::skyProgram = 0;
 uint Engine::blurProgram = 0;
-Font* Engine::defaultFont;//&Font("D:\\ascii 2.font");
+Font* Engine::defaultFont;
 bool Input::mouse0 = false;
 bool Input::mouse1 = false;
 bool Input::mouse2 = false;
@@ -1923,31 +1923,47 @@ void Font::Init() {
 }
 
 Font::Font(const string& path, int size) {
-	if (!FT_New_Face(_ftlib, path.c_str(), 0, &_face)) {
+	if (FT_New_Face(_ftlib, path.c_str(), 0, &_face) != FT_Err_Ok) {
 		Debug::Error("Font", "Failed to load font!");
 		return;
 	}
-	FT_Set_Char_Size(_face, 0, (FT_F26Dot6)(size / 64.0f), Display::dpi, 0); // set pixel size based on dpi
-	//FT_Set_Pixel_Sizes(_face, 0, size); // set pixel size directly
+	//FT_Set_Char_Size(_face, 0, (FT_F26Dot6)(size * 64.0f), Display::dpi, 0); // set pixel size based on dpi
+	FT_Set_Pixel_Sizes(_face, 0, size); // set pixel size directly
+	FT_Select_Charmap(_face, FT_ENCODING_UNICODE);
 	CreateGlyph(size);
 }
 
-GLuint Font::CreateGlyph(uint size) {
-	_glyphs.emplace(size, 0);
-	glBindTexture(GL_TEXTURE_2D, _glyphs[size]);
-	uint sz = _face->size->metrics.height;
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, sz * 16, sz * 16, 0, GL_RGBA, GL_FLOAT, NULL);
-	for (short a = 0; a < 256; a++) {
-		uint gi = FT_Get_Char_Index(_face, a);
-		if (!FT_Load_Glyph(_face, gi, 0)) continue;
-		if (_face->glyph->format != FT_GLYPH_FORMAT_BITMAP) {
-			if (!FT_Render_Glyph(_face->glyph, FT_RENDER_MODE_NORMAL)) continue;
-		}
+GLuint Font::CreateGlyph(uint sz) {
+	cout << sz << endl;
+	//FT_Set_Char_Size(_face, 0, (FT_F26Dot6)(size * 64.0f), Display::dpi, 0); // set pixel size based on dpi
+	FT_Set_Pixel_Sizes(_face, 0, sz); // set pixel size directly
+	_glyphs.emplace(sz, 0);
+	glGenTextures(1, &_glyphs[sz]);
+	glBindTexture(GL_TEXTURE_2D, _glyphs[sz]);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sz * 16, sz * 16, 0, GL_RED, GL_UNSIGNED_BYTE, NULL);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	for (ushort a = 0; a < 256; a++) {
+		//uint gi = FT_Get_Char_Index(_face, a);
+		//if (gi == 0) continue;
+		//cout << a << " " << gi << endl;
+		//if (FT_Load_Glyph(_face, gi, FT_LOAD_RENDER) != FT_Err_Ok) continue;
+		//if (_face->glyph->format != FT_GLYPH_FORMAT_BITMAP) {
+		//	if (FT_Render_Glyph(_face->glyph, FT_RENDER_MODE_NORMAL) != FT_Err_Ok) continue;
+		//}
+		//uint gi = FT_Get_Char_Index(_face, a);
+		if (FT_Load_Char(_face, a, FT_LOAD_RENDER) != FT_Err_Ok) continue;
 		byte x = a % 16, y = a / 16;
-		glTexSubImage2D(GL_TEXTURE_2D, 0, sz * x, sz * y, _face->glyph->bitmap.width, _face->glyph->bitmap.rows, GL_RED, GL_BYTE, _face->glyph->bitmap.buffer);
+		//if (_face->glyph->bitmap.width > 0 && _face->glyph->bitmap.rows > 0)
+
+		glTexSubImage2D(GL_TEXTURE_2D, 0, sz * x, sz * y, _face->glyph->bitmap.width, _face->glyph->bitmap.rows, GL_RED, GL_UNSIGNED_BYTE, _face->glyph->bitmap.buffer);
 	}
 	glBindTexture(GL_TEXTURE_2D, 0);
-	return _glyphs[size];
+	return _glyphs[sz];
 }
 
 Font* Font::Align(ALIGNMENT a) {
@@ -1958,7 +1974,6 @@ Font* Font::Align(ALIGNMENT a) {
 //--------------------Display class--------------
 int Display::width = 512;
 int Display::height = 512;
-int Display::dpi = 72;
 glm::mat3 Display::uiMatrix = glm::mat3();
 
 //--------------------Input class--------------

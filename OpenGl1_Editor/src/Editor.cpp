@@ -1446,7 +1446,7 @@ void Editor::SavePrefs() {
 }
 
 void Editor::LoadDefaultAssets() {
-	font = new Font(dataPath + "res\\default.ttf");
+	font = new Font(dataPath + "res\\default.ttf", 32);
 
 	buttonX = GetRes("xbutton");
 	buttonExt = GetRes("extbutton");

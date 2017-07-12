@@ -301,7 +301,7 @@ private:
 class Display {
 public:
 	static int width, height;
-	static int dpi;
+	const static uint dpi = 96;
 	static glm::mat3 uiMatrix;
 
 	static void Resize(int x, int y, bool maximize = false);
