@@ -245,7 +245,6 @@ public:
 	Font(const string& path, int size = 12);
 	bool loaded = false;
 	//bool useSubpixel; //glyphs are rgba if true, else r (does it look good in games?)
-	float w2h[256];
 	GLuint glyph(uint size) { if (_glyphs.count(size) == 1) return _glyphs[size]; else return CreateGlyph(size); }
 
 	ALIGNMENT alignment;
@@ -257,9 +256,21 @@ protected:
 	static FT_Library _ftlib;
 	static void Init();
 	FT_Face _face;
+	static GLuint fontProgram;
+
+	float w2h[256];
+	float w2s[256];
+	Vec2 off[256];
+
+	uint vecSize;
+	vector<Vec3> poss;
+	vector<Vec2> uvs;
+	vector<uint> ids;
+	vector<float> cs;
+	void SizeVec(uint sz);
 
 	unordered_map<uint, GLuint> _glyphs; //each glyph size is fontSize*16
-	GLuint CreateGlyph (uint size);
+	GLuint CreateGlyph (uint size, bool recalcW2h = false);
 };
 
 enum InputKey {

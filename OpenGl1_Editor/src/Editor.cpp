@@ -1446,7 +1446,7 @@ void Editor::SavePrefs() {
 }
 
 void Editor::LoadDefaultAssets() {
-	font = new Font(dataPath + "res\\default.ttf", 32);
+	font = new Font(dataPath + "res\\roboto.ttf", 32);
 
 	buttonX = GetRes("xbutton");
 	buttonExt = GetRes("extbutton");
@@ -2007,6 +2007,10 @@ void Editor::DrawHandles() {
 			}
 		}
 	}
+
+	Engine::Label(10, 110, 20, "ABcdefGHIJKlmnopQRStuvWXYz12345!\"#$%&'()", font);
+	Engine::Label(10, 135, 40, "ABcdefGHIJKlmnopQRStuvWXYz12345!\"#$%&'()", font);
+	Engine::Label(10, 180, 60, "ABcdefGHIJKlmnopQRStuvWXYz12345!\"#$%&'()", font);
 }
 
 void Editor::RegisterMenu(EditorBlock* block, string title, vector<string> names, vector<shortcutFunc> funcs, int padding, Vec2 pos) {

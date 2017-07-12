@@ -479,23 +479,6 @@ void Engine::DrawTexture(float x, float y, float w, float h, Texture* texture, V
 	DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint);
 }
 
-void AddQuad(uint& i, float x, float y, float w, float h, Vec2& uv0, Vec2& uv1, Vec2& uv2, Vec2& uv3, vector<Vec3>* poss, vector<uint>* indexes, vector<Vec2>* uvs, uint d) {
-	(*poss)[i] = (Vec3(x, y, 0));
-	(*poss)[i+1] = (Vec3(x + w, y, 0));
-	(*poss)[i+2] = (Vec3(x, y + h, 0));
-	(*poss)[i+3] = (Vec3(x + w, y + h, 0));
-	(*indexes)[i] = (d);
-	(*indexes)[i+1] = (d + 1);
-	(*indexes)[i+2] = (d + 3);
-	(*indexes)[i+3] = (d + 2);
-	(*uvs)[i] = (uv0);
-	(*uvs)[i+1] = (uv1);
-	(*uvs)[i+2] = (uv2);
-	(*uvs)[i+3] = (uv3);
-	i += 4;
-}
-
-//!TODO -- change to TTF rendering (current one too slow)
 void Engine::Label(float x, float y, float s, string st, Font* font) {
 	Label(x, y, s, st, font, Vec4(0, 0, 0, 1));
 }
@@ -503,7 +486,64 @@ void Engine::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4) 
 	Label(x, y, s, st, font, Vec4, -1);
 }
 void Engine::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4, float maxw) {
-	return;
+	uint sz = st.size();
+	GLuint tex = font->glyph(s);
+	font->SizeVec(sz);
+
+	y -= (0.5f * (font->alignment >> 4)) * s;
+
+	y = Display::height - y;
+	float w = 0;
+	Vec3 ds = Vec3(1.0f/Display::width, 1.0f / Display::height, 0.5f);
+	for (uint i = 0; i < sz * 4; i += 4) {
+		char c = st[i / 4];
+		Vec3 off = -Vec3(font->off[c].x, font->off[c].y, 0)*s*ds;
+		w = font->w2h[c] * s;
+		font->poss[i] = Vec3(x, y - s, 1)*ds + off;
+		font->poss[i + 1] = Vec3(x + s, y - s, 1)*ds + off;
+		font->poss[i + 2] = Vec3(x, y, 1)*ds + off;
+		font->poss[i + 3] = Vec3(x + s, y, 1)*ds + off;
+		font->cs[i] = c;
+		font->cs[i + 1] = c;
+		font->cs[i + 2] = c;
+		font->cs[i + 3] = c;
+		x += font->w2s[c]*s + s*0.1f;
+	}
+
+	uint prog = font->fontProgram;
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(3, GL_FLOAT, 0, &font->poss[0]);
+	glUseProgram(prog);
+	GLint baseColLoc = glGetUniformLocation(prog, "col");
+	glUniform4f(baseColLoc, Vec4.r, Vec4.g, Vec4.b, Vec4.a);
+	GLint baseImageLoc = glGetUniformLocation(prog, "sampler");
+	glUniform1i(baseImageLoc, 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, tex);
+
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glEnableVertexAttribArray(2);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &font->poss[0]);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, &font->uvs[0]);
+	glVertexAttribPointer(2, 1, GL_FLOAT, GL_TRUE, 0, &font->cs[0]);
+
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glDrawElements(GL_TRIANGLES, 6*sz, GL_UNSIGNED_INT, &font->ids[0]);
+
+	glDisableVertexAttribArray(0);
+	glDisableVertexAttribArray(1);
+	glDisableVertexAttribArray(2);
+	glUseProgram(0);
+
+	/*
+	glVec43f(1.0f, 0.0f, 0.0f);
+	glLineWidth(1);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	glDrawElements(GL_QUADS, 4, GL_UNSIGNED_INT, &quadIndexes[0]);
+	*/
+
+	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
 byte Engine::Button(float x, float y, float w, float h) {
@@ -1914,12 +1954,48 @@ bool Background::Parse(string path) {
 
 //-----------------font class---------------------
 FT_Library Font::_ftlib = nullptr;
+GLuint Font::fontProgram = 0;
 void Font::Init() {
 	int err = FT_Init_FreeType(&_ftlib);
 	if (err != FT_Err_Ok) {
 		Debug::Error("Font", "Fatal: Initializing freetype failed!");
 		runtime_error("Fatal: Initializing freetype failed!");
 	}
+
+	string error;
+	GLuint vs, fs;
+	string frag = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = vec4(1, 1, 1, texture(sampler, UV).r)*col;\n}";
+	ifstream strm("D:\\fontVert.txt");
+	stringstream vert;
+	vert << strm.rdbuf();
+	if (!ShaderBase::LoadShader(GL_VERTEX_SHADER, vert.str(), vs, &error)) {
+		Debug::Error("Engine", "Fatal: Cannot init font shader(v)! " + error);
+		abort();
+	}
+	if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, frag, fs, &error)) {
+		Debug::Error("Engine", "Fatal: Cannot init font shader(f)! " + error);
+		abort();
+	}
+	fontProgram = glCreateProgram();
+	glAttachShader(fontProgram, vs);
+	glAttachShader(fontProgram, fs);
+
+	int link_result = 0;
+	glLinkProgram(fontProgram);
+	glGetProgramiv(fontProgram, GL_LINK_STATUS, &link_result);
+	if (link_result == GL_FALSE)
+	{
+		int info_log_length = 0;
+		glGetProgramiv(fontProgram, GL_INFO_LOG_LENGTH, &info_log_length);
+		vector<char> program_log(info_log_length);
+		glGetProgramInfoLog(fontProgram, info_log_length, NULL, &program_log[0]);
+		cerr << "Font shader link error" << endl << &program_log[0] << endl;
+		abort();
+	}
+	glDetachShader(fontProgram, vs);
+	glDetachShader(fontProgram, fs);
+	glDeleteShader(vs);
+	glDeleteShader(fs);
 }
 
 Font::Font(const string& path, int size) {
@@ -1930,10 +2006,29 @@ Font::Font(const string& path, int size) {
 	//FT_Set_Char_Size(_face, 0, (FT_F26Dot6)(size * 64.0f), Display::dpi, 0); // set pixel size based on dpi
 	FT_Set_Pixel_Sizes(_face, 0, size); // set pixel size directly
 	FT_Select_Charmap(_face, FT_ENCODING_UNICODE);
-	CreateGlyph(size);
+	CreateGlyph(size, true);
+	SizeVec(20);
 }
 
-GLuint Font::CreateGlyph(uint sz) {
+void Font::SizeVec(uint sz) {
+	if (vecSize >= sz) return;
+	poss.resize(sz * 4);
+	cs.resize(sz * 4);
+	for (; vecSize < sz; vecSize++) {
+		uvs.push_back(Vec2(0, 1));
+		uvs.push_back(Vec2(1, 1));
+		uvs.push_back(Vec2(0, 0));
+		uvs.push_back(Vec2(1, 0));
+		ids.push_back(4 * vecSize);
+		ids.push_back(4 * vecSize + 1);
+		ids.push_back(4 * vecSize + 2);
+		ids.push_back(4 * vecSize + 1);
+		ids.push_back(4 * vecSize + 3);
+		ids.push_back(4 * vecSize + 2);
+	}
+}
+
+GLuint Font::CreateGlyph(uint sz, bool recalc) {
 	cout << sz << endl;
 	//FT_Set_Char_Size(_face, 0, (FT_F26Dot6)(size * 64.0f), Display::dpi, 0); // set pixel size based on dpi
 	FT_Set_Pixel_Sizes(_face, 0, sz); // set pixel size directly
@@ -1948,19 +2043,25 @@ GLuint Font::CreateGlyph(uint sz) {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 	for (ushort a = 0; a < 256; a++) {
-		//uint gi = FT_Get_Char_Index(_face, a);
-		//if (gi == 0) continue;
-		//cout << a << " " << gi << endl;
-		//if (FT_Load_Glyph(_face, gi, FT_LOAD_RENDER) != FT_Err_Ok) continue;
-		//if (_face->glyph->format != FT_GLYPH_FORMAT_BITMAP) {
-		//	if (FT_Render_Glyph(_face->glyph, FT_RENDER_MODE_NORMAL) != FT_Err_Ok) continue;
-		//}
-		//uint gi = FT_Get_Char_Index(_face, a);
+		if (recalc) {
+			w2h[a] = 0;
+			w2s[a] = 0;
+		}
 		if (FT_Load_Char(_face, a, FT_LOAD_RENDER) != FT_Err_Ok) continue;
 		byte x = a % 16, y = a / 16;
-		//if (_face->glyph->bitmap.width > 0 && _face->glyph->bitmap.rows > 0)
-
-		glTexSubImage2D(GL_TEXTURE_2D, 0, sz * x, sz * y, _face->glyph->bitmap.width, _face->glyph->bitmap.rows, GL_RED, GL_UNSIGNED_BYTE, _face->glyph->bitmap.buffer);
+		FT_Bitmap bmp = _face->glyph->bitmap;
+		glTexSubImage2D(GL_TEXTURE_2D, 0, sz * x, sz * y, bmp.width, bmp.rows, GL_RED, GL_UNSIGNED_BYTE, bmp.buffer);
+		if (recalc) {
+			if (bmp.width == 0) {
+				w2h[a] = 0;
+				w2s[a] = 0.5f/sz;
+			}
+			else {
+				w2h[a] = (float)(bmp.width) / bmp.rows;
+				w2s[a] = (float)(bmp.width) / sz;
+			}
+			off[a] = Vec2((float)(_face->glyph->bitmap_left) / sz, 1 - ((float)(_face->glyph->bitmap_top) / sz));
+		}
 	}
 	glBindTexture(GL_TEXTURE_2D, 0);
 	return _glyphs[sz];
