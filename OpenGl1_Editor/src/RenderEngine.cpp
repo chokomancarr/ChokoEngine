@@ -256,7 +256,7 @@ void EB_Previewer::DrawPreview(Vec4 v) {
 	else {
 		_RenderLights(v);
 		glDisable(GL_BLEND);
-		Blit(lumiProgram, (uint)previewWidth, (uint)previewHeight);
+		if (showLumi) Blit(lumiProgram, (uint)previewWidth, (uint)previewHeight);
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, b_fbo);
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 		glReadBuffer(GL_COLOR_ATTACHMENT0);

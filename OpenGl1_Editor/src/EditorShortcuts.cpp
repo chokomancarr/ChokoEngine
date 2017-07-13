@@ -477,6 +477,12 @@ void EB_AnimEditor::_AddBlend(EditorBlock* v) {
 void EB_Previewer::_ToggleBuffers(EditorBlock* v) {
 	EB_Previewer* b = (EB_Previewer*)v;
 	b->showBuffers = !b->showBuffers;
+	b->showLumi = true;
+}
+void EB_Previewer::_ToggleLumi(EditorBlock* v) {
+	EB_Previewer* b = (EB_Previewer*)v;
+	if (!b->showBuffers)
+		b->showLumi = !b->showLumi;
 }
 
 void Editor::DeleteActive(Editor* e) {

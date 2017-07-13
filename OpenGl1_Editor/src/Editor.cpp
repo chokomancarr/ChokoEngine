@@ -884,7 +884,7 @@ loaded = true;
 void EBI_DrawObj(Vec4 v, Editor* editor, EB_Inspector* b, SceneObject* o) {
 	Engine::DrawTexture(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 18, 18, editor->object);
 	Engine::EButton((editor->editorLayer == 0), v.r + 20, v.g + 2 + EB_HEADER_SIZE, v.b - 21, 18, grey2());
-	Engine::Label(v.r + 22, v.g + 6 + EB_HEADER_SIZE, 12, o->name, editor->font, white());
+	Engine::Label(v.r + 22, v.g + 3 + EB_HEADER_SIZE, 12, o->name, editor->font, white());
 
 	//TRS
 	b->DrawVector3(editor, v, 21, "Position", o->transform.position);
@@ -1077,13 +1077,13 @@ void EB_Inspector::Draw() {
 }
 
 void EB_Inspector::DrawVector3(Editor* e, Vec4 v, float dh, string label, Vec3& value) {
-	Engine::Label(v.r, v.g + dh + 2 + EB_HEADER_SIZE, 12, label, e->font, white());
+	Engine::Label(v.r, v.g + dh + EB_HEADER_SIZE, 12, label, e->font, white());
 	Engine::EButton((e->editorLayer == 0), v.r + v.b*0.19f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Vec4(0.4f, 0.2f, 0.2f, 1));
-	Engine::Label(v.r + v.b*0.19f + 2, v.g + dh + 2 + EB_HEADER_SIZE, 12, to_string(value.x), e->font, white());
+	Engine::Label(v.r + v.b*0.19f + 2, v.g + dh + EB_HEADER_SIZE, 12, to_string(value.x), e->font, white());
 	Engine::EButton((e->editorLayer == 0), v.r + v.b*0.46f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Vec4(0.2f, 0.4f, 0.2f, 1));
-	Engine::Label(v.r + v.b*0.46f + 2, v.g + dh + 2 + EB_HEADER_SIZE, 12, to_string(value.y), e->font, white());
+	Engine::Label(v.r + v.b*0.46f + 2, v.g + dh + EB_HEADER_SIZE, 12, to_string(value.y), e->font, white());
 	Engine::EButton((e->editorLayer == 0), v.r + v.b*0.73f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Vec4(0.2f, 0.2f, 0.4f, 1));
-	Engine::Label(v.r + v.b*0.73f + 2, v.g + dh + 2 + EB_HEADER_SIZE, 12, to_string(value.z), e->font, white());
+	Engine::Label(v.r + v.b*0.73f + 2, v.g + dh + EB_HEADER_SIZE, 12, to_string(value.z), e->font, white());
 }
 
 void EB_Inspector::DrawAsset(Editor* e, Vec4 v, float dh, string label, ASSETTYPE type) {
@@ -1224,6 +1224,7 @@ EB_Previewer::EB_Previewer(Editor* e, int x1, int y1, int x2, int y2) {
 	}
 
 	shortcuts.emplace(GetShortcutInt(Key_Z, Key_Shift), &_ToggleBuffers);
+	shortcuts.emplace(GetShortcutInt(Key_Z), &_ToggleLumi);
 }
 
 void EB_Previewer::FindEditor() {

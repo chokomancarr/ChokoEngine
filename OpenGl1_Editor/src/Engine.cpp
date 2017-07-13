@@ -490,6 +490,15 @@ void Engine::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4, 
 	GLuint tex = font->glyph(s);
 	font->SizeVec(sz);
 
+	if ((font->alignment & 15) > 0) {
+		float totalW = 0;
+		for (uint i = 0; i < sz * 4; i += 4) {
+			char c = st[i / 4];
+			totalW = ceil(totalW + font->w2s[c] * s + s*0.1f);
+		}
+		x -= totalW * (font->alignment & 15) * 0.5f;
+	}
+
 	y -= (0.5f * (font->alignment >> 4)) * s;
 
 	y = Display::height - y;
@@ -646,7 +655,7 @@ byte Engine::EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4
 	byte b = EButton(a, x, y, w, h, normalVec4, LerpVec4(normalVec4, white(), 0.5f), LerpVec4(normalVec4, black(), 0.5f));
 	ALIGNMENT al = labelFont->alignment;
 	labelFont->alignment = ALIGN_MIDCENTER;
-	Label(x + 0.5f*w, y + 0.5f*h, labelSize, label, labelFont, labelVec4);
+	Label(x + 0.5f*w, y + 0.4f*h, labelSize, label, labelFont, labelVec4);
 	labelFont->alignment = al;
 	return b;
 }

@@ -19,7 +19,7 @@ bool DrawComponentHeader(Editor* e, Vec4 v, uint pos, Component* c) {
 			e->WAITINGREFRESHFLAG = true;
 		return false;
 	}
-	Engine::Label(v.r + 20, v.g + pos + 3, 12, c->name, e->font, white());
+	Engine::Label(v.r + 20, v.g + pos, 12, c->name, e->font, white());
 	return c->_expanded;
 }
 
@@ -1107,25 +1107,25 @@ void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 		if (Engine::EButton(e->editorLayer == 0, v.r + v.b * 0.67f, v.g + pos, v.b * 0.33f - 1, 16, (_lightType == LIGHTTYPE_SPOT) ? white(1, 0.5f) : grey1(), "Spot", 12, e->font, white()) == MOUSE_RELEASE)
 			_lightType = LIGHTTYPE_SPOT;
 
-		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Intensity", e->font, white());
+		Engine::Label(v.r + 2, v.g + pos + 17, 12, "Intensity", e->font, white());
 		Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos + 17, v.b * 0.3f - 1, 16, grey1());
-		Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 20, 12, to_string(intensity), e->font, white());
+		Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 17, 12, to_string(intensity), e->font, white());
 		intensity = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos + 17, v.b * 0.4f - 1, 16, 0, 20, intensity, grey1(), white());
 		pos += 34;
-		Engine::Label(v.r + 2, v.g + pos + 2, 12, "Color", e->font, white());
+		Engine::Label(v.r + 2, v.g + pos, 12, "Color", e->font, white());
 		e->DrawColorSelector(v.r + v.b*0.3f, v.g + pos, v.b*0.7f - 1, 16, grey1(), 12, e->font, &color);
 		pos += 17;
 
 		switch (_lightType) {
 		case LIGHTTYPE_POINT:
-			Engine::Label(v.r + 2, v.g + pos + 2, 12, "core radius", e->font, white());
+			Engine::Label(v.r + 2, v.g + pos, 12, "core radius", e->font, white());
 			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-			Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 2, 12, to_string(minDist), e->font, white());
+			Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, to_string(minDist), e->font, white());
 			minDist = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, maxDist, minDist, grey1(), white());
 			pos += 17;
-			Engine::Label(v.r + 2, v.g + pos + 2, 12, "distance", e->font, white());
+			Engine::Label(v.r + 2, v.g + pos, 12, "distance", e->font, white());
 			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-			Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 2, 12, to_string(maxDist), e->font, white());
+			Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, to_string(maxDist), e->font, white());
 			maxDist = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 20, maxDist, grey1(), white());
 			pos += 17;
 			break;
@@ -1133,19 +1133,19 @@ void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 			
 			break;
 		case LIGHTTYPE_SPOT:
-			Engine::Label(v.r + 2, v.g + pos + 2, 12, "angle", e->font, white());
+			Engine::Label(v.r + 2, v.g + pos, 12, "angle", e->font, white());
 			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-			Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 2, 12, to_string(angle), e->font, white());
+			Engine::Label(v.r + v.b * 0.3f, v.g + pos + 2, 12, to_string(angle), e->font, white());
 			angle = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 180, angle, grey1(), white());
 			pos += 17;
-			Engine::Label(v.r + 2, v.g + pos + 2, 12, "start distance", e->font, white());
+			Engine::Label(v.r + 2, v.g + pos, 12, "start distance", e->font, white());
 			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-			Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 2, 12, to_string(minDist), e->font, white());
+			Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, to_string(minDist), e->font, white());
 			minDist = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, maxDist, minDist, grey1(), white());
 			pos += 17;
-			Engine::Label(v.r + 2, v.g + pos + 2, 12, "end distance", e->font, white());
+			Engine::Label(v.r + 2, v.g + pos, 12, "end distance", e->font, white());
 			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-			Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 2, 12, to_string(maxDist), e->font, white());
+			Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, to_string(maxDist), e->font, white());
 			maxDist = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 50, maxDist, grey1(), white());
 			pos += 17;
 			break;
@@ -1157,14 +1157,14 @@ void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 				drawShadow = true;
 			pos += 17;
 			if (drawShadow) {
-				Engine::Label(v.r + 2, v.g + pos + 2, 12, "shadow bias", e->font, white());
+				Engine::Label(v.r + 2, v.g + pos, 12, "shadow bias", e->font, white());
 				Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-				Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 2, 12, to_string(shadowBias), e->font, white());
+				Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, to_string(shadowBias), e->font, white());
 				shadowBias = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 0.1f, shadowBias, grey1(), white());
 				pos += 17;
-				Engine::Label(v.r + 2, v.g + pos + 2, 12, "shadow strength", e->font, white());
+				Engine::Label(v.r + 2, v.g + pos, 12, "shadow strength", e->font, white());
 				Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-				Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 2, 12, to_string(shadowStrength), e->font, white());
+				Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, to_string(shadowStrength), e->font, white());
 				shadowStrength = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 1, shadowStrength, grey1(), white());
 				pos += 17;
 			}

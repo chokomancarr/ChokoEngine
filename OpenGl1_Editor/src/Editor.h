@@ -264,7 +264,7 @@ public:
 	void Refresh() {}
 
 protected:
-	bool showBuffers = false;
+	bool showBuffers = false, showLumi = false;
 
 	void FindEditor();
 	EB_Viewer* viewer;
@@ -275,7 +275,7 @@ protected:
 	void _RenderLights(Vec4 v);
 	void _RenderSky(glm::mat4 mat), _DrawLights(vector<SceneObject*> oo, glm::mat4 ip);
 
-	static void _ToggleBuffers(EditorBlock* v);
+	static void _ToggleBuffers(EditorBlock* v), _ToggleLumi(EditorBlock* v);
 
 	float previewWidth, previewHeight;
 	float previewWidth_o, previewHeight_o;
