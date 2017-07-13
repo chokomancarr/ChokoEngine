@@ -196,6 +196,7 @@ public:
 	static void _SelectAll(EditorBlock*), _ViewInvis(EditorBlock*), _ViewPersp(EditorBlock*);
 	static void _OrientG(EditorBlock*), _OrientL(EditorBlock*), _OrientV(EditorBlock*);
 	static void _ViewFront(EditorBlock*), _ViewBack(EditorBlock*), _ViewLeft(EditorBlock*), _ViewRight(EditorBlock*), _ViewTop(EditorBlock*), _ViewBottom(EditorBlock*), _ViewCam(EditorBlock*);
+	static void _TogglePersp(EditorBlock*);
 	static void _Escape(EditorBlock*);
 };
 
@@ -269,15 +270,19 @@ protected:
 	EB_Viewer* viewer;
 	void InitGBuffer();
 	void _InitDummyBBuffer();
+	void _InitDebugPrograms();
 	void DrawPreview(Vec4 v);
 	void _RenderLights(Vec4 v);
 	void _RenderSky(glm::mat4 mat), _DrawLights(vector<SceneObject*> oo, glm::mat4 ip);
 
+	static void _ToggleBuffers(EditorBlock* v);
 
 	float previewWidth, previewHeight;
 	float previewWidth_o, previewHeight_o;
 	static GLuint d_fbo, d_texs[3], d_depthTex;
-	GLuint b_fbo, b_texs[2];
+	static GLuint b_fbo, b_texs[2], bb_fbo, bb_tex;
+	static GLuint lumiProgram;
+	void Blit(GLuint prog, uint w, uint h);
 };
 
 class EB_ColorPicker : public EditorBlock {

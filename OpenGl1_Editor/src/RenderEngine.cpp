@@ -1,5 +1,6 @@
 #include "Engine.h"
 #include "Editor.h"
+#include <sstream>
 
 void CheckGLOK() {
 	int err = glGetError();
@@ -94,6 +95,57 @@ void EB_Previewer::_InitDummyBBuffer() {
 
 	GLenum DrawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
 	glDrawBuffers(2, DrawBuffers);
+
+
+	glGenFramebuffers(1, &bb_fbo);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, bb_fbo);
+
+	glGenTextures(1, &bb_tex);
+	glBindTexture(GL_TEXTURE_2D, bb_tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, (int)previewWidth, (int)previewHeight, 0, GL_RGBA, GL_FLOAT, NULL);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bb_tex, 0);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	GLenum DrawBuffers2[] = { GL_COLOR_ATTACHMENT0 };
+	glDrawBuffers(1, DrawBuffers2);
+}
+
+void EB_Previewer::_InitDebugPrograms() {
+	string error;
+	GLuint vs, fs;
+	ifstream strm("D:\\lightPassVert.txt");
+	stringstream vert, frag;
+	vert << strm.rdbuf();
+	if (!ShaderBase::LoadShader(GL_VERTEX_SHADER, vert.str(), vs, &error)) {
+		Debug::Error("Previewer", "Cannot init lumi shader(v)! " + error);
+	}
+	strm.close();
+	strm = ifstream("D:\\expVisFrag.txt");
+	frag << strm.rdbuf();
+	if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, frag.str(), fs, &error)) {
+		Debug::Error("Previewer", "Cannot init lumi shader(f)! " + error);
+	}
+	lumiProgram = glCreateProgram();
+	glAttachShader(lumiProgram, vs);
+	glAttachShader(lumiProgram, fs);
+
+	int link_result = 0;
+	glLinkProgram(lumiProgram);
+	glGetProgramiv(lumiProgram, GL_LINK_STATUS, &link_result);
+	if (link_result == GL_FALSE)
+	{
+		int info_log_length = 0;
+		glGetProgramiv(lumiProgram, GL_INFO_LOG_LENGTH, &info_log_length);
+		vector<char> program_log(info_log_length);
+		glGetProgramInfoLog(lumiProgram, info_log_length, NULL, &program_log[0]);
+		cerr << "Lumi shader link error" << endl << &program_log[0] << endl;
+		abort();
+	}
+	glDetachShader(lumiProgram, vs);
+	glDetachShader(lumiProgram, fs);
+	glDeleteShader(vs);
+	glDeleteShader(fs);
 }
 
 void EB_Previewer::InitGBuffer() {
@@ -103,6 +155,8 @@ void EB_Previewer::InitGBuffer() {
 		glDeleteFramebuffers(1, &d_fbo);
 		glDeleteTextures(2, b_texs);
 		glDeleteFramebuffers(1, &b_fbo);
+		glDeleteTextures(1, &bb_tex);
+		glDeleteFramebuffers(1, &bb_fbo);
 	}
 	_InitGBuffer(&d_fbo, d_texs, &d_depthTex, previewWidth, previewHeight);
 	GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -115,6 +169,45 @@ void EB_Previewer::InitGBuffer() {
 		Debug::Error("Previewer", "Fatal FB (back) error:" + Status);
 	}
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+	_InitDebugPrograms();
+}
+
+void EB_Previewer::Blit(GLuint prog, uint w, uint h) {
+	glViewport(0, 0, (int)previewWidth, (int)previewHeight);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, bb_fbo);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, b_fbo);
+
+	glReadBuffer(GL_COLOR_ATTACHMENT0);
+	glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, b_fbo);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, bb_fbo);
+
+	GLint inTexLoc = glGetUniformLocation(prog, "inColor");
+	GLint scrSzLoc = glGetUniformLocation(prog, "screenSize");
+
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(2, GL_FLOAT, 0, Camera::screenRectVerts);
+	glUseProgram(prog);
+
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, Camera::screenRectVerts);
+
+	glUniform2f(scrSzLoc, w, h);
+	glUniform1i(inTexLoc, 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, bb_tex);
+	
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, Camera::screenRectIndices);
+
+	glDisableVertexAttribArray(0);
+	glUseProgram(0);
+	glDisableClientState(GL_VERTEX_ARRAY);
+
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+	glViewport(0, 0, Display::width, Display::height);
 }
 
 void EB_Previewer::DrawPreview(Vec4 v) {
@@ -126,7 +219,6 @@ void EB_Previewer::DrawPreview(Vec4 v) {
 	glClearBufferfv(GL_DEPTH, 0, &one);
 
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, d_fbo);
-	//glDrawBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_DIFFUSE);
 	glClearBufferfv(GL_COLOR, 0, zero);
 	glClearBufferfv(GL_DEPTH, 0, &one);
 	glClearBufferfv(GL_COLOR, 1, zero);
@@ -163,6 +255,8 @@ void EB_Previewer::DrawPreview(Vec4 v) {
 	}
 	else {
 		_RenderLights(v);
+		glDisable(GL_BLEND);
+		Blit(lumiProgram, (uint)previewWidth, (uint)previewHeight);
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, b_fbo);
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 		glReadBuffer(GL_COLOR_ATTACHMENT0);
@@ -410,8 +504,8 @@ void Camera::_DoDrawLight_Spot(Light* l, glm::mat4& ip, GLuint d_texs[], GLuint 
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, tar);
 	GLint _IP = glGetUniformLocation(d_sLightProgram, "_IP");
 	GLint diffLoc = glGetUniformLocation(d_sLightProgram, "inColor");
-	GLint specLoc = glGetUniformLocation(d_sLightProgram, "inNormal");
-	GLint normLoc = glGetUniformLocation(d_sLightProgram, "inSpec");
+	GLint normLoc = glGetUniformLocation(d_sLightProgram, "inNormal");
+	GLint specLoc = glGetUniformLocation(d_sLightProgram, "inSpec");
 	GLint depthLoc = glGetUniformLocation(d_sLightProgram, "inDepth");
 	GLint scrSzLoc = glGetUniformLocation(d_sLightProgram, "screenSize");
 	GLint lPosLoc = glGetUniformLocation(d_sLightProgram, "lightPos");
@@ -439,10 +533,10 @@ void Camera::_DoDrawLight_Spot(Light* l, glm::mat4& ip, GLuint d_texs[], GLuint 
 	glUniform1i(diffLoc, 0);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, d_texs[0]);
-	glUniform1i(specLoc, 1);
+	glUniform1i(normLoc, 1);
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, d_texs[1]);
-	glUniform1i(normLoc, 2);
+	glUniform1i(specLoc, 2);
 	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_2D, d_texs[2]);
 	glUniform1i(depthLoc, 3);
@@ -525,10 +619,10 @@ void Camera::DumpBuffers() {
 	glReadBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_DIFFUSE);
 	glBlitFramebuffer(0, 0, Display::width, Display::height, 0, HalfHeight, HalfWidth, Display::height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
-	glReadBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_SPEC_GLOSS);
+	glReadBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_NORMAL);
 	glBlitFramebuffer(0, 0, Display::width, Display::height, HalfWidth, HalfHeight, Display::width, Display::height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
-	glReadBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_NORMAL);
+	glReadBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_SPEC_GLOSS);
 	glBlitFramebuffer(0, 0, Display::width, Display::height, 0, 0, HalfWidth, HalfHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 }
 

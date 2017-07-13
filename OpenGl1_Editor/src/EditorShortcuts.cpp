@@ -443,6 +443,10 @@ void EB_Viewer::_ViewCam(EditorBlock* b) {
 		((EB_Viewer*)b)->seeingCamera = (Camera*)b->editor->selected->GetComponent(COMP_CAM);
 	}
 }
+
+void EB_Viewer::_TogglePersp(EditorBlock* b) {
+	((EB_Viewer*)b)->persp = !((EB_Viewer*)b)->persp;
+}
 void EB_Viewer::_Escape(EditorBlock* b) {
 	((EB_Viewer*)b)->OnMousePress(1);
 }
@@ -468,6 +472,11 @@ void EB_AnimEditor::_AddBlend(EditorBlock* v) {
 	EB_AnimEditor* b = (EB_AnimEditor*)v;
 	if (b->editingAnim != nullptr)
 		b->editingAnim->states.push_back(new Anim_State(Vec2(), true));
+}
+
+void EB_Previewer::_ToggleBuffers(EditorBlock* v) {
+	EB_Previewer* b = (EB_Previewer*)v;
+	b->showBuffers = !b->showBuffers;
 }
 
 void Editor::DeleteActive(Editor* e) {

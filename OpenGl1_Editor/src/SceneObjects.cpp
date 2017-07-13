@@ -722,6 +722,7 @@ Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCoun
 	char cc;
 	stream.read(&cc, 1);
 
+	cout << path << endl;
 	while (cc != 0) {
 		if (cc == 'V') {
 			_Strm2Val(stream, vertexCount);

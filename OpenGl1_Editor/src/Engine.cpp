@@ -495,6 +495,7 @@ void Engine::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4, 
 	y = Display::height - y;
 	float w = 0;
 	Vec3 ds = Vec3(1.0f/Display::width, 1.0f / Display::height, 0.5f);
+	x = round(x);
 	for (uint i = 0; i < sz * 4; i += 4) {
 		char c = st[i / 4];
 		Vec3 off = -Vec3(font->off[c].x, font->off[c].y, 0)*s*ds;
@@ -507,7 +508,7 @@ void Engine::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4, 
 		font->cs[i + 1] = c;
 		font->cs[i + 2] = c;
 		font->cs[i + 3] = c;
-		x += font->w2s[c]*s + s*0.1f;
+		x = ceil(x + font->w2s[c]*s + s*0.1f);
 	}
 
 	uint prog = font->fontProgram;
@@ -587,7 +588,7 @@ byte Engine::Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 hi
 	byte b = Button(x, y, w, h, normalVec4, LerpVec4(normalVec4, white(), 0.5f), LerpVec4(normalVec4, black(), 0.5f));
 	ALIGNMENT al = labelFont->alignment;
 	labelFont->alignment = ALIGN_MIDLEFT;
-	Label(round(x + 2), round(y + 0.5f*h), labelSize, label, labelFont, labelVec4);
+	Label(round(x + 2), round(y + 0.4f*h), labelSize, label, labelFont, labelVec4);
 	labelFont->alignment = al;
 	return b;
 }
@@ -2029,7 +2030,6 @@ void Font::SizeVec(uint sz) {
 }
 
 GLuint Font::CreateGlyph(uint sz, bool recalc) {
-	cout << sz << endl;
 	//FT_Set_Char_Size(_face, 0, (FT_F26Dot6)(size * 64.0f), Display::dpi, 0); // set pixel size based on dpi
 	FT_Set_Pixel_Sizes(_face, 0, sz); // set pixel size directly
 	_glyphs.emplace(sz, 0);

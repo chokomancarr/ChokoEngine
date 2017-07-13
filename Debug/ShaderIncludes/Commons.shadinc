@@ -42,7 +42,7 @@ void Output(vec4 col, vec3 norm, vec3 spec, float gloss, float z) {
 	outColor = col;
 	outColor.a = max(outColor.a, _isForward);
 	outNormal.rgb = normalize(norm);
-	outNormal.a = 1;
+	outNormal.a = 0;
 	outSpec.rgb = spec;
 	outSpec.a = gloss;
 	//outDepth = z;

@@ -109,7 +109,7 @@ void DrawHeaders(Editor* e, EditorBlock* b, Vec4* v, string title) {
 	Vec2 v2(v->b*0.1f, EB_HEADER_SIZE*0.1f);
 	Engine::DrawQuad(v->r + EB_HEADER_PADDING + 1, v->g, v->b - 3 - 2 * EB_HEADER_PADDING, EB_HEADER_SIZE, e->background->pointer, Vec2(), Vec2(v2.x, 0), Vec2(0, v2.y), v2, false, accent());
 	//Engine::Label(round(v->r + 5 + EB_HEADER_PADDING), round(v->g + 2), 10, titleS, e->font, black(), Display::width);
-	Engine::Label(round(v->r + 5 + EB_HEADER_PADDING), v->g + 2, 12, title, e->font, black());
+	Engine::Label(v->r + 5 + EB_HEADER_PADDING, v->g, 12, title, e->font, black());
 	//return Rect(v->r, v->g + EB_HEADER_SIZE + 1, v->b, v->a - EB_HEADER_SIZE - 2).Inside(Input::mousePos);
 }
 
@@ -176,7 +176,7 @@ void EBH_DrawItem(SceneObject* sc, Editor* e, Vec4* v, int& i, int indent) {
 		e->selectGlobal = false;
 		e->DeselectFile();
 	}
-	Engine::Label(v->r + 19 + xo, v->g + EB_HEADER_SIZE + 4 + 17 * i, 12, sc->name, e->font, white());
+	Engine::Label(v->r + 19 + xo, v->g + EB_HEADER_SIZE + 1 + 17 * i, 12, sc->name, e->font, white());
 	i++;
 	if (sc->childCount > 0) {
 		if (Engine::EButton((e->editorLayer == 0), v->r + xo, v->g + EB_HEADER_SIZE + 1 + 17 * (i - 1), 16, 16, sc->_expanded ? e->collapse : e->expand, white(), white(), white(1, 0.6f)) == MOUSE_RELEASE) {
@@ -211,7 +211,7 @@ void EB_Hierarchy::Draw() {
 			editor->selectGlobal = true;
 			editor->selectedFileType = ASSETTYPE_UNDEF;
 		}
-		Engine::Label(v.r + 19, v.g + EB_HEADER_SIZE + 4, 12, "Global", editor->font, white());
+		Engine::Label(v.r + 19, v.g + EB_HEADER_SIZE + 1, 12, "Global", editor->font, white());
 		int i = 1;
 		for (SceneObject* sc : editor->activeScene->objects)
 		{
@@ -331,7 +331,7 @@ void EB_Browser::Draw() {
 				return;
 			}
 		}
-		Engine::Label(v.r + 2, v.g + EB_HEADER_SIZE + 4 + (16 * y), 12, dirs.at(y), editor->font, white(), 150);
+		Engine::Label(v.r + 2, v.g + EB_HEADER_SIZE + (16 * y), 12, dirs.at(y), editor->font, white(), 150);
 	}
 	float ww = 0;
 	int hh = 0;
@@ -416,6 +416,7 @@ EB_Viewer::EB_Viewer(Editor* e, int x1, int y1, int x2, int y2) : rz(45), rw(45)
 	shortcuts.emplace(GetShortcutInt(Key_NumPad1, Key_Control), &_ViewBack);
 	shortcuts.emplace(GetShortcutInt(Key_NumPad3), &_ViewRight);
 	shortcuts.emplace(GetShortcutInt(Key_NumPad3, Key_Control), &_ViewLeft);
+	shortcuts.emplace(GetShortcutInt(Key_NumPad5), &_TogglePersp);
 	shortcuts.emplace(GetShortcutInt(Key_NumPad7), &_ViewTop);
 	shortcuts.emplace(GetShortcutInt(Key_NumPad7, Key_Control), &_ViewBottom);
 	shortcuts.emplace(GetShortcutInt(Key_NumPad0), &_ViewCam);
@@ -517,7 +518,8 @@ void EB_Viewer::Draw() {
 	float h40 = 40 * (hh*Display::height) / (ww*Display::width);
 	float mww = max(ww, 0.3f) * scale;
 	if (seeingCamera == nullptr) {
-		glMultMatrixf(glm::value_ptr(glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, 0.01f, 1000.0f)));
+		if (persp) glMultMatrixf(glm::value_ptr(glm::perspectiveFov(60 * deg2rad, (float)Display::width, (float)Display::height, 0.01f, 1000.0f)));
+		else glMultMatrixf(glm::value_ptr(glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, 0.01f, 1000.0f)));
 		glScalef(-mww*Display::width / v.b, mww*Display::width / v.a, mww);
 		glTranslatef(0, 0, -30);
 	}
@@ -1203,6 +1205,12 @@ GLuint EB_Previewer::d_fbo = 0;
 GLuint EB_Previewer::d_texs[] = {0, 0, 0};
 GLuint EB_Previewer::d_depthTex = 0;
 
+GLuint EB_Previewer::b_fbo = 0;
+GLuint EB_Previewer::b_texs[] = { 0, 0 };
+GLuint EB_Previewer::bb_fbo = 0;
+GLuint EB_Previewer::bb_tex = 0;
+GLuint EB_Previewer::lumiProgram = 0;
+
 EB_Previewer::EB_Previewer(Editor* e, int x1, int y1, int x2, int y2) {
 	editorType = 6;
 	editor = e;
@@ -1214,6 +1222,8 @@ EB_Previewer::EB_Previewer(Editor* e, int x1, int y1, int x2, int y2) {
 	if (d_fbo == 0) {
 		InitGBuffer();
 	}
+
+	shortcuts.emplace(GetShortcutInt(Key_Z, Key_Shift), &_ToggleBuffers);
 }
 
 void EB_Previewer::FindEditor() {
@@ -1252,7 +1262,8 @@ void EB_Previewer::Draw() {
 		float h40 = 40 * (hh*Display::height) / (ww*Display::width);
 		float mww = max(ww, 0.3f) * scale;
 		if (seeingCamera == nullptr) {
-			glMultMatrixf(glm::value_ptr(glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, 0.01f, 1000.0f)));
+			if (viewer->persp) glMultMatrixf(glm::value_ptr(glm::perspectiveFov(60 * deg2rad, (float)Display::width, (float)Display::height, 0.01f, 1000.0f)));
+			else glMultMatrixf(glm::value_ptr(glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, 0.01f, 1000.0f)));
 			glScalef(-mww*Display::width / v.b, mww*Display::width / v.a, mww);
 			glTranslatef(0, 0, -30);
 
@@ -1446,7 +1457,7 @@ void Editor::SavePrefs() {
 }
 
 void Editor::LoadDefaultAssets() {
-	font = new Font(dataPath + "res\\roboto.ttf", 32);
+	font = new Font(dataPath + "res\\arial.ttf", 32);
 
 	buttonX = GetRes("xbutton");
 	buttonExt = GetRes("extbutton");
@@ -1902,11 +1913,11 @@ void Editor::DrawHandles() {
 		else if (editorLayer == 2) {
 			Engine::DrawQuad(0, 0, (float)Display::width, (float)Display::height, black(0.4f));
 			Engine::DrawQuad(editingArea.x, editingArea.y, editingArea.w, editingArea.h, grey2());
-			Engine::Label(editingArea.x + 2, editingArea.y + 2, 12, editingVal, font, editingCol);
+			Engine::Label(editingArea.x + 2, editingArea.y, 12, editingVal, font, editingCol);
 		}
 		else if (editorLayer == 3) {
 			Engine::DrawQuad(0, 0, (float)Display::width, (float)Display::height, black(0.8f));
-			Engine::Label(Display::width*0.2f + 6, Display::height*0.2f + 2, 22, browseIsComp? "Select Component" : "Select Asset", font, white());
+			Engine::Label(Display::width*0.2f + 6, Display::height*0.2f, 22, browseIsComp? "Select Component" : "Select Asset", font, white());
 			if (Engine::Button(Display::width*0.2f + 6, Display::height*0.2f + 26, Display::width*0.3f - 7, 14, grey2(), "undefined", 12, font, white()) == MOUSE_RELEASE) {
 				if (browseIsComp) {
 					browseTargetComp->comp = nullptr;
@@ -2007,10 +2018,6 @@ void Editor::DrawHandles() {
 			}
 		}
 	}
-
-	Engine::Label(10, 110, 20, "ABcdefGHIJKlmnopQRStuvWXYz12345!\"#$%&'()", font);
-	Engine::Label(10, 135, 40, "ABcdefGHIJKlmnopQRStuvWXYz12345!\"#$%&'()", font);
-	Engine::Label(10, 180, 60, "ABcdefGHIJKlmnopQRStuvWXYz12345!\"#$%&'()", font);
 }
 
 void Editor::RegisterMenu(EditorBlock* block, string title, vector<string> names, vector<shortcutFunc> funcs, int padding, Vec2 pos) {
