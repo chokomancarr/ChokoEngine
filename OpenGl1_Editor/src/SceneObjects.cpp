@@ -57,11 +57,13 @@ Camera::Camera(ifstream& stream, SceneObject* o, long pos) : Camera() {
 	_Strm2Val(stream, screenPos.w);
 	_Strm2Val(stream, screenPos.h);
 
+/*
 #ifndef IS_EDITOR
 	if (d_skyProgram == 0) {
 		InitShaders();
 	}
 #endif
+*/
 }
 
 /// <summary>Clear, Reset Projection Matrix</summary>
@@ -254,6 +256,8 @@ void Camera::InitShaders() {
 	*/
 
 	glDeleteShader(vertex_shader);
+
+	Light::ScanParams();
 }
 
 void Camera::UpdateCamVerts() {
@@ -1152,6 +1156,14 @@ void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 		}
 		Engine::Label(v.r + 2, v.g + pos, 12, "cookie", e->font, white());
 		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos, v.b*0.7f, 16, grey1(), ASSETTYPE_TEXTURE, 12, e->font, &_cookie, &_SetCookie, this);
+		pos += 17;
+		Engine::Label(v.r + 2, v.g + pos, 12, "cookie strength", e->font, white());
+		Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
+		Engine::Label(v.r + v.b * 0.3f, v.g + pos + 2, 12, to_string(cookieStrength), e->font, white());
+		cookieStrength = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 1, cookieStrength, grey1(), white());
+		pos += 17;
+		Engine::Label(v.r + 2, v.g + pos, 12, "square shape", e->font, white());
+		square = Engine::DrawToggle(v.r + v.b * 0.3f, v.g + pos, 12, e->checkbox, square, white(), ORIENT_HORIZONTAL);
 		pos += 17;
 		if (_lightType != LIGHTTYPE_DIRECTIONAL) {
 			if (Engine::EButton(e->editorLayer == 0, v.r, v.g + pos, v.b * 0.5f - 1, 16, (!drawShadow) ? white(1, 0.5f) : grey1(), "No Shadow", 12, e->font, white()) == MOUSE_RELEASE)

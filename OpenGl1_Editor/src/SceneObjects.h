@@ -319,6 +319,7 @@ public:
 	friend class EB_Previewer;
 	friend class Background;
 	friend class Engine;
+	friend class Light;
 protected:
 	Camera(ifstream& stream, SceneObject* o, long pos = -1);
 
@@ -326,7 +327,7 @@ protected:
 	void DumpBuffers();
 	void _RenderProbesMask(vector<SceneObject*>& objs, glm::mat4 mat, vector<ReflectionProbe*>& probes), _RenderProbes(vector<ReflectionProbe*>& probes, glm::mat4 mat);
 	void _DoRenderProbeMask(ReflectionProbe* p, glm::mat4& ip), _DoRenderProbe(ReflectionProbe* p, glm::mat4& ip);
-	void _RenderSky(glm::mat4 ip);
+	static void _RenderSky(glm::mat4 ip, GLuint d_texs[], GLuint d_depthTex, float w = Display::width, float h = Display::height);
 	void _DrawLights(vector<SceneObject*>& oo, glm::mat4& ip, GLuint targetFbo = 0);
 	static void _DoDrawLight_Point(Light* l, glm::mat4& ip, GLuint d_texs[], GLuint d_depthTex, float w = Display::width, float h = Display::height, GLuint targetFbo = 0);
 	static void _DoDrawLight_Spot(Light* l, glm::mat4& ip, GLuint d_texs[], GLuint d_depthTex, float w = Display::width, float h = Display::height, GLuint targetFbo = 0);
@@ -469,6 +470,8 @@ public:
 	bool drawShadow;
 	float shadowBias, shadowStrength;
 	Texture* cookie;
+	float cookieStrength;
+	bool square;
 
 	void DrawEditor(EB_Viewer* ebv) override;
 	void DrawShadowMap(GLuint tar = 0);
@@ -492,6 +495,9 @@ protected:
 	static void InitShadow();
 	void CalcShadowMatrix();
 	static GLuint _shadowFbo, _shadowMap;
+
+	static vector<GLint> paramLocs_Spot; //make writing faster
+	static void ScanParams();
 	//static CubeMap* _shadowCube;
 };
 

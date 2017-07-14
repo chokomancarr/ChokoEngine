@@ -221,9 +221,9 @@ void Engine::Init(string path) {
 	}
 
 	Light::InitShadow();
-#ifdef IS_EDITOR
+//#ifdef IS_EDITOR
 	Camera::InitShaders();
-#endif
+//#endif
 	Font::Init();
 
 	string vertcode = "#version 330 core\nlayout(location = 0) in vec3 pos;\nlayout(location = 1) in vec2 uv;\nout vec2 UV;\nvoid main(){ \ngl_Position.xyz = pos;\ngl_Position.w = 1.0;\nUV = uv;\n}";
@@ -1683,6 +1683,7 @@ Background::Background(const string& path) : width(0), height(0), AssetObject(AS
 
 	uint width_1, height_1, mips = 0;
 	while (mips < 6 && height > 16) {
+		//cout << "Downsampling " << mips << endl;
 		mips++;
 		data = Downsample(data, width, height, width_1, height_1);
 		glTexImage2D(GL_TEXTURE_2D, mips, GL_RGB, width_1, height_1, 0, GL_RGB, GL_FLOAT, &data[0]);
@@ -1699,7 +1700,7 @@ Background::Background(const string& path) : width(0), height(0), AssetObject(AS
 	//cout << "HDR Image loaded: " << width << "x" << height << endl;
 }
 
-//do not generate mipmaps in editor
+//do not generate mipmaps in editor < fuck you
 Background::Background(int i, Editor* editor) : width(0), height(0), AssetObject(ASSETTYPE_HDRI) {
 	string path = editor->projectFolder + "Assets\\" + editor->normalAssets[ASSETTYPE_HDRI][i] + ".meta";
 	ifstream strm(path.c_str(), ios::in | ios::binary);
@@ -1725,9 +1726,20 @@ Background::Background(int i, Editor* editor) : width(0), height(0), AssetObject
 	glGenTextures(1, &pointer);
 	glBindTexture(GL_TEXTURE_2D, pointer);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_FLOAT, &data[0]);
+	
+	uint width_1, height_1, mips = 0;
+	while (mips < 6 && height > 16) {
+		//cout << "Downsampling " << mips << endl;
+		mips++;
+		data = Downsample(data, width, height, width_1, height_1);
+		glTexImage2D(GL_TEXTURE_2D, mips, GL_RGB, width_1, height_1, 0, GL_RGB, GL_FLOAT, &data[0]);
+		width = width_1 + 0;
+		height = height_1 + 0;
+	}
+
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, mips);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	loaded = true;

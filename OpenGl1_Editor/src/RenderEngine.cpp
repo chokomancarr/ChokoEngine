@@ -251,7 +251,7 @@ void EB_Previewer::DrawPreview(Vec4 v) {
 		glBlitFramebuffer(0, 0, (int)previewWidth, (int)previewHeight, v.r + v.b*0.5f + 1, Display::height - v.g - v.a*0.5f, v.b + v.r, Display::height - v.g - EB_HEADER_SIZE - 2, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
 		glReadBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_NORMAL);
-		glBlitFramebuffer(0, 0, (int)previewWidth, (int)previewHeight, v.r, Display::height - v.g - v.a, v.b + v.r*0.5f, Display::height - v.g - v.a*0.5f - 1, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+		glBlitFramebuffer(0, 0, (int)previewWidth, (int)previewHeight, v.r, Display::height - v.g - v.a, v.b*0.5f + v.r, Display::height - v.g - v.a*0.5f - 1, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 	}
 	else {
 		_RenderLights(v);
@@ -283,7 +283,7 @@ void EB_Previewer::_RenderLights(Vec4 v) {
 	glGetFloatv(GL_PROJECTION_MATRIX, matrix);
 	glm::mat4 mat = glm::inverse(glm::mat4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]));
 
-	//_RenderSky(mat); //wont work on ortho, TODO
+	Camera::_RenderSky(mat, d_texs, d_depthTex, previewWidth, previewHeight); //wont work well on ortho, will it?
 	//glViewport(v.r, Display::height - v.g - v.a, v.b, v.a - EB_HEADER_SIZE - 2);
 	_DrawLights(Scene::active->objects, mat);
 	//glViewport(0, 0, Display::width, Display::height);
@@ -421,7 +421,7 @@ void Camera::_RenderProbes(vector<ReflectionProbe*>& probes, glm::mat4 mat) {
 	}
 }
 
-void Camera::_RenderSky(glm::mat4 ip) {
+void Camera::_RenderSky(glm::mat4 ip, GLuint d_texs[], GLuint d_depthTex, float w, float h) {
 	if (d_skyProgram == 0) {
 		Debug::Error("SkyLightPass", "Fatal: Shader not initialized!");
 		abort();
@@ -444,7 +444,7 @@ void Camera::_RenderSky(glm::mat4 ip) {
 
 	glUniformMatrix4fv(_IP, 1, GL_FALSE, glm::value_ptr(ip));
 
-	glUniform2f(scrSzLoc, (GLfloat)Display::width, (GLfloat)Display::height);
+	glUniform2f(scrSzLoc, w, h);
 	glUniform1i(diffLoc, 0);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, d_texs[0]);
@@ -470,24 +470,50 @@ void Camera::_RenderSky(glm::mat4 ip) {
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
+void Light::ScanParams() {
+	paramLocs_Spot.clear();
+#define PBSL paramLocs_Spot.push_back(glGetUniformLocation(Camera::d_sLightProgram,
+	PBSL "_IP"));
+	PBSL "inColor"));
+	PBSL "inNormal"));
+	PBSL "inSpec"));
+	PBSL "inDepth"));
+	PBSL "screenSize"));
+	PBSL "lightPos"));
+	PBSL "lightDir"));
+	PBSL "lightColor"));
+	PBSL "lightStrength"));
+	PBSL "lightCosAngle"));
+	PBSL "lightMinDist"));
+	PBSL "lightMaxDist"));
+	PBSL "lightDepth"));
+	PBSL "lightDepthBias"));
+	PBSL "lightDepthStrength"));
+	PBSL "lightCookie"));
+	PBSL "lightCookieStrength"));
+	PBSL "lightIsSquare"));
+	PBSL "_LD"));
+#undef PBSL
+}
+
 void Camera::_DoDrawLight_Point(Light* l, glm::mat4& ip, GLuint d_texs[], GLuint d_depthTex, float w, float h, GLuint tar) {
 	//draw 6 spotlights
+#define DSL _DoDrawLight_Spot(l, ip, d_texs, d_depthTex, w, h, tar);
+#define RTT l->object->transform.Rotate(0, 0, 90);
 	l->angle = 45;
-	_DoDrawLight_Spot(l, ip, d_texs, d_depthTex, w, h, tar);
-	l->object->transform.Rotate(0, 0, 90);
-	_DoDrawLight_Spot(l, ip, d_texs, d_depthTex, w, h, tar);
-	l->object->transform.Rotate(0, 0, 90);
-	_DoDrawLight_Spot(l, ip, d_texs, d_depthTex, w, h, tar);
-	l->object->transform.Rotate(0, 0, 90);
-	_DoDrawLight_Spot(l, ip, d_texs, d_depthTex, w, h, tar);
-	l->object->transform.Rotate(0, 90, 90);
-	_DoDrawLight_Spot(l, ip, d_texs, d_depthTex, w, h, tar);
-	l->object->transform.Rotate(0, 180, 0);
-	_DoDrawLight_Spot(l, ip, d_texs, d_depthTex, w, h, tar);
-	l->object->transform.Rotate(0, 90, 0);
+	DSL RTT
+	DSL RTT
+	DSL RTT
+	DSL RTT
+	DSL RTT
+	DSL RTT
+#undef DSL
+#undef RTT
 }
 
 void Camera::_DoDrawLight_Spot(Light* l, glm::mat4& ip, GLuint d_texs[], GLuint d_depthTex, float w, float h, GLuint tar) {
+	if (l->maxDist <= 0 || l->angle <= 0 || l->intensity <= 0) return;
+	if (l->minDist <= 0) l->minDist = 0.00001f;
 	glm::mat4 lp = glm::mat4();
 	if (l->drawShadow) {
 		l->DrawShadowMap(tar);
@@ -502,26 +528,7 @@ void Camera::_DoDrawLight_Spot(Light* l, glm::mat4& ip, GLuint d_texs[], GLuint 
 		abort();
 	}
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, tar);
-	GLint _IP = glGetUniformLocation(d_sLightProgram, "_IP");
-	GLint diffLoc = glGetUniformLocation(d_sLightProgram, "inColor");
-	GLint normLoc = glGetUniformLocation(d_sLightProgram, "inNormal");
-	GLint specLoc = glGetUniformLocation(d_sLightProgram, "inSpec");
-	GLint depthLoc = glGetUniformLocation(d_sLightProgram, "inDepth");
-	GLint scrSzLoc = glGetUniformLocation(d_sLightProgram, "screenSize");
-	GLint lPosLoc = glGetUniformLocation(d_sLightProgram, "lightPos");
-	GLint lDirLoc = glGetUniformLocation(d_sLightProgram, "lightDir");
-	GLint lColLoc = glGetUniformLocation(d_sLightProgram, "lightColor");
-	GLint lStrLoc = glGetUniformLocation(d_sLightProgram, "lightStrength");
-	GLint lCosLoc = glGetUniformLocation(d_sLightProgram, "lightCosAngle");
-	GLint lMinLoc = glGetUniformLocation(d_sLightProgram, "lightMinDist");
-	GLint lMaxLoc = glGetUniformLocation(d_sLightProgram, "lightMaxDist");
-	GLint lDepLoc = glGetUniformLocation(d_sLightProgram, "lightDepth");
-	GLint lDepBaiLoc = glGetUniformLocation(d_sLightProgram, "lightDepthBias");
-	GLint lDepStrLoc = glGetUniformLocation(d_sLightProgram, "lightDepthStrength");
-	GLint lCookie = glGetUniformLocation(d_sLightProgram, "lightCookie");
-	GLint lCookieStr = glGetUniformLocation(d_sLightProgram, "lightCookieStrength");
-	GLint lDepMatLoc = glGetUniformLocation(d_sLightProgram, "_LD");
-
+#define sloc l->paramLocs_Spot
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(2, GL_FLOAT, 0, screenRectVerts);
 	glUseProgram(d_sLightProgram);
@@ -529,43 +536,44 @@ void Camera::_DoDrawLight_Spot(Light* l, glm::mat4& ip, GLuint d_texs[], GLuint 
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, screenRectVerts);
 
-	glUniformMatrix4fv(_IP, 1, GL_FALSE, glm::value_ptr(ip));
+	glUniformMatrix4fv(sloc[0], 1, GL_FALSE, glm::value_ptr(ip));
 
-	glUniform2f(scrSzLoc, w, h);
-	glUniform1i(diffLoc, 0);
+	glUniform1i(sloc[1], 0);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, d_texs[0]);
-	glUniform1i(normLoc, 1);
+	glUniform1i(sloc[2], 1);
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, d_texs[1]);
-	glUniform1i(specLoc, 2);
+	glUniform1i(sloc[3], 2);
 	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_2D, d_texs[2]);
-	glUniform1i(depthLoc, 3);
+	glUniform1i(sloc[4], 3);
 	glActiveTexture(GL_TEXTURE3);
 	glBindTexture(GL_TEXTURE_2D, d_depthTex);
-	glUniform1i(lDepLoc, 4);
+	glUniform2f(sloc[5], w, h);
+	Vec3 wpos = l->object->transform.worldPosition();
+	glUniform3f(sloc[6], wpos.x, wpos.y, wpos.z);
+	Vec3 dir = l->object->transform.forward();
+	glUniform3f(sloc[7], dir.x, dir.y, dir.z);
+	glUniform3f(sloc[8], l->color.x, l->color.y, l->color.z);
+	glUniform1f(sloc[9], l->intensity);
+	glUniform1f(sloc[10], cos(deg2rad*0.5f*l->angle));
+	glUniform1f(sloc[11], l->minDist);
+	glUniform1f(sloc[12], l->maxDist);
+	glUniform1i(sloc[13] , 4);
 	glActiveTexture(GL_TEXTURE4);
 	glBindTexture(GL_TEXTURE_2D, l->_shadowMap);
+	glUniform1f(sloc[14], l->shadowBias);
+	glUniform1f(sloc[15], l->shadowStrength);
 	if (l->cookie) {
-		glUniform1i(lCookie, 5);
+		glUniform1i(sloc[16], 5);
 		glActiveTexture(GL_TEXTURE5);
 		glBindTexture(GL_TEXTURE_2D, l->cookie->pointer);
 	}
-	Vec3 wpos = l->object->transform.worldPosition();
-	glUniform3f(lPosLoc, wpos.x, wpos.y, wpos.z);
-	Vec3 dir = l->object->transform.forward();
-	glUniform3f(lDirLoc, dir.x, dir.y, dir.z);
-	glUniform3f(lColLoc, l->color.x, l->color.y, l->color.z);
-	glUniform1f(lStrLoc, l->intensity);
-	glUniform1f(lCosLoc, cos(deg2rad*0.5f*l->angle));
-	glUniform1f(lMinLoc, l->minDist);
-	glUniform1f(lMaxLoc, l->maxDist);
-	glUniformMatrix4fv(lDepMatLoc, 1, GL_FALSE, glm::value_ptr(lp));
-	glUniform1f(lDepBaiLoc, l->shadowBias);
-	glUniform1f(lDepStrLoc, l->shadowStrength);
-	glUniform1f(lCookieStr, l->cookie? 1 : 0);
-
+	glUniform1f(sloc[17], l->cookie ? l->cookieStrength : 0);
+	glUniform1f(sloc[18], l->square ? 1 : 0);
+	glUniformMatrix4fv(sloc[19], 1, GL_FALSE, glm::value_ptr(lp));
+#undef sloc
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, screenRectIndices);
 
@@ -611,7 +619,7 @@ void Camera::RenderLights(GLuint targetFbo) {
 	vector<ReflectionProbe*> probes;
 	_RenderProbesMask(Scene::active->objects, mat, probes);
 	_RenderProbes(probes, mat);
-	_RenderSky(mat);
+	_RenderSky(mat, d_texs, d_depthTex);
 	_DrawLights(Scene::active->objects, mat, targetFbo);
 }
 
@@ -636,6 +644,7 @@ void Camera::DumpBuffers() {
 
 GLuint Light::_shadowFbo = 0;
 GLuint Light::_shadowMap = 0;
+vector<GLint> Light::paramLocs_Spot = vector<GLint>();
 
 void Light::InitShadow() {
 	glGenFramebuffers(1, &_shadowFbo);
