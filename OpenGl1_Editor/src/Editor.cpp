@@ -953,7 +953,7 @@ void EBI_DrawAss_Mat(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 		}
 	}
 	//*/
-	for (uint q = 0; q < mat->valOrders.size(); q++) {
+	for (uint q = 0, qq = mat->valOrders.size(); q < qq; q++) {
 		int r = 0;
 		Engine::DrawTexture(v.r + 2, off, 16, 16, editor->matVarTexs[mat->valOrders[q]]);
 		Engine::Label(v.r + 19, off + 2, 12, mat->valNames[mat->valOrders[q]][mat->valOrderIds[q]], editor->font, white());
@@ -1316,7 +1316,7 @@ void Editor::DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASS
 		Engine::DrawQuad(x, y, w, h, col);
 	ALIGNMENT al = labelFont->alignment;
 	labelFont->alignment = ALIGN_MIDLEFT;
-	Engine::Label(round(x + 2), round(y + 0.5f*h), labelSize, (*tar == -1) ? "undefined" : normalAssets[type][*tar], labelFont, (*tar == -1) ? Vec4(0.7f, 0.4f, 0.4f, 1) : Vec4(0.4f, 0.4f, 0.7f, 1));
+	Engine::Label(round(x + 2), round(y + 0.4f*h), labelSize, (*tar == -1) ? "undefined" : normalAssets[type][*tar], labelFont, (*tar == -1) ? Vec4(0.7f, 0.4f, 0.4f, 1) : Vec4(0.4f, 0.4f, 0.7f, 1));
 	labelFont->alignment = al;
 }
 

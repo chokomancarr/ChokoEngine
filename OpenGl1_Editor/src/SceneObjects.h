@@ -459,7 +459,7 @@ enum LIGHTTYPE : byte {
 #define LIGHT_POINT_MINSTR 0.01f
 class Light : public Component {
 public:
-	Light() : Component("Light", COMP_LHT, DRAWORDER_LIGHT), _lightType(LIGHTTYPE_POINT), intensity(1), color(white()), angle(45), minDist(0), maxDist(30), drawShadow(false), shadowBias(0.1f), shadowStrength(1) {}
+	Light() : Component("Light", COMP_LHT, DRAWORDER_LIGHT), _lightType(LIGHTTYPE_POINT), intensity(1), color(white()), angle(45), minDist(0), maxDist(30), drawShadow(false), shadowBias(0.1f), shadowStrength(1), _cookie(-1) {}
 	LIGHTTYPE lightType() { return _lightType; }
 
 	float intensity;
@@ -468,6 +468,7 @@ public:
 	float minDist, maxDist;
 	bool drawShadow;
 	float shadowBias, shadowStrength;
+	Texture* cookie;
 
 	void DrawEditor(EB_Viewer* ebv) override;
 	void DrawShadowMap(GLuint tar = 0);
@@ -482,6 +483,9 @@ protected:
 	LIGHTTYPE _lightType;
 	Light(ifstream& stream, SceneObject* o, long pos = -1);
 	//glm::mat4 _shadowMatrix;
+	ASSETID _cookie;
+	static void _SetCookie(void* v);
+
 	void Serialize(Editor* e, ofstream* stream) override;
 	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
 

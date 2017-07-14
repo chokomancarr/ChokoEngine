@@ -518,6 +518,8 @@ void Camera::_DoDrawLight_Spot(Light* l, glm::mat4& ip, GLuint d_texs[], GLuint 
 	GLint lDepLoc = glGetUniformLocation(d_sLightProgram, "lightDepth");
 	GLint lDepBaiLoc = glGetUniformLocation(d_sLightProgram, "lightDepthBias");
 	GLint lDepStrLoc = glGetUniformLocation(d_sLightProgram, "lightDepthStrength");
+	GLint lCookie = glGetUniformLocation(d_sLightProgram, "lightCookie");
+	GLint lCookieStr = glGetUniformLocation(d_sLightProgram, "lightCookieStrength");
 	GLint lDepMatLoc = glGetUniformLocation(d_sLightProgram, "_LD");
 
 	glEnableClientState(GL_VERTEX_ARRAY);
@@ -545,6 +547,11 @@ void Camera::_DoDrawLight_Spot(Light* l, glm::mat4& ip, GLuint d_texs[], GLuint 
 	glUniform1i(lDepLoc, 4);
 	glActiveTexture(GL_TEXTURE4);
 	glBindTexture(GL_TEXTURE_2D, l->_shadowMap);
+	if (l->cookie) {
+		glUniform1i(lCookie, 5);
+		glActiveTexture(GL_TEXTURE5);
+		glBindTexture(GL_TEXTURE_2D, l->cookie->pointer);
+	}
 	Vec3 wpos = l->object->transform.worldPosition();
 	glUniform3f(lPosLoc, wpos.x, wpos.y, wpos.z);
 	Vec3 dir = l->object->transform.forward();
@@ -552,11 +559,12 @@ void Camera::_DoDrawLight_Spot(Light* l, glm::mat4& ip, GLuint d_texs[], GLuint 
 	glUniform3f(lColLoc, l->color.x, l->color.y, l->color.z);
 	glUniform1f(lStrLoc, l->intensity);
 	glUniform1f(lCosLoc, cos(deg2rad*0.5f*l->angle));
-	glUniform1f(lMinLoc, l->minDist*l->minDist);
-	glUniform1f(lMaxLoc, l->maxDist*l->maxDist);
+	glUniform1f(lMinLoc, l->minDist);
+	glUniform1f(lMaxLoc, l->maxDist);
 	glUniformMatrix4fv(lDepMatLoc, 1, GL_FALSE, glm::value_ptr(lp));
 	glUniform1f(lDepBaiLoc, l->shadowBias);
 	glUniform1f(lDepStrLoc, l->shadowStrength);
+	glUniform1f(lCookieStr, l->cookie? 1 : 0);
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, screenRectIndices);

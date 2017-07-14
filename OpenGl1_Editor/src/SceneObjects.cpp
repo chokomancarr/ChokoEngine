@@ -477,15 +477,15 @@ void MeshRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 			pos += 34;
 		}
 		else {
-			Engine::Label(v.r + 2, v.g + pos + 20, 12, "Materials: " + to_string(mft->mesh->materialCount), e->font, white());
+			Engine::Label(v.r + 2, v.g + pos + 18, 12, "Materials: " + to_string(mft->mesh->materialCount), e->font, white());
 			for (uint a = 0; a < mft->mesh->materialCount; a++) {
-				Engine::Label(v.r + 2, v.g + pos + 37, 12, "Material " + to_string(a), e->font, white());
+				Engine::Label(v.r + 2, v.g + pos + 35, 12, "Material " + to_string(a), e->font, white());
 				e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 34, v.b*0.7f, 16, grey1(), ASSETTYPE_MATERIAL, 12, e->font, &_materials[a], & _UpdateMat, this);
 				pos += 17;
 				if (materials[a] == nullptr)
 					continue;
-				for (uint q = 0; q < materials[a]->valOrders.size(); q++) {
-					Engine::Label(v.r + 20, v.g + pos + 38, 12, materials[a]->valNames[materials[a]->valOrders[q]][materials[a]->valOrderIds[q]], e->font, white());
+				for (uint q = 0, qq = materials[a]->valOrders.size(); q < qq; q++) {
+					Engine::Label(v.r + 20, v.g + pos + 35, 12, materials[a]->valNames[materials[a]->valOrders[q]][materials[a]->valOrderIds[q]], e->font, white());
 					Engine::DrawTexture(v.r + 3, v.g + pos + 35, 16, 16, e->matVarTexs[materials[a]->valOrders[q]]);
 					void* bbs = materials[a]->vals[materials[a]->valOrders[q]][materials[a]->valOrderGLIds[q]];
 					switch (materials[a]->valOrders[q]) {
@@ -1150,6 +1150,9 @@ void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 			pos += 17;
 			break;
 		}
+		Engine::Label(v.r + 2, v.g + pos, 12, "cookie", e->font, white());
+		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos, v.b*0.7f, 16, grey1(), ASSETTYPE_TEXTURE, 12, e->font, &_cookie, &_SetCookie, this);
+		pos += 17;
 		if (_lightType != LIGHTTYPE_DIRECTIONAL) {
 			if (Engine::EButton(e->editorLayer == 0, v.r, v.g + pos, v.b * 0.5f - 1, 16, (!drawShadow) ? white(1, 0.5f) : grey1(), "No Shadow", 12, e->font, white()) == MOUSE_RELEASE)
 				drawShadow = false;
@@ -1171,6 +1174,11 @@ void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 		}
 	}
 	else pos += 17;
+}
+
+void Light::_SetCookie(void* v) {
+	Light* l = (Light*)v;
+	l->cookie = _GetCache<Texture>(ASSETTYPE_TEXTURE, l->_cookie);
 }
 
 void Light::CalcShadowMatrix() {
@@ -1221,6 +1229,7 @@ Light::Light(ifstream& stream, SceneObject* o, long pos) : Component("Light", CO
 	_Strm2Val(stream, color.g);
 	_Strm2Val(stream, color.b);
 	_Strm2Val(stream, color.a);
+	_cookie = -1;
 }
 
 void ReflectionProbe::DrawEditor(EB_Viewer* ebv) {

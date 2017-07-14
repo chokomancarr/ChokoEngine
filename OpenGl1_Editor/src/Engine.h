@@ -507,9 +507,9 @@ public:
 	static void DrawTriangle(Vec2 centre, Vec2 dir, Vec4 col, bool fill = true, float width = 1);
 	static void DrawCircle(Vec2 c, float r, uint n, Vec4 col, float width);
 	static void DrawCircleW(Vec3 c, Vec3 x, Vec3 y, float r, uint n, Vec4 col, float width, bool dotted = false);
-	static void Label(float x, float y, float s, string str, Font* texture);
-	static void Label(float x, float y, float s, string str, Font* texture, Vec4 Vec4);
-	static void Label(float x, float y, float s, string str, Font* texture, Vec4 Vec4, float maxw);
+	static void Label(float x, float y, float s, string str, Font* font);
+	static void Label(float x, float y, float s, string str, Font* font, Vec4 Vec4);
+	static void Label(float x, float y, float s, string str, Font* font, Vec4 Vec4, float maxw);
 	static byte Button(float x, float y, float w, float h);
 	static byte Button(float x, float y, float w, float h, Vec4 normalVec4);
 	static byte Button(float x, float y, float w, float h, Vec4 normalVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4);
