@@ -1,8 +1,9 @@
 #include "Editor.h"
 #include "Engine.h"
+#include <sstream>
 
 void EB_Browser::_AddAsset(EditorBlock* b) {
-	b->editor->RegisterMenu(b, "Add Asset", { "Script (Header)", "Script (Cpp)", "Shader", "Material" }, { &_DoAddAssetH, nullptr, nullptr, &_DoAddAssetMat }, 0);
+	b->editor->RegisterMenu(b, "Add Asset", { "Script (Header)", "Script (Cpp)", "Shader", "Material", "Camera Effect" }, { &_DoAddAssetH, nullptr, &_DoAddAssetShad, &_DoAddAssetMat, &_DoAddAssetEff }, 0);
 }
 
 void EB_Browser::_DoAddAssetH(EditorBlock* b) {
@@ -15,7 +16,7 @@ void EB_Browser::_DoAddAssetH(EditorBlock* b) {
 	ofstream strm(p, ios::out | ios::trunc);
 	strm << "#include \"Engine.h\"\r\n\r\nclass ";
 	strm << "NewSceneScript" + to_string(q);
-	strm << " : public SceneScript{\r\n\tvoid Start() override {}\r\n\tvoid Update() override {}\r\n};";
+	strm << " : public NewSceneScript{\r\n\tvoid Start() override {}\r\n\tvoid Update() override {}\r\n};";
 	strm.close();
 	eb->Refresh();
 }
@@ -28,6 +29,54 @@ void EB_Browser::_DoAddAssetMat(EditorBlock* b) {
 		p = eb->currentDir + "newMaterial" + to_string(q++) + ".material";
 	}
 	Material m = Material();
+	m.Save(p);
+	eb->Refresh();
+}
+
+void EB_Browser::_DoAddAssetShad(EditorBlock* b) {
+	b->editor->RegisterMenu(b, "New Shader", { "Standard Shader", "Effect Shader" }, { &_DoAddShadStd, &_DoAddShadEff }, 0);
+}
+
+void EB_Browser::_DoAddShadStd(EditorBlock* b) {
+	EB_Browser* eb = (EB_Browser*)b;
+	int q = 1;
+	string p = eb->currentDir + "NewShader.shade";
+	while (IO::HasFile(p.c_str())) {
+		p = eb->currentDir + "NewShader" + to_string(q++) + ".shade";
+	}
+	ifstream tmp(eb->editor->dataPath + "\\template_StdShader.txt");
+	ofstream strm(p, ios::out | ios::trunc);
+	strm << tmp.rdbuf();
+	strm.close();
+	tmp.close();
+	b->editor->ReloadAssets(b->editor->projectFolder + "Assets\\", true);
+	eb->Refresh();
+}
+
+void EB_Browser::_DoAddShadEff(EditorBlock* b) {
+	EB_Browser* eb = (EB_Browser*)b;
+	int q = 1;
+	string p = eb->currentDir + "NewEffectShader.shade";
+	while (IO::HasFile(p.c_str())) {
+		p = eb->currentDir + "NewEffectShader" + to_string(q++) + ".shade";
+	}
+	ifstream tmp(eb->editor->dataPath + "\\template_EffShader.txt");
+	ofstream strm(p, ios::out | ios::trunc);
+	strm << tmp.rdbuf();
+	strm.close();
+	tmp.close();
+	b->editor->ReloadAssets(b->editor->projectFolder + "Assets\\", true);
+	eb->Refresh();
+}
+
+void EB_Browser::_DoAddAssetEff(EditorBlock* b) {
+	EB_Browser* eb = (EB_Browser*)b;
+	int q = 1;
+	string p = eb->currentDir + "newEffect.effect";
+	while (IO::HasFile(p.c_str())) {
+		p = eb->currentDir + "newEffect" + to_string(q++) + ".effect";
+	}
+	CameraEffect m = CameraEffect(nullptr);
 	m.Save(p);
 	eb->Refresh();
 }
@@ -441,6 +490,14 @@ void EB_Viewer::_ViewBottom(EditorBlock* b) {
 void EB_Viewer::_ViewCam(EditorBlock* b) {
 	if (b->editor->selected != nullptr) {
 		((EB_Viewer*)b)->seeingCamera = (Camera*)b->editor->selected->GetComponent(COMP_CAM);
+	}
+}
+void EB_Viewer::_SnapCenter(EditorBlock* b) {
+	if (b->editor->selected == nullptr) {
+		((EB_Viewer*)b)->rotCenter = Vec3();
+	}
+	else {
+		((EB_Viewer*)b)->rotCenter = b->editor->selected->transform.worldPosition();
 	}
 }
 

@@ -189,6 +189,7 @@ class AssetManager;
 #define ASSETTYPE_MESH 0x21
 #define ASSETTYPE_ANIMCLIP 0x30
 #define ASSETTYPE_ANIMATOR 0x31
+#define ASSETTYPE_CAMEFFECT 0x40
 #define ASSETTYPE_SCRIPT_H 0xfe
 #define ASSETTYPE_SCRIPT_CPP 0xff
 class AssetObject;
@@ -434,11 +435,13 @@ protected:
 
 class Material : AssetObject {
 public:
-	ShaderBase* shader;
 
 	Material(void);
 	Material(ShaderBase* shad);
 	~Material();
+
+	ShaderBase* Shader();
+	void Shader(ShaderBase* shad);
 	//values applied to program on drawing stage
 	unordered_map<SHADER_VARTYPE, unordered_map <GLint, void*>> vals;
 	unordered_map<SHADER_VARTYPE, vector<string>> valNames;
@@ -465,6 +468,7 @@ protected:
 	Material(ifstream& stream, uint offset);
 	void _ReloadParams();
 
+	ShaderBase* shader;
 	int _shader;
 	vector<SHADER_VARTYPE> valOrders;
 	vector<byte> valOrderIds;

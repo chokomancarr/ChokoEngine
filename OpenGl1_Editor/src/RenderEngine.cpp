@@ -174,14 +174,14 @@ void EB_Previewer::InitGBuffer() {
 
 void EB_Previewer::Blit(GLuint prog, uint w, uint h) {
 	glViewport(0, 0, (int)previewWidth, (int)previewHeight);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, bb_fbo);
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, b_fbo);
+	//glBindFramebuffer(GL_DRAW_FRAMEBUFFER, blitting2? b_fbo : bb_fbo);
+	//glBindFramebuffer(GL_READ_FRAMEBUFFER, blitting2 ? bb_fbo : b_fbo);
 
-	glReadBuffer(GL_COLOR_ATTACHMENT0);
-	glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+	//glReadBuffer(GL_COLOR_ATTACHMENT0);
+	//glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, b_fbo);
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, bb_fbo);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, blitting2 ? b_fbo : bb_fbo);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, blitting2 ? bb_fbo : b_fbo);
 
 	GLint inTexLoc = glGetUniformLocation(prog, "inColor");
 	GLint scrSzLoc = glGetUniformLocation(prog, "screenSize");
@@ -196,7 +196,7 @@ void EB_Previewer::Blit(GLuint prog, uint w, uint h) {
 	glUniform2f(scrSzLoc, w, h);
 	glUniform1i(inTexLoc, 0);
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, bb_tex);
+	glBindTexture(GL_TEXTURE_2D, blitting2 ? bb_tex : b_texs[0]);
 	
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, Camera::screenRectIndices);
@@ -208,6 +208,7 @@ void EB_Previewer::Blit(GLuint prog, uint w, uint h) {
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 	glViewport(0, 0, Display::width, Display::height);
+	blitting2 = !blitting2;
 }
 
 void EB_Previewer::DrawPreview(Vec4 v) {
@@ -256,8 +257,9 @@ void EB_Previewer::DrawPreview(Vec4 v) {
 	else {
 		_RenderLights(v);
 		glDisable(GL_BLEND);
+		blitting2 = false;
 		if (showLumi) Blit(lumiProgram, (uint)previewWidth, (uint)previewHeight);
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, b_fbo);
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, blitting2? bb_fbo : b_fbo);
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 		glReadBuffer(GL_COLOR_ATTACHMENT0);
 		glViewport(0, 0, Display::width, Display::height);

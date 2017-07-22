@@ -141,7 +141,8 @@ public:
 	void Refresh();
 
 	static void _AddAsset(EditorBlock* b);
-	static void _DoAddAssetH(EditorBlock* b), _DoAddAssetMat(EditorBlock* b);
+	static void _DoAddAssetH(EditorBlock* b), _DoAddAssetMat(EditorBlock* b), _DoAddAssetShad(EditorBlock* b), _DoAddAssetEff(EditorBlock* b);
+	static void _DoAddShadStd(EditorBlock* b), _DoAddShadEff(EditorBlock* b);
 };
 
 class EB_Viewer : public EditorBlock {
@@ -155,8 +156,10 @@ public:
 	static const int arrowSIndexs[18];
 	glm::mat4 viewingMatrix;
 	bool persp;
-	Vec4 arrowX, arrowY, arrowZ; 
-	Vec3 axesPos;
+	float fov;
+	Vec3 rotCenter;
+	Vec4 arrowX, arrowY, arrowZ;
+	//Vec3 axesPos;
 	byte selectedTooltip, selectedShading, selectedOrient;
 
 	Vec3 preModVals;
@@ -165,6 +168,7 @@ public:
 	Vec3 modAxisDir;
 	Camera* seeingCamera;
 
+	glm::mat4 invMatrix, projMatrix;
 	void MakeMatrix();
 
 	void Draw();
@@ -196,7 +200,7 @@ public:
 	static void _SelectAll(EditorBlock*), _ViewInvis(EditorBlock*), _ViewPersp(EditorBlock*);
 	static void _OrientG(EditorBlock*), _OrientL(EditorBlock*), _OrientV(EditorBlock*);
 	static void _ViewFront(EditorBlock*), _ViewBack(EditorBlock*), _ViewLeft(EditorBlock*), _ViewRight(EditorBlock*), _ViewTop(EditorBlock*), _ViewBottom(EditorBlock*), _ViewCam(EditorBlock*);
-	static void _TogglePersp(EditorBlock*);
+	static void _SnapCenter(EditorBlock*), _TogglePersp(EditorBlock*);
 	static void _Escape(EditorBlock*);
 };
 
@@ -231,7 +235,7 @@ public:
 	static void DrawAsset(Editor* e, Vec4 v, float dh, string label, ASSETTYPE type);
 
 	static void _ApplyTexFilter0(EditorBlock* e), _ApplyTexFilter1(EditorBlock* e), _ApplyTexFilter2(EditorBlock* e);
-	static void _ApplyMatShader(void* v), _ApplySky(void* v);
+	static void _ApplyMatShader(void* v), _ApplySky(void* v), _ApplyEffMat(void* v);
 	//static void DrawTexture(Editor* e, Vec4 v, string label, Texture* tex, Vec4& uv);
 };
 
@@ -264,7 +268,7 @@ public:
 	void Refresh() {}
 
 protected:
-	bool showBuffers = false, showLumi = false;
+	bool showBuffers = false, showLumi = false, blitting2 = false;
 
 	void FindEditor();
 	EB_Viewer* viewer;
@@ -437,7 +441,7 @@ public:
 	ShortcutMapGlobal globalShorts;
 
 	Texture* buttonX, *buttonExt, *buttonPlus, *buttonExtArrow, *background, *placeholder, *checkers, *expand;
-	Texture* collapse, *object, *checkbox, *keylock, *assetExpand, *assetCollapse;
+	Texture* collapse, *object, *checkbox, *keylock, *assetExpand, *assetCollapse, *browse;
 	vector<Texture*> tooltipTexs;
 	vector<Texture*> shadingTexs;
 	vector<Texture*> orientTexs;

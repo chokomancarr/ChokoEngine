@@ -191,10 +191,15 @@ protected:
 
 };
 
+class AnimValue {
+	float x, y, z, rw, rx, ry, rz;
+};
+
 class Animator : public AssetObject {
 
 	friend class EB_AnimEditor;
 	friend class Editor;
+	friend class SkinnedMeshRenderer;
 protected:
 	Animator();
 	Animator(string s);
@@ -202,21 +207,31 @@ protected:
 	uint activeState, nextState;
 	float stateTransition;
 
+	vector <string> names; //Bones must have unique names
 	vector <Anim_State*> states;
 	vector <Anim_Transition*> transitions;
 
-	void Save(string s);
-};
+	int IdOfName(string n) {
+		for (int a = names.size() - 1; a >= 0; a--)
+			if (names[a] == n)
+				return a;
+		return -1;
+	}
+	void Get(uint id);
 
-class RenderTexture : public AssetObject {
-public:
-	uint width, height;
+	void Save(string s);
 };
 
 enum TEX_FILTERING : byte {
 	TEX_FILTER_POINT = 0x00,
 	TEX_FILTER_BILINEAR,
 	TEX_FILTER_TRILINEAR
+};
+
+enum TEX_TYPE : byte {
+	TEX_TYPE_NORMAL = 0x00,
+	TEX_TYPE_RENDERTEXTURE,
+	TEX_TYPE_READWRITE
 };
 
 class Texture : public AssetObject {
@@ -227,22 +242,36 @@ public:
 	//Texture(ifstream& stream, long pos);
 	~Texture(){ glDeleteTextures(1, &pointer); }
 	bool loaded;
-	unsigned int width, height;
+	uint width, height;
 	GLuint pointer;
+	TEX_TYPE texType() { return _texType; }
 	friend int main(int argc, char **argv);
 	friend class Editor;
 	friend class EB_Inspector;
 	friend class AssetManager;
+	friend class RenderTexture;
 	friend void EBI_DrawAss_Tex(Vec4 v, Editor* editor, EB_Inspector* b, float &off);
 private:
+	Texture() : AssetObject(ASSETTYPE_TEXTURE) {}
 	Texture(int i, Editor* e); //for caches
 	Texture(ifstream& strm, uint offset);
 	static void _ReadStrm(Texture* tex, ifstream& strm, byte& chn, GLenum& rgb, GLenum& rgba);
 	byte _aniso = 0;
 	TEX_FILTERING _filter = TEX_FILTER_POINT;
+	TEX_TYPE _texType = TEX_TYPE_NORMAL;
 	bool _mipmap = true, _repeat = false;
 	static bool Parse(Editor* e, string path);
 	void _ApplyPrefs(const string& p);
+};
+
+class RenderTexture : public Texture {
+public:
+	RenderTexture(uint w, uint h, bool depth);
+	~RenderTexture();
+
+	//void Resize(uint w, uint h);
+protected:
+	GLuint d_fbo, d_depthTex;
 };
 
 class Background : public AssetObject {
@@ -295,6 +324,32 @@ enum GBUFFERS {
 	GBUFFER_NUM_TEXTURES
 };
 
+
+class CameraEffect : public AssetObject {
+public:
+	CameraEffect(Material* mat);
+
+	bool enabled = true;
+
+	friend class Camera;
+	friend class Engine;
+	friend class Editor;
+	friend class EB_Browser;
+	friend class EB_Inspector;
+	friend void EBI_DrawAss_Eff(Vec4 v, Editor* editor, EB_Inspector* b, float &off);
+protected:
+	Material* material;
+	int _material = -1;
+	bool expanded; //editor only
+	string mainTex;
+
+	void Save(string nm);
+
+	CameraEffect(string s);
+	//CameraEffect(ifstream& strm, uint offset);
+	//void SetShader(ShaderBase* shad);
+};
+
 class Camera : public Component {
 public:
 	Camera();
@@ -307,8 +362,8 @@ public:
 	float nearClip;
 	float farClip;
 	RenderTexture* targetRT;
-
-
+	vector <CameraEffect*> effects;
+	
 	void Render(RenderTexture* target = nullptr);
 
 	friend int main(int argc, char **argv);
@@ -322,6 +377,8 @@ public:
 	friend class Light;
 protected:
 	Camera(ifstream& stream, SceneObject* o, long pos = -1);
+
+	vector <ASSETID> _effects;
 
 	void RenderLights(GLuint targetFbo = 0);
 	void DumpBuffers();
@@ -424,6 +481,11 @@ protected:
 	int _texture;
 };
 
+struct SRD_ArmatureData { //bind(-1) -> animate -> bind
+	glm::mat4 bind[512];
+	glm::mat4 animate[512];
+};
+
 #define COMP_SRD 0x12
 class SkinnedMeshRenderer : public Component {
 public:
@@ -432,11 +494,11 @@ public:
 	vector<Material*> materials;
 	Animator* anim;
 
-	void DrawEditor(EB_Viewer* ebv) override;
-	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
+	//void DrawEditor(EB_Viewer* ebv) override;
+	//void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
 
-	void Serialize(Editor* e, ofstream* stream) override;
-	void Refresh() override;
+	//void Serialize(Editor* e, ofstream* stream) override;
+	//void Refresh() override;
 
 	friend class Editor;
 	friend void Deserialize(ifstream& stream, SceneObject* obj);
@@ -444,6 +506,11 @@ public:
 protected:
 	SkinnedMeshRenderer(ifstream& stream, SceneObject* o, long pos = -1);
 
+	SceneObject* baseBone;
+	SRD_ArmatureData animData;
+	vector<pair<uint, SceneObject*>> boneObjs;
+
+	void ApplyAnim();
 	void DrawDeferred();
 
 	vector<ASSETID> _materials;

@@ -546,13 +546,6 @@ void Engine::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4, 
 	glDisableVertexAttribArray(2);
 	glUseProgram(0);
 
-	/*
-	glVec43f(1.0f, 0.0f, 0.0f);
-	glLineWidth(1);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	glDrawElements(GL_QUADS, 4, GL_UNSIGNED_INT, &quadIndexes[0]);
-	*/
-
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
@@ -566,6 +559,10 @@ byte Engine::Button(float x, float y, float w, float h, Vec4 normalVec4, string 
 	return Button(x, y, w, h, normalVec4, LerpVec4(normalVec4, white(), 0.5f), LerpVec4(normalVec4, black(), 0.5f), label, labelSize, labelFont, labelVec4);
 }
 byte Engine::Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4) {
+	if (Input::mouse0State != 0 && !Rect(x, y, w, h).Inside(Input::mouseDownPos)) {
+		DrawQuad(x, y, w, h, normalVec4);
+		return 0;
+	}
 	bool inside = Rect(x, y, w, h).Inside(Input::mousePos);
 	switch (Input::mouse0State) {
 	case 0:
@@ -580,6 +577,10 @@ byte Engine::Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 hi
 	return inside ? (MOUSE_HOVER_FLAG | Input::mouse0State) : 0;
 }
 byte Engine::Button(float x, float y, float w, float h, Texture* texture, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, float uvx, float uvy, float uvw, float uvh) {
+	if (Input::mouse0State != 0 && !Rect(x, y, w, h).Inside(Input::mouseDownPos)) {
+		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(uvx, 1 - uvy), Vec2(uvx + uvw, 1 - uvy), Vec2(uvx, 1 - uvy - uvh), Vec2(uvx + uvw, 1 - uvy - uvh), false, normalVec4);
+		return 0;
+	}
 	bool inside = Rect(x, y, w, h).Inside(Input::mousePos);
 	switch (Input::mouse0State) {
 	case 0:
@@ -594,7 +595,7 @@ byte Engine::Button(float x, float y, float w, float h, Texture* texture, Vec4 n
 	return inside ? (MOUSE_HOVER_FLAG | Input::mouse0State) : 0;
 }
 byte Engine::Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4) {
-	byte b = Button(x, y, w, h, normalVec4, LerpVec4(normalVec4, white(), 0.5f), LerpVec4(normalVec4, black(), 0.5f));
+	byte b = Button(x, y, w, h, normalVec4, highlightVec4, pressVec4);
 	ALIGNMENT al = labelFont->alignment;
 	labelFont->alignment = ALIGN_MIDLEFT;
 	Label(round(x + 2), round(y + 0.4f*h), labelSize, label, labelFont, labelVec4);
@@ -606,6 +607,10 @@ byte Engine::EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4
 	return EButton(a, x, y, w, h, normalVec4, LerpVec4(normalVec4, white(), 0.5f), LerpVec4(normalVec4, black(), 0.5f));
 }
 byte Engine::EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4) {
+	if (Input::mouse0State != 0 && !Rect(x, y, w, h).Inside(Input::mouseDownPos)) {
+		DrawQuad(x, y, w, h, normalVec4);
+		return 0;
+	}
 	if (a) {
 		bool inside = Rect(x, y, w, h).Inside(Input::mousePos);
 		switch (Input::mouse0State) {
@@ -632,6 +637,10 @@ byte Engine::EButton(bool a, float x, float y, float w, float h, Texture* textur
 	return EButton(a, x, y, w, h, texture, Vec4, LerpVec4(Vec4, white(), 0.5f), LerpVec4(Vec4, black(), 0.5f));
 }
 byte Engine::EButton(bool a, float x, float y, float w, float h, Texture* texture, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4) {
+	if (Input::mouse0State != 0 && !Rect(x, y, w, h).Inside(Input::mouseDownPos)) {
+		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, normalVec4);
+		return 0;
+	}
 	if (a) {
 	bool inside = Rect(x, y, w, h).Inside(Input::mousePos);
 	switch (Input::mouse0State) {
@@ -654,8 +663,8 @@ byte Engine::EButton(bool a, float x, float y, float w, float h, Texture* textur
 byte Engine::EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4) {
 	byte b = EButton(a, x, y, w, h, normalVec4, LerpVec4(normalVec4, white(), 0.5f), LerpVec4(normalVec4, black(), 0.5f));
 	ALIGNMENT al = labelFont->alignment;
-	labelFont->alignment = ALIGN_MIDCENTER;
-	Label(x + 0.5f*w, y + 0.4f*h, labelSize, label, labelFont, labelVec4);
+	labelFont->alignment = ALIGN_MIDLEFT;
+	Label(round(x + 2), round(y + 0.4f*h), labelSize, label, labelFont, labelVec4);
 	labelFont->alignment = al;
 	return b;
 }
@@ -1165,7 +1174,9 @@ vector<EB_Browser_File> IO::GetFilesE (Editor* e, const string& folder)
 					names.push_back(EB_Browser_File(e, folder, aa.substr(0, aa.length() - 5), aa));
 				else if ((aa.length() > 4 && aa.substr(aa.length() - 4, string::npos) == ".cpp"))
 					names.push_back(EB_Browser_File(e, folder, aa, aa));
-				else if ((aa.length() > 9 && aa.substr(aa.length() - 9, string::npos) == ".material"))
+				else if ((aa.length() > 9 && (aa.substr(aa.length() - 9, string::npos) == ".material")))
+					names.push_back(EB_Browser_File(e, folder, aa, aa));
+				else if ((aa.length() > 9 && (aa.substr(aa.length() - 7, string::npos) == ".effect")))
 					names.push_back(EB_Browser_File(e, folder, aa, aa));
 			}
 		} while (::FindNextFile(hFind, &fd));
@@ -1337,6 +1348,44 @@ Transform* Transform::Rotate(Vec3 v) {
 Transform* Transform::Scale(Vec3 v) {
 	scale += v;
 	return this;
+}
+
+//-----------------rendertexture class---------------
+RenderTexture::RenderTexture(uint w, uint h, bool depth) : Texture() {
+	width = w;
+	height = h;
+	_texType = TEX_TYPE_RENDERTEXTURE;
+
+	glGenFramebuffers(1, &d_fbo);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, d_fbo);
+
+	glGenTextures(1, &pointer);
+	glGenTextures(1, &d_depthTex);
+
+	glBindTexture(GL_TEXTURE_2D, pointer);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, w, h, 0, GL_RGBA, GL_FLOAT, NULL);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pointer, 0);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	if (depth) {
+		glBindTexture(GL_TEXTURE_2D, d_depthTex);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, w, h, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, d_depthTex, 0);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	}
+	else d_depthTex = 0;
+
+	GLenum DrawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+	glDrawBuffers(2, DrawBuffers);
+	loaded = true;
+}
+
+RenderTexture::~RenderTexture() {
+	glDeleteTextures(1, &pointer);
+	if (d_depthTex > 0) glDeleteTextures(1, &d_depthTex);
+	glDeleteFramebuffers(1, &d_fbo);
 }
 
 //-----------------texture class---------------------
@@ -2117,6 +2166,14 @@ Material::Material(ShaderBase * shad) : _shader(-1), AssetObject(ASSETTYPE_MATER
 	_ReloadParams();
 }
 
+ShaderBase* Material::Shader() {
+	return shader;
+}
+void Material::Shader(ShaderBase* shad) {
+	shader = shad;
+	_ReloadParams();
+}
+
 void Material::_ReloadParams() {
 	ResetVals();
 	for (ShaderVariable* v : shader->vars) {
@@ -2624,7 +2681,7 @@ void _StreamWriteAsset(Editor* e, ofstream* stream, ASSETTYPE t, ASSETID i) {
 		p = e->headerAssets[i];
 	else
 		p = e->normalAssets[t][i];
-	(*stream) << p << (char)0;
+	(*stream) << p << char0;
 }
 
 ASSETID _Strm2H(ifstream& strm) {

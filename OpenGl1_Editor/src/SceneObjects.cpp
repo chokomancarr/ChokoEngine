@@ -41,6 +41,53 @@ COMPONENT_TYPE Component::Name2Type(string nm) {
 	return COMP_UNDEF;
 }
 
+CameraEffect::CameraEffect(Material* mat) : AssetObject(ASSETTYPE_CAMEFFECT) {
+	material = mat;
+}
+
+CameraEffect::CameraEffect(string path) : AssetObject(ASSETTYPE_CAMEFFECT) {
+	string p = Editor::instance->projectFolder + "Assets\\" + path;
+	ifstream stream(p.c_str());
+	if (!stream.good()) {
+		cout << "cameffect not found!" << endl;
+		return;
+	}
+	char* c = new char[4];
+	stream.read(c, 3);
+	c[3] = char0;
+	string ss(c);
+	if (ss != "KEF") {
+		cerr << "file not supported" << endl;
+		return;
+	}
+	delete[](c);
+	char* nmm = new char[100];
+	stream.getline(nmm, 100, char0);
+	string shp(nmm);
+	if (shp == "") {
+		delete[](nmm);
+		return;
+	}
+	ASSETTYPE t;
+	Editor::instance->GetAssetInfo(shp, t, _material);
+	material = _GetCache<Material>(ASSETTYPE_MATERIAL, _material);
+	if (_material != -1) {
+		stream.getline(nmm, 100, char0);
+		mainTex = string(nmm);
+	}
+	delete[](nmm);
+}
+
+void CameraEffect::Save(string path) {
+	ofstream strm(path.c_str(), ios::out | ios::binary | ios::trunc);
+	strm << "KEF";
+	ASSETTYPE st;
+	ASSETID si = Editor::instance->GetAssetId(material, st);
+	_StreamWriteAsset(Editor::instance, &strm, ASSETTYPE_MATERIAL, si);
+	if (si != -1) strm << mainTex << char0;
+	strm.close();
+}
+
 int Camera::camVertsIds[19] = { 0, 1, 0, 2, 0, 3, 0, 4, 1, 2, 2, 4, 4, 3, 3, 1, 1, 2, 5 };
 
 Camera::Camera() : Component("Camera", COMP_CAM, DRAWORDER_NONE), ortographic(false), fov(60), orthoSize(10), screenPos(0.3f, 0.1f, 0.6f, 0.4f), clearType(CAM_CLEAR_COLOR), clearColor(black(1)), _tarRT(-1), nearClip(0.01f), farClip(500) {
@@ -286,31 +333,52 @@ void Camera::DrawEditor(EB_Viewer* ebv) {
 void Camera::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 	Camera* cam = (Camera*)c;
 	if (DrawComponentHeader(e, v, pos, this)) {
-		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Field of view", e->font, white());
+		Engine::Label(v.r + 2, v.g + pos + 17, 12, "Field of view", e->font, white());
 		Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos + 17, v.b * 0.3f - 1, 16, grey1());
-		Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 20, 12, to_string(cam->fov), e->font, white());
+		Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 17, 12, to_string(cam->fov), e->font, white());
 		cam->fov = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos + 17, v.b * 0.4f-1, 16, 0.1f, 179.9f, cam->fov, grey1(), white());
 		Engine::Label(v.r + 2, v.g + pos + 35, 12, "Frustrum", e->font, white());
-		Engine::Label(v.r + 4, v.g + pos + 50, 12, "X", e->font, white());
+		Engine::Label(v.r + 4, v.g + pos + 47, 12, "X", e->font, white());
 		Engine::DrawQuad(v.r + 20, v.g + pos + 47, v.b*0.3f - 20, 16, grey1());
-		Engine::Label(v.r + v.b*0.3f + 4, v.g + pos + 50, 12, "Y", e->font, white());
+		Engine::Label(v.r + v.b*0.3f + 4, v.g + pos + 47, 12, "Y", e->font, white());
 		Engine::DrawQuad(v.r + v.b*0.3f + 20, v.g + pos + 47, v.b*0.3f - 20, 16, grey1());
-		Engine::Label(v.r + 4, v.g + pos + 67, 12, "W", e->font, white());
+		Engine::Label(v.r + 4, v.g + pos + 64, 12, "W", e->font, white());
 		Engine::DrawQuad(v.r + 20, v.g + pos + 64, v.b*0.3f - 20, 16, grey1());
-		Engine::Label(v.r + v.b*0.3f + 4, v.g + pos + 67, 12, "H", e->font, white());
+		Engine::Label(v.r + v.b*0.3f + 4, v.g + pos + 64, 12, "H", e->font, white());
 		Engine::DrawQuad(v.r + v.b*0.3f + 20, v.g + pos + 64, v.b*0.3f - 20, 16, grey1());
 		float dh = ((v.b*0.35f - 1)*Display::height / Display::width) - 1;
 		Engine::DrawQuad(v.r + v.b*0.65f, v.g + pos + 35, v.b*0.35f - 1, dh, grey1());
 		Engine::DrawQuad(v.r + v.b*0.65f + ((v.b*0.35f - 1)*screenPos.x), v.g + pos + 35 + dh*screenPos.y, (v.b*0.35f - 1)*screenPos.w, dh*screenPos.h, grey2());
 		pos += (uint)max(37 + dh, 87);
-		Engine::Label(v.r + 2, v.g + pos + 4, 12, "Filtering", e->font, white());
+		Engine::Label(v.r + 2, v.g + pos + 1, 12, "Filtering", e->font, white());
 		vector<string> clearNames = { "None", "Color and Depth", "Depth only", "Skybox" };
 		if (Engine::EButton(e->editorLayer == 0, v.r + v.b * 0.3f, v.g + pos + 1, v.b * 0.7f - 1, 14, grey2(), clearNames[clearType], 12, e->font, white()) == MOUSE_PRESS) {
 			e->RegisterMenu(nullptr, "", clearNames, { &_SetClear0, &_SetClear1, &_SetClear2, &_SetClear3 }, 0, Vec2(v.r + v.b * 0.3f, v.g + pos));
 		}
-		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Target", e->font, white());
+		Engine::Label(v.r + 2, v.g + pos + 17, 12, "Target", e->font, white());
 		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 17, v.b*0.7f, 16, grey1(), ASSETTYPE_RENDERTEXTURE, 12, e->font, &_tarRT, nullptr, this);
 		pos += 34;
+		uint ess = effects.size();
+		Engine::Label(v.r + 2, v.g + pos, 12, "Effects: " + to_string(ess), e->font, white());
+		pos += 17;
+		Engine::DrawQuad(v.r + 2, v.g + pos, v.b - 4, 17 * ess + 2, grey1()*0.5f);
+		int pendingDel = -1;
+		for (uint es = 0; es < ess; es++) {
+			if (Engine::EButton(e->editorLayer == 0, v.r + 4, v.g + pos + 1, 16, 16, e->buttonX, white()) == MOUSE_RELEASE) {
+				pendingDel = es;
+			}
+			e->DrawAssetSelector(v.r + 21, v.g + pos + 1, v.b - 24, 16, grey1(), ASSETTYPE_CAMEFFECT, 12, e->font, &_effects[es], nullptr, this);
+			pos += 17;
+		}
+		pos += 3;
+		if (Engine::EButton(e->editorLayer == 0, v.r + 2, v.g + pos, 14, 14, e->buttonPlus, white()) == MOUSE_RELEASE) {
+			effects.push_back(nullptr);
+			_effects.push_back(-1);
+		}
+		if (pendingDel > -1) {
+			effects.erase(effects.begin() + pendingDel);
+			_effects.erase(_effects.begin() + pendingDel);
+		}
 	}
 	else pos += 17;
 }
@@ -494,10 +562,10 @@ void MeshRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 					void* bbs = materials[a]->vals[materials[a]->valOrders[q]][materials[a]->valOrderGLIds[q]];
 					switch (materials[a]->valOrders[q]) {
 					case SHADER_INT:
-						Engine::Button(v.r + v.b * 0.3f + 17, v.g + pos + 35, v.b*0.7f - 17, 16, grey1(), to_string(*(int*)bbs), 12, e->font, white());
+						Engine::EButton(e->editorLayer == 0, v.r + v.b * 0.3f + 17, v.g + pos + 35, v.b*0.7f - 17, 16, grey1(), LerpVec4(grey1(), white(), 0.1f), LerpVec4(grey1(), black(), 0.5f), to_string(*(int*)bbs), 12, e->font, white());
 						break;
 					case SHADER_FLOAT:
-						Engine::Button(v.r + v.b * 0.3f + 17, v.g + pos + 35, v.b*0.7f - 17, 16, grey1(), to_string(*(float*)bbs), 12, e->font, white());
+						Engine::EButton(e->editorLayer == 0, v.r + v.b * 0.3f + 17, v.g + pos + 35, v.b*0.7f - 17, 16, grey1(), LerpVec4(grey1(), white(), 0.1f), LerpVec4(grey1(), black(), 0.5f), to_string(*(float*)bbs), 12, e->font, white());
 						break;
 					case SHADER_SAMPLER:
 						e->DrawAssetSelector(v.r + v.b * 0.3f + 17, v.g + pos + 35, v.b*0.7f - 17, 16, grey1(), ASSETTYPE_TEXTURE, 12, e->font, &((MatVal_Tex*)bbs)->id, _UpdateTex, bbs);
@@ -589,6 +657,15 @@ TextureRenderer::TextureRenderer(ifstream& stream, SceneObject* o, long pos) : C
 	_Strm2Asset(stream, Editor::instance, t, _texture);
 }
 
+//-----------------Skinned Mesh Renderer-------------
+SkinnedMeshRenderer::SkinnedMeshRenderer(ifstream& stream, SceneObject* o, long pos) : Component("Skinned Mesh Renderer", COMP_SRD, DRAWORDER_SOLID | DRAWORDER_TRANSPARENT, o) {
+	
+}
+
+void SkinnedMeshRenderer::ApplyAnim() {
+
+}
+
 //-----------------mesh class------------------------
 Mesh::Mesh(Editor* e, int i) : AssetObject(ASSETTYPE_MESH) {
 	Mesh* m2 = _GetCache<Mesh>(type, i);
@@ -608,7 +685,7 @@ Mesh::Mesh(ifstream& stream, uint offset) : AssetObject(ASSETTYPE_MESH), loaded(
 
 		char* c = new char[100];
 		stream.read(c, 6);
-		c[6] = (char)0;
+		c[6] = char0;
 		if (string(c) != "KTO123") {
 			Debug::Error("Mesh importer", "file not supported");
 			return;
@@ -714,7 +791,7 @@ Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCoun
 
 	char* c = new char[100];
 	stream.read(c, 6);
-	c[6] = (char)0;
+	c[6] = char0;
 	if (string(c) != "KTO123") {
 		Debug::Error("Mesh importer", "file not supported");
 		return;
@@ -979,7 +1056,7 @@ AnimClip::AnimClip(string path) : AssetObject(ASSETTYPE_ANIMCLIP) {
 
 	char* c = new char[100];
 	stream.read(c, 4);
-	c[4] = (char)0;
+	c[4] = char0;
 	if (string(c) != "ANIM") {
 		Debug::Error("AnimClip importer", "file not supported");
 		return;
@@ -1024,7 +1101,7 @@ Animator::Animator(string path) : Animator() {
 	}
 	char* c = new char[4];
 	stream.read(c, 3);
-	c[3] = (char)0;
+	c[3] = char0;
 	string ss(c);
 	if (ss != "ANT") {
 		cerr << "file not supported" << endl;
@@ -1650,7 +1727,7 @@ void SceneScript::Parse(string s, Editor* e) {
 					oStrm.seekp(l - 1);
 					continue;
 				}
-				oStrm << s2 << (char)0;
+				oStrm << s2 << char0;
 				count++;
 			}
 			oStrm.seekp(0);
