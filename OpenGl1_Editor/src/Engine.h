@@ -178,11 +178,10 @@ class AssetManager;
 
 #define ASSETTYPE_UNDEF 0x00
 
-#define ASSETTYPE_SCENE 0xf0
+#define ASSETTYPE_SCENE 0x90
 #define ASSETTYPE_TEXTURE 0x01
 #define ASSETTYPE_HDRI 0x02
 #define ASSETTYPE_TEXCUBE 0x03
-#define ASSETTYPE_RENDERTEXTURE 0x03
 #define ASSETTYPE_SHADER 0x05
 #define ASSETTYPE_MATERIAL 0x10
 #define ASSETTYPE_BLEND 0x20
@@ -190,8 +189,10 @@ class AssetManager;
 #define ASSETTYPE_ANIMCLIP 0x30
 #define ASSETTYPE_ANIMATOR 0x31
 #define ASSETTYPE_CAMEFFECT 0x40
-#define ASSETTYPE_SCRIPT_H 0xfe
-#define ASSETTYPE_SCRIPT_CPP 0xff
+#define ASSETTYPE_SCRIPT_H 0x9e
+#define ASSETTYPE_SCRIPT_CPP 0x9f
+//derived types
+#define ASSETTYPE_TEXTURE_REND 0xa0
 class AssetObject;
 class Mesh;
 class Texture;

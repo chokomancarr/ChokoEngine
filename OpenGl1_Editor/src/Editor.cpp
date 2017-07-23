@@ -94,10 +94,8 @@ int GetFormatEnum(string ext) {
 		return ASSETTYPE_ANIMATOR;
 	else if (ext == ".hdr")
 		return ASSETTYPE_HDRI;
-	else if (ext == ".bmp" || ext == ".jpg" || ext == ".png")
+	else if (ext == ".bmp" || ext == ".jpg" || ext == ".png" || ext == ".rendtex")
 		return ASSETTYPE_TEXTURE;
-	else if (ext == ".rendtex")
-		return ASSETTYPE_RENDERTEXTURE;
 	else if (ext == ".shade")
 		return ASSETTYPE_SHADER;
 	else if (ext == ".effect")
@@ -1250,7 +1248,6 @@ void EB_Previewer::Draw() {
 	CalcV(v);
 	DrawHeaders(editor, this, &v, "Previewer");
 
-
 	if (viewer == nullptr) FindEditor();
 	Camera* seeingCamera = viewer->seeingCamera;
 	float scale = viewer->scale;
@@ -1314,7 +1311,17 @@ void EB_ColorPicker::Draw() {
 
 void Editor::DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASSETTYPE type, float labelSize, Font* labelFont, ASSETID* tar, callbackFunc func, void* param) {
 	if (*tar > -1) {
-		Engine::EButton(editorLayer == 0, x, y, h, h, browse, white());
+		if (Engine::EButton(editorLayer == 0, x, y, h, h, browse, white()) == MOUSE_RELEASE) {
+			selected = nullptr;
+			selectedFilePath = normalAssets[type][*tar];
+			size_t p0 = selectedFilePath.find_last_of('\\');
+			if (p0 != string::npos) selectedFileName = selectedFilePath.substr(p0 + 1);
+			else selectedFileName = selectedFilePath;
+			selectedFileName = selectedFileName.substr(0, selectedFileName.find_last_of('.'));
+			selectedFileCache = _GetCache<void>(type, *tar);
+			selectedFileType = type;
+			selectedFile = *tar;
+		}
 	}
 	if (Engine::EButton(editorLayer == 0, (*tar == -1) ? x : x + h + 1, y, w, h, col, LerpVec4(col, white(), 0.1f), LerpVec4(col, black(), 0.5f)) == MOUSE_RELEASE) {
 		editorLayer = 3;
@@ -1357,6 +1364,9 @@ void Editor::DrawColorSelector(float x, float y, float w, float h, Vec4 col, flo
 }
 
 Editor::Editor() {
+#ifndef IS_EDITOR
+	throw runtime_error("Editor class usage not allowed in game!");
+#endif
 	instance = this;
 }
 
@@ -1580,6 +1590,7 @@ void Editor::LoadDefaultAssets() {
 	assetTypes.emplace("bmp", ASSETTYPE_TEXTURE);
 	assetTypes.emplace("png", ASSETTYPE_TEXTURE);
 	assetTypes.emplace("jpg", ASSETTYPE_TEXTURE);
+	assetTypes.emplace("rendtex", ASSETTYPE_TEXTURE);
 	assetTypes.emplace("hdr", ASSETTYPE_HDRI);
 	assetTypes.emplace("animclip", ASSETTYPE_ANIMCLIP);
 	assetTypes.emplace("animator", ASSETTYPE_ANIMATOR);
@@ -2225,7 +2236,6 @@ void Editor::DeselectFile() { //do not free pointer as cache is reused
 void Editor::ResetAssetMap() {
 	normalAssets[ASSETTYPE_TEXTURE] = vector<string>();
 	normalAssets[ASSETTYPE_HDRI] = vector<string>();
-	normalAssets[ASSETTYPE_RENDERTEXTURE] = vector<string>();
 	normalAssets[ASSETTYPE_MATERIAL] = vector<string>();
 	normalAssets[ASSETTYPE_MESH] = vector<string>();
 	normalAssets[ASSETTYPE_BLEND] = vector<string>();
@@ -2233,9 +2243,10 @@ void Editor::ResetAssetMap() {
 	normalAssets[ASSETTYPE_ANIMATOR] = vector<string>();
 	normalAssets[ASSETTYPE_CAMEFFECT] = vector<string>();
 
+	derivedAssets[ASSETTYPE_TEXTURE_REND] = pair<ASSETTYPE, vector<uint>>(ASSETTYPE_TEXTURE, vector<uint>());
+
 	normalAssetCaches[ASSETTYPE_TEXTURE] = vector<void*>(); //Texture*
 	normalAssetCaches[ASSETTYPE_HDRI] = vector<void*>(); //Background*
-	normalAssetCaches[ASSETTYPE_RENDERTEXTURE] = vector<void*>(); //RenderTexture*
 	normalAssetCaches[ASSETTYPE_MATERIAL] = vector<void*>(); //Material*
 	normalAssetCaches[ASSETTYPE_MESH] = vector<void*>(); //Mesh*
 	normalAssetCaches[ASSETTYPE_ANIMCLIP] = vector<void*>(); //AnimClip*
@@ -2276,6 +2287,9 @@ bool Editor::ParseAsset(string path) {
 	}
 	else if (ext == "bmp" || ext == "jpg" || ext == "png") {
 		ok = Texture::Parse(this, path);
+	}
+	else if (ext == "rendtex") {
+		ok = RenderTexture::Parse(path);
 	}
 	else if (ext == "hdr") {
 		ok = Background::Parse(path);

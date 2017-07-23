@@ -143,7 +143,7 @@ void Camera::InitShaders() {
 	GLuint vertex_shader, fragment_shader;
 	string err = "";
 	ifstream strm("D:\\lightPassVert.txt");
-	stringstream ss, ss2, ss3, ss4, ss5, ss6;
+	stringstream ss, ss2, ss3, ss4, ss5, ss6, ss7;
 	ss << strm.rdbuf();
 
 	if (!ShaderBase::LoadShader(GL_VERTEX_SHADER, ss.str(), vertex_shader, &err)) {
@@ -154,6 +154,10 @@ void Camera::InitShaders() {
 	//sky
 	strm.close();
 	strm.open("D:\\lightPassFrag_Sky.txt");
+	if (strm.fail()) {
+		Debug::Error("Cam Shader Compiler", "fs frag not found!");
+		abort();
+	}
 	ss2 << strm.rdbuf();
 	if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, ss2.str(), fragment_shader, &err)) {
 		Debug::Error("Cam Shader Compiler", "fs! " + err);
@@ -184,6 +188,10 @@ void Camera::InitShaders() {
 	//point light
 	strm.close();
 	strm.open("D:\\lightPassFrag_Point.txt");
+	if (strm.fail()) {
+		Debug::Error("Cam Shader Compiler", "fp frag not found!");
+		abort();
+	}
 	ss3 << strm.rdbuf();
 	if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, ss3.str(), fragment_shader, &err)) {
 		Debug::Error("Cam Shader Compiler", "fp! " + err);
@@ -214,6 +222,10 @@ void Camera::InitShaders() {
 	//spotlight
 	strm.close();
 	strm.open("D:\\lightPassFrag_Spot.txt");
+	if (strm.fail()) {
+		Debug::Error("Cam Shader Compiler", "fc frag not found!");
+		abort();
+	}
 	ss4 << strm.rdbuf();
 	if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, ss4.str(), fragment_shader, &err)) {
 		Debug::Error("Cam Shader Compiler", "fc! " + err);
@@ -244,6 +256,10 @@ void Camera::InitShaders() {
 	//probe mask
 	strm.close();
 	strm.open("D:\\lightPassFrag_ProbeMask.txt");
+	if (strm.fail()) {
+		Debug::Error("Cam Shader Compiler", "pm frag not found!");
+		abort();
+	}
 	ss5 << strm.rdbuf();
 	if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, ss5.str(), fragment_shader, &err)) {
 		Debug::Error("Cam Shader Compiler", "pm! " + err);
@@ -269,6 +285,40 @@ void Camera::InitShaders() {
 	cout << "cam shader(pm) ok" << endl;
 	glDetachShader(d_probeMaskProgram, vertex_shader);
 	glDetachShader(d_probeMaskProgram, fragment_shader);
+	glDeleteShader(fragment_shader);
+
+	//spot contact shadows
+	strm.close();
+	strm.open("D:\\lightPassFrag_Spot_ContShad.txt");
+	if (strm.fail()) {
+		Debug::Error("Cam Shader Compiler", "sc frag not found!");
+		abort();
+	}
+	ss6 << strm.rdbuf();
+	if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, ss6.str(), fragment_shader, &err)) {
+		Debug::Error("Cam Shader Compiler", "sc! " + err);
+		abort();
+	}
+
+	d_sLightCSProgram = glCreateProgram();
+	glAttachShader(d_sLightCSProgram, vertex_shader);
+	glAttachShader(d_sLightCSProgram, fragment_shader);
+	glLinkProgram(d_sLightCSProgram);
+	glGetProgramiv(d_sLightCSProgram, GL_LINK_STATUS, &link_result);
+	if (link_result == GL_FALSE)
+	{
+		int info_log_length = 0;
+		glGetProgramiv(d_sLightCSProgram, GL_INFO_LOG_LENGTH, &info_log_length);
+		vector<char> program_log(info_log_length);
+		glGetProgramInfoLog(d_sLightCSProgram, info_log_length, NULL, &program_log[0]);
+		cout << "cam shader(sc) error" << endl << &program_log[0] << endl;
+		glDeleteProgram(d_sLightCSProgram);
+		d_sLightCSProgram = 0;
+		abort();
+	}
+	cout << "cam shader(sc) ok" << endl;
+	glDetachShader(d_sLightCSProgram, vertex_shader);
+	glDetachShader(d_sLightCSProgram, fragment_shader);
 	glDeleteShader(fragment_shader);
 
 	/*probe
@@ -356,7 +406,7 @@ void Camera::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 			e->RegisterMenu(nullptr, "", clearNames, { &_SetClear0, &_SetClear1, &_SetClear2, &_SetClear3 }, 0, Vec2(v.r + v.b * 0.3f, v.g + pos));
 		}
 		Engine::Label(v.r + 2, v.g + pos + 17, 12, "Target", e->font, white());
-		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 17, v.b*0.7f, 16, grey1(), ASSETTYPE_RENDERTEXTURE, 12, e->font, &_tarRT, nullptr, this);
+		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 17, v.b*0.7f, 16, grey1(), ASSETTYPE_TEXTURE_REND, 12, e->font, &_tarRT, nullptr, this);
 		pos += 34;
 		uint ess = effects.size();
 		Engine::Label(v.r + 2, v.g + pos, 12, "Effects: " + to_string(ess), e->font, white());
@@ -1259,6 +1309,22 @@ void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 				Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, to_string(shadowStrength), e->font, white());
 				shadowStrength = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 1, shadowStrength, grey1(), white());
 				pos += 17;
+
+				Engine::Label(v.r + 2, v.g + pos, 12, "Contact Shadows", e->font, white());
+				contactShadows = Engine::DrawToggle(v.r + v.b * 0.3f, v.g + pos, 16, e->checkbox, contactShadows, white(), ORIENT_HORIZONTAL);
+				pos += 17;
+				if (contactShadows) {
+					Engine::Label(v.r + 2, v.g + pos, 12, "  samples", e->font, white());
+					Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
+					Engine::Label(v.r + v.b * 0.3f, v.g + pos + 2, 12, to_string(contactShadowSamples), e->font, white());
+					contactShadowSamples = (int)Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 5, 50, contactShadowSamples, grey1(), white());
+					pos += 17;
+					Engine::Label(v.r + 2, v.g + pos, 12, "  distance", e->font, white());
+					Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
+					Engine::Label(v.r + v.b * 0.3f, v.g + pos + 2, 12, to_string(contactShadowDistance), e->font, white());
+					contactShadowDistance = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 1, contactShadowDistance, grey1(), white());
+					pos += 17;
+				}
 			}
 		}
 	}

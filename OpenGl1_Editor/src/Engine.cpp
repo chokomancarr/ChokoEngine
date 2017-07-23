@@ -1388,6 +1388,20 @@ RenderTexture::~RenderTexture() {
 	glDeleteFramebuffers(1, &d_fbo);
 }
 
+void RenderTexture::Load(string path) {
+	throw runtime_error("RT Load (s) not implemented");
+}
+void RenderTexture::Load(ifstream& strm) {
+	throw runtime_error("RT Load (i) not implemented");
+}
+
+bool RenderTexture::Parse(string path) {
+	string ss(path + ".meta");
+	ofstream str(ss, ios::out | ios::trunc | ios::binary);
+	str << "IMR";
+	return true;
+}
+
 //-----------------texture class---------------------
 bool LoadJPEG(string fileN, uint &x, uint &y, byte& channels, byte** data)
 {
@@ -1555,7 +1569,11 @@ Texture::Texture(int i, Editor* e) : AssetObject(ASSETTYPE_TEXTURE) {
 		byte chn;
 		GLenum rgb = GL_RGB, rgba = GL_RGBA;
 		byte* data;
-		_ReadStrm(this, strm, chn, rgb, rgba);
+		TEX_TYPE t = _ReadStrm(this, strm, chn, rgb, rgba);
+		if (t == TEX_TYPE_RENDERTEXTURE) {
+			((RenderTexture*)this)->Load(e->projectFolder + "Assets\\" + e->normalAssets[ASSETTYPE_TEXTURE][i]);
+			return;
+		}
 		data = new byte[chn*width*height];
 		strm.read((char*)data, chn*width*height);
 		strm.close();
@@ -1579,7 +1597,11 @@ Texture::Texture(ifstream& strm, uint offset) : AssetObject(ASSETTYPE_TEXTURE) {
 		byte chn;
 		GLenum rgb = GL_RGB, rgba = GL_RGBA;
 		byte* data;
-		_ReadStrm(this, strm, chn, rgb, rgba);
+		TEX_TYPE t = _ReadStrm(this, strm, chn, rgb, rgba);
+		if (t == TEX_TYPE_RENDERTEXTURE) {
+			((RenderTexture*)this)->Load(strm);
+			return;
+		}
 		data = new byte[chn*width*height];
 		strm.read((char*)data, chn*width*height);
 		//strm.close();
@@ -1598,12 +1620,15 @@ Texture::Texture(ifstream& strm, uint offset) : AssetObject(ASSETTYPE_TEXTURE) {
 	}
 }
 
-void Texture::_ReadStrm(Texture* tex, ifstream& strm, byte& chn, GLenum& rgb, GLenum& rgba) {
+TEX_TYPE Texture::_ReadStrm(Texture* tex, ifstream& strm, byte& chn, GLenum& rgb, GLenum& rgba) {
 	vector<char> hd(4);
 	strm.read((&hd[0]), 3);
+	if (hd[0] == 'I' && hd[1] == 'M' && hd[2] == 'R') {
+		return TEX_TYPE_RENDERTEXTURE;
+	}
 	if (hd[0] != 'I' || hd[1] != 'M' || hd[2] != 'G') {
 		Debug::Error("Image Cacher", "Image cache header wrong!");
-		return;
+		return TEX_TYPE_NORMAL;
 	}
 	byte bb;
 	_Strm2Val<byte>(strm, chn);
@@ -1623,8 +1648,9 @@ void Texture::_ReadStrm(Texture* tex, ifstream& strm, byte& chn, GLenum& rgb, GL
 	strm.read((&hd[0]), 4);
 	if (hd[0] != 'D' || hd[1] != 'A' || hd[2] != 'T' || hd[3] != 'A') {
 		Debug::Error("Image Cacher", "Image cache data tag wrong!");
-		return;
+		return TEX_TYPE_NORMAL;
 	}
+	return TEX_TYPE_NORMAL;
 }
 
 //IMG [channels] [xxxx] [yyyy] [rgb=0, bgr=1] [aniso] [filter] [mipmap 0xf0 | repeat 0x0f] DATA [data]
@@ -1676,6 +1702,7 @@ bool Texture::Parse(Editor* e, string path) {
 		}
 		delete[](c);
 	}
+	iStrm.close();
 	ofstream str(ss, ios::out | ios::trunc | ios::binary);
 	str << "IMG";
 	str << chn;

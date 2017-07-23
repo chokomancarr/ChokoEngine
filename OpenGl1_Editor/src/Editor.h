@@ -455,6 +455,7 @@ public:
 	unordered_map<ASSETTYPE, vector<string>> allAssets;
 	vector<string> headerAssets, cppAssets, blendAssets;
 	unordered_map<ASSETTYPE, vector<string>> normalAssets;
+	unordered_map <ASSETTYPE, pair<ASSETTYPE, vector<uint>>> derivedAssets;
 	unordered_map<ASSETTYPE, vector<void*>> normalAssetCaches;
 
 	void ResetAssetMap();

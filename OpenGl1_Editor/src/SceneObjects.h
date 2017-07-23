@@ -255,7 +255,7 @@ private:
 	Texture() : AssetObject(ASSETTYPE_TEXTURE) {}
 	Texture(int i, Editor* e); //for caches
 	Texture(ifstream& strm, uint offset);
-	static void _ReadStrm(Texture* tex, ifstream& strm, byte& chn, GLenum& rgb, GLenum& rgba);
+	static TEX_TYPE _ReadStrm(Texture* tex, ifstream& strm, byte& chn, GLenum& rgb, GLenum& rgba);
 	byte _aniso = 0;
 	TEX_FILTERING _filter = TEX_FILTER_POINT;
 	TEX_TYPE _texType = TEX_TYPE_NORMAL;
@@ -270,8 +270,13 @@ public:
 	~RenderTexture();
 
 	//void Resize(uint w, uint h);
+	friend class Texture;
+	friend class Editor;
 protected:
 	GLuint d_fbo, d_depthTex;
+	void Load(string path);
+	void Load(ifstream& strm);
+	static bool Parse(string path); //just tell Texture to load as rendtex
 };
 
 class Background : public AssetObject {
@@ -320,6 +325,7 @@ enum GBUFFERS {
 	GBUFFER_DIFFUSE,
 	GBUFFER_NORMAL,
 	GBUFFER_SPEC_GLOSS,
+	GBUFFER_EXTRA, //temporary one lights and stuff
 	GBUFFER_Z,
 	GBUFFER_NUM_TEXTURES
 };
@@ -386,13 +392,14 @@ protected:
 	void _DoRenderProbeMask(ReflectionProbe* p, glm::mat4& ip), _DoRenderProbe(ReflectionProbe* p, glm::mat4& ip);
 	static void _RenderSky(glm::mat4 ip, GLuint d_texs[], GLuint d_depthTex, float w = Display::width, float h = Display::height);
 	void _DrawLights(vector<SceneObject*>& oo, glm::mat4& ip, GLuint targetFbo = 0);
-	static void _DoDrawLight_Point(Light* l, glm::mat4& ip, GLuint d_texs[], GLuint d_depthTex, float w = Display::width, float h = Display::height, GLuint targetFbo = 0);
-	static void _DoDrawLight_Spot(Light* l, glm::mat4& ip, GLuint d_texs[], GLuint d_depthTex, float w = Display::width, float h = Display::height, GLuint targetFbo = 0);
+	static void _DoDrawLight_Point(Light* l, glm::mat4& ip, GLuint d_fbo, GLuint d_texs[], GLuint d_depthTex, GLuint ctar, GLuint c_tex, float w = Display::width, float h = Display::height, GLuint targetFbo = 0);
+	static void _DoDrawLight_Spot(Light* l, glm::mat4& ip, GLuint d_fbo, GLuint d_texs[], GLuint d_depthTex, GLuint ctar, GLuint c_tex, float w = Display::width, float h = Display::height, GLuint targetFbo = 0);
+	static void _DoDrawLight_Spot_Contact(Light* l, glm::mat4& p, GLuint d_depthTex, float w, float h, GLuint src, GLuint tar);
 
 	Vec3 camVerts[6];
 	static int camVertsIds[19];
 	GLuint d_fbo, d_texs[3], d_depthTex;
-	static GLuint d_probeMaskProgram, d_probeProgram, d_skyProgram, d_pLightProgram, d_sLightProgram;
+	static GLuint d_probeMaskProgram, d_probeProgram, d_skyProgram, d_pLightProgram, d_sLightProgram, d_sLightCSProgram;
 
 	static Vec2 screenRectVerts[];
 	static const int screenRectIndices[];
@@ -536,6 +543,9 @@ public:
 	float minDist, maxDist;
 	bool drawShadow;
 	float shadowBias, shadowStrength;
+	bool contactShadows = true;
+	float contactShadowDistance = 0.1f;
+	uint contactShadowSamples = 20;
 	Texture* cookie;
 	float cookieStrength;
 	bool square;
@@ -563,7 +573,7 @@ protected:
 	void CalcShadowMatrix();
 	static GLuint _shadowFbo, _shadowMap;
 
-	static vector<GLint> paramLocs_Spot; //make writing faster
+	static vector<GLint> paramLocs_Spot, paramLocs_SpotCS; //make writing faster
 	static void ScanParams();
 	//static CubeMap* _shadowCube;
 };
