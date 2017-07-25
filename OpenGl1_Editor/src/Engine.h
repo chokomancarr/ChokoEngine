@@ -42,7 +42,10 @@ typedef glm::vec2 Vec2;
 typedef glm::vec3 Vec3;
 typedef glm::vec4 Vec4;
 typedef glm::quat Quat;
+typedef glm::mat4 Mat4x4;
 
+Vec3 Quat2Euler(const Quat&);
+Quat AxisAngle2Quat (const Vec3& axis, float angle);
 string to_string(Vec2 v), to_string(Vec3 v), to_string(Vec4 v), to_string(Quat v);
 //Vec2 normalize
 
@@ -109,6 +112,11 @@ typedef unsigned char ORIENTATION;
 #define ORIENT_NONE 0x00
 #define ORIENT_HORIZONTAL 0x01
 #define ORIENT_VERTICAL 0x02
+
+enum TransformSpace : byte {
+	Space_Self = 0x00,
+	Space_World
+};
 
 long long milliseconds();
 
@@ -340,6 +348,8 @@ protected:
 protected:
 	bool _changed;
 
+	virtual bool DrawPreview(uint x, uint y, uint w, uint h) { return false; }
+
 	//virtual void Load() = 0;
 };
 
@@ -434,7 +444,7 @@ protected:
 	Texture* tex;
 };
 
-class Material : AssetObject {
+class Material : public AssetObject {
 public:
 
 	Material(void);
@@ -462,6 +472,7 @@ public:
 	friend class Scene;
 	friend class AssetManager;
 	friend class ShaderBase;
+	friend class RenderTexture;
 	friend int main(int argc, char **argv);
 	friend void EBI_DrawAss_Mat(Vec4 v, Editor* editor, EB_Inspector* b, float &off);
 protected:
@@ -477,6 +488,8 @@ protected:
 
 	static void LoadOris();
 	static GLuint defTex_White, defTex_Black, defTex_Red, defTex_Green, defTex_Blue, defTex_Grey;
+
+	static void _UpdateTexCache(void*);
 
 	void Save(string path);
 	void ApplyGL(glm::mat4& _mv, glm::mat4& _p);
@@ -577,8 +590,14 @@ public:
 	float skyStrength;
 	Color ambientCol;
 
+	bool useFog, sunFog;
+	float fogDensity, fogSunSpread;
+	Vec4 fogColor, fogSunColor;
+
 	friend class Editor;
 	friend class EB_Inspector;
+	friend class Scene;
+protected:
 	int skyId;
 };
 

@@ -105,6 +105,7 @@ int GetFormatEnum(string ext) {
 }
 
 void DrawHeaders(Editor* e, EditorBlock* b, Vec4* v, string title) {
+	e->font->Align(ALIGN_TOPLEFT);
 	//Engine::Button(v->r, v->g + EB_HEADER_SIZE + 1, v->b, v->a - EB_HEADER_SIZE - 2, black(), white(0.05f), white(0.05f));
 	Vec2 v2(v->b*0.1f, EB_HEADER_SIZE*0.1f);
 	Engine::DrawQuad(v->r + EB_HEADER_PADDING + 1, v->g, v->b - 3 - 2 * EB_HEADER_PADDING, EB_HEADER_SIZE, e->background->pointer, Vec2(), Vec2(v2.x, 0), Vec2(0, v2.y), v2, false, accent());
@@ -430,8 +431,8 @@ void EB_Viewer::MakeMatrix() {
 	float snz = sin(rz*deg2rad);
 	float csw = cos(rw*deg2rad);
 	float snw = sin(rw*deg2rad);
-	viewingMatrix = glm::mat4(csz, 0, -snz, 0, 0, 1, 0, 0, snz, 0, csz, 0, 0, 0, 0, 1);
-	viewingMatrix = glm::mat4(1, 0, 0, 0, 0, csw, snw, 0, 0, -snw, csw, 0, 0, 0, 0, 1)*viewingMatrix;
+	viewingMatrix = Mat4x4(csz, 0, -snz, 0, 0, 1, 0, 0, snz, 0, csz, 0, 0, 0, 0, 1);
+	viewingMatrix = Mat4x4(1, 0, 0, 0, 0, csw, snw, 0, 0, -snw, csw, 0, 0, 0, 0, 1)*viewingMatrix;
 	arrowX = viewingMatrix*Vec4(-1, 0, 0, 0);
 	arrowY = viewingMatrix*Vec4(0, 1, 0, 0);
 	arrowZ = viewingMatrix*Vec4(0, 0, 1, 0);
@@ -451,7 +452,7 @@ void DrawSceneObjectsOpaque(EB_Viewer* ebv, vector<SceneObject*> oo) {
 		//Vec3 v2 = sc->transform.worldPosition();
 		Vec3 v = sc->transform.position;
 		Vec3 vv = sc->transform.scale;
-		Quat vvv = sc->transform.rotation;
+		Quat vvv = sc->transform.rotation();
 		//glTranslatef(v.x - v2.x, v.y - v2.y, v.z - v2.z);
 		glTranslatef(v.x, v.y, v.z);
 		glScalef(vv.x, vv.y, vv.z);
@@ -467,7 +468,7 @@ void DrawSceneObjectsOpaque(EB_Viewer* ebv, vector<SceneObject*> oo) {
 		if (sc == ebv->editor->selected) {
 			GLfloat matrix[16];
 			glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
-			ebv->editor->selectedMvMatrix = (glm::mat4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]));
+			ebv->editor->selectedMvMatrix = (Mat4x4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]));
 		}
 
 		glPopMatrix();
@@ -480,7 +481,7 @@ void DrawSceneObjectsGizmos(EB_Viewer* ebv, vector<SceneObject*> oo) {
 		glPushMatrix();
 		Vec3 v = sc->transform.position;
 		Vec3 vv = sc->transform.scale;
-		Quat vvv = sc->transform.rotation;
+		Quat vvv = sc->transform.rotation();
 		//glTranslatef(v.x - v2.x, v.y - v2.y, v.z - v2.z);
 		glTranslatef(v.x, v.y, v.z);
 		glScalef(vv.x, vv.y, vv.z);
@@ -516,7 +517,7 @@ void EB_Viewer::Draw() {
 	float ww = editor->xPoss[x2] - ww1;
 	float hh = editor->yPoss[y2] - hh1;
 	float h40 = 40 * (hh*Display::height) / (ww*Display::width);
-	float mww = max(ww, 0.3f) * scale;
+	float mww = max(ww, 0.3f) * pow(2, scale);
 	if (seeingCamera == nullptr) {
 		//glTranslatef(0, 0, 1);
 		glScalef(-mww*Display::width / v.b, mww*Display::width / v.a, 1);
@@ -526,7 +527,7 @@ void EB_Viewer::Draw() {
 		glTranslatef(0, 0, -20);
 	}
 	else {
-		Quat q = glm::inverse(seeingCamera->object->transform.rotation);
+		Quat q = glm::inverse(seeingCamera->object->transform.rotation());
 		glScalef(scale, -scale, 1);
 		glMultMatrixf(glm::value_ptr(glm::perspectiveFov(seeingCamera->fov * deg2rad, (float)Display::width, (float)Display::height, seeingCamera->nearClip, seeingCamera->farClip)));
 		glScalef(1, -1, -1);
@@ -542,7 +543,7 @@ void EB_Viewer::Draw() {
 		float snz = sin(-rz*deg2rad);
 		float csw = cos(rw*deg2rad);
 		float snw = sin(rw*deg2rad);
-		glm::mat4 mMatrix = glm::mat4(1, 0, 0, 0, 0, csw, snw, 0, 0, -snw, csw, 0, 0, 0, 0, 1) * glm::mat4(csz, 0, -snz, 0, 0, 1, 0, 0, snz, 0, csz, 0, 0, 0, 0, 1);
+		Mat4x4 mMatrix = Mat4x4(1, 0, 0, 0, 0, csw, snw, 0, 0, -snw, csw, 0, 0, 0, 0, 1) * Mat4x4(csz, 0, -snz, 0, 0, 1, 0, 0, snz, 0, csz, 0, 0, 0, 0, 1);
 		glMultMatrixf(glm::value_ptr(mMatrix));
 		glTranslatef(-rotCenter.x, -rotCenter.y, -rotCenter.z);
 	}
@@ -552,10 +553,10 @@ void EB_Viewer::Draw() {
 	//get matrix
 	GLfloat matrix[16];
 	glGetFloatv(GL_PROJECTION_MATRIX, matrix);
-	projMatrix = (glm::mat4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]));
+	projMatrix = (Mat4x4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]));
 
 	glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
-	glm::mat4 tmpMat = (glm::mat4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]));
+	Mat4x4 tmpMat = (Mat4x4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]));
 	invMatrix = glm::inverse(projMatrix * tmpMat);
 
 	if (editor->sceneLoaded()) {
@@ -720,13 +721,13 @@ const int EB_Viewer::arrowTIndexs[18] = { 0, 1, 2, 0, 2, 3, 0, 1, 4, 1, 2, 4, 2,
 const int EB_Viewer::arrowSIndexs[18] = { 0, 1, 2, 0, 2, 3, 0, 1, 4, 1, 2, 4, 2, 3, 4, 3, 0, 4 };
 
 void EB_Viewer::DrawTArrows(Vec3 pos, float size) {
+	float s = size / pow(2, scale);
 	glDepthFunc(GL_ALWAYS);
-	Engine::DrawLineW(pos, pos + Vec3(size / scale, 0, 0), red(), 3);
-	Engine::DrawLineW(pos, pos + Vec3(0, size / scale, 0), green(), 3);
-	Engine::DrawLineW(pos, pos + Vec3(0, 0, size / scale), blue(), 3);
+	Engine::DrawLineW(pos, pos + Vec3(s, 0, 0), red(), 3);
+	Engine::DrawLineW(pos, pos + Vec3(0, s, 0), green(), 3);
+	Engine::DrawLineW(pos, pos + Vec3(0, 0, s), blue(), 3);
 
 	
-	float s = size / scale;
 	float ds = s * 0.07f;
 	arrowVerts[0] = pos + Vec3(s, ds, ds);
 	arrowVerts[1] = pos + Vec3(s, -ds, ds);
@@ -754,25 +755,27 @@ void EB_Viewer::DrawTArrows(Vec3 pos, float size) {
 }
 
 void EB_Viewer::DrawRArrows(Vec3 pos, float size) {
+	float sz = size / pow(2, scale);
 	glDepthFunc(GL_ALWAYS);
-	Engine::DrawCircleW(pos, Vec3(0, 1, 0), Vec3(0, 0, 1), size / scale, 32, red(), 3);
-	Engine::DrawCircleW(pos, Vec3(1, 0, 0), Vec3(0, 0, 1), size / scale, 32, green(), 3);
-	Engine::DrawCircleW(pos, Vec3(0, 1, 0), Vec3(1, 0, 0), size / scale, 32, blue(), 3);
+	Engine::DrawCircleW(pos, Vec3(0, 1, 0), Vec3(0, 0, 1), sz, 32, red(), 3);
+	Engine::DrawCircleW(pos, Vec3(1, 0, 0), Vec3(0, 0, 1), sz, 32, green(), 3);
+	Engine::DrawCircleW(pos, Vec3(0, 1, 0), Vec3(1, 0, 0), sz, 32, blue(), 3);
 	glDepthFunc(GL_LEQUAL);
 }
 
 void EB_Viewer::DrawSArrows(Vec3 pos, float size) {
+	float sz = size / pow(2, scale);
 	glDepthFunc(GL_ALWAYS);
-	Engine::DrawLineW(pos, pos + Vec3(size / scale, 0, 0), red(), 3);
-	Engine::DrawLineW(pos, pos + Vec3(0, size / scale, 0), green(), 3);
-	Engine::DrawLineW(pos, pos + Vec3(0, 0, size / scale), blue(), 3);
+	Engine::DrawLineW(pos, pos + Vec3(sz, 0, 0), red(), 3);
+	Engine::DrawLineW(pos, pos + Vec3(0, sz, 0), green(), 3);
+	Engine::DrawLineW(pos, pos + Vec3(0, 0, sz), blue(), 3);
 
 
-	float s = size / scale;
-	float ds = s * 0.07f;
-	Engine::DrawCube(pos + Vec3((size / scale) + ds, 0, 0), ds, ds, ds, red());
-	Engine::DrawCube(pos + Vec3(0, (size / scale) + ds, 0), ds, ds, ds, green());
-	Engine::DrawCube(pos + Vec3(0, 0, (size / scale) + ds), ds, ds, ds, blue());
+	//float s = size / pow(2, scale);
+	float ds = sz * 0.07f;
+	Engine::DrawCube(pos + Vec3((sz) + ds, 0, 0), ds, ds, ds, red());
+	Engine::DrawCube(pos + Vec3(0, (sz) + ds, 0), ds, ds, ds, green());
+	Engine::DrawCube(pos + Vec3(0, 0, (sz) + ds), ds, ds, ds, blue());
 	glDepthFunc(GL_LEQUAL);
 }
 
@@ -819,13 +822,13 @@ void EB_Viewer::OnMouseM(Vec2 d) {
 		else if (modifying >> 4 == 2) {
 			switch (modifying & 0x0f) {
 			case 1:
-				editor->selected->transform.eulerRotation(preModVals + Vec3((modVal.x + modVal.y) * 360 / scale, 0, 0));
+				editor->selected->transform.Rotate(Vec3((modVal.x + modVal.y) * 36, 0, 0));
 				break;
 			case 2:
-				editor->selected->transform.eulerRotation(preModVals + Vec3(0, (modVal.x + modVal.y) * 360 / scale, 0));
+				editor->selected->transform.Rotate(Vec3(0, (modVal.x + modVal.y) * 36, 0));
 				break;
 			case 3:
-				editor->selected->transform.eulerRotation(preModVals + Vec3(0, 0, (modVal.x + modVal.y) * 360 / scale));
+				editor->selected->transform.Rotate(Vec3(0, 0, (modVal.x + modVal.y) * 36));
 				break;
 			}
 		}
@@ -874,7 +877,7 @@ void EB_Viewer::OnMouseScr(bool up) {
 	}
 	else {
 		scale += (up ? 0.1f : -0.1f);
-		scale = min(max(scale, 0.01f), 1000);
+		scale = min(max(scale, -10), 10);
 	}
 }
 
@@ -959,7 +962,7 @@ void EBI_DrawAss_Mat(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 		case SHADER_SAMPLER:
 			ASSETID* id = &ASSETID(((MatVal_Tex*)bbs)->id);
 			float ti = 32;// max(min(ceil(v.b*0.3f - 12), 64), 32);
-			editor->DrawAssetSelector(v.r + 19, off + 16, v.b - ti - 21, 16, grey1(), ASSETTYPE_TEXTURE, 12, editor->font, id);
+			editor->DrawAssetSelector(v.r + 19, off + 16, v.b - ti - 21, 16, grey1(), ASSETTYPE_TEXTURE, 12, editor->font, id, &Material::_UpdateTexCache, mat);
 			if (*id > -1)
 				Engine::DrawTexture(v.r + v.b - ti - 1, off, ti, ti, _GetCache<Texture>(ASSETTYPE_TEXTURE, *id));
 			else
@@ -1267,7 +1270,7 @@ void EB_Previewer::Draw() {
 		float hh = editor->yPoss[y2] - hh1;
 		//if (!persp) {
 		float h40 = 40 * (hh*Display::height) / (ww*Display::width);
-		float mww = max(ww, 0.3f) * scale;
+		float mww = max(ww, 0.3f) * pow(2, scale);
 		if (seeingCamera == nullptr) {
 			glScalef(-mww*Display::width / v.b, mww*Display::width / v.a, 1);
 			if (viewer->persp) glMultMatrixf(glm::value_ptr(glm::perspectiveFov(viewer->fov * deg2rad, (float)Display::width, (float)Display::width, 0.01f, 1000.0f)));
@@ -1278,12 +1281,12 @@ void EB_Previewer::Draw() {
 			float snz = sin(-viewer->rz*deg2rad);
 			float csw = cos(viewer->rw*deg2rad);
 			float snw = sin(viewer->rw*deg2rad);
-			glm::mat4 mMatrix = glm::mat4(1, 0, 0, 0, 0, csw, snw, 0, 0, -snw, csw, 0, 0, 0, 0, 1) * glm::mat4(csz, 0, -snz, 0, 0, 1, 0, 0, snz, 0, csz, 0, 0, 0, 0, 1);
+			Mat4x4 mMatrix = Mat4x4(1, 0, 0, 0, 0, csw, snw, 0, 0, -snw, csw, 0, 0, 0, 0, 1) * Mat4x4(csz, 0, -snz, 0, 0, 1, 0, 0, snz, 0, csz, 0, 0, 0, 0, 1);
 			glMultMatrixf(glm::value_ptr(mMatrix));
 			glTranslatef(-viewer->rotCenter.x, -viewer->rotCenter.y, -viewer->rotCenter.z);
 		}
 		else {
-			Quat q = glm::inverse(seeingCamera->object->transform.rotation);
+			Quat q = glm::inverse(seeingCamera->object->transform.rotation());
 			glScalef(scale, -scale, 1);
 			glMultMatrixf(glm::value_ptr(glm::perspectiveFov(seeingCamera->fov * deg2rad, (float)Display::width, (float)Display::height, seeingCamera->nearClip, seeingCamera->farClip)));
 			glScalef(1, -1, -1);
@@ -1323,12 +1326,20 @@ void Editor::DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASS
 			selectedFile = *tar;
 		}
 	}
-	if (Engine::EButton(editorLayer == 0, (*tar == -1) ? x : x + h + 1, y, w, h, col, LerpVec4(col, white(), 0.1f), LerpVec4(col, black(), 0.5f)) == MOUSE_RELEASE) {
-		editorLayer = 3;
-		browseType = type;
-		browseTarget = tar;
-		browseCallback = func;
-		browseCallbackParam = param;
+	byte b = Engine::EButton(editorLayer == 0, (*tar == -1) ? x : x + h + 1, y, w, h, col, LerpVec4(col, white(), 0.1f), LerpVec4(col, black(), 0.5f));
+	if (b & MOUSE_HOVER_FLAG) {
+		if (*tar > -1) {
+			pendingPreview = true;
+			previewType = type;
+			previewId = *tar;
+		}
+		if (b == MOUSE_RELEASE) {
+			editorLayer = 3;
+			browseType = type;
+			browseTarget = tar;
+			browseCallback = func;
+			browseCallbackParam = param;
+		}
 	}
 	ALIGNMENT al = labelFont->alignment;
 	labelFont->alignment = ALIGN_MIDLEFT;
@@ -1411,11 +1422,11 @@ ASSETID Editor::GetAssetInfo(string p, ASSETTYPE &type, ASSETID& i) {
 	return -1;
 }
 
-ASSETID Editor::GetAssetId(void* i) {
+ASSETID Editor::GetAssetId(AssetObject* i) {
 	ASSETTYPE t;
 	return GetAssetId(i, t);
 }
-ASSETID Editor::GetAssetId(void* i, ASSETTYPE&) {
+ASSETID Editor::GetAssetId(AssetObject* i, ASSETTYPE&) {
 	if (i == nullptr)
 		return -1;
 	else {
@@ -1977,12 +1988,18 @@ void Editor::DrawHandles() {
 			}
 			else {
 				for (int r = 0, rr = normalAssets[browseType].size(); r < rr; r++) {
-					if (Engine::Button(Display::width*0.2f + 6 + (Display::width*0.3f - 5)*((r + 1) & 1), Display::height*0.2f + 41 + 15 * (((r + 1) >> 1) - 1), Display::width*0.3f - 7, 14, grey2(), normalAssets[browseType][r], 12, font, white()) == MOUSE_RELEASE) {
-						*browseTarget = r;
-						editorLayer = 0;
-						if (browseCallback != nullptr)
-							(*browseCallback)(browseCallbackParam);
-						return;
+					byte b = Engine::Button(Display::width*0.2f + 6 + (Display::width*0.3f - 5)*((r + 1) & 1), Display::height*0.2f + 41 + 15 * (((r + 1) >> 1) - 1), Display::width*0.3f - 7, 14, grey2(), normalAssets[browseType][r], 12, font, white());
+					if (b & MOUSE_HOVER_FLAG) {
+						pendingPreview = true;
+						previewType = browseType;
+						previewId = r;
+						if (b == MOUSE_RELEASE) {
+							*browseTarget = r;
+							editorLayer = 0;
+							if (browseCallback != nullptr)
+								(*browseCallback)(browseCallbackParam);
+							return;
+						}
 					}
 				}
 			}
@@ -2051,6 +2068,25 @@ void Editor::DrawHandles() {
 			}
 		}
 	}
+	if (pendingPreview) {
+		pendingPreview = false;
+		previewTime += Time::delta;
+		if (previewTime > minPreviewTime) {
+			float px = Input::mousePos.x;
+			if (px > Display::width - 256) px -= 256;
+			float py = Input::mousePos.y;
+			if (py > 256) py -= 256;
+			Engine::DrawQuad(px, py, 256, 256, black(0.85f));
+			if (!((AssetObject*)GetCache(previewType, previewId))->DrawPreview(px + 2, py + 2, 252, 252)) {
+				Engine::DrawLine(Vec3(px, py, 0), Vec3(px + 256, py + 256, 0), grey1(), 1.5f);
+				Engine::DrawLine(Vec3(px, py + 256, 0), Vec3(px + 256, py, 0), grey1(), 1.5f);
+				font->Align(ALIGN_MIDCENTER);
+				Engine::Label(px + 128, py + 128, 12, "No preview", font, white());
+				font->Align(ALIGN_BOTLEFT);
+			}
+		}
+	}
+	else previewTime = 0;
 }
 
 void Editor::RegisterMenu(EditorBlock* block, string title, vector<string> names, vector<shortcutFunc> funcs, int padding, Vec2 pos) {
@@ -2245,13 +2281,13 @@ void Editor::ResetAssetMap() {
 
 	derivedAssets[ASSETTYPE_TEXTURE_REND] = pair<ASSETTYPE, vector<uint>>(ASSETTYPE_TEXTURE, vector<uint>());
 
-	normalAssetCaches[ASSETTYPE_TEXTURE] = vector<void*>(); //Texture*
-	normalAssetCaches[ASSETTYPE_HDRI] = vector<void*>(); //Background*
-	normalAssetCaches[ASSETTYPE_MATERIAL] = vector<void*>(); //Material*
-	normalAssetCaches[ASSETTYPE_MESH] = vector<void*>(); //Mesh*
-	normalAssetCaches[ASSETTYPE_ANIMCLIP] = vector<void*>(); //AnimClip*
-	normalAssetCaches[ASSETTYPE_ANIMATOR] = vector<void*>(); //Animator*
-	normalAssetCaches[ASSETTYPE_CAMEFFECT] = vector<void*>(); //CameraEffect*
+	normalAssetCaches[ASSETTYPE_TEXTURE] = vector<AssetObject*>(); //Texture*
+	normalAssetCaches[ASSETTYPE_HDRI] = vector<AssetObject*>(); //Background*
+	normalAssetCaches[ASSETTYPE_MATERIAL] = vector<AssetObject*>(); //Material*
+	normalAssetCaches[ASSETTYPE_MESH] = vector<AssetObject*>(); //Mesh*
+	normalAssetCaches[ASSETTYPE_ANIMCLIP] = vector<AssetObject*>(); //AnimClip*
+	normalAssetCaches[ASSETTYPE_ANIMATOR] = vector<AssetObject*>(); //Animator*
+	normalAssetCaches[ASSETTYPE_CAMEFFECT] = vector<AssetObject*>(); //CameraEffect*
 }
 
 void Editor::ReloadAssets(string path, bool recursive) {

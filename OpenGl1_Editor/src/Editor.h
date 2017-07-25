@@ -154,7 +154,7 @@ public:
 	Vec3 arrowVerts[15];
 	static const int arrowTIndexs[18];
 	static const int arrowSIndexs[18];
-	glm::mat4 viewingMatrix;
+	Mat4x4 viewingMatrix;
 	bool persp;
 	float fov;
 	Vec3 rotCenter;
@@ -168,7 +168,7 @@ public:
 	Vec3 modAxisDir;
 	Camera* seeingCamera;
 
-	glm::mat4 invMatrix, projMatrix;
+	Mat4x4 invMatrix, projMatrix;
 	void MakeMatrix();
 
 	void Draw();
@@ -277,7 +277,7 @@ protected:
 	void _InitDebugPrograms();
 	void DrawPreview(Vec4 v);
 	void _RenderLights(Vec4 v);
-	void _RenderSky(glm::mat4 mat), _DrawLights(vector<SceneObject*> oo, glm::mat4 ip);
+	void _RenderSky(Mat4x4 mat), _DrawLights(vector<SceneObject*> oo, Mat4x4 ip);
 
 	static void _ToggleBuffers(EditorBlock* v), _ToggleLumi(EditorBlock* v);
 
@@ -416,13 +416,20 @@ public:
 	int scrW, scrH;
 	byte editorLayer;
 
+	bool pendingPreview;
+	float previewTime;
+	float minPreviewTime = 0.5f;
+	string previewStr;
+	ASSETTYPE previewType; //undef if string
+	ASSETID previewId;
+
 	int gridId[68];
 	Vec3 grid[64];
 
 	shared_ptr<Scene> activeScene = nullptr;
 	bool sceneLoaded() { return activeScene != nullptr; }
 	SceneObject* selected;
-	glm::mat4 selectedMvMatrix;
+	Mat4x4 selectedMvMatrix;
 	bool selectGlobal = false;
 	vector<string> includedScenes;
 	vector<bool> includedScenesUse;
@@ -435,7 +442,7 @@ public:
 	void* selectedFileCache;
 	void DeselectFile();
 
-	glm::mat4 viewMatrix;
+	Mat4x4 viewMatrix;
 	bool persp;
 
 	ShortcutMapGlobal globalShorts;
@@ -456,7 +463,7 @@ public:
 	vector<string> headerAssets, cppAssets, blendAssets;
 	unordered_map<ASSETTYPE, vector<string>> normalAssets;
 	unordered_map <ASSETTYPE, pair<ASSETTYPE, vector<uint>>> derivedAssets;
-	unordered_map<ASSETTYPE, vector<void*>> normalAssetCaches;
+	unordered_map<ASSETTYPE, vector<AssetObject*>> normalAssetCaches;
 
 	void ResetAssetMap();
 
@@ -464,7 +471,7 @@ public:
 	void DrawCompSelector(float x, float y, float w, float h, Vec4 col, float labelSize, Font* labelFont, CompRef* tar, callbackFunc func = nullptr, void* param = nullptr);
 	void DrawColorSelector(float x, float y, float w, float h, Vec4 col, float labelSize, Font* labelFont, Vec4* tar);
 	ASSETID GetAssetInfoH(string p), GetAssetInfo(string p, ASSETTYPE &type, ASSETID& i);
-	ASSETID GetAssetId(void* p), GetAssetId(void* p, ASSETTYPE& t);
+	ASSETID GetAssetId(AssetObject* p), GetAssetId(AssetObject* p, ASSETTYPE& t);
 
 	void ReadPrefs(), SavePrefs();
 	void LoadDefaultAssets();

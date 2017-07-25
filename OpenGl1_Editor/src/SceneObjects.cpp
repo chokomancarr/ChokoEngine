@@ -130,7 +130,7 @@ void Camera::ApplyGL() {
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	Quat q = glm::inverse(object->transform.rotation);
+	Quat q = glm::inverse(object->transform.rotation());
 	glMultMatrixf(glm::value_ptr(glm::perspectiveFov(fov * deg2rad, (float)Display::width, (float)Display::height, 0.01f, 500.0f)));
 	glScalef(1, 1, -1);
 	glMultMatrixf(glm::value_ptr(Quat2Mat(q)));
@@ -535,8 +535,8 @@ void MeshRenderer::DrawEditor(EB_Viewer* ebv) {
 	GLfloat matrix[16], matrix2[16];
 	glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
 	glGetFloatv(GL_PROJECTION_MATRIX, matrix2);
-	glm::mat4 m1(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
-	glm::mat4 m2(matrix2[0], matrix2[1], matrix2[2], matrix2[3], matrix2[4], matrix2[5], matrix2[6], matrix2[7], matrix2[8], matrix2[9], matrix2[10], matrix2[11], matrix2[12], matrix2[13], matrix2[14], matrix2[15]);
+	Mat4x4 m1(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
+	Mat4x4 m2(matrix2[0], matrix2[1], matrix2[2], matrix2[3], matrix2[4], matrix2[5], matrix2[6], matrix2[7], matrix2[8], matrix2[9], matrix2[10], matrix2[11], matrix2[12], matrix2[13], matrix2[14], matrix2[15]);
 	for (uint m = 0; m < mf->mesh->materialCount; m++) {
 		if (materials[m] == nullptr)
 			continue;
@@ -568,8 +568,8 @@ void MeshRenderer::DrawDeferred() {
 	GLfloat matrix[16], matrix2[16];
 	glGetFloatv(GL_MODELVIEW_MATRIX, matrix); //model -> world
 	glGetFloatv(GL_PROJECTION_MATRIX, matrix2); //world -> screen
-	glm::mat4 m1(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
-	glm::mat4 m2(matrix2[0], matrix2[1], matrix2[2], matrix2[3], matrix2[4], matrix2[5], matrix2[6], matrix2[7], matrix2[8], matrix2[9], matrix2[10], matrix2[11], matrix2[12], matrix2[13], matrix2[14], matrix2[15]);
+	Mat4x4 m1(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
+	Mat4x4 m2(matrix2[0], matrix2[1], matrix2[2], matrix2[3], matrix2[4], matrix2[5], matrix2[6], matrix2[7], matrix2[8], matrix2[9], matrix2[10], matrix2[11], matrix2[12], matrix2[13], matrix2[14], matrix2[15]);
 	for (uint m = 0; m < mf->mesh->materialCount; m++) {
 		if (materials[m] == nullptr)
 			continue;
@@ -1272,12 +1272,12 @@ void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 			Engine::Label(v.r + 2, v.g + pos, 12, "start distance", e->font, white());
 			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
 			Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, to_string(minDist), e->font, white());
-			minDist = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, maxDist, minDist, grey1(), white());
+			minDist = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0.0001f, maxDist, minDist, grey1(), white());
 			pos += 17;
 			Engine::Label(v.r + 2, v.g + pos, 12, "end distance", e->font, white());
 			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
 			Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, to_string(maxDist), e->font, white());
-			maxDist = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 50, maxDist, grey1(), white());
+			maxDist = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0.0002f, 50, maxDist, grey1(), white());
 			pos += 17;
 			break;
 		}
@@ -1302,7 +1302,7 @@ void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 				Engine::Label(v.r + 2, v.g + pos, 12, "shadow bias", e->font, white());
 				Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
 				Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, to_string(shadowBias), e->font, white());
-				shadowBias = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 0.1f, shadowBias, grey1(), white());
+				shadowBias = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 0.02f, shadowBias, grey1(), white());
 				pos += 17;
 				Engine::Label(v.r + 2, v.g + pos, 12, "shadow strength", e->font, white());
 				Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
@@ -1340,7 +1340,7 @@ void Light::CalcShadowMatrix() {
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	if (_lightType == LIGHTTYPE_SPOT || _lightType == LIGHTTYPE_POINT) {
-		Quat q = glm::inverse(object->transform.rotation);
+		Quat q = glm::inverse(object->transform.rotation());
 		glMultMatrixf(glm::value_ptr(glm::perspectiveFov(angle * deg2rad, 1024.0f, 1024.0f, minDist, maxDist)));
 		glScalef(1, 1, -1);
 		glMultMatrixf(glm::value_ptr(Quat2Mat(q)));
@@ -1348,7 +1348,7 @@ void Light::CalcShadowMatrix() {
 		glTranslatef(pos.x, pos.y, pos.z);
 	}
 	//else
-		//_shadowMatrix = glm::mat4();
+		//_shadowMatrix = Mat4x4();
 }
 
 void Light::Serialize(Editor* e, ofstream* stream) {
@@ -1367,7 +1367,9 @@ void Light::Serialize(Editor* e, ofstream* stream) {
 	_StreamWrite(&color.a, stream, 4);
 }
 
-Light::Light(ifstream& stream, SceneObject* o, long pos) : Component("Light", COMP_LHT, DRAWORDER_LIGHT, o) {
+Light::Light() : Component("Light", COMP_LHT, DRAWORDER_LIGHT), _lightType(LIGHTTYPE_POINT) {}
+
+Light::Light(ifstream& stream, SceneObject* o, long pos) : Light() {
 	if (pos >= 0)
 		stream.seekg(pos);
 
@@ -1484,7 +1486,7 @@ void ReflectionProbe::Serialize(Editor* e, ofstream* stream) {
 	_StreamWrite(&softness, stream, 4);
 }
 
-Armature::Armature(string path, SceneObject* o) : Component("Armature", COMP_ARM, DRAWORDER_OVERLAY), overridePos(false), restPosition(o->transform.position), restRotation(o->transform.rotation), restScale(o->transform.scale), _anim(-1) {
+Armature::Armature(string path, SceneObject* o) : Component("Armature", COMP_ARM, DRAWORDER_OVERLAY), overridePos(false), restPosition(o->transform.position), restRotation(o->transform.rotation()), restScale(o->transform.scale), _anim(-1) {
 	ifstream strm(path);
 	if (!strm.is_open()) {
 		Debug::Error("Armature", "File not found!");

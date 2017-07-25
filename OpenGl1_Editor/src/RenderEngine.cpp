@@ -10,10 +10,10 @@ void CheckGLOK() {
 	}
 }
 
-glm::mat4 GetMatrix(GLenum type) {
+Mat4x4 GetMatrix(GLenum type) {
 	GLfloat matrix[16];
 	glGetFloatv(type, matrix);
-	return glm::mat4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
+	return Mat4x4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
 }
 
 void DrawSceneObjectsOpaque(vector<SceneObject*> oo) {
@@ -22,7 +22,7 @@ void DrawSceneObjectsOpaque(vector<SceneObject*> oo) {
 		glPushMatrix();
 		Vec3 v = sc->transform.position;
 		Vec3 vv = sc->transform.scale;
-		Quat vvv = sc->transform.rotation;
+		Quat vvv = sc->transform.rotation();
 		glTranslatef(v.x, v.y, v.z);
 		glScalef(vv.x, vv.y, vv.z);
 		glMultMatrixf(glm::value_ptr(Quat2Mat(vvv)));
@@ -287,7 +287,7 @@ void EB_Previewer::_RenderLights(Vec4 v) {
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, b_fbo);
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, b_fbo);
 
-	glm::mat4 mat = glm::inverse(GetMatrix(GL_PROJECTION_MATRIX));
+	Mat4x4 mat = glm::inverse(GetMatrix(GL_PROJECTION_MATRIX));
 	Camera::_RenderSky(mat, d_texs, d_depthTex, previewWidth, previewHeight); //wont work well on ortho, will it?
 	//glViewport(v.r, Display::height - v.g - v.a, v.b, v.a - EB_HEADER_SIZE - 2);
 	_DrawLights(Scene::active->objects, mat);
@@ -295,7 +295,7 @@ void EB_Previewer::_RenderLights(Vec4 v) {
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
-void EB_Previewer::_DrawLights(vector<SceneObject*> oo, glm::mat4 ip) {
+void EB_Previewer::_DrawLights(vector<SceneObject*> oo, Mat4x4 ip) {
 	for (SceneObject* o : oo) {
 		if (!o->active)
 			continue;
@@ -370,7 +370,7 @@ void Camera::Render(RenderTexture* target) {
 #endif
 }
 
-void Camera::_DoRenderProbeMask(ReflectionProbe* p, glm::mat4& ip) {
+void Camera::_DoRenderProbeMask(ReflectionProbe* p, Mat4x4& ip) {
 	GLint _IP = glGetUniformLocation(d_probeMaskProgram, "_IP");
 	GLint scrSzLoc = glGetUniformLocation(d_probeMaskProgram, "screenSize");
 	GLint prbPosLoc = glGetUniformLocation(d_probeMaskProgram, "probePos");
@@ -406,7 +406,7 @@ void Camera::_DoRenderProbeMask(ReflectionProbe* p, glm::mat4& ip) {
 }
 
 //mask shaded parts with alpha += influence/4
-void Camera::_RenderProbesMask(vector<SceneObject*>& objs, glm::mat4 mat, vector<ReflectionProbe*>& probes) {
+void Camera::_RenderProbesMask(vector<SceneObject*>& objs, Mat4x4 mat, vector<ReflectionProbe*>& probes) {
 	for (SceneObject* o : objs) {
 		if (!o->active)
 			continue;
@@ -421,13 +421,13 @@ void Camera::_RenderProbesMask(vector<SceneObject*>& objs, glm::mat4 mat, vector
 }
 
 //strength decided from influence / (alpha*4)
-void Camera::_RenderProbes(vector<ReflectionProbe*>& probes, glm::mat4 mat) {
+void Camera::_RenderProbes(vector<ReflectionProbe*>& probes, Mat4x4 mat) {
 	for (ReflectionProbe* p : probes) {
 		//_DoRenderProbe(p, mat);
 	}
 }
 
-void Camera::_RenderSky(glm::mat4 ip, GLuint d_texs[], GLuint d_depthTex, float w, float h) {
+void Camera::_RenderSky(Mat4x4 ip, GLuint d_texs[], GLuint d_depthTex, float w, float h) {
 	if (Scene::active->settings.sky == nullptr) return;
 	if (d_skyProgram == 0) {
 		Debug::Error("SkyLightPass", "Fatal: Shader not initialized!");
@@ -514,8 +514,9 @@ void Light::ScanParams() {
 #undef PBSL
 }
 
-void Camera::_DoDrawLight_Point(Light* l, glm::mat4& ip, GLuint d_fbo, GLuint d_texs[], GLuint d_depthTex, GLuint ctar, GLuint c_tex, float w, float h, GLuint tar) {
+void Camera::_DoDrawLight_Point(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs[], GLuint d_depthTex, GLuint ctar, GLuint c_tex, float w, float h, GLuint tar) {
 	//draw 6 spotlights
+	return;
 #define DSL _DoDrawLight_Spot(l, ip, d_fbo, d_texs, d_depthTex, ctar, c_tex, w, h, tar);
 #define RTT l->object->transform.Rotate(0, 0, 90);
 	l->angle = 45;
@@ -529,7 +530,7 @@ void Camera::_DoDrawLight_Point(Light* l, glm::mat4& ip, GLuint d_fbo, GLuint d_
 #undef RTT
 }
 
-void Camera::_DoDrawLight_Spot_Contact(Light* l, glm::mat4& p, GLuint d_depthTex, float w, float h, GLuint src, GLuint tar) {
+void Camera::_DoDrawLight_Spot_Contact(Light* l, Mat4x4& p, GLuint d_depthTex, float w, float h, GLuint src, GLuint tar) {
 	if (d_sLightCSProgram == 0) {
 		Debug::Error("SpotLightCSPass", "Fatal: Shader not initialized!");
 		abort();
@@ -573,14 +574,14 @@ void Camera::_DoDrawLight_Spot_Contact(Light* l, glm::mat4& p, GLuint d_depthTex
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
-void Camera::_DoDrawLight_Spot(Light* l, glm::mat4& ip, GLuint d_fbo, GLuint d_texs[], GLuint d_depthTex, GLuint ctar, GLuint c_tex, float w, float h, GLuint tar) {
+void Camera::_DoDrawLight_Spot(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs[], GLuint d_depthTex, GLuint ctar, GLuint c_tex, float w, float h, GLuint tar) {
 	if (l->maxDist <= 0 || l->angle <= 0 || l->intensity <= 0) return;
 	if (l->minDist <= 0) l->minDist = 0.00001f;
 	if (l->drawShadow) {
 		l->DrawShadowMap(tar);
 		glViewport(0, 0, (int)w, (int)h); //shadow map modifies viewport
 	}
-	glm::mat4 lp = GetMatrix(GL_PROJECTION_MATRIX);
+	Mat4x4 lp = GetMatrix(GL_PROJECTION_MATRIX);
 	
 	if (d_sLightProgram == 0) {
 		Debug::Error("SpotLightPass", "Fatal: Shader not initialized!");
@@ -654,7 +655,7 @@ void Camera::_DoDrawLight_Spot(Light* l, glm::mat4& ip, GLuint d_fbo, GLuint d_t
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
-void Camera::_DrawLights(vector<SceneObject*>& oo, glm::mat4& ip, GLuint targetFbo) {
+void Camera::_DrawLights(vector<SceneObject*>& oo, Mat4x4& ip, GLuint targetFbo) {
 	for (SceneObject* o : oo) {
 		if (!o->active)
 			continue;
@@ -685,7 +686,7 @@ void Camera::RenderLights(GLuint targetFbo) {
 
 	GLfloat matrix[16];
 	glGetFloatv(GL_PROJECTION_MATRIX, matrix);
-	glm::mat4 mat = glm::inverse(glm::mat4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]));
+	Mat4x4 mat = glm::inverse(Mat4x4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]));
 
 	//clear alpha here
 	vector<ReflectionProbe*> probes;

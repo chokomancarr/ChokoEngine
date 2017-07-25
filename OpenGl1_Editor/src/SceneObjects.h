@@ -55,24 +55,29 @@ public:
 
 	SceneObject* object;
 	Vec3 position;
-	const Vec3 worldPosition(), forward();
-	Quat rotation;
-	const Quat worldRotation();
+	const Vec3 worldPosition(), forward(), right(), up();
+	const Quat rotation(), worldRotation();
 	const Vec3& eulerRotation() { return _eulerRotation;  }
 	void eulerRotation(Vec3 r);
 	Vec3 scale;
 
 	Transform* Translate(float x, float y, float z) { return Translate(Vec3(x, y, z)); }
-	Transform* Rotate(float x, float y, float z) { return Rotate(Vec3(x, y, z)); }
+	Transform* Rotate(float x, float y, float z, TransformSpace sp = Space_Self) { return Rotate(Vec3(x, y, z), sp); }
 	Transform* Scale(float x, float y, float z) { return Scale(Vec3(x, y, z)); }
-	Transform* Translate(Vec3 v), *Rotate(Vec3 v), *Scale(Vec3 v);
+	Transform* Translate(Vec3 v), *Rotate(Vec3 v, TransformSpace sp = Space_Self), *Scale(Vec3 v);
 
 	friend class SceneObject;
 private:
 	//never call Transform constructor directly. Call SceneObject().transform instead.
 	Transform(SceneObject* sc, Vec3 pos, Quat rot, Vec3 scl);
+	Quat _rotation;
 	Vec3 _eulerRotation;
+	Mat4x4 _localMatrix, _worldMatrix;
+
 	void _UpdateQuat();
+	void _UpdateEuler();
+	void _UpdateLMatrix();
+	void _UpdateWMatrix(const Mat4x4& mat);
 };
 
 class Mesh : public AssetObject {
@@ -192,7 +197,9 @@ protected:
 };
 
 class AnimValue {
-	float x, y, z, rw, rx, ry, rz;
+	string name;
+	Vec3 pos, scl;
+	Quat rot;
 };
 
 class Animator : public AssetObject {
@@ -251,7 +258,7 @@ public:
 	friend class AssetManager;
 	friend class RenderTexture;
 	friend void EBI_DrawAss_Tex(Vec4 v, Editor* editor, EB_Inspector* b, float &off);
-private:
+protected:
 	Texture() : AssetObject(ASSETTYPE_TEXTURE) {}
 	Texture(int i, Editor* e); //for caches
 	Texture(ifstream& strm, uint offset);
@@ -262,12 +269,15 @@ private:
 	bool _mipmap = true, _repeat = false;
 	static bool Parse(Editor* e, string path);
 	void _ApplyPrefs(const string& p);
+	bool DrawPreview(uint x, uint y, uint w, uint h) override;
 };
 
 class RenderTexture : public Texture {
 public:
 	RenderTexture(uint w, uint h, bool depth);
 	~RenderTexture();
+
+	static void Blit(Texture* src, RenderTexture* dst, Material* mat, string texName = "mainTex");
 
 	//void Resize(uint w, uint h);
 	friend class Texture;
@@ -388,13 +398,13 @@ protected:
 
 	void RenderLights(GLuint targetFbo = 0);
 	void DumpBuffers();
-	void _RenderProbesMask(vector<SceneObject*>& objs, glm::mat4 mat, vector<ReflectionProbe*>& probes), _RenderProbes(vector<ReflectionProbe*>& probes, glm::mat4 mat);
-	void _DoRenderProbeMask(ReflectionProbe* p, glm::mat4& ip), _DoRenderProbe(ReflectionProbe* p, glm::mat4& ip);
-	static void _RenderSky(glm::mat4 ip, GLuint d_texs[], GLuint d_depthTex, float w = Display::width, float h = Display::height);
-	void _DrawLights(vector<SceneObject*>& oo, glm::mat4& ip, GLuint targetFbo = 0);
-	static void _DoDrawLight_Point(Light* l, glm::mat4& ip, GLuint d_fbo, GLuint d_texs[], GLuint d_depthTex, GLuint ctar, GLuint c_tex, float w = Display::width, float h = Display::height, GLuint targetFbo = 0);
-	static void _DoDrawLight_Spot(Light* l, glm::mat4& ip, GLuint d_fbo, GLuint d_texs[], GLuint d_depthTex, GLuint ctar, GLuint c_tex, float w = Display::width, float h = Display::height, GLuint targetFbo = 0);
-	static void _DoDrawLight_Spot_Contact(Light* l, glm::mat4& p, GLuint d_depthTex, float w, float h, GLuint src, GLuint tar);
+	void _RenderProbesMask(vector<SceneObject*>& objs, Mat4x4 mat, vector<ReflectionProbe*>& probes), _RenderProbes(vector<ReflectionProbe*>& probes, Mat4x4 mat);
+	void _DoRenderProbeMask(ReflectionProbe* p, Mat4x4& ip), _DoRenderProbe(ReflectionProbe* p, Mat4x4& ip);
+	static void _RenderSky(Mat4x4 ip, GLuint d_texs[], GLuint d_depthTex, float w = Display::width, float h = Display::height);
+	void _DrawLights(vector<SceneObject*>& oo, Mat4x4& ip, GLuint targetFbo = 0);
+	static void _DoDrawLight_Point(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs[], GLuint d_depthTex, GLuint ctar, GLuint c_tex, float w = Display::width, float h = Display::height, GLuint targetFbo = 0);
+	static void _DoDrawLight_Spot(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs[], GLuint d_depthTex, GLuint ctar, GLuint c_tex, float w = Display::width, float h = Display::height, GLuint targetFbo = 0);
+	static void _DoDrawLight_Spot_Contact(Light* l, Mat4x4& p, GLuint d_depthTex, float w, float h, GLuint src, GLuint tar);
 
 	Vec3 camVerts[6];
 	static int camVertsIds[19];
@@ -489,8 +499,8 @@ protected:
 };
 
 struct SRD_ArmatureData { //bind(-1) -> animate -> bind
-	glm::mat4 bind[512];
-	glm::mat4 animate[512];
+	Mat4x4 bind[512];
+	Mat4x4 animate[512];
 };
 
 #define COMP_SRD 0x12
@@ -534,21 +544,21 @@ enum LIGHTTYPE : byte {
 #define LIGHT_POINT_MINSTR 0.01f
 class Light : public Component {
 public:
-	Light() : Component("Light", COMP_LHT, DRAWORDER_LIGHT), _lightType(LIGHTTYPE_POINT), intensity(1), color(white()), angle(45), minDist(0), maxDist(30), drawShadow(false), shadowBias(0.1f), shadowStrength(1), _cookie(-1) {}
+	Light();
 	LIGHTTYPE lightType() { return _lightType; }
 
-	float intensity;
-	Vec4 color;
-	float angle;
-	float minDist, maxDist;
-	bool drawShadow;
-	float shadowBias, shadowStrength;
+	float intensity = 1;
+	Vec4 color = white();
+	float angle = 60;
+	float minDist = 0.01f, maxDist = 5;
+	bool drawShadow = true;
+	float shadowBias = 0.01f, shadowStrength = 1;
 	bool contactShadows = true;
 	float contactShadowDistance = 0.1f;
 	uint contactShadowSamples = 20;
 	Texture* cookie;
-	float cookieStrength;
-	bool square;
+	float cookieStrength = 1;
+	bool square = false;
 
 	void DrawEditor(EB_Viewer* ebv) override;
 	void DrawShadowMap(GLuint tar = 0);
@@ -562,7 +572,7 @@ public:
 protected:
 	LIGHTTYPE _lightType;
 	Light(ifstream& stream, SceneObject* o, long pos = -1);
-	//glm::mat4 _shadowMatrix;
+	//Mat4x4 _shadowMatrix;
 	ASSETID _cookie;
 	static void _SetCookie(void* v);
 

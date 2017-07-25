@@ -28,6 +28,43 @@
 
 using namespace std;
 
+Vec3 Quat2Euler(const Quat& q) {
+	Vec3 out;
+	double ysqr = q.y * q.y;
+
+	// roll (x-axis rotation)
+	double t0 = +2.0 * (q.w * q.x + q.y * q.z);
+	double t1 = +1.0 - 2.0 * (q.x * q.x + ysqr);
+	out.x = std::atan2(t0, t1);
+
+	// pitch (y-axis rotation)
+	double t2 = +2.0 * (q.w * q.y - q.z * q.x);
+	t2 = ((t2 > 1.0) ? 1.0 : t2);
+	t2 = ((t2 < -1.0) ? -1.0 : t2);
+	out.y = std::asin(t2);
+
+	// yaw (z-axis rotation)
+	double t3 = +2.0 * (q.w * q.z + q.x * q.y);
+	double t4 = +1.0 - 2.0 * (ysqr + q.z * q.z);
+	out.z = std::atan2(t3, t4);
+
+	return out;
+}
+
+Quat AxisAngle2Quat(const Vec3& axis, float angle) {
+	float a = deg2rad*angle;
+	double factor = sin(a / 2.0);
+
+	// Calculate the x, y and z of the quaternion
+	double x = axis.x * factor;
+	double y = axis.y * factor;
+	double z = axis.z * factor;
+
+	// Calcualte the w value by cos( theta / 2 )
+	double w = cos(a / 2.0);
+	return Normalize(Quat(x, y, z, w));
+}
+
 string to_string(Vec2 v) {
 	return "(" + to_string(v.x) + ", " + to_string(v.y) + ")";
 }
@@ -227,12 +264,12 @@ void Engine::Init(string path) {
 	Font::Init();
 
 	string vertcode = "#version 330 core\nlayout(location = 0) in vec3 pos;\nlayout(location = 1) in vec2 uv;\nout vec2 UV;\nvoid main(){ \ngl_Position.xyz = pos;\ngl_Position.w = 1.0;\nUV = uv;\n}";
-	string fragcode = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = texture(sampler, UV)*col;\n}"; //out vec3 Vec4;\n
-	string fragcode2 = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = vec4(1, 1, 1, texture(sampler, UV).r)*col;\n}"; //out vec3 Vec4;\n
+	string fragcode = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = textureLod(sampler, UV, 0)*col;\n}"; //out vec3 Vec4;\n
+	string fragcode2 = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = vec4(1, 1, 1, textureLod(sampler, UV, 0).r)*col;\n}"; //out vec3 Vec4;\n
 	string fragcode3 = "#version 330 core\nin vec2 UV;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = col;\n}"; //out vec3 Vec4;\n
 	//string fragcodeSky = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec2 dir;\nuniform float angle;\nout vec4 Vec4;\nvoid main(){\nvec4 col = texture(sampler, UV);\nVec4.rgb = col.rgb*pow(2, col.a*255-128);\nVec4.a = 1;\n}"; //(1.0f / 256.0f) * pow(2, (float)(exponent - 128));
 	//string fragcodeSky = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec2 dir;\nuniform float length;\nout vec4 Vec4;\nvoid main(){\nfloat ay = asin((dir.y + UV.y)/length);\nfloat l2 = length*cos(ay);\nfloat ax = asin((dir.x + UV.x)/l2);\nVec4 = texture(sampler, vec2(0.5, 0.5) + vec2(ax, ay));\nVec4.a = 1;\n}";
-	string fragcodeSky = "in vec2 UV;uniform sampler2D sampler;uniform vec2 dir;uniform float length;out vec4 color;void main(){float ay = asin((UV.y) / length);float l2 = length*cos(ay);float ax = asin((dir.x + UV.x) / l2);color = texture(sampler, vec2((dir.x + ax / 3.14159)*sin(dir.y + ay / 3.14159) + 0.5, (dir.y + ay / 3.14159)));color.a = 1;}";
+	string fragcodeSky = "in vec2 UV;uniform sampler2D sampler;uniform vec2 dir;uniform float length;out vec4 color;void main(){float ay = asin((UV.y) / length);float l2 = length*cos(ay);float ax = asin((dir.x + UV.x) / l2);color = textureLod(sampler, vec2((dir.x + ax / 3.14159)*sin(dir.y + ay / 3.14159) + 0.5, (dir.y + ay / 3.14159)), 0);color.a = 1;}";
 
 	unlitProgram = glCreateProgram();
 	GLuint vertex_shader, fragment_shader;
@@ -499,7 +536,7 @@ void Engine::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4, 
 		x -= totalW * (font->alignment & 15) * 0.5f;
 	}
 
-	y -= (0.5f * (font->alignment >> 4)) * s;
+	y -= (1-(0.5f * (font->alignment >> 4))) * s;
 
 	y = Display::height - y;
 	float w = 0;
@@ -1302,7 +1339,7 @@ Vec3 rotate(Vec3 v, Quat q) {
 }
 
 //-----------------transform class-------------------
-Transform::Transform(SceneObject* sc, Vec3 pos, Quat rot, Vec3 scl) : object(sc), rotation(rot), scale(scl) {
+Transform::Transform(SceneObject* sc, Vec3 pos, Quat rot, Vec3 scl) : object(sc), _rotation(rot), scale(scl) {
 	Translate(pos);
 }
 
@@ -1317,7 +1354,19 @@ const Vec3 Transform::worldPosition() {
 }
 
 const Vec3 Transform::forward() {
-	return rotate(Vec3(0, 0, 1), rotation);
+	return rotate(Vec3(0, 0, 1), _rotation);
+}
+
+const Vec3 Transform::right() {
+	return rotate(Vec3(1, 0, 0), _rotation);
+}
+
+const Vec3 Transform::up() {
+	return rotate(Vec3(0, 1, 0), _rotation);
+}
+
+const Quat Transform::rotation() {
+	return _rotation;
 }
 
 const Quat Transform::worldRotation() {
@@ -1333,16 +1382,41 @@ void Transform::eulerRotation(Vec3 r) {
 }
 
 void Transform::_UpdateQuat() {
-	rotation = Quat(deg2rad*_eulerRotation);
+	_rotation = Quat(deg2rad*_eulerRotation);
 }
 
+void Transform::_UpdateEuler() {
+	_eulerRotation = Quat2Euler(_rotation);
+}
+
+void Transform::_UpdateLMatrix() {
+	_localMatrix = Mat4x4(scale.x, 0, 0, 0, 0, scale.y, 0, 0, 0, 0, scale.z, 0, 0, 0, 0, 1);
+	_localMatrix = Mat4x4(0, 0, 0, position.x, 0, 0, 0, position.y, 0, 0, 0, position.z, 0, 0, 0, 1) * Quat2Mat(_rotation) * _localMatrix;
+	_UpdateWMatrix(object->parent? object->parent->transform._worldMatrix : Mat4x4());
+}
+
+void Transform::_UpdateWMatrix(const Mat4x4& mat) {
+	_worldMatrix = _localMatrix*mat;
+
+	for (SceneObject* oo : object->children)
+		oo->transform._UpdateWMatrix(_worldMatrix);
+}
 
 Transform* Transform::Translate(Vec3 v) {
 	position += v;
 	return this;
 }
-Transform* Transform::Rotate(Vec3 v) {
-	eulerRotation(_eulerRotation + v);
+Transform* Transform::Rotate(Vec3 v, TransformSpace sp) {
+	if (sp == Space_Self) {
+		Quat qx = AxisAngle2Quat(Vec3(1, 0, 0), v.x);
+		Quat qy = AxisAngle2Quat(Vec3(0, 1, 0), v.y);
+		Quat qz = AxisAngle2Quat(Vec3(0, 0, 1), v.z);
+		_rotation = qz*qy*qx*_rotation;
+	}
+	else {
+
+	}
+	_UpdateEuler();
 	return this;
 }
 Transform* Transform::Scale(Vec3 v) {
@@ -1383,9 +1457,41 @@ RenderTexture::RenderTexture(uint w, uint h, bool depth) : Texture() {
 }
 
 RenderTexture::~RenderTexture() {
-	glDeleteTextures(1, &pointer);
 	if (d_depthTex > 0) glDeleteTextures(1, &d_depthTex);
 	glDeleteFramebuffers(1, &d_fbo);
+}
+
+void RenderTexture::Blit(Texture* src, RenderTexture* dst, Material* mat, string texName) {
+	mat->SetTexture(texName, src);
+	glViewport(0, 0, dst->width, dst->height);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dst->d_fbo);
+	float zero[] = { 0,0,0,0 };
+	glClearBufferfv(GL_COLOR, 0, zero);
+	glDisable(GL_DEPTH_TEST);
+	glDepthMask(false);
+	glDisable(GL_BLEND);
+
+	Vec3 quadPoss[4];
+	quadPoss[1].x = 1;
+	quadPoss[2].y = 1;
+	quadPoss[3].x = 1;
+	quadPoss[3].y = 1;
+	uint quadIndexes[4] = { 0, 1, 3, 2 };
+	mat->ApplyGL(Mat4x4(), Mat4x4());
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
+
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &quadPoss[0]);
+
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glDrawElements(GL_QUADS, 4, GL_UNSIGNED_INT, &quadIndexes[0]);
+
+	glDisableVertexAttribArray(0);
+	glUseProgram(0);
+
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 }
 
 void RenderTexture::Load(string path) {
@@ -1740,6 +1846,11 @@ void Texture::_ApplyPrefs(const string& p) {
 	}
 }
 
+bool Texture::DrawPreview(uint x, uint y, uint w, uint h) {
+	Engine::DrawTexture(x, y, w, h, this, DrawTex_Fit);
+	return true;
+}
+
 Background::Background(const string& path) : width(0), height(0), AssetObject(ASSETTYPE_HDRI) {
 	if (path.size() < 5 || path.substr(path.size() - 4, string::npos) != ".hdr") {
 		printf("HDRI path invalid!");
@@ -1757,14 +1868,14 @@ Background::Background(const string& path) : width(0), height(0), AssetObject(AS
 	glBindTexture(GL_TEXTURE_2D, pointer);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_FLOAT, &data[0]);
 
-	uint width_1, height_1, mips = 0;
+	uint width_1 = width, height_1 = height, width_2, height_2, mips = 0;
 	while (mips < 6 && height > 16) {
 		//cout << "Downsampling " << mips << endl;
 		mips++;
-		data = Downsample(data, width, height, width_1, height_1);
-		glTexImage2D(GL_TEXTURE_2D, mips, GL_RGB, width_1, height_1, 0, GL_RGB, GL_FLOAT, &data[0]);
-		width = width_1 + 0;
-		height = height_1 + 0;
+		data = Downsample(data, width_1, height_1, width_2, height_2);
+		glTexImage2D(GL_TEXTURE_2D, mips, GL_RGB, width_2, height_2, 0, GL_RGB, GL_FLOAT, &data[0]);
+		width_1 = width_2 + 0;
+		height_1 = height_2 + 0;
 	}
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -1803,14 +1914,14 @@ Background::Background(int i, Editor* editor) : width(0), height(0), AssetObject
 	glBindTexture(GL_TEXTURE_2D, pointer);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_FLOAT, &data[0]);
 	
-	uint width_1, height_1, mips = 0;
+	uint width_1 = width, height_1 = height, width_2, height_2, mips = 0;
 	while (mips < 6 && height > 16) {
 		//cout << "Downsampling " << mips << endl;
 		mips++;
-		data = Downsample(data, width, height, width_1, height_1);
-		glTexImage2D(GL_TEXTURE_2D, mips, GL_RGB, width_1, height_1, 0, GL_RGB, GL_FLOAT, &data[0]);
-		width = width_1 + 0;
-		height = height_1 + 0;
+		data = Downsample(data, width_1, height_1, width_2, height_2);
+		glTexImage2D(GL_TEXTURE_2D, mips, GL_RGB, width_2, height_2, 0, GL_RGB, GL_FLOAT, &data[0]);
+		width_1 = width_2 + 0;
+		height_1 = height_2 + 0;
 	}
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -2519,6 +2630,16 @@ void Material::LoadOris() {
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
+void Material::_UpdateTexCache(void* v) {
+	Material* mat = (Material*)v;
+	for (auto& a : mat->vals[SHADER_SAMPLER]) {
+		if (a.second == nullptr)
+			continue;
+		MatVal_Tex* tx = (MatVal_Tex*)a.second;
+		tx->tex = _GetCache<Texture>(ASSETTYPE_TEXTURE, tx->id);
+	}
+}
+
 void Material::Save(string path) {
 	ofstream strm(path.c_str(), ios::out | ios::binary | ios::trunc);
 	strm << "KTC";
@@ -2565,7 +2686,7 @@ void Material::Save(string path) {
 	strm.close();
 }
 
-void Material::ApplyGL(glm::mat4& _mv, glm::mat4& _p) {
+void Material::ApplyGL(Mat4x4& _mv, Mat4x4& _p) {
 	if (shader == nullptr) {
 		glUseProgram(0);
 		return;
