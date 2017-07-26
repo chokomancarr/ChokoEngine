@@ -9,8 +9,8 @@ public:
 	static string OpenFile(string filter) {
 		OPENFILENAME ofn;       // common dialog box structure
 		char szFile[260];       // buffer for file name
-		HWND hwnd;              // owner window
-		HANDLE hf;              // file handle
+		//HWND hwnd;              // owner window
+		//HANDLE hf;              // file handle
 		ZeroMemory(&ofn, sizeof(ofn));
 		ofn.lStructSize = sizeof(ofn);
 		ofn.hwndOwner = GetForegroundWindow();

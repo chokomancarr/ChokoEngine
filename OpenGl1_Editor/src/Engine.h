@@ -22,8 +22,6 @@
 #include FT_FREETYPE_H
 #include "Defines.h"
 
-using namespace std;
-
 #define PI 3.1415926535f
 #define rad2deg 57.2958f
 #define deg2rad 0.0174533f
@@ -38,12 +36,19 @@ typedef unsigned char byte;
 typedef unsigned int uint;
 typedef unsigned long ulong;
 typedef unsigned short ushort;
+typedef std::string string;
 typedef glm::vec2 Vec2;
 typedef glm::vec3 Vec3;
 typedef glm::vec4 Vec4;
 typedef glm::quat Quat;
 typedef glm::mat4 Mat4x4;
 
+string to_string(float f);
+string to_string(double f);
+string to_string(ulong f);
+string to_string(long f);
+string to_string(uint f);
+string to_string(int f);
 string to_string(Vec2 v), to_string(Vec3 v), to_string(Vec4 v), to_string(Quat v);
 //Vec2 normalize
 
@@ -141,11 +146,11 @@ Vec4 LerpVec4(Vec4 a, Vec4 b, float f);
 float clamp(float f, float a, float b);
 float repeat(float f, float a, float b);
 Vec3 rotate(Vec3 v, Quat q);
-void _StreamWrite(const void* val, ofstream* stream, int size);
-void _StreamWriteAsset(Editor* e, ofstream* stream, ASSETTYPE t, ASSETID i);
-//void _Strm2Int(ifstream& strm, int& i), _Strm2Float(ifstream& strm, float& f), _Strm2Short(ifstream& strm, short& i);
+void _StreamWrite(const void* val, std::ofstream* stream, int size);
+void _StreamWriteAsset(Editor* e, std::ofstream* stream, ASSETTYPE t, ASSETID i);
+//void _Strm2Int(std::ifstream& strm, int& i), _Strm2Float(std::ifstream& strm, float& f), _Strm2Short(std::ifstream& strm, short& i);
 
-template<typename T> void _Strm2Val(ifstream& strm, T &val) {
+template<typename T> void _Strm2Val(std::ifstream& strm, T &val) {
 	/*
 	long long pos = strm.tellg();
 	byte size = sizeof(T);
@@ -160,12 +165,12 @@ template<typename T> void _Strm2Val(ifstream& strm, T &val) {
 	long long pos = strm.tellg();
 	strm.read((char*)&val, (byte)sizeof(T));
 	if (strm.fail()) {
-		Debug::Error("Strm2Val", "Fail bit raised! (probably eof reached) " + to_string(pos));
+		Debug::Error("Strm2Val", "Fail bit raised! (probably eof reached) " + std::to_string(pos));
 	}
 }
-ASSETID _Strm2H(ifstream& strm);
+ASSETID _Strm2H(std::ifstream& strm);
 
-string _Strm2Asset(ifstream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int maxL = 100);
+string _Strm2Asset(std::ifstream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int maxL = 100);
 
 //void* __GetCacheE(ASSETTYPE t, ASSETID i);
 template<typename T> T* _GetCache(ASSETTYPE t, ASSETID i) {
@@ -175,7 +180,7 @@ template<typename T> T* _GetCache(ASSETTYPE t, ASSETID i) {
 	return static_cast<T*>(AssetManager::GetCache(t, i));
 #endif
 }
-vector<float> hdr2float(byte imagergbe[], int w, int h);
+std::vector<float> hdr2float(byte imagergbe[], int w, int h);
 
 //see SceneObjects.h
 class Object;
@@ -232,28 +237,28 @@ public:
 	static void Message(string c, string s);
 	static void Warning(string c, string s);
 	static void Error(string c, string s);
-	static void ObjectTree(vector<SceneObject*> o);
+	static void ObjectTree(std::vector<SceneObject*> o);
 
 	friend int main(int argc, char **argv);
 protected:
-	static ofstream* stream;
+	static std::ofstream* stream;
 	static void Init(string path);
 
 private:
-	static void DoDebugObjectTree(vector<SceneObject*> o, int i);
+	static void DoDebugObjectTree(std::vector<SceneObject*> o, int i);
 };
 
 class EB_Browser_File;
 
 class IO {
 public:
-	static vector<string> GetFiles(const string& path, string ext = "");
-	static vector<EB_Browser_File> GetFilesE(Editor* e, const string& path);
-	static void GetFolders(const string& path, vector<string>* names, bool hidden = false);
+	static std::vector<string> GetFiles(const string& path, string ext = "");
+	static std::vector<EB_Browser_File> GetFilesE(Editor* e, const string& path);
+	static void GetFolders(const string& path, std::vector<string>* names, bool hidden = false);
 	static bool HasDirectory(LPCTSTR szPath);
 	static bool HasFile(LPCTSTR szPath);
 	static string ReadFile(const string& path);
-	static vector<string> GetRegistryKeys(HKEY key);
+	static std::vector<string> GetRegistryKeys(HKEY key);
 };
 
 class Font {
@@ -279,13 +284,13 @@ protected:
 	Vec2 off[256];
 
 	uint vecSize;
-	vector<Vec3> poss;
-	vector<Vec2> uvs;
-	vector<uint> ids;
-	vector<float> cs;
+	std::vector<Vec3> poss;
+	std::vector<Vec2> uvs;
+	std::vector<uint> ids;
+	std::vector<float> cs;
 	void SizeVec(uint sz);
 
-	unordered_map<uint, GLuint> _glyphs; //each glyph size is fontSize*16
+	std::unordered_map<uint, GLuint> _glyphs; //each glyph size is fontSize*16
 	GLuint CreateGlyph (uint size, bool recalcW2h = false);
 };
 
@@ -421,7 +426,7 @@ public:
 class ShaderBase : public AssetObject {
 public:
 	ShaderBase(string path);
-	ShaderBase(ifstream& stream, uint offset);
+	ShaderBase(std::ifstream& stream, uint offset);
 	//ShaderBase(string vert, string frag);
 	~ShaderBase() {
 		glDeleteProgram(pointer);
@@ -432,13 +437,13 @@ public:
 	bool loaded;
 	GLuint pointer;
 	ShaderTags tags;
-	vector<ShaderVariable*> vars;
+	std::vector<ShaderVariable*> vars;
 
 	//void Set(byte type, GLint id, void* val) { values[type][id] = val; }
 	//void* Get(byte type, GLint id) { return values[type][id]; }
 	
 	//removes macros, insert include files
-	static bool Parse(ifstream* text, string path);
+	static bool Parse(std::ifstream* text, string path);
 	static bool LoadShader(GLenum shaderType, string source, GLuint& shader, string* err = nullptr);
 };
 
@@ -463,9 +468,9 @@ public:
 	ShaderBase* Shader();
 	void Shader(ShaderBase* shad);
 	//values applied to program on drawing stage
-	unordered_map<SHADER_VARTYPE, unordered_map <GLint, void*>> vals;
-	unordered_map<SHADER_VARTYPE, vector<string>> valNames;
-	//unordered_map<GLint, ShaderVariable> vals;
+	std::unordered_map<SHADER_VARTYPE, std::unordered_map <GLint, void*>> vals;
+	std::unordered_map<SHADER_VARTYPE, std::vector<string>> valNames;
+	//std::unordered_map<GLint, ShaderVariable> vals;
 	void SetTexture(string name, Texture* texture);
 	void SetTexture(GLint id, Texture* texture);
 	void SetFloat(string name, float val);
@@ -486,14 +491,14 @@ public:
 	friend void EBI_DrawAss_Mat(Vec4 v, Editor* editor, EB_Inspector* b, float &off);
 protected:
 	Material(string s);
-	Material(ifstream& stream, uint offset);
+	Material(std::ifstream& stream, uint offset);
 	void _ReloadParams();
 
 	ShaderBase* shader;
 	int _shader;
-	vector<SHADER_VARTYPE> valOrders;
-	vector<byte> valOrderIds;
-	vector<byte> valOrderGLIds;
+	std::vector<SHADER_VARTYPE> valOrders;
+	std::vector<byte> valOrderIds;
+	std::vector<byte> valOrderGLIds;
 
 	static void LoadOris();
 	static GLuint defTex_White, defTex_Black, defTex_Red, defTex_Green, defTex_Blue, defTex_Grey;
@@ -566,9 +571,9 @@ public:
 
 	static Texture* fallbackTex;
 
-	static vector<ifstream> dataFiles;
-	static unordered_map<ASSETTYPE, vector<pair<byte, long>>> dataPoss;
-	static unordered_map<ASSETTYPE, vector<void*>> dataPossCache;
+	static std::vector<std::ifstream> dataFiles;
+	static std::unordered_map<ASSETTYPE, std::vector<std::pair<byte, long>>> dataPoss;
+	static std::unordered_map<ASSETTYPE, std::vector<void*>> dataPossCache;
 
 //private: //fk users
 	static void DrawQuad(float x, float y, float w, float h, uint texture);
@@ -579,11 +584,11 @@ public:
 	static void DrawIndices(const Vec3* poss, const int* is, int length, float r, float g, float b);
 	static void DrawIndicesI(const Vec3* poss, const int* is, int length, float r, float g, float b);
 	static ulong idCounter;
-	static vector<Camera*> sceneCameras;
+	static std::vector<Camera*> sceneCameras;
 	
-	static vector<ifstream*> assetStreams;
-	static unordered_map<byte, vector<string>> assetData;
-	//static unordered_map<string, byte[]> assetDataLoaded;
+	static std::vector<std::ifstream*> assetStreams;
+	static std::unordered_map<byte, std::vector<string>> assetData;
+	//static std::unordered_map<string, byte[]> assetDataLoaded;
 	//byte GetAsset(string name);
 	friend int main(int argc, char **argv);
 protected:
@@ -613,9 +618,9 @@ protected:
 class Scene {
 public:
 	Scene() : sceneName("newScene") {}
-	Scene(ifstream& stream, long pos);
+	Scene(std::ifstream& stream, long pos);
 	~Scene() {}
-	static shared_ptr<Scene> active;
+	static std::shared_ptr<Scene> active;
 	static bool loaded() {
 		return active != nullptr;
 	}
@@ -623,7 +628,7 @@ public:
 	int sceneId;
 	static void AddObject(SceneObject* object, SceneObject* parent = nullptr);
 	static void DeleteObject(SceneObject* object);
-	vector<SceneObject*> objects;
+	std::vector<SceneObject*> objects;
 	SceneSettings settings;
 
 	static void Load(uint i), Load(string name);
@@ -632,9 +637,9 @@ public:
 	friend class Editor;
 	friend class AssetManager;
 protected:
-	static ifstream* strm;
-	static vector<string> sceneNames;
-	static vector<long> scenePoss;
+	static std::ifstream* strm;
+	static std::vector<string> sceneNames;
+	static std::vector<long> scenePoss;
 	static void ReadD0();
 	static void Unload();
 	void Save(Editor* e);
@@ -647,12 +652,12 @@ class AssetManager {
 	friend class SceneObject;
 	friend class Material;
 	template<typename T> friend T* _GetCache(ASSETTYPE t, ASSETID i);
-	friend string _Strm2Asset(ifstream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int max);
+	friend string _Strm2Asset(std::ifstream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int max);
 protected:
-	static unordered_map<ASSETTYPE, vector<string>> names;
-	static unordered_map<ASSETTYPE, vector<pair<byte, uint>>> dataLocs;
-	static unordered_map<ASSETTYPE, vector<void*>> dataCaches;
-	static vector<ifstream*> streams;
+	static std::unordered_map<ASSETTYPE, std::vector<string>> names;
+	static std::unordered_map<ASSETTYPE, std::vector<std::pair<byte, uint>>> dataLocs;
+	static std::unordered_map<ASSETTYPE, std::vector<void*>> dataCaches;
+	static std::vector<std::ifstream*> streams;
 	static void Init(string dpath);
 	static void* CacheFromName(string nm);
 	static ASSETID GetAssetId(string nm, ASSETTYPE &t);

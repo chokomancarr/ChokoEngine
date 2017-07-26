@@ -445,7 +445,7 @@ Vec2 xy(Vec3 v) {
 	return Vec2(v.x, v.y);
 }
 
-void DrawSceneObjectsOpaque(EB_Viewer* ebv, vector<SceneObject*> oo) {
+void DrawSceneObjectsOpaque(EB_Viewer* ebv, std::vector<SceneObject*> oo) {
 	for (SceneObject* sc : oo)
 	{
 		glPushMatrix();
@@ -475,7 +475,7 @@ void DrawSceneObjectsOpaque(EB_Viewer* ebv, vector<SceneObject*> oo) {
 	}
 }
 
-void DrawSceneObjectsGizmos(EB_Viewer* ebv, vector<SceneObject*> oo) {
+void DrawSceneObjectsGizmos(EB_Viewer* ebv, std::vector<SceneObject*> oo) {
 	for (SceneObject* sc : oo)
 	{
 		glPushMatrix();
@@ -496,7 +496,7 @@ void DrawSceneObjectsGizmos(EB_Viewer* ebv, vector<SceneObject*> oo) {
 	}
 }
 
-void DrawSceneObjectsTrans(EB_Viewer* ebv, vector<SceneObject*> oo) {
+void DrawSceneObjectsTrans(EB_Viewer* ebv, std::vector<SceneObject*> oo) {
 
 }
 
@@ -517,7 +517,7 @@ void EB_Viewer::Draw() {
 	float ww = editor->xPoss[x2] - ww1;
 	float hh = editor->yPoss[y2] - hh1;
 	float h40 = 40 * (hh*Display::height) / (ww*Display::width);
-	float mww = max(ww, 0.3f) * pow(2, scale);
+	float mww = max(ww, 0.3f) * (float)pow(2, scale);
 	if (seeingCamera == nullptr) {
 		//glTranslatef(0, 0, 1);
 		glScalef(-mww*Display::width / v.b, mww*Display::width / v.a, 1);
@@ -721,7 +721,7 @@ const int EB_Viewer::arrowTIndexs[18] = { 0, 1, 2, 0, 2, 3, 0, 1, 4, 1, 2, 4, 2,
 const int EB_Viewer::arrowSIndexs[18] = { 0, 1, 2, 0, 2, 3, 0, 1, 4, 1, 2, 4, 2, 3, 4, 3, 0, 4 };
 
 void EB_Viewer::DrawTArrows(Vec3 pos, float size) {
-	float s = size / pow(2, scale);
+	float s = size / (float)pow(2, scale);
 	glDepthFunc(GL_ALWAYS);
 	Engine::DrawLineW(pos, pos + Vec3(s, 0, 0), red(), 3);
 	Engine::DrawLineW(pos, pos + Vec3(0, s, 0), green(), 3);
@@ -755,7 +755,7 @@ void EB_Viewer::DrawTArrows(Vec3 pos, float size) {
 }
 
 void EB_Viewer::DrawRArrows(Vec3 pos, float size) {
-	float sz = size / pow(2, scale);
+	float sz = size / (float)pow(2, scale);
 	glDepthFunc(GL_ALWAYS);
 	Engine::DrawCircleW(pos, Vec3(0, 1, 0), Vec3(0, 0, 1), sz, 32, red(), 3);
 	Engine::DrawCircleW(pos, Vec3(1, 0, 0), Vec3(0, 0, 1), sz, 32, green(), 3);
@@ -764,7 +764,7 @@ void EB_Viewer::DrawRArrows(Vec3 pos, float size) {
 }
 
 void EB_Viewer::DrawSArrows(Vec3 pos, float size) {
-	float sz = size / pow(2, scale);
+	float sz = size / (float)pow(2, scale);
 	glDepthFunc(GL_ALWAYS);
 	Engine::DrawLineW(pos, pos + Vec3(sz, 0, 0), red(), 3);
 	Engine::DrawLineW(pos, pos + Vec3(0, sz, 0), green(), 3);
@@ -780,7 +780,7 @@ void EB_Viewer::DrawSArrows(Vec3 pos, float size) {
 }
 
 void EB_Viewer::OnMouseM(Vec2 d) {
-	cout << Input::KeyHold(Key_Dot) ? "1" : "0";
+	std::cout << Input::KeyHold(Key_Dot) ? "1" : "0";
 	if (editor->mousePressType == 1 || (editor->mousePressType == 0 && Input::KeyHold(Key_Alt))) {
 		if (Input::KeyHold(Key_Shift)) {
 			//float w = Display::width*(editor->xPoss[x2] - editor->xPoss[x1]);
@@ -805,7 +805,7 @@ void EB_Viewer::OnMouseM(Vec2 d) {
 		}
 	}
 	else if (modifying > 0) {
-		float scl = pow(2, scale);
+		float scl = (float)pow(2, scale);
 		modVal += Vec2(Input::mouseDelta.x / Display::width, Input::mouseDelta.y / Display::height);
 		if (modifying >> 4 == 1) {
 			switch (modifying & 0x0f) {
@@ -931,7 +931,7 @@ void EBI_DrawAss_Tex(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 	tex->_mipmap = Engine::DrawToggle(v.r + 2, off + sz + 17, 14, editor->checkbox, tex->_mipmap, white(), ORIENT_HORIZONTAL);
 	Engine::Label(v.r + 18, off + sz + 18, 12, "Use Mipmaps", editor->font, white());
 	Engine::Label(v.r + 18, off + sz + 33, 12, "Filtering", editor->font, white());
-	vector<string> filterNames = { "Point", "Bilinear", "Trilinear" };
+	std::vector<string> filterNames = { "Point", "Bilinear", "Trilinear" };
 	if (Engine::EButton(editor->editorLayer == 0, v.r + v.b * 0.3f, off + sz + 33, v.b * 0.6f - 1, 14, grey2(), filterNames[tex->_filter], 12, editor->font, white()) == MOUSE_PRESS) {
 		editor->RegisterMenu(b, "", filterNames, { &b->_ApplyTexFilter0, &b->_ApplyTexFilter1, &b->_ApplyTexFilter2 }, 0, Vec2(v.r + v.b * 0.3f, off + sz + 33));
 	}
@@ -1271,7 +1271,7 @@ void EB_Previewer::Draw() {
 		float hh = editor->yPoss[y2] - hh1;
 		//if (!persp) {
 		float h40 = 40 * (hh*Display::height) / (ww*Display::width);
-		float mww = max(ww, 0.3f) * pow(2, scale);
+		float mww = max(ww, 0.3f) * (float)pow(2, scale);
 		if (seeingCamera == nullptr) {
 			glScalef(-mww*Display::width / v.b, mww*Display::width / v.a, 1);
 			if (viewer->persp) glMultMatrixf(glm::value_ptr(glm::perspectiveFov(viewer->fov * deg2rad, (float)Display::width, (float)Display::width, 0.01f, 1000.0f)));
@@ -1447,7 +1447,7 @@ void Editor::ReadPrefs() {
 	while (ss[ss.size() - 1] == '\\')
 		ss = ss.substr(0, ss.size()-1);
 	string s = projectFolder + "\\" + ss.substr(ss.find_last_of('\\'), string::npos) + ".Bordom";
-	ifstream strm(s, ios::in | ios::binary);
+	std::ifstream strm(s, std::ios::in | std::ios::binary);
 	if (!strm.is_open()) {
 		_Error("Editor", "Fail to load project prefs!");
 		return;
@@ -1474,7 +1474,7 @@ void Editor::SavePrefs() {
 	while (ss[ss.size() - 1] == '\\')
 		ss = ss.substr(0, ss.size() - 1);
 	string s = projectFolder + "\\" + ss.substr(ss.find_last_of('\\'), string::npos) + ".Bordom";
-	ofstream strm(s, ios::out | ios::binary | ios::trunc);
+	std::ofstream strm(s, std::ios::out | std::ios::binary | std::ios::trunc);
 	ushort u = includedScenes.size();
 	_StreamWrite(&u, &strm, 2);
 	for (int a = 0; a < u; a++) {
@@ -1607,17 +1607,17 @@ void Editor::LoadDefaultAssets() {
 	assetTypes.emplace("animclip", ASSETTYPE_ANIMCLIP);
 	assetTypes.emplace("animator", ASSETTYPE_ANIMATOR);
 	
-	allAssets.emplace(ASSETTYPE_SCENE, vector<string>());
-	allAssets.emplace(ASSETTYPE_MESH, vector<string>());
-	allAssets.emplace(ASSETTYPE_ANIMCLIP, vector<string>());
-	allAssets.emplace(ASSETTYPE_ANIMATOR, vector<string>());
-	allAssets.emplace(ASSETTYPE_MATERIAL, vector<string>());
-	allAssets.emplace(ASSETTYPE_CAMEFFECT, vector<string>());
-	allAssets.emplace(ASSETTYPE_TEXTURE, vector<string>());
-	allAssets.emplace(ASSETTYPE_HDRI, vector<string>());
+	allAssets.emplace(ASSETTYPE_SCENE, std::vector<string>());
+	allAssets.emplace(ASSETTYPE_MESH, std::vector<string>());
+	allAssets.emplace(ASSETTYPE_ANIMCLIP, std::vector<string>());
+	allAssets.emplace(ASSETTYPE_ANIMATOR, std::vector<string>());
+	allAssets.emplace(ASSETTYPE_MATERIAL, std::vector<string>());
+	allAssets.emplace(ASSETTYPE_CAMEFFECT, std::vector<string>());
+	allAssets.emplace(ASSETTYPE_TEXTURE, std::vector<string>());
+	allAssets.emplace(ASSETTYPE_HDRI, std::vector<string>());
 }
 
-void AddH(Editor* e, string dir, vector<string>* h, vector<string>* cpp) {
+void AddH(Editor* e, string dir, std::vector<string>* h, std::vector<string>* cpp) {
 	for (string s : IO::GetFiles(dir)) {
 		if (s.size() > 3 && s.substr(s.size() - 2, string::npos) == ".h")
 			h->push_back(s.substr(e->projectFolder.size() + 7, string::npos));
@@ -1632,15 +1632,15 @@ void AddH(Editor* e, string dir, vector<string>* h, vector<string>* cpp) {
 		else {
 			if (s.size() < 7) continue;
 			string s2 = s.substr(0, s.size() - 5);
-			//cout << ">" << s2 << endl;
-			unordered_map<string, ASSETTYPE>::const_iterator got = e->assetTypes.find(s2.substr(s2.find_last_of('.') + 1));
+			//std::cout << ">" << s2 << std::endl;
+			std::unordered_map<string, ASSETTYPE>::const_iterator got = e->assetTypes.find(s2.substr(s2.find_last_of('.') + 1));
 			if (got != e->assetTypes.end()) {
-				//cout << s << endl;
+				//std::cout << s << std::endl;
 				e->allAssets[(got->second)].push_back(s);
 			}
 		}
 	}
-	vector<string> dirs;
+	std::vector<string> dirs;
 	IO::GetFolders(dir, &dirs, true);
 	for (string ss : dirs) {
 		if (ss != "." && ss != "..")
@@ -1649,41 +1649,41 @@ void AddH(Editor* e, string dir, vector<string>* h, vector<string>* cpp) {
 }
 
 void Editor::GenerateScriptResolver() {
-	ifstream vcxIn(dataPath + "res\\vcxproj.txt", ios::in);
+	std::ifstream vcxIn(dataPath + "res\\vcxproj.txt", std::ios::in);
 	if (!vcxIn.is_open()){
 		_Error("Script Resolver", "Vcxproj template not found!");
 		return;
 	}
-	stringstream sstr;
+	std::stringstream sstr;
 	sstr << vcxIn.rdbuf();
 	string vcx = sstr.str();
 	vcxIn.close();
 	//<ClCompile Include = "Assets/main.cpp" / >< / ItemGroup><ItemGroup>
 
-	ofstream vcxOut(projectFolder + "TestProject2.vcxproj", ios::out | ios::trunc);
+	std::ofstream vcxOut(projectFolder + "TestProject2.vcxproj", std::ios::out | std::ios::trunc);
 	if (!vcxOut.is_open()) {
 		_Error("Script Resolver", "Cannot write to vcxproj!");
 		return;
 	}
 	vcxOut << vcx.substr(0, vcx.find('#'));
 	for (string cpp2 : IO::GetFiles(projectFolder + "System\\", ".cpp")) {
-		vcxOut << "<ClCompile Include=\"" + cpp2.substr(projectFolder.size(), string::npos) + "\" />" << endl;
+		vcxOut << "<ClCompile Include=\"" + cpp2.substr(projectFolder.size(), string::npos) + "\" />" << std::endl;
 	}
 	for (string cpp : cppAssets) {
-		vcxOut << "<ClCompile Include=\"Assets\\" + cpp + "\" />" << endl;
+		vcxOut << "<ClCompile Include=\"Assets\\" + cpp + "\" />" << std::endl;
 	}
-	vcxOut << "</ItemGroup>\r\n<ItemGroup>" << endl;
+	vcxOut << "</ItemGroup>\r\n<ItemGroup>" << std::endl;
 	for (string hd2 : IO::GetFiles(projectFolder + "System\\", ".h")) {
-		vcxOut << "<ClInclude Include=\"" + hd2.substr(projectFolder.size(), string::npos) + "\" />" << endl;
+		vcxOut << "<ClInclude Include=\"" + hd2.substr(projectFolder.size(), string::npos) + "\" />" << std::endl;
 	}
 	for (string hd : headerAssets) {
-		vcxOut << "<ClInclude Include=\"Assets\\" + hd + "\" />" << endl;
+		vcxOut << "<ClInclude Include=\"Assets\\" + hd + "\" />" << std::endl;
 	}
 	vcxOut << vcx.substr(vcx.find('#') + 1, string::npos);
 	vcxOut.close();
 
 	//SceneScriptResolver.h
-	string h = "#include <vector>\n#include <fstream>\n#include \"Engine.h\"\ntypedef SceneScript*(*sceneScriptInstantiator)();\ntypedef void (*sceneScriptAssigner)(SceneScript*, ifstream&);\nclass SceneScriptResolver {\npublic:\n\tSceneScriptResolver();\n\tstatic SceneScriptResolver* instance;\n\tstd::vector<string> names;\n\tstd::vector<sceneScriptInstantiator> map;\n\tstd::vector<sceneScriptAssigner> ass;\n\t\tSceneScript* Resolve(ifstream& strm);\n";
+	string h = "#include <vector>\n#include <fstream>\n#include \"Engine.h\"\ntypedef SceneScript*(*sceneScriptInstantiator)();\ntypedef void (*sceneScriptAssigner)(SceneScript*, std::ifstream&);\nclass SceneScriptResolver {\npublic:\n\tSceneScriptResolver();\n\tstatic SceneScriptResolver* instance;\n\tstd::vector<string> names;\n\tstd::vector<sceneScriptInstantiator> map;\n\tstd::vector<sceneScriptAssigner> ass;\n\t\tSceneScript* Resolve(std::ifstream& strm);\n";
 	//*
 	h += "\n\tstatic SceneScript ";
 	for (int a = 0, b = headerAssets.size(); a < b; a++) {
@@ -1696,7 +1696,7 @@ void Editor::GenerateScriptResolver() {
 	
 	h += "\n\tstatic void ";
 	for (int a = 0, b = headerAssets.size(); a < b; a++) {
-		h += "_Ass" + to_string(a) + "(SceneScript* sscr, ifstream& strm)";
+		h += "_Ass" + to_string(a) + "(SceneScript* sscr, std::ifstream& strm)";
 		if (a == b - 1)
 			h += ";\n";
 		else
@@ -1724,7 +1724,7 @@ void Editor::GenerateScriptResolver() {
 		s += "\tass.push_back(&_Ass" + to_string(a) + ");\n";
 	}
 	s += "}\n\n";
-	s += "SceneScript* SceneScriptResolver::Resolve(ifstream& strm) {\n\tchar* c = new char[100];\n\tstrm.getline(c, 100, 0);\n\tstring s(c);\n\tdelete[](c);";
+	s += "SceneScript* SceneScriptResolver::Resolve(std::ifstream& strm) {\n\tchar* c = new char[100];\n\tstrm.getline(c, 100, 0);\n\tstring s(c);\n\tdelete[](c);";
 	s += "\n\tint a = 0;\n\tfor (string ss : names) {\n\t\tif (ss == s) {\n\t\t\tSceneScript* scr = map[a]();\n\t\t\tscr->name = s + \" (Script)\";\n\t\t\t(*ass[a])(scr, strm);\n\t\t\treturn scr;\n\t\t}\n\t\ta++;\n\t}\n\treturn nullptr;\n}";
 	
 	GenerateScriptValuesReader(s);
@@ -1735,11 +1735,11 @@ void Editor::GenerateScriptResolver() {
 	std::remove(hO.c_str());
 	std::remove(cppO.c_str());
 
-	ofstream ofs (cppO.c_str(), ios::out | ios::trunc);
+	std::ofstream ofs (cppO.c_str(), std::ios::out | std::ios::trunc);
 	ofs << s;
 	ofs.close();
 	//SetFileAttributes(cppO.c_str(), FILE_ATTRIBUTE_HIDDEN);
-	ofs.open(hO.c_str(), ios::out | ios::trunc);
+	ofs.open(hO.c_str(), std::ios::out | std::ios::trunc);
 	ofs << h;
 	ofs.close();
 	//SetFileAttributes(hO.c_str(), FILE_ATTRIBUTE_HIDDEN);
@@ -1757,8 +1757,8 @@ void Editor::GenerateScriptValuesReader(string& s) {
 		string ha = headerAssets[a].substr(flo);
 		ha = ha.substr(0, ha.size() - 2);
 		
-		s += "void SceneScriptResolver::_Ass" + to_string(a) + " (SceneScript* sscr, ifstream& strm) {\n\t" + ha + "* scr = (" + ha  + "*)sscr;\n" + tmpl;
-		ifstream mstrm(projectFolder + "Assets\\" + headerAssets[a] + ".meta", ios::in | ios::binary);
+		s += "void SceneScriptResolver::_Ass" + to_string(a) + " (SceneScript* sscr, std::ifstream& strm) {\n\t" + ha + "* scr = (" + ha  + "*)sscr;\n" + tmpl;
+		std::ifstream mstrm(projectFolder + "Assets\\" + headerAssets[a] + ".meta", std::ios::in | std::ios::binary);
 		if (!mstrm.is_open()) {
 			_Error("Script Component", "Cannot read meta file!");
 			return;
@@ -1795,7 +1795,7 @@ void Editor::GenerateScriptValuesReader(string& s) {
 }
 
 void Editor::NewScene() {
-	activeScene = make_shared<Scene>();
+	activeScene = std::make_shared<Scene>();
 }
 
 void Editor::UpdateLerpers() {
@@ -2078,7 +2078,7 @@ void Editor::DrawHandles() {
 			float py = Input::mousePos.y;
 			if (py > 300) py -= 300;
 			Engine::DrawQuad(px + 20, py + 20, 256, 256, black(0.85f));
-			if (!((AssetObject*)GetCache(previewType, previewId))->DrawPreview(px + 22, py + 22, 252, 252)) {
+			if (!((AssetObject*)GetCache(previewType, previewId))->DrawPreview((uint)(px + 22), (uint)(py + 22), 252, 252)) {
 				Engine::DrawLine(Vec3(px + 20, py + 20, 0), Vec3(px + 276, py + 276, 0), grey1(), 1.5f);
 				Engine::DrawLine(Vec3(px + 20, py + 276, 0), Vec3(px + 276, py + 20, 0), grey1(), 1.5f);
 				font->Align(ALIGN_MIDCENTER);
@@ -2090,7 +2090,7 @@ void Editor::DrawHandles() {
 	else previewTime = 0;
 }
 
-void Editor::RegisterMenu(EditorBlock* block, string title, vector<string> names, vector<shortcutFunc> funcs, int padding, Vec2 pos) {
+void Editor::RegisterMenu(EditorBlock* block, string title, std::vector<string> names, std::vector<shortcutFunc> funcs, int padding, Vec2 pos) {
 	editorLayer = 1;
 	menuFuncIsSingle = false;
 	menuTitle = title;
@@ -2101,7 +2101,7 @@ void Editor::RegisterMenu(EditorBlock* block, string title, vector<string> names
 	menuPadding = padding;
 }
 
-void Editor::RegisterMenu(EditorBlock* block, string title, vector<string> names, dataFunc func, vector<void*> vals, int padding, Vec2 pos) {
+void Editor::RegisterMenu(EditorBlock* block, string title, std::vector<string> names, dataFunc func, std::vector<void*> vals, int padding, Vec2 pos) {
 	editorLayer = 1;
 	menuFuncIsSingle = true;
 	menuTitle = title;
@@ -2127,7 +2127,7 @@ Texture* Editor::GetRes(string name, bool mipmap, bool nearest, string ext) {
 }
 
 void Editor::_Message(string a, string b) {
-	messages.push_back(pair<string, string>(a, b));
+	messages.push_back(std::pair<string, string>(a, b));
 	messageTypes.push_back(0);
 	for (EditorBlock* eb : blocks) {
 		if (eb->editorType == 10)
@@ -2135,7 +2135,7 @@ void Editor::_Message(string a, string b) {
 	}
 }
 void Editor::_Warning(string a, string b) {
-	messages.push_back(pair<string, string>(a, b));
+	messages.push_back(std::pair<string, string>(a, b));
 	messageTypes.push_back(1);
 	for (EditorBlock* eb : blocks) {
 		if (eb->editorType == 10)
@@ -2143,7 +2143,7 @@ void Editor::_Warning(string a, string b) {
 	}
 }
 void Editor::_Error(string a, string b) {
-	messages.push_back(pair<string, string>(a, b));
+	messages.push_back(std::pair<string, string>(a, b));
 	messageTypes.push_back(2);
 	for (EditorBlock* eb : blocks) {
 		if (eb->editorType == 10)
@@ -2151,13 +2151,13 @@ void Editor::_Error(string a, string b) {
 	}
 }
 
-void DoScanAssetsGet(Editor* e, vector<string>& list, string p, bool rec) {
-	vector<string> files = IO::GetFiles(p);
+void DoScanAssetsGet(Editor* e, std::vector<string>& list, string p, bool rec) {
+	std::vector<string> files = IO::GetFiles(p);
 	for (string w : files) {
 		string ww = w.substr(w.find_last_of("."), string::npos);
 		ASSETTYPE type = GetFormatEnum(ww);
 		if (type != ASSETTYPE_UNDEF) {
-			//cout << "file " << w << endl;
+			//std::cout << "file " << w << std::endl;
 			string ss = w + ".meta";//ss.substr(0, ss.size() - 5);
 			ww = (w.substr(e->projectFolder.size() + 7, string::npos));
 			//string ww2 = ww.substr(0, ww.size()-5);
@@ -2191,7 +2191,7 @@ void DoScanAssetsGet(Editor* e, vector<string>& list, string p, bool rec) {
 		}
 	}
 	if (rec) {
-		vector<string> dirs;
+		std::vector<string> dirs;
 		IO::GetFolders(p, &dirs, true);
 		for (string d : dirs) {
 			if (d != "." && d != "..")
@@ -2200,8 +2200,8 @@ void DoScanAssetsGet(Editor* e, vector<string>& list, string p, bool rec) {
 	}
 }
 
-void DoScanMeshesGet(Editor* e, vector<string>& list, string p, bool rec) {
-	vector<string> files = IO::GetFiles(p);
+void DoScanMeshesGet(Editor* e, std::vector<string>& list, string p, bool rec) {
+	std::vector<string> files = IO::GetFiles(p);
 	for (string w : files) {
 		if ((w.size() > 10) && ((w.substr(w.size() - 10, string::npos)) == ".mesh.meta")) {
 			string ww(w.substr(e->projectFolder.size() + 7, string::npos));
@@ -2211,7 +2211,7 @@ void DoScanMeshesGet(Editor* e, vector<string>& list, string p, bool rec) {
 		}
 	}
 	if (rec) {
-		vector<string> dirs;
+		std::vector<string> dirs;
 		IO::GetFolders(p, &dirs, true);
 		for (string d : dirs) {
 			if (d != "." && d != "..")
@@ -2220,13 +2220,13 @@ void DoScanMeshesGet(Editor* e, vector<string>& list, string p, bool rec) {
 	}
 }
 
-void DoReloadAssets(Editor* e, string path, bool recursive, mutex* l) {
-	vector<string> files;
+void DoReloadAssets(Editor* e, string path, bool recursive, std::mutex* l) {
+	std::vector<string> files;
 	DoScanAssetsGet(e, files, path, recursive);
 	int r = files.size(), i = 0;
 	for (string f : files) {
 		{
-			lock_guard<mutex> lock(*l);
+			std::lock_guard<std::mutex> lock(*l);
 			e->progressDesc = f;
 		}
 		e->ParseAsset(f);
@@ -2235,12 +2235,12 @@ void DoReloadAssets(Editor* e, string path, bool recursive, mutex* l) {
 	}
 	DoScanMeshesGet(e, files, path, true);
 	{
-		lock_guard<mutex> lock(*l);
+		std::lock_guard<std::mutex> lock(*l);
 		e->headerAssets.clear();
 		AddH(e, e->projectFolder + "Assets", &e->headerAssets, &e->cppAssets);
 	}
 	for (string s : e->headerAssets) {
-		lock_guard<mutex> lock(*l);
+		std::lock_guard<std::mutex> lock(*l);
 		SceneScript::Parse(s, e);
 	}
 	{
@@ -2251,7 +2251,7 @@ void DoReloadAssets(Editor* e, string path, bool recursive, mutex* l) {
 		}
 	}
 	e->editorLayer = 0;
-	lock_guard<mutex> lock(*l);
+	std::lock_guard<std::mutex> lock(*l);
 	for (auto b : e->blocks) {
 		b->Refresh();
 	}
@@ -2275,29 +2275,29 @@ void Editor::DeselectFile() { //do not free pointer as cache is reused
 }
 
 void Editor::ResetAssetMap() {
-	normalAssets[ASSETTYPE_TEXTURE] = vector<string>();
-	normalAssets[ASSETTYPE_HDRI] = vector<string>();
-	normalAssets[ASSETTYPE_MATERIAL] = vector<string>();
-	normalAssets[ASSETTYPE_MESH] = vector<string>();
-	normalAssets[ASSETTYPE_BLEND] = vector<string>();
-	normalAssets[ASSETTYPE_ANIMCLIP] = vector<string>();
-	normalAssets[ASSETTYPE_ANIMATOR] = vector<string>();
-	normalAssets[ASSETTYPE_CAMEFFECT] = vector<string>();
+	normalAssets[ASSETTYPE_TEXTURE] = std::vector<string>();
+	normalAssets[ASSETTYPE_HDRI] = std::vector<string>();
+	normalAssets[ASSETTYPE_MATERIAL] = std::vector<string>();
+	normalAssets[ASSETTYPE_MESH] = std::vector<string>();
+	normalAssets[ASSETTYPE_BLEND] = std::vector<string>();
+	normalAssets[ASSETTYPE_ANIMCLIP] = std::vector<string>();
+	normalAssets[ASSETTYPE_ANIMATOR] = std::vector<string>();
+	normalAssets[ASSETTYPE_CAMEFFECT] = std::vector<string>();
 
-	derivedAssets[ASSETTYPE_TEXTURE_REND] = pair<ASSETTYPE, vector<uint>>(ASSETTYPE_TEXTURE, vector<uint>());
+	derivedAssets[ASSETTYPE_TEXTURE_REND] = std::pair<ASSETTYPE, std::vector<uint>>(ASSETTYPE_TEXTURE, std::vector<uint>());
 
-	normalAssetCaches[ASSETTYPE_TEXTURE] = vector<AssetObject*>(); //Texture*
-	normalAssetCaches[ASSETTYPE_HDRI] = vector<AssetObject*>(); //Background*
-	normalAssetCaches[ASSETTYPE_MATERIAL] = vector<AssetObject*>(); //Material*
-	normalAssetCaches[ASSETTYPE_MESH] = vector<AssetObject*>(); //Mesh*
-	normalAssetCaches[ASSETTYPE_ANIMCLIP] = vector<AssetObject*>(); //AnimClip*
-	normalAssetCaches[ASSETTYPE_ANIMATOR] = vector<AssetObject*>(); //Animator*
-	normalAssetCaches[ASSETTYPE_CAMEFFECT] = vector<AssetObject*>(); //CameraEffect*
+	normalAssetCaches[ASSETTYPE_TEXTURE] = std::vector<AssetObject*>(); //Texture*
+	normalAssetCaches[ASSETTYPE_HDRI] = std::vector<AssetObject*>(); //Background*
+	normalAssetCaches[ASSETTYPE_MATERIAL] = std::vector<AssetObject*>(); //Material*
+	normalAssetCaches[ASSETTYPE_MESH] = std::vector<AssetObject*>(); //Mesh*
+	normalAssetCaches[ASSETTYPE_ANIMCLIP] = std::vector<AssetObject*>(); //AnimClip*
+	normalAssetCaches[ASSETTYPE_ANIMATOR] = std::vector<AssetObject*>(); //Animator*
+	normalAssetCaches[ASSETTYPE_CAMEFFECT] = std::vector<AssetObject*>(); //CameraEffect*
 }
 
 void Editor::ReloadAssets(string path, bool recursive) {
 
-	//normalAssetsOld = unordered_map<ASSETTYPE, vector<string>>(normalAssets);
+	//normalAssetsOld = std::unordered_map<ASSETTYPE, std::vector<string>>(normalAssets);
 
 	ResetAssetMap();
 
@@ -2305,13 +2305,13 @@ void Editor::ReloadAssets(string path, bool recursive) {
 	editorLayer = 4;
 	progressName = "Loading assets...";
 	progressValue = 0;
-	thread t(DoReloadAssets, this, path, recursive, lockMutex);
+	std::thread t(DoReloadAssets, this, path, recursive, lockMutex);
 	t.detach();
 }
 
 bool Editor::ParseAsset(string path) {
-	cout << "parsing " << path << endl;
-	ifstream stream(path.c_str(), ios::in | ios::binary);
+	std::cout << "parsing " << path << std::endl;
+	std::ifstream stream(path.c_str(), std::ios::in | std::ios::binary);
 	bool ok;
 	if (!stream.good()) {
 		_Message("Asset Parser", "asset not found! " + path);
@@ -2364,7 +2364,7 @@ void Editor::SetBackground(string s, float a) {
 		backgroundAlpha = (int)(a*100);
 }
 
-void DoScanBrowseComp(SceneObject* o, COMPONENT_TYPE t, string p, vector<Component*>& vc, vector<string>& vs) {
+void DoScanBrowseComp(SceneObject* o, COMPONENT_TYPE t, string p, std::vector<Component*>& vc, std::vector<string>& vs) {
 	Component* c = o->GetComponent(t);
 	string nm = p + ((p == "") ? "" : "/") + o->name;
 	if (c != nullptr) {
@@ -2383,7 +2383,7 @@ void Editor::ScanBrowseComp() {
 }
 
 void Editor::AddBuildLog(Editor* e, string s, bool forceE) {
-	lock_guard<mutex> lock(*Editor::lockMutex);
+	std::lock_guard<std::mutex> lock(*Editor::lockMutex);
 	buildLog.push_back(s);
 	bool a = s.find("error C") != string::npos;
 	bool b = s.find("error LNK") != string::npos;
@@ -2453,11 +2453,11 @@ content(1+).data ->assets (index, data) (binary)
 */
 bool MergeAssets(Editor* e) {
 	string ss = e->projectFolder + "Release\\data0";
-	ofstream file;
+	std::ofstream file;
 	char null = 0, etx = 3;
 	e->AddBuildLog(e, "Writing to " + ss);
-	cout << ss << endl;
-	file.open(ss.c_str(), ios::out | ios::binary | ios::trunc);
+	std::cout << ss << std::endl;
+	file.open(ss.c_str(), std::ios::out | std::ios::binary | std::ios::trunc);
 	if (!file.is_open())
 		return false;
 	//headers
@@ -2465,7 +2465,7 @@ bool MergeAssets(Editor* e) {
 
 	//asset data
 	//D0[NUM(2)]SUM([TYPE][IPOSS][NAME0])
-	vector<uint> dataPoss;
+	std::vector<uint> dataPoss;
 	ushort xx = 0;
 	long long poss1 = file.tellp();
 	file << "00";
@@ -2493,7 +2493,7 @@ bool MergeAssets(Editor* e) {
 	for (string ss : e->includedScenes) {
 		if (e->includedScenesUse[q]) {
 			string sss = e->projectFolder + "Assets\\" + ss;
-			ifstream f2(sss, ios::in | ios::binary);
+			std::ifstream f2(sss, std::ios::in | std::ios::binary);
 			if (!f2.is_open()) {
 				e->AddBuildLog(e, "Cannot open " + ss + "!", true);
 				e->_Error("Asset Compiler", "Scene not found! " + ss);
@@ -2518,7 +2518,7 @@ bool MergeAssets(Editor* e) {
 	byte incre = 1;
 	string nm = e->projectFolder + "Release\\data" + to_string(incre);
 	e->AddBuildLog(e, "Writing to " + nm);
-	ofstream file2(nm.c_str(), ios::out | ios::binary | ios::trunc); 
+	std::ofstream file2(nm.c_str(), std::ios::out | std::ios::binary | std::ios::trunc); 
 	if (!file2.is_open()) {
 		e->AddBuildLog(e, "Cannot open " + nm + "!", true);
 		return false;
@@ -2536,7 +2536,7 @@ bool MergeAssets(Editor* e) {
 					nmm = e->projectFolder + "Assets\\" + s;
 				else
 					nmm = e->projectFolder + "Assets\\" + s + ".meta";
-				ifstream f2(nmm.c_str(), ios::in | ios::binary);
+				std::ifstream f2(nmm.c_str(), std::ios::in | std::ios::binary);
 				if (!f2.is_open()) {
 					e->_Error("Asset Compiler", "Asset not found! " + nmm);
 					return false;
@@ -2563,7 +2563,7 @@ bool MergeAssets(Editor* e) {
 					file2.close();
 					nm = e->projectFolder + "Release\\data" + to_string(++incre);
 					e->AddBuildLog(e, "Writing to " + nm);
-					file2.open(nm.c_str(), ios::out | ios::binary | ios::trunc);
+					file2.open(nm.c_str(), std::ios::out | std::ios::binary | std::ios::trunc);
 					if (!file2.is_open()) {
 						e->AddBuildLog(e, "Cannot open " + nm + "!", true);
 						return false;
@@ -2583,7 +2583,7 @@ bool DoMsBuild(Editor* e) {
 	char s[255];
 	DWORD i = 255;
 	if (RegGetValue(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\MSBuild\\ToolsVersions\\4.0", "MSBuildToolsPath", RRF_RT_ANY, nullptr, &s, &i) == ERROR_SUCCESS) {
-		cout << "Executing " << s << "msbuild.exe" << endl;
+		std::cout << "Executing " << s << "msbuild.exe" << std::endl;
 
 		SECURITY_ATTRIBUTES sa;
 		sa.nLength = sizeof(SECURITY_ATTRIBUTES);
@@ -2619,10 +2619,10 @@ bool DoMsBuild(Editor* e) {
 		bool failed = true;
 		byte FINISH = 0;
 		if (_putenv("MSBUILDDISABLENODEREUSE=1") == -1)
-			cout << "Putenv failed for msbuilder!" << endl;
+			std::cout << "Putenv failed for msbuilder!" << std::endl;
 		if (CreateProcess(ss.c_str(), "D:\\TestProject2\\TestProject2.vcxproj /nr:false /t:Build /p:Configuration=Release /v:n /nologo /fl /flp:LogFile=D:\\TestProject2\\BuildLog.txt", NULL, NULL, true, 0, NULL, "D:\\TestProject2\\", &startInfo, &processInfo) != 0) {
 			e->AddBuildLog(e, "Compiling from " + ss);
-			cout << "compiling" << endl;
+			std::cout << "compiling" << std::endl;
 			DWORD w;
 			do {
 				w = WaitForSingleObject(processInfo.hProcess, DWORD(200));
@@ -2681,7 +2681,7 @@ void Editor::Compile(Editor* e) {
 	e->WAITINGBUILDSTARTFLAG = true;
 }
 
-void AddOtherScenes(Editor* e, string dir, vector<string> &v1, vector<bool> &v2) {
+void AddOtherScenes(Editor* e, string dir, std::vector<string> &v1, std::vector<bool> &v2) {
 	for (string s : IO::GetFiles(dir)) {
 		if (s.size() > 7 && s.substr(s.size() - 6, string::npos) == ".scene") {
 			string pp = s.substr(s.find_last_of("\\")+1, string::npos);
@@ -2693,7 +2693,7 @@ void AddOtherScenes(Editor* e, string dir, vector<string> &v1, vector<bool> &v2)
 		}
 	cancel:;
 	}
-	vector<string> f;
+	std::vector<string> f;
 	IO::GetFolders(dir, &f);
 	for (string ff : f)
 		if (ff != "." && ff != "..")
@@ -2738,7 +2738,7 @@ void Editor::DoCompile() {
 	AddBuildLog(this, "Copying: dummy source directory -> dummy target directory");
 	AddBuildLog(this, "Copying: dummy source directory2 -> dummy target directory2");
 	AddBuildLog(this, "Copying: dummy source directory3 -> dummy target directory3");
-	this_thread::sleep_for(chrono::seconds(2));
+	this_std::thread::sleep_for(chrono::seconds(2));
 	*///merge assets
 	//buildProgressValue = 10;
 	if (!MergeAssets(this)) {

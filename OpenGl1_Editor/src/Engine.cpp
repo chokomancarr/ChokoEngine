@@ -27,8 +27,6 @@
 #include "Defines.h"
 #include "SceneScriptResolver.h"
 
-using namespace std;
-
 Quat QuatFunc::Inverse(const Quat& q) {
 	return Quat(-q.x, -q.y, -q.z, q.w);
 }
@@ -47,36 +45,43 @@ Vec3 QuatFunc::ToEuler(const Quat& q) {
 	// roll (x-axis rotation)
 	double t0 = +2.0 * (q.w * q.x + q.y * q.z);
 	double t1 = +1.0 - 2.0 * (q.x * q.x + ysqr);
-	out.x = std::atan2(t0, t1);
+	out.x = (float)atan2(t0, t1);
 
 	// pitch (y-axis rotation)
 	double t2 = +2.0 * (q.w * q.y - q.z * q.x);
 	t2 = ((t2 > 1.0) ? 1.0 : t2);
 	t2 = ((t2 < -1.0) ? -1.0 : t2);
-	out.y = std::asin(t2);
+	out.y = (float)asin(t2);
 
 	// yaw (z-axis rotation)
 	double t3 = +2.0 * (q.w * q.z + q.x * q.y);
 	double t4 = +1.0 - 2.0 * (ysqr + q.z * q.z);
-	out.z = std::atan2(t3, t4);
+	out.z = (float)atan2(t3, t4);
 
 	return out;
 }
 
 Quat QuatFunc::FromAxisAngle(const Vec3& axis, float angle) {
 	float a = deg2rad*angle;
-	double factor = sin(a / 2.0);
+	float factor = (float)sin(a / 2.0);
 
 	// Calculate the x, y and z of the quaternion
-	double x = axis.x * factor;
-	double y = axis.y * factor;
-	double z = axis.z * factor;
+	float x = axis.x * factor;
+	float y = axis.y * factor;
+	float z = axis.z * factor;
 
 	// Calcualte the w value by cos( theta / 2 )
-	double w = cos(a / 2.0);
+	float w = (float)cos(a / 2.0);
 	return Normalize(Quat(w, x, y, z));
 }
 
+
+string to_string(float f) { return std::to_string(f); }
+string to_string(double f) { return std::to_string(f); }
+string to_string(ulong f) { return std::to_string(f); }
+string to_string(long f) { return std::to_string(f); }
+string to_string(uint f) { return std::to_string(f); }
+string to_string(int f) { return std::to_string(f); }
 string to_string(Vec2 v) {
 	return "(" + to_string(v.x) + ", " + to_string(v.y) + ")";
 }
@@ -104,12 +109,12 @@ GLuint Color::pickerProgH = 0;
 GLuint Color::pickerProgSV = 0;
 
 string Color::hex() {
-	stringstream ss;
+	std::stringstream ss;
 	ss << "#";
-	ss << std::hex << setfill('0') << setw(2) << (int)r;
-	ss << std::hex << setfill('0') << setw(2) << (int)g;
-	ss << std::hex << setfill('0') << setw(2) << (int)b;
-	ss << std::hex << setfill('0') << setw(2) << (int)a;
+	ss << std::hex << std::setfill('0') << std::setw(2) << (int)r;
+	ss << std::hex << std::setfill('0') << std::setw(2) << (int)g;
+	ss << std::hex << std::setfill('0') << std::setw(2) << (int)b;
+	ss << std::hex << std::setfill('0') << std::setw(2) << (int)a;
 	return ss.str();
 }
 
@@ -142,12 +147,12 @@ void Color::Rgb2Hsv(byte r, byte g, byte b, float& h, float& s, float& v) {
 }
 
 string Color::Col2Hex(Vec4 col) {
-	stringstream ss;
+	std::stringstream ss;
 	ss << "#";
-	ss << std::hex << setfill('0') << setw(2) << (int)(col.r * 255);
-	ss << std::hex << setfill('0') << setw(2) << (int)(col.g * 255);
-	ss << std::hex << setfill('0') << setw(2) << (int)(col.b * 255);
-	ss << std::hex << setfill('0') << setw(2) << (int)(col.a * 255);
+	ss << std::hex << std::setfill('0') << std::setw(2) << (int)(col.r * 255);
+	ss << std::hex << std::setfill('0') << std::setw(2) << (int)(col.g * 255);
+	ss << std::hex << std::setfill('0') << std::setw(2) << (int)(col.b * 255);
+	ss << std::hex << std::setfill('0') << std::setw(2) << (int)(col.a * 255);
 	return ss.str();
 }
 
@@ -266,7 +271,7 @@ void Engine::Init(string path) {
 	if (path != "") {
 		fallbackTex = new Texture(path.substr(0, path.find_last_of('\\') + 1) + "fallback.bmp");
 		if (!fallbackTex->loaded)
-			cout << "cannot load fallback texture!" << endl;
+			std::cout << "cannot load fallback texture!" << std::endl;
 	}
 
 	Light::InitShadow();
@@ -298,9 +303,9 @@ void Engine::Init(string path) {
 		if (link_result == GL_FALSE)
 		{
 			glGetProgramiv(unlitProgram, GL_INFO_LOG_LENGTH, &info_log_length);
-			vector<char> program_log(info_log_length);
+			std::vector<char> program_log(info_log_length);
 			glGetProgramInfoLog(unlitProgram, info_log_length, NULL, &program_log[0]);
-			cerr << "Default Shader link error" << endl << &program_log[0] << endl;
+			std::cerr << "Default Shader link error" << std::endl << &program_log[0] << std::endl;
 			return;
 		}
 		glDetachShader(unlitProgram, vertex_shader);
@@ -326,9 +331,9 @@ void Engine::Init(string path) {
 		{
 			int info_log_length = 0;
 			glGetProgramiv(unlitProgramA, GL_INFO_LOG_LENGTH, &info_log_length);
-			vector<char> program_log(info_log_length);
+			std::vector<char> program_log(info_log_length);
 			glGetProgramInfoLog(unlitProgramA, info_log_length, NULL, &program_log[0]);
-			cerr << "Default Shader (Alpha) link error" << endl << &program_log[0] << endl;
+			std::cerr << "Default Shader (Alpha) link error" << std::endl << &program_log[0] << std::endl;
 			abort();
 		}
 		glDetachShader(unlitProgramA, vertex_shader);
@@ -354,9 +359,9 @@ void Engine::Init(string path) {
 		{
 			int info_log_length = 0;
 			glGetProgramiv(unlitProgramC, GL_INFO_LOG_LENGTH, &info_log_length);
-			vector<char> program_log(info_log_length);
+			std::vector<char> program_log(info_log_length);
 			glGetProgramInfoLog(unlitProgramC, info_log_length, NULL, &program_log[0]);
-			cerr << "Default Shader (Vec4) link error" << endl << &program_log[0] << endl;
+			std::cerr << "Default Shader (Vec4) link error" << std::endl << &program_log[0] << std::endl;
 			abort();
 		}
 		glDetachShader(unlitProgramC, vertex_shader);
@@ -383,9 +388,9 @@ void Engine::Init(string path) {
 		{
 			int info_log_length = 0;
 			glGetProgramiv(skyProgram, GL_INFO_LOG_LENGTH, &info_log_length);
-			vector<char> program_log(info_log_length);
+			std::vector<char> program_log(info_log_length);
 			glGetProgramInfoLog(skyProgram, info_log_length, NULL, &program_log[0]);
-			cerr << "Sky shader link error" << endl << &program_log[0] << endl;
+			std::cerr << "Sky shader link error" << std::endl << &program_log[0] << std::endl;
 			abort();
 		}
 		glDetachShader(skyProgram, vertex_shader);
@@ -399,8 +404,8 @@ void Engine::Init(string path) {
 	glDeleteShader(fragment_shaderS);
 
 	GLuint fragment_shaderB;
-	ifstream strm("D:\\blurPassFrag.txt");
-	stringstream ss;
+	std::ifstream strm("D:\\blurPassFrag.txt");
+	std::stringstream ss;
 	ss << strm.rdbuf();
 	string error = "";
 	if (ShaderBase::LoadShader(GL_FRAGMENT_SHADER, ss.str(), fragment_shaderB, &error)) {
@@ -416,9 +421,9 @@ void Engine::Init(string path) {
 		{
 			int info_log_length = 0;
 			glGetProgramiv(blurProgram, GL_INFO_LOG_LENGTH, &info_log_length);
-			vector<char> program_log(info_log_length);
+			std::vector<char> program_log(info_log_length);
 			glGetProgramInfoLog(blurProgram, info_log_length, NULL, &program_log[0]);
-			cerr << "Blur shader link error" << endl << &program_log[0] << endl;
+			std::cerr << "Blur shader link error" << std::endl << &program_log[0] << std::endl;
 			abort();
 		}
 		glDetachShader(blurProgram, vertex_shader);
@@ -450,9 +455,9 @@ void Engine::Init(string path) {
 		if (link_result == GL_FALSE)
 		{
 			glGetProgramiv(Color::pickerProgSV, GL_INFO_LOG_LENGTH, &info_log_length);
-			vector<char> program_log(info_log_length);
+			std::vector<char> program_log(info_log_length);
 			glGetProgramInfoLog(Color::pickerProgSV, info_log_length, NULL, &program_log[0]);
-			cerr << "ColorPicker SV Shader link error" << endl << &program_log[0] << endl;
+			std::cerr << "ColorPicker SV Shader link error" << std::endl << &program_log[0] << std::endl;
 			return;
 		}
 		glDetachShader(Color::pickerProgSV, vertex_shader);
@@ -460,16 +465,16 @@ void Engine::Init(string path) {
 		glDeleteShader(fragment_shader);
 		glDeleteShader(vertex_shader);
 	}
-	else cout << err << endl;
+	else std::cout << err << std::endl;
 #endif
 }
 
-vector<ifstream*> Engine::assetStreams = vector<ifstream*>();
-unordered_map<byte, vector<string>> Engine::assetData = unordered_map<byte, vector<string>>();
-//unordered_map<string, byte[]> Engine::assetDataLoaded = unordered_map<string, byte[]>();
+std::vector<std::ifstream*> Engine::assetStreams = std::vector<std::ifstream*>();
+std::unordered_map<byte, std::vector<string>> Engine::assetData = std::unordered_map<byte, std::vector<string>>();
+//std::unordered_map<string, byte[]> Engine::assetDataLoaded = std::unordered_map<string, byte[]>();
 
 bool Engine::LoadDatas(string path) {
-	ifstream* d0 = new ifstream(path + "\\data0");
+	std::ifstream* d0 = new std::ifstream(path + "\\data0");
 	assetStreams.push_back(d0);
 	if (!d0->is_open())
 		return false;
@@ -535,8 +540,9 @@ void Engine::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4) 
 	Label(x, y, s, st, font, Vec4, -1);
 }
 void Engine::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4, float maxw) {
+	if (s <= 0) return;
 	uint sz = st.size();
-	GLuint tex = font->glyph(s);
+	GLuint tex = font->glyph((uint)round(s));
 	font->SizeVec(sz);
 
 	if ((font->alignment & 15) > 0) {
@@ -951,8 +957,8 @@ void Engine::DrawLineW(Vec3 v1, Vec3 v2, Vec4 col, float width) {
 }
 
 void Engine::DrawLineWDotted(Vec3 v1, Vec3 v2, Vec4 col, float width, float dotSz, bool app) {
-	vector<Vec3> quadPoss = vector<Vec3>();
-	vector<uint> quadIndexes = vector<uint>();
+	std::vector<Vec3> quadPoss = std::vector<Vec3>();
+	std::vector<uint> quadIndexes = std::vector<uint>();
 	Vec3 p2 = v1;
 	uint aa = 0;
 	bool ad = true;
@@ -1014,8 +1020,8 @@ void Engine::DrawCircle(Vec2 c, float r, uint n, Vec4 col, float width) {
 		Debug::Warning("DrawCircle", "only n of 3 and above allowed!");
 		return;
 	}
-	vector<Vec3> poss = vector<Vec3>(n);
-	vector<uint> ids = vector<uint>(n * 2 - 1);
+	std::vector<Vec3> poss = std::vector<Vec3>(n);
+	std::vector<uint> ids = std::vector<uint>(n * 2 - 1);
 	for (uint y = 0; y < n; y++) {
 		Vec3 vv = Vec3(sin(y * 6.283f / (n + 1)) * r + c.x, cos(y * 6.283f / (n + 1)) * r + c.y, 0);
 		poss[y] += Ds(vv);
@@ -1040,8 +1046,8 @@ void Engine::DrawCircleW(Vec3 c, Vec3 x, Vec3 y, float r, uint n, Vec4 col, floa
 		Debug::Warning("DrawCircle", "only n of 3 and above allowed!");
 		return;
 	}
-	vector<Vec3> poss = vector<Vec3>(n);
-	vector<uint> ids = vector<uint>(dotted? n : n * 2 - 1);
+	std::vector<Vec3> poss = std::vector<Vec3>(n);
+	std::vector<uint> ids = std::vector<uint>(dotted? n : n * 2 - 1);
 	for (uint a = 0; a < n; a++) {
 		poss[a] += c + sin(a * 6.283f / (n)) * x * r + cos(a * 6.283f / (n)) * y * r;
 		if (dotted)
@@ -1138,30 +1144,30 @@ ulong Engine::GetNewId() {
 	return idCounter;
 }
 
-//vector<Camera*> Engine::sceneCameras();
+//std::vector<Camera*> Engine::sceneCameras();
 
 //-----------------debug class-----------------------
 void Debug::Message(string c, string s) {
 #ifndef IS_EDITOR
-	*stream << "[i]" << c << ": " << s << endl;
+	*stream << "[i]" << c << ": " << s << std::endl;
 #endif
-	cout << "[i]" << c << ": " << s << endl;
+	std::cout << "[i]" << c << ": " << s << std::endl;
 }
 void Debug::Warning(string c, string s) {
 #ifndef IS_EDITOR
-	*stream << "[w]" << c << ": " << s << endl;
+	*stream << "[w]" << c << ": " << s << std::endl;
 #endif
-	cout << "[w]" << c << ": " << s << endl;
+	std::cout << "[w]" << c << ": " << s << std::endl;
 }
 void Debug::Error(string c, string s) {
 #ifndef IS_EDITOR
-	*stream << "[e]" << c << ": " << s << endl;
+	*stream << "[e]" << c << ": " << s << std::endl;
 #endif
-	cout << "[e]" << c << " says: " << s << endl;
+	std::cout << "[e]" << c << " says: " << s << std::endl;
 	//abort();
 }
 
-void Debug::DoDebugObjectTree(vector<SceneObject*> o, int i) {
+void Debug::DoDebugObjectTree(std::vector<SceneObject*> o, int i) {
 	for (SceneObject* oo : o) {
 		string s("");
 		for (int a = 0; a < i; a++)
@@ -1172,32 +1178,32 @@ void Debug::DoDebugObjectTree(vector<SceneObject*> o, int i) {
 		}
 		s += ")";
 #ifndef IS_EDITOR
-		*stream << s << endl;
+		*stream << s << std::endl;
 #endif
-		cout << s << endl;
+		std::cout << s << std::endl;
 		DoDebugObjectTree(oo->children, i + 1);
 	}
 }
 
-void Debug::ObjectTree(vector<SceneObject*> o) {
+void Debug::ObjectTree(std::vector<SceneObject*> o) {
 	Message("ObjectTree", "Start");
 	DoDebugObjectTree(o, 0);
 	Message("ObjectTree", "End");
 }
 
-ofstream* Debug::stream = nullptr;
+std::ofstream* Debug::stream = nullptr;
 void Debug::Init(string s) {
 #ifndef IS_EDITOR
 	string ss = s + "Log.txt";
-	stream = new ofstream(ss.c_str(), ios::out | ios::trunc);
+	stream = new std::ofstream(ss.c_str(), std::ios::out | std::ios::trunc);
 	Message("Debug", "Log init'd");
 #endif
 }
 //-----------------io class-----------------------
-vector<string> IO::GetFiles(const string& folder, string ext)
+std::vector<string> IO::GetFiles(const string& folder, string ext)
 {
-	if (folder == "") return vector<string>();
-	vector<string> names;
+	if (folder == "") return std::vector<string>();
+	std::vector<string> names;
 	string search_path = folder + "/*" + ext;
 	WIN32_FIND_DATA fd;
 	HANDLE hFind = ::FindFirstFile(search_path.c_str(), &fd);
@@ -1213,9 +1219,9 @@ vector<string> IO::GetFiles(const string& folder, string ext)
 	}
 	return names;
 }
-vector<EB_Browser_File> IO::GetFilesE (Editor* e, const string& folder)
+std::vector<EB_Browser_File> IO::GetFilesE (Editor* e, const string& folder)
 {
-	vector<EB_Browser_File> names;
+	std::vector<EB_Browser_File> names;
 	string search_path = folder + "/*.*";
 	WIN32_FIND_DATA fd;
 	HANDLE hFind = ::FindFirstFile(search_path.c_str(), &fd);
@@ -1240,9 +1246,9 @@ vector<EB_Browser_File> IO::GetFilesE (Editor* e, const string& folder)
 	return names;
 }
 
-void IO::GetFolders(const string& folder, vector<string>* names, bool hidden)
+void IO::GetFolders(const string& folder, std::vector<string>* names, bool hidden)
 {
-	//vector<string> names;
+	//std::vector<string> names;
 	string search_path = folder + "/*";
 	WIN32_FIND_DATA fd;
 	HANDLE hFind = ::FindFirstFile(search_path.c_str(), &fd);
@@ -1269,22 +1275,22 @@ bool IO::HasFile(LPCTSTR szPath)
 }
 
 string IO::ReadFile(const string& path) {
-	ifstream stream(path.c_str());
+	std::ifstream stream(path.c_str());
 	if (!stream.good()) {
-		cout << "not found! " << path << endl;
+		std::cout << "not found! " << path << std::endl;
 		return "";
 	}
-	stringstream buffer;
+	std::stringstream buffer;
 	buffer << stream.rdbuf();
 	return buffer.str();
 }
 
-vector<string> IO::GetRegistryKeys(HKEY key) {
+std::vector<string> IO::GetRegistryKeys(HKEY key) {
 	TCHAR    achKey[255];
 	TCHAR    achClass[MAX_PATH] = TEXT("");
 	DWORD    cchClassName = MAX_PATH;
 	DWORD	 size;
-	vector<string> res;
+	std::vector<string> res;
 
 	if (RegQueryInfoKey(key, achClass, &cchClassName, NULL, &size, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr) == ERROR_SUCCESS) {
 		DWORD cbName = 255;
@@ -1565,23 +1571,23 @@ void RenderTexture::Blit(Texture* src, RenderTexture* dst, Material* mat, string
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 }
 
-vector<float> RenderTexture::pixels() {
-	vector<float> v = vector<float>(width*height * 3);
+std::vector<float> RenderTexture::pixels() {
+	std::vector<float> v = std::vector<float>(width*height * 3);
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, d_fbo);
 	glReadPixels(0, 0, width, height, GL_RGB, GL_FLOAT, &v[0]);
 	return v;
 }
 
 void RenderTexture::Load(string path) {
-	throw runtime_error("RT Load (s) not implemented");
+	throw std::runtime_error("RT Load (s) not implemented");
 }
-void RenderTexture::Load(ifstream& strm) {
-	throw runtime_error("RT Load (i) not implemented");
+void RenderTexture::Load(std::ifstream& strm) {
+	throw std::runtime_error("RT Load (i) not implemented");
 }
 
 bool RenderTexture::Parse(string path) {
 	string ss(path + ".meta");
-	ofstream str(ss, ios::out | ios::trunc | ios::binary);
+	std::ofstream str(ss, std::ios::out | std::ios::trunc | std::ios::binary);
 	str << "IMR";
 	return true;
 }
@@ -1634,7 +1640,7 @@ bool LoadJPEG(string fileN, uint &x, uint &y, byte& channels, byte** data)
 }
 
 //slow!!
-void InvertPNG(vector<byte>& data, uint x, uint y) {
+void InvertPNG(std::vector<byte>& data, uint x, uint y) {
 	for (uint a = 0; a <= y*0.5f; a++) {
 		for (uint b = 0; b < x; b++) {
 			for (uint c = 0; c < 4; c++) {
@@ -1646,7 +1652,7 @@ void InvertPNG(vector<byte>& data, uint x, uint y) {
 	}
 }
 
-bool LoadPNG(string fileN, uint &x, uint &y, byte& channels, vector<byte>& data) {
+bool LoadPNG(string fileN, uint &x, uint &y, byte& channels, std::vector<byte>& data) {
 	channels = 4;
 	uint err = lodepng::decode(data, x, y, fileN.c_str());
 	if (err){
@@ -1664,7 +1670,7 @@ bool LoadBMP(string fileN, uint &x, uint &y, byte& channels, byte** data) {
 	unsigned int imageSize;   // = width*height*3
 	unsigned short bpi;
 
-	ifstream strm(fileN.c_str(), ios::in | ios::binary);
+	std::ifstream strm(fileN.c_str(), std::ios::in | std::ios::binary);
 
 	if (!strm.is_open()){
 		printf("Image could not be opened\n");
@@ -1701,13 +1707,13 @@ Texture::Texture(const string& path, bool mipmap) : Texture(path, mipmap, mipmap
 Texture::Texture(const string& path, bool mipmap, TEX_FILTERING filter, byte aniso) : AssetObject(ASSETTYPE_TEXTURE), _mipmap(mipmap), _filter(filter), _aniso(aniso) {
 	string sss = path.substr(path.find_last_of('.'), string::npos);
 	byte *data;
-	vector<byte> dataV;
+	std::vector<byte> dataV;
 	byte chn;
-	//cout << "opening image at " << path << endl;
+	//std::cout << "opening image at " << path << std::endl;
 	GLenum rgb = GL_RGB, rgba = GL_RGBA;
 	if (sss == ".bmp") {
 		if (!LoadBMP(path, width, height, chn, &data)) {
-			cout << "load bmp failed! " << path << endl;
+			std::cout << "load bmp failed! " << path << std::endl;
 			return;
 		}
 		rgb = GL_BGR;
@@ -1715,21 +1721,21 @@ Texture::Texture(const string& path, bool mipmap, TEX_FILTERING filter, byte ani
 	}
 	else if (sss == ".jpg") {
 		if (!LoadJPEG(path, width, height, chn, &data)) {
-			cout << "load jpg failed! " << path << endl;
+			std::cout << "load jpg failed! " << path << std::endl;
 			return;
 		}
 	}
 	//*
 	else if (sss == ".png") {
 		if (!LoadPNG(path, width, height, chn, dataV)) {
-			cout << "load png failed! " << path << endl;
+			std::cout << "load png failed! " << path << std::endl;
 			return;
 		}
 		data = &dataV[0];
 	}
 	//*/
 	else  {
-		cout << "Image extension invalid! " << path << endl;
+		std::cout << "Image extension invalid! " << path << std::endl;
 		return;
 	}
 
@@ -1743,12 +1749,12 @@ Texture::Texture(const string& path, bool mipmap, TEX_FILTERING filter, byte ani
 	glBindTexture(GL_TEXTURE_2D, 0);
 	if (dataV.size() == 0) delete[](data);
 	loaded = true;
-	//cout << "image loaded: " << width << "x" << height << endl;
+	//std::cout << "image loaded: " << width << "x" << height << std::endl;
 }
 
 Texture::Texture(int i, Editor* e) : AssetObject(ASSETTYPE_TEXTURE) {
 	string p = e->projectFolder + "Assets\\" + e->normalAssets[ASSETTYPE_TEXTURE][i] + ".meta";
-	ifstream strm(p, ios::in | ios::binary);
+	std::ifstream strm(p, std::ios::in | std::ios::binary);
 	if (strm.is_open()) {
 		byte chn;
 		GLenum rgb = GL_RGB, rgba = GL_RGBA;
@@ -1775,7 +1781,7 @@ Texture::Texture(int i, Editor* e) : AssetObject(ASSETTYPE_TEXTURE) {
 	}
 }
 
-Texture::Texture(ifstream& strm, uint offset) : AssetObject(ASSETTYPE_TEXTURE) {
+Texture::Texture(std::ifstream& strm, uint offset) : AssetObject(ASSETTYPE_TEXTURE) {
 	if (strm.is_open()) {
 		strm.seekg(offset);
 		byte chn;
@@ -1804,8 +1810,8 @@ Texture::Texture(ifstream& strm, uint offset) : AssetObject(ASSETTYPE_TEXTURE) {
 	}
 }
 
-TEX_TYPE Texture::_ReadStrm(Texture* tex, ifstream& strm, byte& chn, GLenum& rgb, GLenum& rgba) {
-	vector<char> hd(4);
+TEX_TYPE Texture::_ReadStrm(Texture* tex, std::ifstream& strm, byte& chn, GLenum& rgb, GLenum& rgba) {
+	std::vector<char> hd(4);
 	strm.read((&hd[0]), 3);
 	if (hd[0] == 'I' && hd[1] == 'M' && hd[2] == 'R') {
 		return TEX_TYPE_RENDERTEXTURE;
@@ -1842,13 +1848,13 @@ bool Texture::Parse(Editor* e, string path) {
 	byte ans = 5, flt = 2, mnr = 0xf0;
 	string sss = path.substr(path.find_last_of('.'), string::npos);
 	byte *data = nullptr;
-	vector<byte> dataV;
+	std::vector<byte> dataV;
 	byte chn;
 	uint width, height;
 	GLenum rgb = GL_RGB, rgba = GL_RGBA;
 	if (sss == ".bmp") {
 		if (!LoadBMP(path, width, height, chn, &data)) {
-			cout << "load bmp failed! " << path << endl;
+			std::cout << "load bmp failed! " << path << std::endl;
 			return false;
 		}
 		rgb = GL_BGR;
@@ -1856,25 +1862,25 @@ bool Texture::Parse(Editor* e, string path) {
 	}
 	else if (sss == ".jpg") {
 		if (!LoadJPEG(path, width, height, chn, &data)) {
-			cout << "load jpg failed! " << path << endl;
+			std::cout << "load jpg failed! " << path << std::endl;
 			return false;
 		}
 	}
 	else if (sss == ".png") {
 		if (!LoadPNG(path, width, height, chn, dataV)) {
-			cout << "load png failed! " << path << endl;
+			std::cout << "load png failed! " << path << std::endl;
 			return false;
 		}
 		data = &dataV[0];
 	}
 	else  {
-		cout << "Image extension invalid! " << path << endl;
+		std::cout << "Image extension invalid! " << path << std::endl;
 		return false;
 	}
 	if (data == nullptr)
 		return false;
 	string ss(path + ".meta");
-	ifstream iStrm(ss, ios::in | ios::binary); //if exists, read old prefs
+	std::ifstream iStrm(ss, std::ios::in | std::ios::binary); //if exists, read old prefs
 	if (iStrm.is_open()) {
 		char* c = new char[16];
 		iStrm.read(c, 16);
@@ -1887,7 +1893,7 @@ bool Texture::Parse(Editor* e, string path) {
 		delete[](c);
 	}
 	iStrm.close();
-	ofstream str(ss, ios::out | ios::trunc | ios::binary);
+	std::ofstream str(ss, std::ios::out | std::ios::trunc | std::ios::binary);
 	str << "IMG";
 	str << chn;
 	_StreamWrite(&width, &str, 4);
@@ -1902,10 +1908,10 @@ bool Texture::Parse(Editor* e, string path) {
 }
 
 void Texture::_ApplyPrefs(const string& p) {
-	ifstream iStrm(p, ios::in | ios::binary | ios::ate);
+	std::ifstream iStrm(p, std::ios::in | std::ios::binary | std::ios::ate);
 	if (iStrm.is_open()) {
 		uint sz((uint)iStrm.tellg());
-		vector<byte> data(sz);
+		std::vector<byte> data(sz);
 		iStrm.seekg(0);
 		iStrm.read((char*)(&data[0]), sz);
 		iStrm.close();
@@ -1915,7 +1921,7 @@ void Texture::_ApplyPrefs(const string& p) {
 		data[15] = (_mipmap ? 0xf0 : 0) | (_repeat ? 0x0f : 0);
 
 		remove(p.c_str());
-		ofstream strm(p, ios::out | ios::binary | ios::trunc);
+		std::ofstream strm(p, std::ios::out | std::ios::binary | std::ios::trunc);
 		if (strm.is_open()) {
 			strm.write((char*)(&data[0]), sz);
 			strm.close();
@@ -1925,7 +1931,7 @@ void Texture::_ApplyPrefs(const string& p) {
 }
 
 bool Texture::DrawPreview(uint x, uint y, uint w, uint h) {
-	Engine::DrawTexture(x, y, w, h, this, DrawTex_Fit);
+	Engine::DrawTexture((float)x, (float)y, (float)w, (float)h, this, DrawTex_Fit);
 	return true;
 }
 
@@ -1934,7 +1940,7 @@ Background::Background(const string& path) : width(0), height(0), AssetObject(AS
 		printf("HDRI path invalid!");
 		return;
 	}
-	//cout << "opening hdr image at " << path << endl;
+	//std::cout << "opening hdr image at " << path << std::endl;
 	
 	byte* data2 = hdr::read_hdr(path.c_str(), &width, &height);
 	if (data2 == NULL)
@@ -1948,7 +1954,7 @@ Background::Background(const string& path) : width(0), height(0), AssetObject(AS
 
 	uint width_1 = width, height_1 = height, width_2, height_2, mips = 0;
 	while (mips < 6 && height > 16) {
-		//cout << "Downsampling " << mips << endl;
+		//std::cout << "Downsampling " << mips << std::endl;
 		mips++;
 		data = Downsample(data, width_1, height_1, width_2, height_2);
 		glTexImage2D(GL_TEXTURE_2D, mips, GL_RGB, width_2, height_2, 0, GL_RGB, GL_FLOAT, &data[0]);
@@ -1962,13 +1968,13 @@ Background::Background(const string& path) : width(0), height(0), AssetObject(AS
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	loaded = true;
-	//cout << "HDR Image loaded: " << width << "x" << height << endl;
+	//std::cout << "HDR Image loaded: " << width << "x" << height << std::endl;
 }
 
-void Background::B_DS(Background* b, vector<float> data) {
+void Background::B_DS(Background* b, std::vector<float> data) {
 	uint width_1 = b->width, height_1 = b->height, width_2, height_2, mips = 0;
 	while (mips < 6 && b->height > 16) {
-		//cout << "Downsampling " << mips << endl;
+		//std::cout << "Downsampling " << mips << std::endl;
 		mips++;
 		data = Downsample(data, width_1, height_1, width_2, height_2);
 		
@@ -1986,8 +1992,8 @@ void Background::B_DS(Background* b, vector<float> data) {
 
 Background::Background(int i, Editor* editor) : width(0), height(0), AssetObject(ASSETTYPE_HDRI), loaded(false) {
 	string path = editor->projectFolder + "Assets\\" + editor->normalAssets[ASSETTYPE_HDRI][i] + ".meta";
-	ifstream strm(path.c_str(), ios::in | ios::binary);
-	vector<char> hd(6);
+	std::ifstream strm(path.c_str(), std::ios::in | std::ios::binary);
+	std::vector<char> hd(6);
 	strm.read((&hd[0]), 4);
 	if (hd[0] != 'I' || hd[1] != 'M' || hd[2] != 'G' || hd[3] != (char)4) {
 		Debug::Error("HDR Cacher", "HDR cache header wrong!");
@@ -2019,11 +2025,11 @@ Background::Background(int i, Editor* editor) : width(0), height(0), AssetObject
 	B_DS(this, data);
 	//thread t = thread(B_DS, this, data);
 	//t.detach();
-	//cout << "HDR Image loaded: " << width << "x" << height << endl;
+	//std::cout << "HDR Image loaded: " << width << "x" << height << std::endl;
 }
 
-Background::Background(ifstream& strm, uint offset) : width(0), height(0), AssetObject(ASSETTYPE_HDRI) {
-	vector<char> hd(6);
+Background::Background(std::ifstream& strm, uint offset) : width(0), height(0), AssetObject(ASSETTYPE_HDRI) {
+	std::vector<char> hd(6);
 	strm.read((&hd[0]), 4);
 	if (hd[0] != 'I' || hd[1] != 'M' || hd[2] != 'G' || hd[3] != (char)4) {
 		Debug::Error("HDR Cacher", "HDR cache header wrong!");
@@ -2049,7 +2055,7 @@ Background::Background(ifstream& strm, uint offset) : width(0), height(0), Asset
 	uint width_1, height_1, mips = 0;
 	while (mips < 6 && height > 16) {
 		mips++;
-		//cout << "Downsampling " << mips << endl;
+		//std::cout << "Downsampling " << mips << std::endl;
 		data = Downsample(data, width, height, width_1, height_1);
 		glTexImage2D(GL_TEXTURE_2D, mips, GL_RGB, width_1, height_1, 0, GL_RGB, GL_FLOAT, &data[0]);
 		width = width_1 + 0;
@@ -2063,11 +2069,11 @@ Background::Background(ifstream& strm, uint offset) : width(0), height(0), Asset
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	loaded = true;
-	//cout << "HDR Image loaded: " << width << "x" << height << endl;
+	//std::cout << "HDR Image loaded: " << width << "x" << height << std::endl;
 }
 
 /*
-vector<float> Background::Downsample(vector<float>& data, uint w, uint h, uint& w2, uint& h2) {
+std::vector<float> Background::Downsample(std::vector<float>& data, uint w, uint h, uint& w2, uint& h2) {
 	w2 = floor(w / 2);
 	h2 = floor(h / 2);
 	RenderTexture rt = RenderTexture(w2, h2, false);
@@ -2082,14 +2088,14 @@ vector<float> Background::Downsample(vector<float>& data, uint w, uint h, uint& 
 }
 */
 //*
-vector<float> Background::Downsample(vector<float>& data, uint w, uint h, uint& w2, uint& h2) {
+std::vector<float> Background::Downsample(std::vector<float>& data, uint w, uint h, uint& w2, uint& h2) {
 	if (w % 2 != 0) w--;
 	if (h % 2 != 0) h--;
 	w2 = w / 2;
 	h2 = h / 2;
 
 	//half the size
-	vector<float> hImg(w2*h2*3);
+	std::vector<float> hImg(w2*h2*3);
 	for (uint x = 0; x < w2; x++) {
 		for (uint y = 0; y < h2; y++) {
 			hImg[x * 3 + y * 3 * w2] = 0.25f*(data[x * 6 + y * 6 * w] + data[(x * 6 + 3) + y * 6 * w] + data[x * 6 + (y * 6 + 3) * w] + data[x * 6 + 3 + (y * 6 + 3) * w]);
@@ -2101,7 +2107,7 @@ vector<float> Background::Downsample(vector<float>& data, uint w, uint h, uint& 
 	//sigma 5
 	float kernal[21] = { 0.011f, 0.0164f, 0.023f, 0.031f, 0.04f, 0.05f, 0.06f, 0.07f, 0.076f, 0.08f, 0.0852f, 0.08f, 0.076f, 0.07f, 0.06f, 0.05f, 0.04f, 0.031f, 0.023f, 0.0164f, 0.011f };
 	//blur 20 pixels x
-	vector<float> xImg(w2*h2*3);
+	std::vector<float> xImg(w2*h2*3);
 	for (uint x = 0; x < w2; x++) {
 		for (uint y = 0; y < h2; y++) {
 			for (uint a = 0; a < 21; a++) {
@@ -2116,7 +2122,7 @@ vector<float> Background::Downsample(vector<float>& data, uint w, uint h, uint& 
 	}
 
 	//blur 20 pixels y
-	vector<float> oImg(w2*h2 * 3);
+	std::vector<float> oImg(w2*h2 * 3);
 	for (uint x = 0; x < w2; x++) {
 		for (uint y = 0; y < h2; y++) {
 			for (uint a = 0; a < 21; a++) {
@@ -2144,7 +2150,7 @@ CubeMap::CubeMap(ushort size, bool mips, GLenum type, byte dataSize, GLenum form
 	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 	glGenTextures(1, &pointer);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, pointer);
-	//vector<byte> data = vector<byte>(size*size*dataSize, 0);
+	//std::vector<byte> data = std::vector<byte>(size*size*dataSize, 0);
 	glGenTextures(6, facePointers);
 	for (byte aa = 0; aa < 6; aa++) {
 		glBindTexture(GL_TEXTURE_CUBE_MAP_POSITIVE_X + aa, facePointers[aa]);
@@ -2175,7 +2181,7 @@ bool Background::Parse(string path) {
 	if (data == NULL)
 		return false;
 	string ss(path + ".meta");
-	ofstream str(ss, ios::out | ios::trunc | ios::binary);
+	std::ofstream str(ss, std::ios::out | std::ios::trunc | std::ios::binary);
 	str << "IMG";
 	str << (byte)4;
 	_StreamWrite(&width, &str, 4);
@@ -2196,14 +2202,14 @@ void Font::Init() {
 	int err = FT_Init_FreeType(&_ftlib);
 	if (err != FT_Err_Ok) {
 		Debug::Error("Font", "Fatal: Initializing freetype failed!");
-		runtime_error("Fatal: Initializing freetype failed!");
+		std::runtime_error("Fatal: Initializing freetype failed!");
 	}
 
 	string error;
 	GLuint vs, fs;
 	string frag = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = vec4(1, 1, 1, texture(sampler, UV).r)*col;\n}";
-	ifstream strm("D:\\fontVert.txt");
-	stringstream vert;
+	std::ifstream strm("D:\\fontVert.txt");
+	std::stringstream vert;
 	vert << strm.rdbuf();
 	if (!ShaderBase::LoadShader(GL_VERTEX_SHADER, vert.str(), vs, &error)) {
 		Debug::Error("Engine", "Fatal: Cannot init font shader(v)! " + error);
@@ -2224,9 +2230,9 @@ void Font::Init() {
 	{
 		int info_log_length = 0;
 		glGetProgramiv(fontProgram, GL_INFO_LOG_LENGTH, &info_log_length);
-		vector<char> program_log(info_log_length);
+		std::vector<char> program_log(info_log_length);
 		glGetProgramInfoLog(fontProgram, info_log_length, NULL, &program_log[0]);
-		cerr << "Font shader link error" << endl << &program_log[0] << endl;
+		std::cerr << "Font shader link error" << std::endl << &program_log[0] << std::endl;
 		abort();
 	}
 	glDetachShader(fontProgram, vs);
@@ -2367,9 +2373,9 @@ void Material::_ReloadParams() {
 
 Material::Material(string path) : AssetObject(ASSETTYPE_MATERIAL) {
 	string p = Editor::instance->projectFolder + "Assets\\" + path;
-	ifstream stream(p.c_str());
+	std::ifstream stream(p.c_str());
 	if (!stream.good()) {
-		cout << "material not found!" << endl;
+		std::cout << "material not found!" << std::endl;
 		return;
 	}
 	char* c = new char[4];
@@ -2377,7 +2383,7 @@ Material::Material(string path) : AssetObject(ASSETTYPE_MATERIAL) {
 	c[3] = (char)0;
 	string ss(c);
 	if (ss != "KTC") {
-		cerr << "file not supported" << endl;
+		std::cerr << "file not supported" << std::endl;
 		return;
 	}
 	delete[](c);
@@ -2397,7 +2403,7 @@ Material::Material(string path) : AssetObject(ASSETTYPE_MATERIAL) {
 		return;
 	}
 	ResetVals();
-	unordered_map<string, GLint> nMap;
+	std::unordered_map<string, GLint> nMap;
 	//if (Editor::instance != nullptr)
 		//_shader = Editor::instance->GetAssetId(shader);
 	for (ShaderVariable* v : shader->vars) {
@@ -2474,7 +2480,7 @@ Material::Material(string path) : AssetObject(ASSETTYPE_MATERIAL) {
 	stream.close();
 }
 
-Material::Material(ifstream& stream, uint offset) : AssetObject(ASSETTYPE_MATERIAL) {
+Material::Material(std::ifstream& stream, uint offset) : AssetObject(ASSETTYPE_MATERIAL) {
 	if (stream.is_open()) {
 		stream.seekg(offset);
 		char* c = new char[4];
@@ -2482,7 +2488,7 @@ Material::Material(ifstream& stream, uint offset) : AssetObject(ASSETTYPE_MATERI
 		c[3] = (char)0;
 		string ss(c);
 		if (ss != "KTC") {
-			cerr << "file not supported" << endl;
+			std::cerr << "file not supported" << std::endl;
 			return;
 		}
 		delete[](c);
@@ -2504,7 +2510,7 @@ Material::Material(ifstream& stream, uint offset) : AssetObject(ASSETTYPE_MATERI
 			return;
 		}
 		ResetVals();
-		unordered_map<string, GLint> nMap;
+		std::unordered_map<string, GLint> nMap;
 		for (ShaderVariable* v : shader->vars) {
 			void* l = nullptr;
 			if (v->type == SHADER_INT)
@@ -2588,19 +2594,19 @@ Material::~Material() {
 }
 
 void Material::ResetVals() {
-	vals[SHADER_INT] = unordered_map <GLint, void*>();
-	vals[SHADER_FLOAT] = unordered_map <GLint, void*>();
-	vals[SHADER_VEC2] = unordered_map <GLint, void*>();
-	vals[SHADER_VEC3] = unordered_map <GLint, void*>();
-	vals[SHADER_SAMPLER] = unordered_map <GLint, void*>();
-	vals[SHADER_MATRIX] = unordered_map <GLint, void*>();
-	valNames[SHADER_INT] = vector<string>();
-	valNames[SHADER_FLOAT] = vector<string>();
-	valNames[SHADER_VEC2] = vector<string>();
-	valNames[SHADER_VEC3] = vector<string>();
-	valNames[SHADER_SAMPLER] = vector<string>();
-	valNames[SHADER_MATRIX] = vector<string>();
-	valOrders = vector<SHADER_VARTYPE>();
+	vals[SHADER_INT] = std::unordered_map <GLint, void*>();
+	vals[SHADER_FLOAT] = std::unordered_map <GLint, void*>();
+	vals[SHADER_VEC2] = std::unordered_map <GLint, void*>();
+	vals[SHADER_VEC3] = std::unordered_map <GLint, void*>();
+	vals[SHADER_SAMPLER] = std::unordered_map <GLint, void*>();
+	vals[SHADER_MATRIX] = std::unordered_map <GLint, void*>();
+	valNames[SHADER_INT] = std::vector<string>();
+	valNames[SHADER_FLOAT] = std::vector<string>();
+	valNames[SHADER_VEC2] = std::vector<string>();
+	valNames[SHADER_VEC3] = std::vector<string>();
+	valNames[SHADER_SAMPLER] = std::vector<string>();
+	valNames[SHADER_MATRIX] = std::vector<string>();
+	valOrders = std::vector<SHADER_VARTYPE>();
 }
 
 void Material::SetTexture(string name, Texture * texture) {
@@ -2618,7 +2624,7 @@ GLuint Material::defTex_Green = 0;
 GLuint Material::defTex_Blue = 0;
 
 void Material::LoadOris() {
-	vector<byte> data(3);
+	std::vector<byte> data(3);
 
 	data[0] = 0;
 	data[1] = 0;
@@ -2671,7 +2677,7 @@ void Material::_UpdateTexCache(void* v) {
 }
 
 void Material::Save(string path) {
-	ofstream strm(path.c_str(), ios::out | ios::binary | ios::trunc);
+	std::ofstream strm(path.c_str(), std::ios::out | std::ios::binary | std::ios::trunc);
 	strm << "KTC";
 	ASSETTYPE st;
 	ASSETID si = Editor::instance->GetAssetId(shader, st);
@@ -2845,11 +2851,11 @@ float FCurve::Eval(float t, float repeat) {
 	return 0;
 }
 
-void _StreamWrite(const void* val, ofstream* stream, int size) {
+void _StreamWrite(const void* val, std::ofstream* stream, int size) {
 	stream->write(reinterpret_cast<char const *>(val), size);
 }
 
-void _StreamWriteAsset(Editor* e, ofstream* stream, ASSETTYPE t, ASSETID i) {
+void _StreamWriteAsset(Editor* e, std::ofstream* stream, ASSETTYPE t, ASSETID i) {
 	if (i < 0) {
 		(*stream) << (char)0;
 		return;
@@ -2862,10 +2868,10 @@ void _StreamWriteAsset(Editor* e, ofstream* stream, ASSETTYPE t, ASSETID i) {
 	(*stream) << p << char0;
 }
 
-ASSETID _Strm2H(ifstream& strm) {
+ASSETID _Strm2H(std::ifstream& strm) {
 	return -1;
 }
-string _Strm2Asset(ifstream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int max) {
+string _Strm2Asset(std::ifstream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int max) {
 	char* c = new char[max];
 	strm.getline(c, max, (char)0);
 	string s(c);
@@ -2878,8 +2884,8 @@ string _Strm2Asset(ifstream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int max)
 	return s;
 }
 
-vector<float> hdr2float(byte imagergbe[], int w, int h) {
-	vector<float> image(w * h * 3 * sizeof(float));
+std::vector<float> hdr2float(byte imagergbe[], int w, int h) {
+	std::vector<float> image(w * h * 3 * sizeof(float));
 	for (int i = 0; i < w*h; i++) {
 		unsigned char exponent = imagergbe[i * 4 + 3];
 		if (exponent == 0) {
@@ -2906,7 +2912,7 @@ float B2F(char c[]) {
 	return ff;
 }
 
-void Serialize(Editor* e, SceneObject* o, ofstream* stream) {
+void Serialize(Editor* e, SceneObject* o, std::ofstream* stream) {
 	/*
 	Object data
 	O[tx][ty][tz][rx][ry][rz][sx][sy][sz] (trs=float32)
@@ -2944,7 +2950,7 @@ void Serialize(Editor* e, SceneObject* o, ofstream* stream) {
 	*stream << "o";
 }
 
-void Deserialize(ifstream& stream, SceneObject* obj) {
+void Deserialize(std::ifstream& stream, SceneObject* obj) {
 	char* cc = new char[100];
 	stream.getline(cc, 100, 0);
 	obj->name = string(cc);
@@ -3000,7 +3006,7 @@ void Deserialize(ifstream& stream, SceneObject* obj) {
 #endif
 				break;
 			default:
-				cout << "unknown component " << (int)c << "!" << endl;
+				std::cout << "unknown component " << (int)c << "!" << std::endl;
 				char cc;
 				cc = stream.get();
 				while (cc != 'c')
@@ -3046,8 +3052,8 @@ void Scene::ReadD0() {
 	}
 }
 
-Scene::Scene(ifstream& stream, long pos) : sceneName("") {
-	vector<SceneObject*>().swap(objects);
+Scene::Scene(std::ifstream& stream, long pos) : sceneName("") {
+	std::vector<SceneObject*>().swap(objects);
 	stream.seekg(pos);
 	char h1, h2;
 	stream >> h1 >> h2;
@@ -3099,7 +3105,7 @@ void Scene::DeleteObject(SceneObject* o) {
 	if (o->parent == nullptr){
 		auto it = std::find(active->objects.begin(), active->objects.end(), o);
 		if (it != active->objects.end()) {
-			swap(*it, active->objects.back());
+			std::swap(*it, active->objects.back());
 			active->objects.pop_back();
 		}
 	}
@@ -3111,10 +3117,10 @@ void Scene::DeleteObject(SceneObject* o) {
 	delete(o);
 }
 
-shared_ptr<Scene> Scene::active = nullptr;
-ifstream* Scene::strm = nullptr;
-vector<string> Scene::sceneNames = {};
-vector<long> Scene::scenePoss = {};
+std::shared_ptr<Scene> Scene::active = nullptr;
+std::ifstream* Scene::strm = nullptr;
+std::vector<string> Scene::sceneNames = {};
+std::vector<long> Scene::scenePoss = {};
 
 void Scene::Load(string name) {
 	for (uint a = sceneNames.size(); a > 0; a--) {
@@ -3131,13 +3137,13 @@ void Scene::Load(uint i) {
 		return;
 	}
 	Debug::Message("Scene Loader", "Loading scene " + to_string(i) + "...");
-	active = make_shared<Scene>(*strm, scenePoss[i]);
+	active = std::make_shared<Scene>(*strm, scenePoss[i]);
 	active->sceneId = i;
 	Debug::Message("Scene Loader", "Loaded scene " + to_string(i) + "(" + sceneNames[i] + ")");
 }
 
 void Scene::Save(Editor* e) {
-	ofstream sw(e->projectFolder + "Assets\\" + sceneName + ".scene", ios::out);
+	std::ofstream sw(e->projectFolder + "Assets\\" + sceneName + ".scene", std::ios::out);
 	sw << "SN";
 	sw << sceneName << (char)0;
 	_StreamWriteAsset(e, &sw, ASSETTYPE_HDRI, settings.skyId);
@@ -3160,18 +3166,18 @@ void Scene::Save(Editor* e) {
 	//e->includedScenes.push_back(e->projectFolder + "Assets\\test.scene");
 }
 
-unordered_map<ASSETTYPE, vector<string>> AssetManager::names = {};
-unordered_map<ASSETTYPE, vector<pair<byte, uint>>> AssetManager::dataLocs = {};
-unordered_map<ASSETTYPE, vector<void*>> AssetManager::dataCaches = {};
-vector<ifstream*> AssetManager::streams = {};
+std::unordered_map<ASSETTYPE, std::vector<string>> AssetManager::names = {};
+std::unordered_map<ASSETTYPE, std::vector<std::pair<byte, uint>>> AssetManager::dataLocs = {};
+std::unordered_map<ASSETTYPE, std::vector<void*>> AssetManager::dataCaches = {};
+std::vector<std::ifstream*> AssetManager::streams = {};
 void AssetManager::Init(string dpath) {
 	names.clear();
 	dataLocs.clear();
-	vector<ifstream*>().swap(streams);
+	std::vector<std::ifstream*>().swap(streams);
 
 	string pp = dpath + "0";
-	Scene::strm = new ifstream(pp.c_str(), ios::in | ios::binary);
-	ifstream* strm = Scene::strm;
+	Scene::strm = new std::ifstream(pp.c_str(), std::ios::in | std::ios::binary);
+	std::ifstream* strm = Scene::strm;
 	if (!strm->is_open()) {
 		Debug::Error("AssetManager", "Fatal: cannot open data file 0!");
 		abort();
@@ -3193,16 +3199,16 @@ void AssetManager::Init(string dpath) {
 		_Strm2Val(*strm, id);
 		_Strm2Val(*strm, pos);
 		strm->getline(c, 100, (char)0);
-		cout << (int)type << " " << (int)id << " " << pos << ": " << string(c) << endl;
+		std::cout << (int)type << " " << (int)id << " " << pos << ": " << string(c) << std::endl;
 		numDat = max(numDat, id);
-		dataLocs[type].push_back(pair<byte, uint>(id - 1, pos));
+		dataLocs[type].push_back(std::pair<byte, uint>(id - 1, pos));
 		dataCaches[type].push_back(nullptr);
 		names[type].push_back(c);
 	}
 
 	for (int a = 0; a < numDat; a++) {
 		string pp = dpath + to_string(a+1);
-		streams.push_back(new ifstream(pp.c_str(), ios::in | ios::binary));
+		streams.push_back(new std::ifstream(pp.c_str(), std::ios::in | std::ios::binary));
 		if (streams[a]->is_open())
 			Debug::Message("AssetManager", "Streaming data" + to_string(a+1));
 		else {
@@ -3261,7 +3267,7 @@ void* AssetManager::GetCache(ASSETTYPE t, ASSETID i) {
 		return GenCache(t, i);
 }
 void* AssetManager::GenCache(ASSETTYPE t, ASSETID i) {
-	ifstream* strm = streams[dataLocs[t][i].first];
+	std::ifstream* strm = streams[dataLocs[t][i].first];
 	uint off = dataLocs[t][i].second;
 	strm->seekg(off);
 	uint sz;

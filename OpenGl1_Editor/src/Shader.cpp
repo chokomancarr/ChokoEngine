@@ -8,8 +8,6 @@
 #include <fstream>
 #include <limits>
 
-using namespace std;
-
 bool ShaderBase::LoadShader(GLenum shaderType, string source, GLuint& shader, string* err) {
 
 	int compile_result = 0;
@@ -27,7 +25,7 @@ bool ShaderBase::LoadShader(GLenum shaderType, string source, GLuint& shader, st
 	{
 		int info_log_length = 0;
 		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &info_log_length);
-		vector<char> shader_log(info_log_length);
+		std::vector<char> shader_log(info_log_length);
 		glGetShaderInfoLog(shader, info_log_length, NULL, &shader_log[0]);
 		glDeleteShader(shader);
 		shader = 0;
@@ -35,7 +33,7 @@ bool ShaderBase::LoadShader(GLenum shaderType, string source, GLuint& shader, st
 			*err += string(shader_log.begin(), shader_log.end());
 		return false;
 	}
-	//std::cout << "shader compiled" << endl;
+	//std::std::cout << "shader compiled" << std::endl;
 	return true;
 }
 
@@ -43,9 +41,9 @@ ShaderBase::ShaderBase(string path) : AssetObject(ASSETTYPE_SHADER) {
 	string p = Editor::instance->projectFolder + "Assets\\" + path + ".meta";
 	string vertex_shader_code = "";
 	string fragment_shader_code = "";
-	ifstream stream(p.c_str());
+	std::ifstream stream(p.c_str());
 	if (!stream.good()) {
-		cout << "shader not found!" << endl;
+		std::cout << "shader not found!" << std::endl;
 		return;
 	}
 	char* c = new char[4];
@@ -53,7 +51,7 @@ ShaderBase::ShaderBase(string path) : AssetObject(ASSETTYPE_SHADER) {
 	c[3] = (char)0;
 	string ss(c);
 	if (string(c) != "KTS") {
-		cerr << "file not supported" << endl;
+		std::cerr << "file not supported" << std::endl;
 		return;
 	}
 
@@ -116,7 +114,7 @@ ShaderBase::ShaderBase(string path) : AssetObject(ASSETTYPE_SHADER) {
 	GLuint vertex_shader, fragment_shader;
 	string err = "";
 	if (vertex_shader_code != "") {
-		cout << "Vertex Shader: " << endl << vertex_shader_code;
+		std::cout << "Vertex Shader: " << std::endl << vertex_shader_code;
 		if (!LoadShader(GL_VERTEX_SHADER, vertex_shader_code, vertex_shader, &err)) {
 			Editor::instance->_Error("Shader Compiler", path + " " + err);
 			return;
@@ -124,7 +122,7 @@ ShaderBase::ShaderBase(string path) : AssetObject(ASSETTYPE_SHADER) {
 	}
 	else return;
 	if (fragment_shader_code != "") {
-		cout << "Fragment Shader: " << endl << fragment_shader_code;
+		std::cout << "Fragment Shader: " << std::endl << fragment_shader_code;
 		if (!LoadShader(GL_FRAGMENT_SHADER, fragment_shader_code, fragment_shader, &err)) {
 			Editor::instance->_Error("Shader Compiler", path + " " + err);
 			return;
@@ -144,14 +142,14 @@ ShaderBase::ShaderBase(string path) : AssetObject(ASSETTYPE_SHADER) {
 	{
 		int info_log_length = 0;
 		glGetProgramiv(pointer, GL_INFO_LOG_LENGTH, &info_log_length);
-		vector<char> program_log(info_log_length);
+		std::vector<char> program_log(info_log_length);
 		glGetProgramInfoLog(pointer, info_log_length, NULL, &program_log[0]);
-		cout << "Shader link error" << endl << &program_log[0] << endl;
+		std::cout << "Shader link error" << std::endl << &program_log[0] << std::endl;
 		glDeleteProgram(pointer);
 		pointer = 0;
 		return;
 	}
-	cout << "shader linked" << endl;
+	std::cout << "shader linked" << std::endl;
 
 	glDetachShader(pointer, vertex_shader);
 	glDeleteShader(vertex_shader);
@@ -160,7 +158,7 @@ ShaderBase::ShaderBase(string path) : AssetObject(ASSETTYPE_SHADER) {
 	loaded = true;
 }
 
-ShaderBase::ShaderBase(ifstream& stream, uint offset) : AssetObject(ASSETTYPE_SHADER) {
+ShaderBase::ShaderBase(std::ifstream& stream, uint offset) : AssetObject(ASSETTYPE_SHADER) {
 	if (!stream.is_open())
 		return;
 	stream.seekg(offset);
@@ -233,7 +231,7 @@ ShaderBase::ShaderBase(ifstream& stream, uint offset) : AssetObject(ASSETTYPE_SH
 	GLuint vertex_shader, fragment_shader;
 	string err = "";
 	if (vertex_shader_code != "") {
-		cout << "Vertex Shader: " << endl << vertex_shader_code;
+		std::cout << "Vertex Shader: " << std::endl << vertex_shader_code;
 		if (!LoadShader(GL_VERTEX_SHADER, vertex_shader_code, vertex_shader, &err)) {
 			Debug::Error("Shader Compiler", "Vert error: " + err);
 			return;
@@ -241,7 +239,7 @@ ShaderBase::ShaderBase(ifstream& stream, uint offset) : AssetObject(ASSETTYPE_SH
 	}
 	else return;
 	if (fragment_shader_code != "") {
-		cout << "Fragment Shader: " << endl << fragment_shader_code;
+		std::cout << "Fragment Shader: " << std::endl << fragment_shader_code;
 		if (!LoadShader(GL_FRAGMENT_SHADER, fragment_shader_code, fragment_shader, &err)) {
 			Debug::Error("Shader Compiler", "Frag error: " + err);
 			return;
@@ -261,14 +259,14 @@ ShaderBase::ShaderBase(ifstream& stream, uint offset) : AssetObject(ASSETTYPE_SH
 	{
 		int info_log_length = 0;
 		glGetProgramiv(pointer, GL_INFO_LOG_LENGTH, &info_log_length);
-		vector<char> program_log(info_log_length);
+		std::vector<char> program_log(info_log_length);
 		glGetProgramInfoLog(pointer, info_log_length, NULL, &program_log[0]);
-		cout << "Shader link error" << endl << &program_log[0] << endl;
+		std::cout << "Shader link error" << std::endl << &program_log[0] << std::endl;
 		glDeleteProgram(pointer);
 		pointer = 0;
 		return;
 	}
-	cout << "shader linked" << endl;
+	std::cout << "shader linked" << std::endl;
 
 	glDetachShader(pointer, vertex_shader);
 	glDeleteShader(vertex_shader);
@@ -281,13 +279,13 @@ ShaderBase::ShaderBase(ifstream& stream, uint offset) : AssetObject(ASSETTYPE_SH
 ShaderBase::ShaderBase(string vertex_shader_code, string fragment_shader_code) : AssetObject(ASSETTYPE_SHADER) {
 	GLuint vertex_shader, fragment_shader;
 	if (vertex_shader_code != "") {
-		cout << "Vertex Shader: " << endl << vertex_shader_code;
+		std::cout << "Vertex Shader: " << std::endl << vertex_shader_code;
 		if (!LoadShader(GL_VERTEX_SHADER, vertex_shader_code, vertex_shader))
 			return;
 	}
 	else return;
 	if (fragment_shader_code != "") {
-		cout << "Fragment Shader: " << endl << fragment_shader_code;
+		std::cout << "Fragment Shader: " << std::endl << fragment_shader_code;
 		if (!LoadShader(GL_FRAGMENT_SHADER, fragment_shader_code, fragment_shader))
 			return;
 	}
@@ -305,14 +303,14 @@ ShaderBase::ShaderBase(string vertex_shader_code, string fragment_shader_code) :
 	{
 		int info_log_length = 0;
 		glGetProgramiv(pointer, GL_INFO_LOG_LENGTH, &info_log_length);
-		vector<char> program_log(info_log_length);
+		std::vector<char> program_log(info_log_length);
 		glGetProgramInfoLog(pointer, info_log_length, NULL, &program_log[0]);
-		cout << "Shader link error" << endl << &program_log[0] << endl;
+		std::cout << "Shader link error" << std::endl << &program_log[0] << std::endl;
 		glDeleteProgram(pointer);
 		pointer = 0;
 		return;
 	}
-	cout << "shader linked" << endl;
+	std::cout << "shader linked" << std::endl;
 
 	glDetachShader(pointer, vertex_shader);
 	glDeleteShader(vertex_shader);
@@ -338,9 +336,9 @@ VRT
 FRG
 [size(4)][codestring]\0
 */
-bool ShaderBase::Parse(ifstream* stream, string path) {
+bool ShaderBase::Parse(std::ifstream* stream, string path) {
 	string a, text;
-	vector<string> included;
+	std::vector<string> included;
 	byte readingType = 0;
 
 	//resolve includes
@@ -358,7 +356,7 @@ bool ShaderBase::Parse(ifstream* stream, string path) {
 				string path(Editor::dataPath + "ShaderIncludes\\" + nmm + ".shadinc");
 				string in = IO::ReadFile(path);
 				if (in != "") {
-					cout << nmm << ".shadinc included" << endl;
+					std::cout << nmm << ".shadinc included" << std::endl;
 					//text += "//Included from " + nmm + ".shadinc\n";
 					text += in + "\n";
 					//text += "//end of " + nmm + ".shadinc\n";
@@ -382,17 +380,17 @@ bool ShaderBase::Parse(ifstream* stream, string path) {
 	}
 	text += char(0);
 
-	stringstream sstream;
+	std::stringstream sstream;
 	sstream.str(text);
 
 	//VAR (vars), IN (in @ vert), V2F (out @ vert, in @ frag), COMMON (copy to both), VERT, FRAG
 	string in, v2f, common, vert, frag;
-	vector<ShaderVariable*> vrs;
+	std::vector<ShaderVariable*> vrs;
 	int vrSize = -1;
 	string vertCode, fragCode;
 
 	while (!sstream.eof()) {
-		//cout << to_string(readingType) << endl;
+		//std::cout << to_string(readingType) << std::endl;
 		if (readingType == 0) {
 			getline(sstream, a);
 			if (a == "VARSTART")
@@ -409,7 +407,7 @@ bool ShaderBase::Parse(ifstream* stream, string path) {
 				readingType = 6;
 			//else if (a != ""){
 				//Editor::instance->_Warning("Shader Importer", "Unscoped code found in shader. They will be ignored.");
-				//cout << ">" << a << endl;
+				//std::cout << ">" << a << std::endl;
 			//}
 		}
 		else if (readingType == 1) {
@@ -427,8 +425,8 @@ bool ShaderBase::Parse(ifstream* stream, string path) {
 				byte vt = 0; //i, f
 				vrs.push_back(new ShaderVariable());
 				vrSize++;
-				vrs[vrSize]->min = numeric_limits<float>::lowest();
-				vrs[vrSize]->max = numeric_limits<float>::infinity();
+				vrs[vrSize]->min = std::numeric_limits<float>::lowest();
+				vrs[vrSize]->max = std::numeric_limits<float>::infinity();
 				vrs[vrSize]->val = ShaderValue();
 				vrs[vrSize]->def = ShaderValue();
 				if (x == "int") {
@@ -475,7 +473,7 @@ bool ShaderBase::Parse(ifstream* stream, string path) {
 							else
 								sstream >> x;
 						}
-						catch (exception e) {
+						catch (std::exception e) {
 							Editor::instance->_Error("Shader Importer", "Range syntax error in shader!");
 							return false;
 						}
@@ -536,7 +534,7 @@ bool ShaderBase::Parse(ifstream* stream, string path) {
 						int r = stoi(ss, nullptr);
 						in += "layout(position=" + to_string(r) + ")" + ss + "\n";
 					}
-					catch (exception e) {
+					catch (std::exception e) {
 						in += a + "\n";
 					}
 				}
@@ -576,7 +574,7 @@ bool ShaderBase::Parse(ifstream* stream, string path) {
 	//combine everything
 	vertCode = "#version 330 core\n" + in + "\n\n" + common + "\n\n";
 	fragCode = "#version 330 core\n" + common + "\n\n";
-	stringstream v2fStream;
+	std::stringstream v2fStream;
 	v2fStream.str(v2f);
 	while (!v2fStream.eof()) {
 		getline(v2fStream, a);
@@ -591,8 +589,8 @@ bool ShaderBase::Parse(ifstream* stream, string path) {
 	if (IO::HasFile(path.c_str())) {
 		remove(path.c_str());
 	}
-	ofstream strm;
-	strm.open(path, ios::out | ios::binary | ios::trunc);
+	std::ofstream strm;
+	strm.open(path, std::ios::out | std::ios::binary | std::ios::trunc);
 	if (!strm.is_open()) {
 		Editor::instance->_Error("Shader Importer", "Cannot write to " + path);
 		return false;
@@ -646,21 +644,21 @@ GLuint Shader::LoadShader(GLenum shaderType, string source) {
 
 		int info_log_length = 0;
 		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &info_log_length);
-		vector<char> shader_log(info_log_length);
+		std::vector<char> shader_log(info_log_length);
 		glGetShaderInfoLog(shader, info_log_length, NULL, &shader_log[0]);
-		cerr << "error compiling shader" << endl;
+		std::cerr << "error compiling shader" << std::endl;
 		return 0;
 	}
-	std::cout << "shader compiled" << endl;
+	std::std::cout << "shader compiled" << std::endl;
 	return shader;
 }
 
 GLuint Shader::CreateProgram(string& path){
 	string vertex_shader_code = "";
 	string fragment_shader_code = "";
-	ifstream stream(path.c_str());
+	std::ifstream stream(path.c_str());
 	if (!stream.good()) {
-		cout << "not found!" << endl;
+		std::cout << "not found!" << std::endl;
 		return 0;
 	}
 	string a;
@@ -668,7 +666,7 @@ GLuint Shader::CreateProgram(string& path){
 	int x;
 	stream >> a;
 	if (a != "KTS123") {
-		cerr << "file not supported" << endl;
+		std::cerr << "file not supported" << std::endl;
 		return 0;
 	}
 	int readingType = 0;
@@ -705,13 +703,13 @@ GLuint Shader::CreateProgram(string& path){
 	GLuint program = glCreateProgram();
 	GLuint vertex_shader, fragment_shader;
 	if (vertex_shader_code != "") {
-		cout << "Vertex Shader: " << endl << vertex_shader_code;
+		std::cout << "Vertex Shader: " << std::endl << vertex_shader_code;
 		vertex_shader = LoadShader(GL_VERTEX_SHADER, vertex_shader_code);
 		glAttachShader(program, vertex_shader);
 	}
 	else return 0;
 	if (fragment_shader_code != "") {
-		cout << "Fragment Shader: " << endl << fragment_shader_code;
+		std::cout << "Fragment Shader: " << std::endl << fragment_shader_code;
 		fragment_shader = LoadShader(GL_FRAGMENT_SHADER, fragment_shader_code);
 		glAttachShader(program, fragment_shader);
 	}
@@ -726,12 +724,12 @@ GLuint Shader::CreateProgram(string& path){
 
 		int info_log_length = 0;
 		glGetProgramiv(program, GL_INFO_LOG_LENGTH, &info_log_length);
-		vector<char> program_log(info_log_length);
+		std::vector<char> program_log(info_log_length);
 		glGetProgramInfoLog(program, info_log_length, NULL, &program_log[0]);
-		cout << "Shader link error" << endl << &program_log[0] << endl;
+		std::cout << "Shader link error" << std::endl << &program_log[0] << std::endl;
 		return 0;
 	}
-	cout << "shader linked" << endl;
+	std::cout << "shader linked" << std::endl;
 
 	glDetachShader(program, vertex_shader);
 	glDeleteShader(vertex_shader);
@@ -784,9 +782,9 @@ GLuint Shader::GetTexture(const string& path) {
 /*
 
 bool Shader::SetTexture(GLuint program, GLchar* name, string& path, int w, int h, GLenum slot) {
-	ifstream stream(path.c_str());
+	std::ifstream stream(path.c_str());
 	if (!stream.good()) {
-		cout << "not found!" << endl;
+		std::cout << "not found!" << std::endl;
 		return false;
 	}
 	unsigned char* tex = GetTexture(path, w, h);
@@ -824,7 +822,7 @@ void Shader::SetWindow(GLuint program, float w, float h) {
 		glUniform2f(loc, w, h);
 	}
 	else
-		cout << "program uniform not found";
+		std::cout << "program uniform not found";
 	glUseProgram(0);
 }
 */

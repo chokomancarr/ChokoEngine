@@ -7,5 +7,5 @@ public:
 	SceneScriptResolver();
 	static SceneScriptResolver* instance;
 	std::vector<sceneScriptInstantiator> map;
-	SceneScript* Resolve(ifstream& strm, SceneObject* o);
+	SceneScript* Resolve(std::ifstream& strm, SceneObject* o);
 };

@@ -13,7 +13,7 @@ void EB_Browser::_DoAddAssetH(EditorBlock* b) {
 	while (IO::HasFile(p.c_str())) {
 		p = eb->currentDir + "NewSceneScript" + to_string(q++) + ".h";
 	}
-	ofstream strm(p, ios::out | ios::trunc);
+	std::ofstream strm(p, std::ios::out | std::ios::trunc);
 	strm << "#include \"Engine.h\"\r\n\r\nclass ";
 	strm << "NewSceneScript" + to_string(q);
 	strm << " : public NewSceneScript{\r\n\tvoid Start() override {}\r\n\tvoid Update() override {}\r\n};";
@@ -44,8 +44,8 @@ void EB_Browser::_DoAddShadStd(EditorBlock* b) {
 	while (IO::HasFile(p.c_str())) {
 		p = eb->currentDir + "NewShader" + to_string(q++) + ".shade";
 	}
-	ifstream tmp(eb->editor->dataPath + "\\template_StdShader.txt");
-	ofstream strm(p, ios::out | ios::trunc);
+	std::ifstream tmp(eb->editor->dataPath + "\\template_StdShader.txt");
+	std::ofstream strm(p, std::ios::out | std::ios::trunc);
 	strm << tmp.rdbuf();
 	strm.close();
 	tmp.close();
@@ -60,8 +60,8 @@ void EB_Browser::_DoAddShadEff(EditorBlock* b) {
 	while (IO::HasFile(p.c_str())) {
 		p = eb->currentDir + "NewEffectShader" + to_string(q++) + ".shade";
 	}
-	ifstream tmp(eb->editor->dataPath + "\\template_EffShader.txt");
-	ofstream strm(p, ios::out | ios::trunc);
+	std::ifstream tmp(eb->editor->dataPath + "\\template_EffShader.txt");
+	std::ofstream strm(p, std::ios::out | std::ios::trunc);
 	strm << tmp.rdbuf();
 	strm.close();
 	tmp.close();
@@ -198,13 +198,13 @@ void EB_Viewer::_OpenMenuChgOrient(EditorBlock* b) {
 
 void DoPreAdd(EditorBlock* b) {
 	if (b->editor->selected != nullptr)
-		b->editor->RegisterMenu(b, "Add as", vector<string>({ "Independant", "Child", "Parent" }), vector<shortcutFunc>({ ((EB_Viewer*)b)->_AddObjAsI, nullptr, nullptr }), 0);
+		b->editor->RegisterMenu(b, "Add as", std::vector<string>({ "Independant", "Child", "Parent" }), std::vector<shortcutFunc>({ ((EB_Viewer*)b)->_AddObjAsI, nullptr, nullptr }), 0);
 	else
 		((EB_Viewer*)b)->_AddObjAsI(b);
 }
 
 void EB_Viewer::_AddComScr(EditorBlock* b) {
-	vector<void*> vals;
+	std::vector<void*> vals;
 	for (uint a = 0; a < b->editor->headerAssets.size(); a++) {
 		vals.push_back(new string(b->editor->headerAssets[a]));
 	}
@@ -214,13 +214,13 @@ void EB_Viewer::_AddComAud(EditorBlock* b) {
 
 }
 void EB_Viewer::_AddComMesh(EditorBlock* b) {
-	b->editor->RegisterMenu(b, "Add Mesh", vector<string>({ "Mesh Filter", "Mesh Renderer" }), vector<shortcutFunc>({ _D2AddComMft, _D2AddComMrd }), 0);
+	b->editor->RegisterMenu(b, "Add Mesh", std::vector<string>({ "Mesh Filter", "Mesh Renderer" }), std::vector<shortcutFunc>({ _D2AddComMft, _D2AddComMrd }), 0);
 }
 void EB_Viewer::_AddComRend(EditorBlock* b) {
-	b->editor->RegisterMenu(b, "Add Rendering", vector<string>({ "Camera", "Mesh Renderer", "Light", "Render Probe" }), vector<shortcutFunc>({ _D2AddComCam, _D2AddComMrd, _D2AddComLht, _D2AddComRdp }), 0);
+	b->editor->RegisterMenu(b, "Add Rendering", std::vector<string>({ "Camera", "Mesh Renderer", "Light", "Render Probe" }), std::vector<shortcutFunc>({ _D2AddComCam, _D2AddComMrd, _D2AddComLht, _D2AddComRdp }), 0);
 }
 
-void AsCh(SceneObject* sc, const string& nm, vector<SceneObject*>& os, bool& found) {
+void AsCh(SceneObject* sc, const string& nm, std::vector<SceneObject*>& os, bool& found) {
 	for (SceneObject* oo : os) {
 		if (oo->name == nm) {
 			oo->AddChild(sc);
@@ -232,7 +232,7 @@ void AsCh(SceneObject* sc, const string& nm, vector<SceneObject*>& os, bool& fou
 		}
 	}
 }
-void LoadMeshMeta(vector<SceneObject*>& os, string& path) {
+void LoadMeshMeta(std::vector<SceneObject*>& os, string& path) {
 	for (SceneObject* o : os) {
 		string nn(path.substr(Editor::instance->projectFolder.size() + 7, string::npos));
 		int r = 0;
@@ -258,7 +258,7 @@ void EB_Viewer::_DoAddObjectBl(EditorBlock* b, void* v) {
 	name = name.substr(name.find_last_of('\\') + 1, string::npos).substr(0, name.find_last_of('.'));
 	SceneObject* o = new SceneObject(name, ((EB_Viewer*)b)->rotCenter, Quat(), Vec3(1,1,1));
 	b->editor->activeScene->objects.push_back(o);
-	ifstream file(path.c_str(), ios::in | ios::binary);
+	std::ifstream file(path.c_str(), std::ios::in | std::ios::binary);
 	if (file.is_open()) {
 		char * c = new char[8];
 		file.read(c, 7);
@@ -275,7 +275,7 @@ void EB_Viewer::_DoAddObjectBl(EditorBlock* b, void* v) {
 			string prt;
 			file >> nm;
 			if (nm == "") break;
-			cout << nm << endl;
+			std::cout << nm << std::endl;
 			char * cc = new char[7];
 			cc[6] = '\0';
 			file.read(cc, 6);
@@ -391,7 +391,7 @@ void EB_Viewer::_AddObjectE(EditorBlock* b) {
 	DoPreAdd(b);
 }
 void EB_Viewer::_AddObjectBl(EditorBlock* b) {
-	vector<void*> vals;
+	std::vector<void*> vals;
 	for (uint a = 0; a < b->editor->blendAssets.size(); a++) {
 		vals.push_back(new string(b->editor->blendAssets[a]));
 	}
@@ -550,12 +550,12 @@ void Editor::DoDeleteActive(EditorBlock* b) {
 
 }
 
-void GetSceneFiles(string path, string sub, vector<string>& list) {
+void GetSceneFiles(string path, string sub, std::vector<string>& list) {
 	for (string s : IO::GetFiles(path + sub, ".scene")) {
 		string ss(s.substr(path.size(), string::npos));
 		list.push_back(ss.substr(0, ss.find_last_of('\\')) + ss.substr(ss.find_last_of('\\')+1, string::npos));
 	}
-	vector<string> folders;
+	std::vector<string> folders;
 	IO::GetFolders(path + sub, &folders);
 	for (string f : folders) {
 		if (f != "." && f != "..")
@@ -564,9 +564,9 @@ void GetSceneFiles(string path, string sub, vector<string>& list) {
 }
 
 void Editor::OpenScene(Editor* e) {
-	vector<string> scenes;
+	std::vector<string> scenes;
 	GetSceneFiles(e->projectFolder + "Assets\\", "", scenes);
-	vector<void*> v;
+	std::vector<void*> v;
 	for (string s : scenes) {
 		v.push_back(new string(s));
 	}
@@ -577,7 +577,7 @@ void Editor::DoOpenScene(EditorBlock* b, void* v) {
 	//if (Editor::instance->sceneLoaded)
 	//	delete(&Editor::instance->activeScene);
 	string nm = Editor::instance->projectFolder + "Assets\\" + *(string*)v;
-	ifstream s(nm.c_str(), ios::binary | ios::in);
-	Editor::instance->activeScene = make_shared<Scene>(s, 0);
+	std::ifstream s(nm.c_str(), std::ios::binary | std::ios::in);
+	Editor::instance->activeScene = std::make_shared<Scene>(s, 0);
 	Scene::active = Editor::instance->activeScene;
 }

@@ -23,7 +23,7 @@ bool DrawComponentHeader(Editor* e, Vec4 v, uint pos, Component* c) {
 	return c->_expanded;
 }
 
-Component::Component(string name, COMPONENT_TYPE t, DRAWORDER drawOrder, SceneObject* o, vector<COMPONENT_TYPE> dep) : Object(name), componentType(t), active(true), drawOrder(drawOrder), _expanded(true), dependancies(dep), object(o) {
+Component::Component(string name, COMPONENT_TYPE t, DRAWORDER drawOrder, SceneObject* o, std::vector<COMPONENT_TYPE> dep) : Object(name), componentType(t), active(true), drawOrder(drawOrder), _expanded(true), dependancies(dep), object(o) {
 	for (COMPONENT_TYPE t : dependancies) {
 		dependacyPointers.push_back(nullptr);
 	}
@@ -47,9 +47,9 @@ CameraEffect::CameraEffect(Material* mat) : AssetObject(ASSETTYPE_CAMEFFECT) {
 
 CameraEffect::CameraEffect(string path) : AssetObject(ASSETTYPE_CAMEFFECT) {
 	string p = Editor::instance->projectFolder + "Assets\\" + path;
-	ifstream stream(p.c_str());
+	std::ifstream stream(p.c_str());
 	if (!stream.good()) {
-		cout << "cameffect not found!" << endl;
+		std::cout << "cameffect not found!" << std::endl;
 		return;
 	}
 	char* c = new char[4];
@@ -57,7 +57,7 @@ CameraEffect::CameraEffect(string path) : AssetObject(ASSETTYPE_CAMEFFECT) {
 	c[3] = char0;
 	string ss(c);
 	if (ss != "KEF") {
-		cerr << "file not supported" << endl;
+		std::cerr << "file not supported" << std::endl;
 		return;
 	}
 	delete[](c);
@@ -79,7 +79,7 @@ CameraEffect::CameraEffect(string path) : AssetObject(ASSETTYPE_CAMEFFECT) {
 }
 
 void CameraEffect::Save(string path) {
-	ofstream strm(path.c_str(), ios::out | ios::binary | ios::trunc);
+	std::ofstream strm(path.c_str(), std::ios::out | std::ios::binary | std::ios::trunc);
 	strm << "KEF";
 	ASSETTYPE st;
 	ASSETID si = Editor::instance->GetAssetId(material, st);
@@ -95,7 +95,7 @@ Camera::Camera() : Component("Camera", COMP_CAM, DRAWORDER_NONE), ortographic(fa
 	InitGBuffer();
 }
 
-Camera::Camera(ifstream& stream, SceneObject* o, long pos) : Camera() {
+Camera::Camera(std::ifstream& stream, SceneObject* o, long pos) : Camera() {
 	if (pos >= 0)
 		stream.seekg(pos);
 	_Strm2Val(stream, fov);
@@ -142,8 +142,8 @@ void Camera::InitShaders() {
 	int link_result = 0;
 	GLuint vertex_shader, fragment_shader;
 	string err = "";
-	ifstream strm("D:\\lightPassVert.txt");
-	stringstream ss, ss2, ss3, ss4, ss5, ss6, ss7;
+	std::ifstream strm("D:\\lightPassVert.txt");
+	std::stringstream ss, ss2, ss3, ss4, ss5, ss6, ss7;
 	ss << strm.rdbuf();
 
 	if (!ShaderBase::LoadShader(GL_VERTEX_SHADER, ss.str(), vertex_shader, &err)) {
@@ -173,14 +173,14 @@ void Camera::InitShaders() {
 	{
 		int info_log_length = 0;
 		glGetProgramiv(d_skyProgram, GL_INFO_LOG_LENGTH, &info_log_length);
-		vector<char> program_log(info_log_length);
+		std::vector<char> program_log(info_log_length);
 		glGetProgramInfoLog(d_skyProgram, info_log_length, NULL, &program_log[0]);
-		cout << "cam shader(sky) error" << endl << &program_log[0] << endl;
+		std::cout << "cam shader(sky) error" << std::endl << &program_log[0] << std::endl;
 		glDeleteProgram(d_skyProgram);
 		d_skyProgram = 0;
 		abort();
 	}
-	cout << "cam shader(sky) ok" << endl;
+	std::cout << "cam shader(sky) ok" << std::endl;
 	glDetachShader(d_skyProgram, vertex_shader);
 	glDetachShader(d_skyProgram, fragment_shader);
 	glDeleteShader(fragment_shader);
@@ -207,14 +207,14 @@ void Camera::InitShaders() {
 	{
 		int info_log_length = 0;
 		glGetProgramiv(d_pLightProgram, GL_INFO_LOG_LENGTH, &info_log_length);
-		vector<char> program_log(info_log_length);
+		std::vector<char> program_log(info_log_length);
 		glGetProgramInfoLog(d_pLightProgram, info_log_length, NULL, &program_log[0]);
-		cout << "cam shader(pl) error" << endl << &program_log[0] << endl;
+		std::cout << "cam shader(pl) error" << std::endl << &program_log[0] << std::endl;
 		glDeleteProgram(d_pLightProgram);
 		d_pLightProgram = 0;
 		abort();
 	}
-	cout << "cam shader(pl) ok" << endl;
+	std::cout << "cam shader(pl) ok" << std::endl;
 	glDetachShader(d_pLightProgram, vertex_shader);
 	glDetachShader(d_pLightProgram, fragment_shader);
 	glDeleteShader(fragment_shader);
@@ -241,14 +241,14 @@ void Camera::InitShaders() {
 	{
 		int info_log_length = 0;
 		glGetProgramiv(d_sLightProgram, GL_INFO_LOG_LENGTH, &info_log_length);
-		vector<char> program_log(info_log_length);
+		std::vector<char> program_log(info_log_length);
 		glGetProgramInfoLog(d_sLightProgram, info_log_length, NULL, &program_log[0]);
-		cout << "cam shader(sl) error" << endl << &program_log[0] << endl;
+		std::cout << "cam shader(sl) error" << std::endl << &program_log[0] << std::endl;
 		glDeleteProgram(d_sLightProgram);
 		d_sLightProgram = 0;
 		abort();
 	}
-	cout << "cam shader(sl) ok" << endl;
+	std::cout << "cam shader(sl) ok" << std::endl;
 	glDetachShader(d_sLightProgram, vertex_shader);
 	glDetachShader(d_sLightProgram, fragment_shader);
 	glDeleteShader(fragment_shader);
@@ -275,14 +275,14 @@ void Camera::InitShaders() {
 	{
 		int info_log_length = 0;
 		glGetProgramiv(d_probeMaskProgram, GL_INFO_LOG_LENGTH, &info_log_length);
-		vector<char> program_log(info_log_length);
+		std::vector<char> program_log(info_log_length);
 		glGetProgramInfoLog(d_probeMaskProgram, info_log_length, NULL, &program_log[0]);
-		cout << "cam shader(pm) error" << endl << &program_log[0] << endl;
+		std::cout << "cam shader(pm) error" << std::endl << &program_log[0] << std::endl;
 		glDeleteProgram(d_probeMaskProgram);
 		d_probeMaskProgram = 0;
 		abort();
 	}
-	cout << "cam shader(pm) ok" << endl;
+	std::cout << "cam shader(pm) ok" << std::endl;
 	glDetachShader(d_probeMaskProgram, vertex_shader);
 	glDetachShader(d_probeMaskProgram, fragment_shader);
 	glDeleteShader(fragment_shader);
@@ -309,14 +309,14 @@ void Camera::InitShaders() {
 	{
 		int info_log_length = 0;
 		glGetProgramiv(d_sLightCSProgram, GL_INFO_LOG_LENGTH, &info_log_length);
-		vector<char> program_log(info_log_length);
+		std::vector<char> program_log(info_log_length);
 		glGetProgramInfoLog(d_sLightCSProgram, info_log_length, NULL, &program_log[0]);
-		cout << "cam shader(sc) error" << endl << &program_log[0] << endl;
+		std::cout << "cam shader(sc) error" << std::endl << &program_log[0] << std::endl;
 		glDeleteProgram(d_sLightCSProgram);
 		d_sLightCSProgram = 0;
 		abort();
 	}
-	cout << "cam shader(sc) ok" << endl;
+	std::cout << "cam shader(sc) ok" << std::endl;
 	glDetachShader(d_sLightCSProgram, vertex_shader);
 	glDetachShader(d_sLightCSProgram, fragment_shader);
 	glDeleteShader(fragment_shader);
@@ -339,14 +339,14 @@ void Camera::InitShaders() {
 	{
 	int info_log_length = 0;
 	glGetProgramiv(d_probeMaskProgram, GL_INFO_LOG_LENGTH, &info_log_length);
-	vector<char> program_log(info_log_length);
+	std::vector<char> program_log(info_log_length);
 	glGetProgramInfoLog(d_probeMaskProgram, info_log_length, NULL, &program_log[0]);
-	cout << "cam shader(pm) error" << endl << &program_log[0] << endl;
+	std::cout << "cam shader(pm) error" << std::endl << &program_log[0] << std::endl;
 	glDeleteProgram(d_probeMaskProgram);
 	d_probeMaskProgram = 0;
 	abort();
 	}
-	cout << "cam shader(pm) ok" << endl;
+	std::cout << "cam shader(pm) ok" << std::endl;
 	glDetachShader(d_probeMaskProgram, vertex_shader);
 	glDetachShader(d_probeMaskProgram, fragment_shader);
 	glDeleteShader(fragment_shader);
@@ -401,7 +401,7 @@ void Camera::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 		Engine::DrawQuad(v.r + v.b*0.65f + ((v.b*0.35f - 1)*screenPos.x), v.g + pos + 35 + dh*screenPos.y, (v.b*0.35f - 1)*screenPos.w, dh*screenPos.h, grey2());
 		pos += (uint)max(37 + dh, 87);
 		Engine::Label(v.r + 2, v.g + pos + 1, 12, "Filtering", e->font, white());
-		vector<string> clearNames = { "None", "Color and Depth", "Depth only", "Skybox" };
+		std::vector<string> clearNames = { "None", "Color and Depth", "Depth only", "Skybox" };
 		if (Engine::EButton(e->editorLayer == 0, v.r + v.b * 0.3f, v.g + pos + 1, v.b * 0.7f - 1, 14, grey2(), clearNames[clearType], 12, e->font, white()) == MOUSE_PRESS) {
 			e->RegisterMenu(nullptr, "", clearNames, { &_SetClear0, &_SetClear1, &_SetClear2, &_SetClear3 }, 0, Vec2(v.r + v.b * 0.3f, v.g + pos));
 		}
@@ -411,7 +411,7 @@ void Camera::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 		uint ess = effects.size();
 		Engine::Label(v.r + 2, v.g + pos, 12, "Effects: " + to_string(ess), e->font, white());
 		pos += 17;
-		Engine::DrawQuad(v.r + 2, v.g + pos, v.b - 4, 17 * ess + 2, grey1()*0.5f);
+		Engine::DrawQuad(v.r + 2, v.g + pos, v.b - 4, 17 * ess + 2.0f, grey1()*0.5f);
 		int pendingDel = -1;
 		for (uint es = 0; es < ess; es++) {
 			if (Engine::EButton(e->editorLayer == 0, v.r + 4, v.g + pos + 1, 16, 16, e->buttonX, white()) == MOUSE_RELEASE) {
@@ -433,7 +433,7 @@ void Camera::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 	else pos += 17;
 }
 
-void Camera::Serialize(Editor* e, ofstream* stream) {
+void Camera::Serialize(Editor* e, std::ofstream* stream) {
 	_StreamWrite(&fov, stream, 4);
 	_StreamWrite(&screenPos.x, stream, 4);
 	_StreamWrite(&screenPos.y, stream, 4);
@@ -487,11 +487,11 @@ void MeshFilter::_UpdateMesh(void* i) {
 	mf->object->Refresh();
 }
 
-void MeshFilter::Serialize(Editor* e, ofstream* stream) {
+void MeshFilter::Serialize(Editor* e, std::ofstream* stream) {
 	_StreamWriteAsset(e, stream, ASSETTYPE_MESH, _mesh);
 }
 
-MeshFilter::MeshFilter(ifstream& stream, SceneObject* o, long pos) : Component("Mesh Filter", COMP_MFT, DRAWORDER_NONE, o), _mesh(-1) {
+MeshFilter::MeshFilter(std::ifstream& stream, SceneObject* o, long pos) : Component("Mesh Filter", COMP_MFT, DRAWORDER_NONE, o), _mesh(-1) {
 	if (pos >= 0)
 		stream.seekg(pos);
 	ASSETTYPE t;
@@ -505,7 +505,7 @@ MeshRenderer::MeshRenderer() : Component("Mesh Renderer", COMP_MRD, DRAWORDER_SO
 	_materials.push_back(-1);
 }
 
-MeshRenderer::MeshRenderer(ifstream& stream, SceneObject* o, long pos) : Component("Mesh Renderer", COMP_MRD, DRAWORDER_SOLID | DRAWORDER_TRANSPARENT, o, { COMP_MFT }) {
+MeshRenderer::MeshRenderer(std::ifstream& stream, SceneObject* o, long pos) : Component("Mesh Renderer", COMP_MRD, DRAWORDER_SOLID | DRAWORDER_TRANSPARENT, o, { COMP_MFT }) {
 	_UpdateMat(this);
 	if (pos >= 0)
 		stream.seekg(pos);
@@ -667,7 +667,7 @@ void MeshRenderer::_UpdateTex(void* i) {
 	v->tex = _GetCache<Texture>(ASSETTYPE_TEXTURE, v->id);
 }
 
-void MeshRenderer::Serialize(Editor* e, ofstream* stream) {
+void MeshRenderer::Serialize(Editor* e, std::ofstream* stream) {
 	int s = _materials.size();
 	_StreamWrite(&s, stream, 4);
 	for (ASSETID i : _materials)
@@ -696,11 +696,11 @@ void TextureRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos)
 	else pos += 17;
 }
 
-void TextureRenderer::Serialize(Editor* e, ofstream* stream) {
+void TextureRenderer::Serialize(Editor* e, std::ofstream* stream) {
 	_StreamWriteAsset(e, stream, ASSETTYPE_TEXTURE, _texture);
 }
 
-TextureRenderer::TextureRenderer(ifstream& stream, SceneObject* o, long pos) : Component("Texture Renderer", COMP_TRD, DRAWORDER_OVERLAY, o) {
+TextureRenderer::TextureRenderer(std::ifstream& stream, SceneObject* o, long pos) : Component("Texture Renderer", COMP_TRD, DRAWORDER_OVERLAY, o) {
 	if (pos >= 0)
 		stream.seekg(pos);
 	ASSETTYPE t;
@@ -708,7 +708,7 @@ TextureRenderer::TextureRenderer(ifstream& stream, SceneObject* o, long pos) : C
 }
 
 //-----------------Skinned Mesh Renderer-------------
-SkinnedMeshRenderer::SkinnedMeshRenderer(ifstream& stream, SceneObject* o, long pos) : Component("Skinned Mesh Renderer", COMP_SRD, DRAWORDER_SOLID | DRAWORDER_TRANSPARENT, o) {
+SkinnedMeshRenderer::SkinnedMeshRenderer(std::ifstream& stream, SceneObject* o, long pos) : Component("Skinned Mesh Renderer", COMP_SRD, DRAWORDER_SOLID | DRAWORDER_TRANSPARENT, o) {
 	
 }
 
@@ -729,7 +729,7 @@ Mesh::Mesh(Editor* e, int i) : AssetObject(ASSETTYPE_MESH) {
 	loaded = m2->loaded;
 }
 
-Mesh::Mesh(ifstream& stream, uint offset) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0), triangleCount(0), materialCount(0) {
+Mesh::Mesh(std::ifstream& stream, uint offset) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0), triangleCount(0), materialCount(0) {
 	if (stream.is_open()) {
 		stream.seekg(offset);
 
@@ -768,7 +768,7 @@ Mesh::Mesh(ifstream& stream, uint offset) : AssetObject(ASSETTYPE_MESH), loaded(
 					byte m;
 					_Strm2Val(stream, m);
 					while (materialCount <= m) {
-						_matTriangles.push_back(vector<int>());
+						_matTriangles.push_back(std::vector<int>());
 						materialCount++;
 					}
 					uint i;
@@ -833,9 +833,9 @@ Mesh::Mesh(ifstream& stream, uint offset) : AssetObject(ASSETTYPE_MESH), loaded(
 
 Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0), triangleCount(0), materialCount(0) {
 	string p = Editor::instance->projectFolder + "Assets\\" + path + ".mesh.meta";
-	ifstream stream(p.c_str(), ios::in | ios::binary);
+	std::ifstream stream(p.c_str(), std::ios::in | std::ios::binary);
 	if (!stream.good()) {
-		cout << "mesh file not found!" << endl;
+		std::cout << "mesh file not found!" << std::endl;
 		return;
 	}
 
@@ -853,7 +853,7 @@ Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCoun
 	char cc;
 	stream.read(&cc, 1);
 
-	cout << path << endl;
+	std::cout << path << std::endl;
 	while (cc != 0) {
 		if (cc == 'V') {
 			_Strm2Val(stream, vertexCount);
@@ -875,7 +875,7 @@ Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCoun
 				byte m;
 				_Strm2Val(stream, m);
 				while (materialCount <= m) {
-					_matTriangles.push_back(vector<int>());
+					_matTriangles.push_back(std::vector<int>());
 					materialCount++;
 				}
 				uint i;
@@ -938,9 +938,9 @@ Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCoun
 }
 
 void Mesh::CalcTangents() {
-	vector<bool> found(vertices.size());
-	tangents = vector<Vec3>(vertices.size());
-	bitangents = vector<Vec3>(vertices.size());
+	std::vector<bool> found(vertices.size());
+	tangents = std::vector<Vec3>(vertices.size());
+	bitangents = std::vector<Vec3>(vertices.size());
 	for (uint a = 0; a < triangleCount; a++) {
 		Vec2 u0, u1, u2;
 		u0 = uv0[a * 3];
@@ -989,19 +989,19 @@ bool Mesh::ParseBlend(Editor* e, string s) {
 	sa.lpSecurityDescriptor = NULL;
 	HANDLE stdOutR, stdOutW, stdInR, stdInW;
 	if (!CreatePipe(&stdInR, &stdInW, &sa, 0)) {
-		cout << "failed to create pipe for stdin!";
+		std::cout << "failed to create pipe for stdin!";
 		return false;
 	}
 	if (!SetHandleInformation(stdInW, HANDLE_FLAG_INHERIT, 0)){
-		cout << "failed to set handle for stdin!";
+		std::cout << "failed to set handle for stdin!";
 		return false;
 	}
 	if (!CreatePipe(&stdOutR, &stdOutW, &sa, 0)) {
-		cout << "failed to create pipe for stdout!";
+		std::cout << "failed to create pipe for stdout!";
 		return false;
 	}
 	if (!SetHandleInformation(stdOutR, HANDLE_FLAG_INHERIT, 0)){
-		cout << "failed to set handle for stdout!";
+		std::cout << "failed to set handle for stdout!";
 		return false;
 	}
 	STARTUPINFO startInfo;
@@ -1030,22 +1030,22 @@ bool Mesh::ParseBlend(Editor* e, string s) {
 	string cmd3("blender \"" + s + "\" --background --python \"" + e->dataPath + "\\Python\\blend_exporter.py\" -- \"" + s.substr(0, s.find_last_of('\\')) + "?" + ss.substr(ss.find_last_of('\\') + 1, string::npos) + "\"\n");
 	//outputs object list, and meshes in subdir
 	if (CreateProcess("C:\\Windows\\System32\\cmd.exe", 0, NULL, NULL, true, CREATE_NO_WINDOW, NULL, "D:\\TestProject\\", &startInfo, &processInfo) != 0) {
-		cout << "executing Blender..." << endl;
+		std::cout << "executing Blender..." << std::endl;
 		bool bSuccess = false;
 		DWORD dwWrite;
 		bSuccess = WriteFile(stdInW, cmd1.c_str(), cmd1.size(), &dwWrite, NULL) != 0;
 		if (!bSuccess || dwWrite == 0) {
-			cout << "can't get to root!" << endl;
+			std::cout << "can't get to root!" << std::endl;
 			return false;
 		}
 		bSuccess = WriteFile(stdInW, cmd2.c_str(), cmd2.size(), &dwWrite, NULL) != 0;
 		if (!bSuccess || dwWrite == 0) {
-			cout << "can't navigate to blender dir!" << endl;
+			std::cout << "can't navigate to blender dir!" << std::endl;
 			return false;
 		}
 		bSuccess = WriteFile(stdInW, cmd3.c_str(), cmd3.size(), &dwWrite, NULL) != 0;
 		if (!bSuccess || dwWrite == 0) {
-			cout << "can't execute blender!" << endl;
+			std::cout << "can't execute blender!" << std::endl;
 			return false;
 		}
 		DWORD w;
@@ -1065,7 +1065,7 @@ bool Mesh::ParseBlend(Editor* e, string s) {
 				if (rr == string::npos)
 					rr = out.size() - 1;
 				string sss = out.substr(r, rr - r);
-				cout << sss << endl;
+				std::cout << sss << std::endl;
 				r = rr + 1;
 				if (sss.size() > 1 && sss[0] == '!')
 					e->_Message("Blender", sss.substr(1, string::npos));
@@ -1082,7 +1082,7 @@ bool Mesh::ParseBlend(Editor* e, string s) {
 			return false;
 	}
 	else {
-		cout << "Cannot start Blender!" << endl;
+		std::cout << "Cannot start Blender!" << std::endl;
 		CloseHandle(stdOutR);
 		CloseHandle(stdOutW);
 		CloseHandle(stdInR);
@@ -1098,9 +1098,9 @@ bool Mesh::ParseBlend(Editor* e, string s) {
 
 AnimClip::AnimClip(string path) : AssetObject(ASSETTYPE_ANIMCLIP) {
 	string p = Editor::instance->projectFolder + "Assets\\" + path + ".animclip.meta";
-	ifstream stream(p.c_str(), ios::in | ios::binary);
+	std::ifstream stream(p.c_str(), std::ios::in | std::ios::binary);
 	if (!stream.good()) {
-		cout << "animclip file not found!" << endl;
+		std::cout << "animclip file not found!" << std::endl;
 		return;
 	}
 
@@ -1144,9 +1144,9 @@ Animator::Animator() : AssetObject(ASSETTYPE_ANIMATOR), activeState(0), nextStat
 
 Animator::Animator(string path) : Animator() {
 	string p = Editor::instance->projectFolder + "Assets\\" + path;
-	ifstream stream(p.c_str());
+	std::ifstream stream(p.c_str());
 	if (!stream.good()) {
-		cout << "animator not found!" << endl;
+		std::cout << "animator not found!" << std::endl;
 		return;
 	}
 	char* c = new char[4];
@@ -1154,7 +1154,7 @@ Animator::Animator(string path) : Animator() {
 	c[3] = char0;
 	string ss(c);
 	if (ss != "ANT") {
-		cerr << "file not supported" << endl;
+		std::cerr << "file not supported" << std::endl;
 		return;
 	}
 	byte stateCount, transCount;
@@ -1318,7 +1318,7 @@ void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 					Engine::Label(v.r + 2, v.g + pos, 12, "  samples", e->font, white());
 					Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
 					Engine::Label(v.r + v.b * 0.3f, v.g + pos + 2, 12, to_string(contactShadowSamples), e->font, white());
-					contactShadowSamples = (int)Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 5, 50, contactShadowSamples, grey1(), white());
+					contactShadowSamples = (uint)Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 5, 50, (float)contactShadowSamples, grey1(), white());
 					pos += 17;
 					Engine::Label(v.r + 2, v.g + pos, 12, "  distance", e->font, white());
 					Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
@@ -1352,7 +1352,7 @@ void Light::CalcShadowMatrix() {
 		//_shadowMatrix = Mat4x4();
 }
 
-void Light::Serialize(Editor* e, ofstream* stream) {
+void Light::Serialize(Editor* e, std::ofstream* stream) {
 	byte b = _lightType;
 	if (drawShadow) b |= 0xf0;
 	_StreamWrite(&b, stream, 1);
@@ -1370,7 +1370,7 @@ void Light::Serialize(Editor* e, ofstream* stream) {
 
 Light::Light() : Component("Light", COMP_LHT, DRAWORDER_LIGHT), _lightType(LIGHTTYPE_POINT) {}
 
-Light::Light(ifstream& stream, SceneObject* o, long pos) : Light() {
+Light::Light(std::ifstream& stream, SceneObject* o, long pos) : Light() {
 	if (pos >= 0)
 		stream.seekg(pos);
 
@@ -1453,7 +1453,7 @@ ReflectionProbe::ReflectionProbe(ushort size) : Component("Reflection Probe", CO
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 }
 
-ReflectionProbe::ReflectionProbe(ifstream& stream, SceneObject* o, long pos) : Component("Reflection Probe", COMP_RDP, DRAWORDER_LIGHT) {
+ReflectionProbe::ReflectionProbe(std::ifstream& stream, SceneObject* o, long pos) : Component("Reflection Probe", COMP_RDP, DRAWORDER_LIGHT) {
 	if (pos >= 0)
 		stream.seekg(pos);
 	_Strm2Val(stream, size);
@@ -1472,7 +1472,7 @@ ReflectionProbe::ReflectionProbe(ifstream& stream, SceneObject* o, long pos) : C
 	map = new CubeMap(size);
 }
 
-void ReflectionProbe::Serialize(Editor* e, ofstream* stream) {
+void ReflectionProbe::Serialize(Editor* e, std::ofstream* stream) {
 	_StreamWrite(&size, stream, 2);
 	_StreamWrite(&updateMode, stream, 1);
 	_StreamWrite(&intensity, stream, 4);
@@ -1488,7 +1488,7 @@ void ReflectionProbe::Serialize(Editor* e, ofstream* stream) {
 }
 
 Armature::Armature(string path, SceneObject* o) : Component("Armature", COMP_ARM, DRAWORDER_OVERLAY), overridePos(false), restPosition(o->transform.position), restRotation(o->transform.rotation()), restScale(o->transform.scale), _anim(-1) {
-	ifstream strm(path);
+	std::ifstream strm(path);
 	if (!strm.is_open()) {
 		Debug::Error("Armature", "File not found!");
 		return;
@@ -1507,11 +1507,11 @@ Armature::Armature(string path, SceneObject* o) : Component("Armature", COMP_ARM
 	}
 }
 
-Armature::Armature(ifstream& stream, SceneObject* o, long pos) : Component("Armature", COMP_ARM, DRAWORDER_OVERLAY) {
+Armature::Armature(std::ifstream& stream, SceneObject* o, long pos) : Component("Armature", COMP_ARM, DRAWORDER_OVERLAY) {
 
 }
 
-void Armature::AddBone(ifstream& strm, vector<ArmatureBone*>& bones) {
+void Armature::AddBone(std::ifstream& strm, std::vector<ArmatureBone*>& bones) {
 	char* c = new char[100];
 	strm.getline(c, 100, 0);
 	Vec3 pos, fwd, rht;
@@ -1535,7 +1535,7 @@ SceneScript::SceneScript(Editor* e, ASSETID id) : Component(e->headerAssets[id] 
 		name = "missing script!";
 		return;
 	}
-	ifstream strm(e->projectFolder + "Assets\\" + e->headerAssets[id] + ".meta", ios::in | ios::binary);
+	std::ifstream strm(e->projectFolder + "Assets\\" + e->headerAssets[id] + ".meta", std::ios::in | std::ios::binary);
 	if (!strm.is_open()) {
 		e->_Error("Script Component", "Cannot read meta file!");
 		_script = -1;
@@ -1572,7 +1572,7 @@ SceneScript::SceneScript(Editor* e, ASSETID id) : Component(e->headerAssets[id] 
 	}
 }
 
-SceneScript::SceneScript(ifstream& strm, SceneObject* o) : Component("(Script)", COMP_SCR, DRAWORDER_NONE), _script(-1) {
+SceneScript::SceneScript(std::ifstream& strm, SceneObject* o) : Component("(Script)", COMP_SCR, DRAWORDER_NONE), _script(-1) {
 	char* c = new char[100];
 	strm.getline(c, 100, 0);
 	string s(c);
@@ -1582,7 +1582,7 @@ SceneScript::SceneScript(ifstream& strm, SceneObject* o) : Component("(Script)",
 			_script = i;
 			name = a + " (Script)";
 
-			ifstream strm(Editor::instance->projectFolder + "Assets\\" + a + ".meta", ios::in | ios::binary);
+			std::ifstream strm(Editor::instance->projectFolder + "Assets\\" + a + ".meta", std::ios::in | std::ios::binary);
 			if (!strm.is_open()) {
 				Editor::instance->_Error("Script Component", "Cannot read meta file!");
 				_script = -1;
@@ -1667,7 +1667,7 @@ SceneScript::~SceneScript() {
 #endif
 }
 
-void SceneScript::Serialize(Editor* e, ofstream* stream) {
+void SceneScript::Serialize(Editor* e, std::ofstream* stream) {
 	_StreamWriteAsset(e, stream, ASSETTYPE_SCRIPT_H, _script);
 	ushort sz = (ushort)_vals.size();
 	_StreamWrite(&sz, stream, 2);
@@ -1715,7 +1715,7 @@ void SceneScript::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 
 void SceneScript::Parse(string s, Editor* e) {
 	string p = e->projectFolder + "Assets\\" + s;
-	ifstream strm(p.c_str(), ios::in);
+	std::ifstream strm(p.c_str(), std::ios::in);
 	char* c = new char[100];
 	int flo = s.find_last_of('\\') + 1;
 	if (flo == string::npos) flo = 0;
@@ -1733,7 +1733,7 @@ void SceneScript::Parse(string s, Editor* e) {
 		if (strcmp(sc.c_str(), ss.c_str()) == 0) {
 			hasClass = true;
 			string op = p + ".meta";
-			ofstream oStrm(op.c_str(), ios::out | ios::binary | ios::trunc);
+			std::ofstream oStrm(op.c_str(), std::ios::out | std::ios::binary | std::ios::trunc);
 			oStrm << "XX";
 			//read variables
 			while (!strm.eof()) {
@@ -1848,7 +1848,7 @@ SceneObject* SceneObject::AddChild(SceneObject* child) {
 void SceneObject::RemoveChild(SceneObject* o) {
 	auto it = std::find(children.begin(), children.end(), o);
 	if (it != children.end()) {
-		swap(*it, children.back());
+		std::swap(*it, children.back());
 		children.pop_back();
 		o->parent = nullptr;
 		o->transform._UpdateWMatrix(Mat4x4());

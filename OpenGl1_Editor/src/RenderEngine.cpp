@@ -5,7 +5,7 @@
 void CheckGLOK() {
 	int err = glGetError();
 	if (err != GL_NO_ERROR) {
-		cout << hex << err << endl;
+		std::cout << std::hex << err << std::endl;
 		abort();
 	}
 }
@@ -16,7 +16,7 @@ Mat4x4 GetMatrix(GLenum type) {
 	return Mat4x4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
 }
 
-void DrawSceneObjectsOpaque(vector<SceneObject*> oo) {
+void DrawSceneObjectsOpaque(std::vector<SceneObject*> oo) {
 	for (SceneObject* sc : oo)
 	{
 		glPushMatrix();
@@ -120,14 +120,14 @@ void EB_Previewer::_InitDummyBBuffer() {
 void EB_Previewer::_InitDebugPrograms() {
 	string error;
 	GLuint vs, fs;
-	ifstream strm("D:\\lightPassVert.txt");
-	stringstream vert, frag;
+	std::ifstream strm("D:\\lightPassVert.txt");
+	std::stringstream vert, frag;
 	vert << strm.rdbuf();
 	if (!ShaderBase::LoadShader(GL_VERTEX_SHADER, vert.str(), vs, &error)) {
 		Debug::Error("Previewer", "Cannot init lumi shader(v)! " + error);
 	}
 	strm.close();
-	strm = ifstream("D:\\expVisFrag.txt");
+	strm = std::ifstream("D:\\expVisFrag.txt");
 	frag << strm.rdbuf();
 	if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, frag.str(), fs, &error)) {
 		Debug::Error("Previewer", "Cannot init lumi shader(f)! " + error);
@@ -143,9 +143,9 @@ void EB_Previewer::_InitDebugPrograms() {
 	{
 		int info_log_length = 0;
 		glGetProgramiv(lumiProgram, GL_INFO_LOG_LENGTH, &info_log_length);
-		vector<char> program_log(info_log_length);
+		std::vector<char> program_log(info_log_length);
 		glGetProgramInfoLog(lumiProgram, info_log_length, NULL, &program_log[0]);
-		cerr << "Lumi shader link error" << endl << &program_log[0] << endl;
+		std::cerr << "Lumi shader link error" << std::endl << &program_log[0] << std::endl;
 		abort();
 	}
 	glDetachShader(lumiProgram, vs);
@@ -199,7 +199,7 @@ void EB_Previewer::Blit(GLuint prog, uint w, uint h) {
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, Camera::screenRectVerts);
 
-	glUniform2f(scrSzLoc, w, h);
+	glUniform2f(scrSzLoc, (float)w, (float)h);
 	glUniform1i(inTexLoc, 0);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, blitting2 ? bb_tex : b_texs[0]);
@@ -252,13 +252,13 @@ void EB_Previewer::DrawPreview(Vec4 v) {
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, d_fbo);
 
 		glReadBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_DIFFUSE);
-		glBlitFramebuffer(0, 0, (int)previewWidth, (int)previewHeight, v.r, Display::height - v.g - v.a*0.5f, v.b*0.5f + v.r, Display::height - v.g - EB_HEADER_SIZE - 2, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+		glBlitFramebuffer(0, 0, (int)previewWidth, (int)previewHeight, (int)v.r, (int)(Display::height - v.g - v.a*0.5f), (int)(v.b*0.5f + v.r), (int)(Display::height - v.g - EB_HEADER_SIZE - 2), GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
 		glReadBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_SPEC_GLOSS);
-		glBlitFramebuffer(0, 0, (int)previewWidth, (int)previewHeight, v.r + v.b*0.5f + 1, Display::height - v.g - v.a*0.5f, v.b + v.r, Display::height - v.g - EB_HEADER_SIZE - 2, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+		glBlitFramebuffer(0, 0, (int)previewWidth, (int)previewHeight, (int)(v.r + v.b*0.5f + 1), (int)(Display::height - v.g - v.a*0.5f), (int)(v.b + v.r), (int)(Display::height - v.g - EB_HEADER_SIZE - 2), GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
 		glReadBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_NORMAL);
-		glBlitFramebuffer(0, 0, (int)previewWidth, (int)previewHeight, v.r, Display::height - v.g - v.a, v.b*0.5f + v.r, Display::height - v.g - v.a*0.5f - 1, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+		glBlitFramebuffer(0, 0, (int)previewWidth, (int)previewHeight, (int)v.r, (int)(Display::height - v.g - v.a), (int)(v.b*0.5f + v.r), (int)(Display::height - v.g - v.a*0.5f - 1), GL_COLOR_BUFFER_BIT, GL_LINEAR);
 	}
 	else {
 		_RenderLights(v);
@@ -269,7 +269,7 @@ void EB_Previewer::DrawPreview(Vec4 v) {
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 		glReadBuffer(GL_COLOR_ATTACHMENT0);
 		glViewport(0, 0, Display::width, Display::height);
-		glBlitFramebuffer(0, 0, (int)previewWidth, (int)previewHeight, v.r, Display::height - v.g - v.a, v.b + v.r, Display::height - v.g - EB_HEADER_SIZE - 2, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+		glBlitFramebuffer(0, 0, (int)previewWidth, (int)previewHeight, (int)v.r, (int)(Display::height - v.g - v.a), (int)(v.b + v.r), (int)(Display::height - v.g - EB_HEADER_SIZE - 2), GL_COLOR_BUFFER_BIT, GL_LINEAR);
 	}
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 	//glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
@@ -295,7 +295,7 @@ void EB_Previewer::_RenderLights(Vec4 v) {
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
-void EB_Previewer::_DrawLights(vector<SceneObject*> oo, Mat4x4 ip) {
+void EB_Previewer::_DrawLights(std::vector<SceneObject*> oo, Mat4x4 ip) {
 	for (SceneObject* o : oo) {
 		if (!o->active)
 			continue;
@@ -325,8 +325,8 @@ GLuint Camera::d_skyProgram = 0;
 GLuint Camera::d_pLightProgram = 0;
 GLuint Camera::d_sLightProgram = 0;
 GLuint Camera::d_sLightCSProgram = 0;
-unordered_map<string, GLuint> Camera::fetchTextures = unordered_map<string, GLuint>();
-vector<string> Camera::fetchTexturesUpdated = vector<string>();
+std::unordered_map<string, GLuint> Camera::fetchTextures = std::unordered_map<string, GLuint>();
+std::vector<string> Camera::fetchTexturesUpdated = std::vector<string>();
 
 GLuint Camera::DoFetchTexture(string s) {
 	if (s == "") {
@@ -406,7 +406,7 @@ void Camera::_DoRenderProbeMask(ReflectionProbe* p, Mat4x4& ip) {
 }
 
 //mask shaded parts with alpha += influence/4
-void Camera::_RenderProbesMask(vector<SceneObject*>& objs, Mat4x4 mat, vector<ReflectionProbe*>& probes) {
+void Camera::_RenderProbesMask(std::vector<SceneObject*>& objs, Mat4x4 mat, std::vector<ReflectionProbe*>& probes) {
 	for (SceneObject* o : objs) {
 		if (!o->active)
 			continue;
@@ -421,7 +421,7 @@ void Camera::_RenderProbesMask(vector<SceneObject*>& objs, Mat4x4 mat, vector<Re
 }
 
 //strength decided from influence / (alpha*4)
-void Camera::_RenderProbes(vector<ReflectionProbe*>& probes, Mat4x4 mat) {
+void Camera::_RenderProbes(std::vector<ReflectionProbe*>& probes, Mat4x4 mat) {
 	for (ReflectionProbe* p : probes) {
 		//_DoRenderProbe(p, mat);
 	}
@@ -637,7 +637,7 @@ void Camera::_DoDrawLight_Spot(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs
 		glBindTexture(GL_TEXTURE_2D, l->cookie->pointer);
 	}
 	glUniform1f(sloc[17], l->cookie ? l->cookieStrength : 0);
-	glUniform1f(sloc[18], l->square ? 1 : 0);
+	glUniform1f(sloc[18], l->square ? 1.0f : 0.0f);
 	glUniformMatrix4fv(sloc[19], 1, GL_FALSE, glm::value_ptr(lp));
 
 	if (l->drawShadow && l->contactShadows) {
@@ -645,7 +645,7 @@ void Camera::_DoDrawLight_Spot(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs
 		glActiveTexture(GL_TEXTURE6);
 		glBindTexture(GL_TEXTURE_2D, c_tex);
 	}
-	glUniform1f(sloc[21], (l->drawShadow && l->contactShadows) ? 1 : 0);
+	glUniform1f(sloc[21], (l->drawShadow && l->contactShadows) ? 1.0f : 0.0f);
 #undef sloc
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, screenRectIndices);
@@ -655,7 +655,7 @@ void Camera::_DoDrawLight_Spot(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
-void Camera::_DrawLights(vector<SceneObject*>& oo, Mat4x4& ip, GLuint targetFbo) {
+void Camera::_DrawLights(std::vector<SceneObject*>& oo, Mat4x4& ip, GLuint targetFbo) {
 	for (SceneObject* o : oo) {
 		if (!o->active)
 			continue;
@@ -689,7 +689,7 @@ void Camera::RenderLights(GLuint targetFbo) {
 	Mat4x4 mat = glm::inverse(Mat4x4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]));
 
 	//clear alpha here
-	vector<ReflectionProbe*> probes;
+	std::vector<ReflectionProbe*> probes;
 	_RenderProbesMask(Scene::active->objects, mat, probes);
 	_RenderProbes(probes, mat);
 	_RenderSky(mat, d_texs, d_depthTex);
@@ -717,8 +717,8 @@ void Camera::DumpBuffers() {
 
 GLuint Light::_shadowFbo = 0;
 GLuint Light::_shadowMap = 0;
-vector<GLint> Light::paramLocs_Spot = vector<GLint>();
-vector<GLint> Light::paramLocs_SpotCS = vector<GLint>();
+std::vector<GLint> Light::paramLocs_Spot = std::vector<GLint>();
+std::vector<GLint> Light::paramLocs_SpotCS = std::vector<GLint>();
 
 void Light::InitShadow() {
 	glGenFramebuffers(1, &_shadowFbo);

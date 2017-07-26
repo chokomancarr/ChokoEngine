@@ -21,7 +21,6 @@
 #include "Compressors.h"
 #include <sstream>
 //#include <signal.h>
-using namespace std;
 
 void InitGL(int argc, char* argv[]);
 void DisplayGL();
@@ -40,7 +39,7 @@ void closeCallback();
 
 Font *font;
 
-thread updateThread;
+std::thread updateThread;
 uint t;
 uint fps;
 bool redrawn = false;
@@ -51,7 +50,7 @@ int q = 0;
 string path;
 Editor* editor;
 static HWND hwnd = NULL, hwnd2 = NULL;
-mutex lockMutex;
+std::mutex lockMutex;
 
 //extern "C" void abort_func(int signum)
 //{
@@ -73,14 +72,14 @@ int main(int argc, char **argv)
 
 	//*
 
-	cout << "Enter project folder path" << endl;
+	std::cout << "Enter project folder path" << std::endl;
 
-	getline(cin, editor->projectFolder);
+	std::getline(std::cin, editor->projectFolder);
 	if (editor->projectFolder == "")
 		editor->projectFolder = "D:\\TestProject2\\";
 	else while (!IO::HasDirectory(editor->projectFolder.c_str())) {
-		cout << "Invalid project folder path: " << editor->projectFolder << endl;
-		getline(cin, editor->projectFolder);
+		std::cout << "Invalid project folder path: " << editor->projectFolder << std::endl;
+		std::getline(std::cin, editor->projectFolder);
 	}
 	//*/
 
@@ -155,8 +154,8 @@ int main(int argc, char **argv)
 	GLint GlewInitResult = glewInit();
 	if (GLEW_OK != GlewInitResult)
 	{
-		cerr << ("ERROR: %s\n", glewGetErrorString(GlewInitResult));
-		getline(cin, p);
+		std::cerr << ("ERROR: %s\n", glewGetErrorString(GlewInitResult));
+		std::getline(std::cin, p);
 		return 0;
 	}
 	else {
@@ -164,7 +163,7 @@ int main(int argc, char **argv)
 		editor->LoadDefaultAssets();
 		editor->ReadPrefs();
 		editor->ReloadAssets(editor->projectFolder + "Assets\\", true);
-		editor->blocks = vector<EditorBlock*>({ new EB_Inspector(editor, 2, 0, 1, 3), new EB_Inspector(editor, 2, 3, 1, 1), new EB_Browser(editor, 0, 2, 4, 1, editor->projectFolder + "Assets\\"), new EB_AnimEditor(editor, 0, 2, 4, 1), new EB_Debug(editor, 4, 2, 2, 1), new EB_Viewer(editor, 0, 0, 3, 2), new EB_Hierarchy(editor, 3, 0, 2, 2), new EB_Previewer(editor, 4, 2, 2, 1) }); //path.substr(0, path.find_last_of('\\') + 1)
+		editor->blocks = std::vector<EditorBlock*>({ new EB_Inspector(editor, 2, 0, 1, 3), new EB_Inspector(editor, 2, 3, 1, 1), new EB_Browser(editor, 0, 2, 4, 1, editor->projectFolder + "Assets\\"), new EB_AnimEditor(editor, 0, 2, 4, 1), new EB_Debug(editor, 4, 2, 2, 1), new EB_Viewer(editor, 0, 0, 3, 2), new EB_Hierarchy(editor, 3, 0, 2, 2), new EB_Previewer(editor, 4, 2, 2, 1) }); //path.substr(0, path.find_last_of('\\') + 1)
 		editor->blockCombos.push_back(new BlockCombo());
 		editor->blockCombos[0]->blocks.push_back(editor->blocks[2]);
 		editor->blockCombos[0]->blocks.push_back(editor->blocks[3]);
@@ -204,7 +203,7 @@ int main(int argc, char **argv)
 
 		Time::startMillis = milliseconds();
 
-		updateThread = thread(UpdateLoop);
+		updateThread = std::thread(UpdateLoop);
 		atexit(OnDie);
 
 		glutMainLoop();
@@ -233,7 +232,7 @@ void CheckShortcuts() {
 				return;
 			}
 			if ((g.first & 0xff00) == 0) {
-				cout << hex << g.first;
+				std::cout << std::hex << g.first;
 			}
 		}
 		for (EditorBlock* e : editor->blocks) {
@@ -272,7 +271,7 @@ void DoUpdate() {
 		editor->DoCompile();
 		return;
 	}
-	lock_guard<mutex> lock(lockMutex);
+	std::lock_guard<std::mutex> lock(lockMutex);
 	editor->WAITINGREFRESHFLAG = false;
 	CheckShortcuts();
 	int i = -1, k = 0;
@@ -345,7 +344,7 @@ void OnDie() {
 
 bool hi;
 void DrawOverlay() {
-	lock_guard<mutex> lock(lockMutex);
+	std::lock_guard<std::mutex> lock(lockMutex);
 	editor->UpdateLerpers();
 	if (editor->backgroundTex != nullptr)
 		Engine::DrawTexture(0, 0, (float)Display::width, (float)Display::height, editor->backgroundTex, editor->backgroundAlpha*0.01f);

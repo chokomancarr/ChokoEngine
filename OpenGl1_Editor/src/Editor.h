@@ -12,8 +12,6 @@ Editor functions
 #include <memory>
 #include <unordered_map>
 
-using namespace std;
-
 #define EB_HEADER_SIZE 16
 #define EB_HEADER_PADDING 16
 
@@ -26,11 +24,11 @@ typedef void(*shortcutFunc)(EditorBlock*);
 typedef void(*shortcutFuncGlobal)(Editor*);
 typedef void(*callbackFunc)(void*);
 typedef string(*editCallbackFunc)(string);
-typedef pair<string, shortcutFunc> funcMap;
-typedef pair<string, shortcutFunc> funcMapGlobal;
-typedef unordered_map<int, shortcutFunc> ShortcutMap;
-typedef unordered_map<int, shortcutFuncGlobal> ShortcutMapGlobal;
-typedef unordered_map<int, funcMap[]> CommandsMap;
+typedef std::pair<string, shortcutFunc> funcMap;
+typedef std::pair<string, shortcutFunc> funcMapGlobal;
+typedef std::unordered_map<int, shortcutFunc> ShortcutMap;
+typedef std::unordered_map<int, shortcutFuncGlobal> ShortcutMapGlobal;
+typedef std::unordered_map<int, funcMap[]> CommandsMap;
 int GetShortcutInt(InputKey k, InputKey m1 = Key_None, InputKey m2 = Key_None, InputKey m3 = Key_None);
 bool ShortcutTriggered(int i, bool c, bool a, bool s);
 
@@ -90,7 +88,7 @@ public:
 	}
 
 	bool drawM, drawW, drawE;
-	vector<int> drawIds;
+	std::vector<int> drawIds;
 
 	void Draw();
 	void Refresh();
@@ -117,7 +115,7 @@ public:
 	string path, name, fullName;
 	int thumbnail;
 	bool canExpand, expanded;
-	vector<EB_Browser_File> children;
+	std::vector<EB_Browser_File> children;
 	Texture* tex;
 };
 
@@ -134,8 +132,8 @@ public:
 
 	string currentDir;
 	int selectFile; //for options
-	vector<string> dirs;
-	vector<EB_Browser_File> files;
+	std::vector<string> dirs;
+	std::vector<EB_Browser_File> files;
 
 	void Draw();
 	void Refresh();
@@ -277,7 +275,7 @@ protected:
 	void _InitDebugPrograms();
 	void DrawPreview(Vec4 v);
 	void _RenderLights(Vec4 v);
-	void _RenderSky(Mat4x4 mat), _DrawLights(vector<SceneObject*> oo, Mat4x4 ip);
+	void _RenderSky(Mat4x4 mat), _DrawLights(std::vector<SceneObject*> oo, Mat4x4 ip);
 
 	static void _ToggleBuffers(EditorBlock* v), _ToggleLumi(EditorBlock* v);
 
@@ -293,7 +291,7 @@ class EB_ColorPicker : public EditorBlock {
 public:
 	EB_ColorPicker(Editor* e, int x1, int y1, int x2, int y2, Color* tar): target(tar) {
 		if (tar == nullptr)
-			runtime_error("Color Picker with no color target!");
+			std::runtime_error("Color Picker with no color target!");
 		editorType = 100;
 		editor = e;
 		this->x1 = x1;
@@ -343,12 +341,12 @@ public:
 	int activeX = -1, activeY = -1;
 	float amin, amax;
 	float dw, dh;
-	vector<float> xPoss, yPoss;
-	vector<xPossLerper> xLerper;
-	vector<yPossLerper> yLerper;
-	vector<Int2> xLimits, yLimits; //not include 0 1
-	vector<EditorBlock*> blocks;
-	vector<BlockCombo*> blockCombos;
+	std::vector<float> xPoss, yPoss;
+	std::vector<xPossLerper> xLerper;
+	std::vector<yPossLerper> yLerper;
+	std::vector<Int2> xLimits, yLimits; //not include 0 1
+	std::vector<EditorBlock*> blocks;
+	std::vector<BlockCombo*> blockCombos;
 	Vec2 popupPos;
 
 	EditorBlock* dialogBlock;
@@ -356,11 +354,11 @@ public:
 	EditorBlock* menuBlock; //menu = layer1
 	int menuPadding;
 	string menuTitle;
-	vector<string> menuNames;
+	std::vector<string> menuNames;
 	bool menuFuncIsSingle;
-	vector<shortcutFunc> menuFuncs;
+	std::vector<shortcutFunc> menuFuncs;
 	dataFunc menuFuncSingle;
-	vector<void*> menuFuncVals;
+	std::vector<void*> menuFuncVals;
 
 	//edit = layer2
 	byte editingType; //0none 1int 2float 3string
@@ -378,8 +376,8 @@ public:
 	//select = layer3
 	bool browseIsComp;
 	ASSETTYPE browseType;
-	vector<Component*> browseCompList;
-	vector<string> browseCompListNames;
+	std::vector<Component*> browseCompList;
+	std::vector<string> browseCompListNames;
 	void ScanBrowseComp();
 	float browseOffset;
 	int browseSize;
@@ -395,11 +393,11 @@ public:
 	//prefs = layer5
 
 	bool WAITINGBUILDSTARTFLAG = false, WAITINGREFRESHFLAG = false;
-	mutex* lockMutex;
+	std::mutex* lockMutex;
 	//building - layer6: custom progress to look cool
-	vector<string> buildLog;
+	std::vector<string> buildLog;
 	void AddBuildLog(Editor* e, string s, bool forceE = false);
-	vector<bool> buildLogErrors, buildLogWarnings;
+	std::vector<bool> buildLogErrors, buildLogWarnings;
 	string buildErrorPath;
 	int buildErrorLine;
 	string buildLabel;
@@ -426,13 +424,13 @@ public:
 	int gridId[68];
 	Vec3 grid[64];
 
-	shared_ptr<Scene> activeScene = nullptr;
+	std::shared_ptr<Scene> activeScene = nullptr;
 	bool sceneLoaded() { return activeScene != nullptr; }
 	SceneObject* selected;
 	Mat4x4 selectedMvMatrix;
 	bool selectGlobal = false;
-	vector<string> includedScenes;
-	vector<bool> includedScenesUse;
+	std::vector<string> includedScenes;
+	std::vector<bool> includedScenesUse;
 	ushort savedIncludedScenes;
 
 	string selectedFileName;
@@ -449,21 +447,21 @@ public:
 
 	Texture* buttonX, *buttonExt, *buttonPlus, *buttonExtArrow, *background, *placeholder, *checkers, *expand;
 	Texture* collapse, *object, *checkbox, *keylock, *assetExpand, *assetCollapse, *browse;
-	vector<Texture*> tooltipTexs;
-	vector<Texture*> shadingTexs;
-	vector<Texture*> orientTexs;
-	unordered_map<SHADER_VARTYPE, Texture*> matVarTexs;
-	unordered_map<byte, Texture*> ebIconTexs;
+	std::vector<Texture*> tooltipTexs;
+	std::vector<Texture*> shadingTexs;
+	std::vector<Texture*> orientTexs;
+	std::unordered_map<SHADER_VARTYPE, Texture*> matVarTexs;
+	std::unordered_map<byte, Texture*> ebIconTexs;
 
-	vector<string> assetIconsExt;
-	vector<Texture*> assetIcons;
+	std::vector<string> assetIconsExt;
+	std::vector<Texture*> assetIcons;
 	//Texture buttonDash;
-	unordered_map<string, ASSETTYPE> assetTypes;
-	unordered_map<ASSETTYPE, vector<string>> allAssets;
-	vector<string> headerAssets, cppAssets, blendAssets;
-	unordered_map<ASSETTYPE, vector<string>> normalAssets;
-	unordered_map <ASSETTYPE, pair<ASSETTYPE, vector<uint>>> derivedAssets;
-	unordered_map<ASSETTYPE, vector<AssetObject*>> normalAssetCaches;
+	std::unordered_map<string, ASSETTYPE> assetTypes;
+	std::unordered_map<ASSETTYPE, std::vector<string>> allAssets;
+	std::vector<string> headerAssets, cppAssets, blendAssets;
+	std::unordered_map<ASSETTYPE, std::vector<string>> normalAssets;
+	std::unordered_map <ASSETTYPE, std::pair<ASSETTYPE, std::vector<uint>>> derivedAssets;
+	std::unordered_map<ASSETTYPE, std::vector<AssetObject*>> normalAssetCaches;
 
 	void ResetAssetMap();
 
@@ -481,16 +479,16 @@ public:
 	void UpdateLerpers();
 	void DrawHandles();
 
-	void RegisterMenu(EditorBlock* block, string title, vector<string> names, vector<shortcutFunc> funcs, int padding, Vec2 pos = Input::mousePos);
-	void RegisterMenu(EditorBlock* block, string title, vector<string> names, dataFunc func, vector<void*> vals, int padding, Vec2 pos = Input::mousePos);
+	void RegisterMenu(EditorBlock* block, string title, std::vector<string> names, std::vector<shortcutFunc> funcs, int padding, Vec2 pos = Input::mousePos);
+	void RegisterMenu(EditorBlock* block, string title, std::vector<string> names, dataFunc func, std::vector<void*> vals, int padding, Vec2 pos = Input::mousePos);
 
 	static Texture* GetRes(string name);
 	static Texture* GetResExt(string name, string ext = "bmp");
 	static Texture* GetRes(string name, bool mipmap, string ext = "bmp");
 	static Texture* GetRes(string name, bool mipmap, bool nearest, string ext = "bmp");
 
-	vector<pair<string, string>> messages;
-	vector<byte> messageTypes;
+	std::vector<std::pair<string, string>> messages;
+	std::vector<byte> messageTypes;
 
 	void _Message(string c, string s);
 	void _Warning(string c, string s);
@@ -521,7 +519,7 @@ private:
 class BlockCombo {
 public:
 	BlockCombo() : active(0) {}
-	vector<EditorBlock*> blocks;
+	std::vector<EditorBlock*> blocks;
 	uint active;
 	void Set(), Draw();
 };

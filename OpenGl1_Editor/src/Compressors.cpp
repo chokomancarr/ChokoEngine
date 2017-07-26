@@ -5,9 +5,7 @@
 #include <algorithm>
 #include <fstream>
 
-using namespace std;
-
-int IndexInDic (string& str, vector<string>& dic) {
+int IndexInDic (std::string& str, std::vector<std::string>& dic) {
     for (unsigned short x = dic.size(); x > 0; x--) {
         if (strcmp(dic[x-1].c_str(), str.c_str()) == 0)
             return x-1;
@@ -15,21 +13,21 @@ int IndexInDic (string& str, vector<string>& dic) {
     return -1;
 }
 
-void Compressors::Compress_LZW (unsigned char* input, unsigned int inSize, vector<unsigned char>& output) {
+void Compressors::Compress_LZW (unsigned char* input, unsigned int inSize, std::vector<unsigned char>& output) {
     output.clear();
-	vector<string> dictionary = vector<string>();
+	std::vector<std::string> dictionary = std::vector<std::string>();
 	dictionary.push_back(""); //0=end
 	for (unsigned short x = 0; x < 256; x++) {
 		char xx[] = { (char)x, '\0' };
-		dictionary.push_back(string(xx));
+		dictionary.push_back(std::string(xx));
 	}
 	unsigned int outSize = 0;
 
     bool odd = false;
-    string buffer = "";
+    std::string buffer = "";
 	for (unsigned int a = 0; a < inSize; a++) {
 		char xx[] = { (char)input[a], '\0' };
-		string k = string(xx);
+		std::string k = std::string(xx);
         int i = IndexInDic(buffer + k, dictionary);
         if (i > -1) {
             buffer += k;
@@ -72,24 +70,24 @@ void Compressors::Compress_LZW (unsigned char* input, unsigned int inSize, vecto
 		outSize++;
 	}
 
-	//for (string sss : dictionary)
+	//for (std::string sss : dictionary)
 		//cout << sss << endl;
 }
 
-void Compressors::Decompress_LZW(ifstream& strm, vector<unsigned char>& output) {
-	string buffer = "";
-	vector<string> dictionary = vector<string>();
+void Compressors::Decompress_LZW(std::ifstream& strm, std::vector<unsigned char>& output) {
+	std::string buffer = "";
+	std::vector<std::string> dictionary = std::vector<std::string>();
 	dictionary.push_back(""); //0=end
 	for (unsigned short x = 0; x < 256; x++) {
 		char xx[] = { (char)x, '\0' };
-		dictionary.push_back(string(xx));
+		dictionary.push_back(std::string(xx));
 	}
 	unsigned short dicSize = 257;
 	output.clear();
 	unsigned short prevCode, currCode;
 	bool isOdd = true;
 	unsigned char byte0, byte1;
-	string s = "";
+	std::string s = "";
 
 	byte0 = strm.get();
 	byte1 = strm.get();
