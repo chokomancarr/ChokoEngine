@@ -15,6 +15,7 @@
 #include <shellapi.h>
 #include <Windows.h>
 #include <math.h>
+#include <thread>
 #include <jpeglib.h>
 #include <jerror.h>
 #include <lodepng.h>
@@ -28,7 +29,18 @@
 
 using namespace std;
 
-Vec3 Quat2Euler(const Quat& q) {
+Quat QuatFunc::Inverse(const Quat& q) {
+	return Quat(-q.x, -q.y, -q.z, q.w);
+}
+
+Vec3 QuatFunc::Rotate(const Vec3& v, const Quat& q) {
+	Quat vv = Quat(v.x, v.y, v.z, 0);
+	Quat q2 = Quat(-q.x, -q.y, -q.z, q.w);
+	Quat d = q * vv * q2;
+	return Vec3(d.x, d.y, d.z);
+}
+
+Vec3 QuatFunc::ToEuler(const Quat& q) {
 	Vec3 out;
 	double ysqr = q.y * q.y;
 
@@ -51,7 +63,7 @@ Vec3 Quat2Euler(const Quat& q) {
 	return out;
 }
 
-Quat AxisAngle2Quat(const Vec3& axis, float angle) {
+Quat QuatFunc::FromAxisAngle(const Vec3& axis, float angle) {
 	float a = deg2rad*angle;
 	double factor = sin(a / 2.0);
 
@@ -62,7 +74,7 @@ Quat AxisAngle2Quat(const Vec3& axis, float angle) {
 
 	// Calcualte the w value by cos( theta / 2 )
 	double w = cos(a / 2.0);
-	return Normalize(Quat(x, y, z, w));
+	return Normalize(Quat(w, x, y, z));
 }
 
 string to_string(Vec2 v) {
@@ -1070,7 +1082,10 @@ bool Input::KeyUp(InputKey k) {
 
 void Input::UpdateMouseNKeyboard() {
 	std::swap(keyStatusOld, keyStatusNew);
-	for (byte a = 1; a < 106; a++) {
+	for (byte a = 1; a < 112; a++) {
+		keyStatusNew[a] = ((GetAsyncKeyState(a) >> 8) == -128);
+	}
+	for (byte a = 187; a < 191; a++) {
 		keyStatusNew[a] = ((GetAsyncKeyState(a) >> 8) == -128);
 	}
 
@@ -1104,6 +1119,9 @@ void Input::UpdateMouseNKeyboard() {
 		mouseDownPos = mousePos;
 	else if (mouse0State == 0)
 		mouseDownPos = Vec2(-1, -1);
+
+	mouseDelta = mousePos - mousePosOld;
+	mousePosOld = mousePos;
 }
 
 void Display::Resize(int x, int y, bool maximize) {
@@ -1341,9 +1359,12 @@ Vec3 rotate(Vec3 v, Quat q) {
 //-----------------transform class-------------------
 Transform::Transform(SceneObject* sc, Vec3 pos, Quat rot, Vec3 scl) : object(sc), _rotation(rot), scale(scl) {
 	Translate(pos);
+	_UpdateEuler();
+	_UpdateLMatrix();
 }
 
 const Vec3 Transform::worldPosition() {
+	/*
 	Vec3 w = position;
 	SceneObject* o = object;
 	while (o->parent != nullptr) {
@@ -1351,6 +1372,9 @@ const Vec3 Transform::worldPosition() {
 		w = w*o->transform.scale + o->transform.position;
 	}
 	return w;
+	*/
+	Vec4 v = _worldMatrix * Vec4(0, 0, 0, 1);
+	return Vec3(v.x, v.y, v.z);
 }
 
 const Vec3 Transform::forward() {
@@ -1379,6 +1403,7 @@ void Transform::eulerRotation(Vec3 r) {
 	_eulerRotation.y = repeat(_eulerRotation.y, 0, 360);
 	_eulerRotation.z = repeat(_eulerRotation.z, 0, 360);
 	_UpdateQuat();
+	_UpdateLMatrix();
 }
 
 void Transform::_UpdateQuat() {
@@ -1386,41 +1411,43 @@ void Transform::_UpdateQuat() {
 }
 
 void Transform::_UpdateEuler() {
-	_eulerRotation = Quat2Euler(_rotation);
+	_eulerRotation = QuatFunc::ToEuler(_rotation);
 }
 
 void Transform::_UpdateLMatrix() {
 	_localMatrix = Mat4x4(scale.x, 0, 0, 0, 0, scale.y, 0, 0, 0, 0, scale.z, 0, 0, 0, 0, 1);
-	_localMatrix = Mat4x4(0, 0, 0, position.x, 0, 0, 0, position.y, 0, 0, 0, position.z, 0, 0, 0, 1) * Quat2Mat(_rotation) * _localMatrix;
+	_localMatrix = Quat2Mat(_rotation) * _localMatrix;
+	_localMatrix = glm::translate(position) * _localMatrix;
 	_UpdateWMatrix(object->parent? object->parent->transform._worldMatrix : Mat4x4());
 }
 
 void Transform::_UpdateWMatrix(const Mat4x4& mat) {
-	_worldMatrix = _localMatrix*mat;
+	_worldMatrix = mat*_localMatrix;
 
-	for (SceneObject* oo : object->children)
-		oo->transform._UpdateWMatrix(_worldMatrix);
+	for (uint a = 0; a < object->childCount; a++)
+		object->children[a]->transform._UpdateWMatrix(_worldMatrix);
 }
 
 Transform* Transform::Translate(Vec3 v) {
 	position += v;
+	_UpdateLMatrix();
 	return this;
 }
 Transform* Transform::Rotate(Vec3 v, TransformSpace sp) {
-	if (sp == Space_Self) {
-		Quat qx = AxisAngle2Quat(Vec3(1, 0, 0), v.x);
-		Quat qy = AxisAngle2Quat(Vec3(0, 1, 0), v.y);
-		Quat qz = AxisAngle2Quat(Vec3(0, 0, 1), v.z);
-		_rotation = qz*qy*qx*_rotation;
-	}
-	else {
+	Quat qx = QuatFunc::FromAxisAngle(Vec3(1, 0, 0), v.x);
+	Quat qy = QuatFunc::FromAxisAngle(Vec3(0, 1, 0), v.y);
+	Quat qz = QuatFunc::FromAxisAngle(Vec3(0, 0, 1), v.z);
 
-	}
+	if (sp == Space_World) _rotation = qx * qy * qz * _rotation;
+	else _rotation *= qx * qy * qz;
+
 	_UpdateEuler();
+	_UpdateLMatrix();
 	return this;
 }
 Transform* Transform::Scale(Vec3 v) {
 	scale += v;
+	_UpdateLMatrix();
 	return this;
 }
 
@@ -1434,7 +1461,6 @@ RenderTexture::RenderTexture(uint w, uint h, bool depth) : Texture() {
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, d_fbo);
 
 	glGenTextures(1, &pointer);
-	glGenTextures(1, &d_depthTex);
 
 	glBindTexture(GL_TEXTURE_2D, pointer);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, w, h, 0, GL_RGBA, GL_FLOAT, NULL);
@@ -1443,6 +1469,7 @@ RenderTexture::RenderTexture(uint w, uint h, bool depth) : Texture() {
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
 	if (depth) {
+		glGenTextures(1, &d_depthTex);
 		glBindTexture(GL_TEXTURE_2D, d_depthTex);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, w, h, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, d_depthTex, 0);
@@ -1451,14 +1478,58 @@ RenderTexture::RenderTexture(uint w, uint h, bool depth) : Texture() {
 	}
 	else d_depthTex = 0;
 
-	GLenum DrawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-	glDrawBuffers(2, DrawBuffers);
+	GLenum DrawBuffers[] = { GL_COLOR_ATTACHMENT0 };
+	glDrawBuffers(1, DrawBuffers);
 	loaded = true;
 }
 
 RenderTexture::~RenderTexture() {
 	if (d_depthTex > 0) glDeleteTextures(1, &d_depthTex);
 	glDeleteFramebuffers(1, &d_fbo);
+}
+
+void RenderTexture::Blit(Texture* src, RenderTexture* dst, ShaderBase* shd, string texName) {
+	if (src == nullptr || dst == nullptr || shd == nullptr) {
+		Debug::Warning("Blit", "Parameter is null!");
+		return;
+	}
+	Blit(src->pointer, dst, shd->pointer, texName);
+}
+
+void RenderTexture::Blit(GLuint src, RenderTexture* dst, GLuint shd, string texName) {
+	glViewport(0, 0, dst->width, dst->height);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dst->d_fbo);
+	float zero[] = { 0,0,0,0 };
+	glClearBufferfv(GL_COLOR, 0, zero);
+	glDisable(GL_DEPTH_TEST);
+	glDepthMask(false);
+	glDisable(GL_BLEND);
+
+	Vec3 quadPoss[4];
+	quadPoss[1].x = 1;
+	quadPoss[2].y = 1;
+	quadPoss[3].x = 1;
+	quadPoss[3].y = 1;
+	uint quadIndexes[4] = { 0, 1, 3, 2 };
+	glUseProgram(shd);
+	GLuint loc = glGetUniformLocation(shd, &texName[0]);
+	glUniform1i(loc, 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE0, src);
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
+
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &quadPoss[0]);
+
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glDrawElements(GL_QUADS, 4, GL_UNSIGNED_INT, &quadIndexes[0]);
+
+	glDisableVertexAttribArray(0);
+	glUseProgram(0);
+
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 }
 
 void RenderTexture::Blit(Texture* src, RenderTexture* dst, Material* mat, string texName) {
@@ -1492,6 +1563,13 @@ void RenderTexture::Blit(Texture* src, RenderTexture* dst, Material* mat, string
 	glUseProgram(0);
 
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+}
+
+vector<float> RenderTexture::pixels() {
+	vector<float> v = vector<float>(width*height * 3);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, d_fbo);
+	glReadPixels(0, 0, width, height, GL_RGB, GL_FLOAT, &v[0]);
+	return v;
 }
 
 void RenderTexture::Load(string path) {
@@ -1887,8 +1965,26 @@ Background::Background(const string& path) : width(0), height(0), AssetObject(AS
 	//cout << "HDR Image loaded: " << width << "x" << height << endl;
 }
 
-//do not generate mipmaps in editor < fuck you
-Background::Background(int i, Editor* editor) : width(0), height(0), AssetObject(ASSETTYPE_HDRI) {
+void Background::B_DS(Background* b, vector<float> data) {
+	uint width_1 = b->width, height_1 = b->height, width_2, height_2, mips = 0;
+	while (mips < 6 && b->height > 16) {
+		//cout << "Downsampling " << mips << endl;
+		mips++;
+		data = Downsample(data, width_1, height_1, width_2, height_2);
+		
+		glBindTexture(GL_TEXTURE_2D, b->pointer);
+
+		glTexImage2D(GL_TEXTURE_2D, mips, GL_RGB, width_2, height_2, 0, GL_RGB, GL_FLOAT, &data[0]);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, mips);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		width_1 = width_2 + 0;
+		height_1 = height_2 + 0;
+	}
+	b->loaded = true;
+}
+
+Background::Background(int i, Editor* editor) : width(0), height(0), AssetObject(ASSETTYPE_HDRI), loaded(false) {
 	string path = editor->projectFolder + "Assets\\" + editor->normalAssets[ASSETTYPE_HDRI][i] + ".meta";
 	ifstream strm(path.c_str(), ios::in | ios::binary);
 	vector<char> hd(6);
@@ -1913,23 +2009,16 @@ Background::Background(int i, Editor* editor) : width(0), height(0), AssetObject
 	glGenTextures(1, &pointer);
 	glBindTexture(GL_TEXTURE_2D, pointer);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_FLOAT, &data[0]);
-	
-	uint width_1 = width, height_1 = height, width_2, height_2, mips = 0;
-	while (mips < 6 && height > 16) {
-		//cout << "Downsampling " << mips << endl;
-		mips++;
-		data = Downsample(data, width_1, height_1, width_2, height_2);
-		glTexImage2D(GL_TEXTURE_2D, mips, GL_RGB, width_2, height_2, 0, GL_RGB, GL_FLOAT, &data[0]);
-		width_1 = width_2 + 0;
-		height_1 = height_2 + 0;
-	}
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, mips);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 	glBindTexture(GL_TEXTURE_2D, 0);
-	loaded = true;
+
+	B_DS(this, data);
+	//thread t = thread(B_DS, this, data);
+	//t.detach();
 	//cout << "HDR Image loaded: " << width << "x" << height << endl;
 }
 
@@ -1960,7 +2049,7 @@ Background::Background(ifstream& strm, uint offset) : width(0), height(0), Asset
 	uint width_1, height_1, mips = 0;
 	while (mips < 6 && height > 16) {
 		mips++;
-		cout << "Downsampling " << mips << endl;
+		//cout << "Downsampling " << mips << endl;
 		data = Downsample(data, width, height, width_1, height_1);
 		glTexImage2D(GL_TEXTURE_2D, mips, GL_RGB, width_1, height_1, 0, GL_RGB, GL_FLOAT, &data[0]);
 		width = width_1 + 0;
@@ -1979,78 +2068,17 @@ Background::Background(ifstream& strm, uint offset) : width(0), height(0), Asset
 
 /*
 vector<float> Background::Downsample(vector<float>& data, uint w, uint h, uint& w2, uint& h2) {
-	glViewport(0, 0, w*0.5f, h*0.5f);
-	GLuint fbo, tex, inTex, outTex;
-	glGenTextures(1, &tex);
-
-	glBindTexture(GL_TEXTURE_2D, inTex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, w, h, 0, GL_RGB, GL_FLOAT, &data[0]);
-	glGenTextures(1, &outTex);
-	glBindTexture(GL_TEXTURE_2D, tex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, w*0.5f, h*0.5f, 0, GL_RGB, GL_FLOAT, NULL);
-	glGenTextures(1, &inTex);
-	glBindTexture(GL_TEXTURE_2D, outTex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, w*0.5f, h*0.5f, 0, GL_RGB, GL_FLOAT, NULL);
-
-	glGenFramebuffers(1, &fbo);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
-
-	glBindTexture(GL_TEXTURE_2D, tex);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-	glBindTexture(GL_TEXTURE_2D, outTex);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, outTex, 0);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-	GLenum DrawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-	glDrawBuffers(2, DrawBuffers);
-
-	GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-
-	if (Status != GL_FRAMEBUFFER_COMPLETE) {
-		Debug::Error("Background", "FB error:" + Status);
-		abort();
-	}
-
-	GLint scrSzLoc = glGetUniformLocation(Engine::blurProgram, "screenSize");
-	GLint inTexLoc = glGetUniformLocation(Engine::blurProgram, "tex");
-	GLint isYLoc = glGetUniformLocation(Engine::blurProgram, "isY");
-
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glVertexPointer(2, GL_FLOAT, 0, Camera::screenRectVerts);
-	glUseProgram(Engine::blurProgram);
-
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, Camera::screenRectVerts);
-
-	glUniform2f(scrSzLoc, w*0.5f, h*0.5f);
-
-	//blur x
-	glUniform1i(inTexLoc, 0);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, inTex);
-	glUniform1f(isYLoc, false);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, Camera::screenRectIndices);
-
-	//blur y
-	glUniform1i(inTexLoc, 0);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, tex);
-	glUniform1f(isYLoc, true);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, Camera::screenRectIndices);
-
-	glDisableVertexAttribArray(0);
-	glUseProgram(0);
-	glDisableClientState(GL_VERTEX_ARRAY);
-
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-	glBindTexture(GL_TEXTURE_2D, 0);
+	w2 = floor(w / 2);
+	h2 = floor(h / 2);
+	RenderTexture rt = RenderTexture(w2, h2, false);
+	GLuint pointer;
+	glGenTextures(1, &pointer);
+	glBindTexture(GL_TEXTURE_2D, pointer);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_FLOAT, &data[0]);
+	RenderTexture::Blit(pointer, &rt, Engine::blurProgram, "tex");
+	glDeleteTextures(1, &pointer);
 	glViewport(0, 0, Display::width, Display::height);
+	return rt.pixels();
 }
 */
 //*
@@ -2288,6 +2316,8 @@ glm::mat3 Display::uiMatrix = glm::mat3();
 //--------------------Input class--------------
 Vec2 Input::mousePos = Vec2(0, 0);
 Vec2 Input::mousePosRelative = Vec2(0, 0);
+Vec2 Input::mousePosOld = Vec2(0, 0);
+Vec2 Input::mouseDelta = Vec2(0, 0);
 Vec2 Input::mouseDownPos = Vec2(0, 0);
 
 //-------------------Material class--------------

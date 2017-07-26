@@ -1183,6 +1183,7 @@ Animator::Animator(string path) : Animator() {
 }
 
 void Light::DrawEditor(EB_Viewer* ebv) {
+	if (ebv->editor->selected != object) return;
 	switch (_lightType) { 
 	case LIGHTTYPE_POINT:
 		if (minDist > 0) {
@@ -1812,6 +1813,7 @@ SceneObject::SceneObject(string s) : SceneObject(s, Vec3(), Quat(), Vec3(1, 1, 1
 SceneObject::SceneObject(Vec3 pos, Quat rot, Vec3 scale) : SceneObject("New Object", Vec3(), Quat(), Vec3(1, 1, 1)) {}
 SceneObject::SceneObject(string s, Vec3 pos, Quat rot, Vec3 scale) : active(true), transform(this, pos, rot, scale), childCount(0), _expanded(true), Object(s) {
 	id = Engine::GetNewId();
+	
 }
 
 SceneObject::~SceneObject() {
@@ -1820,12 +1822,8 @@ SceneObject::~SceneObject() {
 	_components.clear();
 }
 
-void SceneObject::Enable() {
-	active = true;
-}
-
-void SceneObject::Enable(bool enableAll) {
-	active = false;
+void SceneObject::SetActive(bool a, bool enableAll) {
+	active = a;
 }
 
 Component* ComponentFromType (COMPONENT_TYPE t){
@@ -1843,6 +1841,7 @@ SceneObject* SceneObject::AddChild(SceneObject* child) {
 	childCount++; 
 	children.push_back(child); 
 	child->parent = this;
+	child->transform._UpdateWMatrix(transform._worldMatrix);
 	return this;
 }
 
@@ -1851,6 +1850,8 @@ void SceneObject::RemoveChild(SceneObject* o) {
 	if (it != children.end()) {
 		swap(*it, children.back());
 		children.pop_back();
+		o->parent = nullptr;
+		o->transform._UpdateWMatrix(Mat4x4());
 	}
 }
 

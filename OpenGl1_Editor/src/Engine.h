@@ -44,10 +44,16 @@ typedef glm::vec4 Vec4;
 typedef glm::quat Quat;
 typedef glm::mat4 Mat4x4;
 
-Vec3 Quat2Euler(const Quat&);
-Quat AxisAngle2Quat (const Vec3& axis, float angle);
 string to_string(Vec2 v), to_string(Vec3 v), to_string(Vec4 v), to_string(Quat v);
 //Vec2 normalize
+
+class QuatFunc {
+public:
+	static Quat Inverse(const Quat&);
+	static Vec3 Rotate(const Vec3&, const Quat&);
+	static Vec3 ToEuler(const Quat&);
+	static Quat FromAxisAngle(const Vec3&, float);
+};
 
 class Color {
 public:
@@ -299,12 +305,13 @@ enum InputKey {
 	Key_0 = 0x30, Key_1, Key_2, Key_3, Key_4, Key_5, Key_6, Key_7, Key_8, Key_9,
 	Key_A = 0x41, Key_B, Key_C, Key_D, Key_E, Key_F, Key_G, Key_H, Key_I, Key_J, Key_K, Key_L, Key_M, Key_N, Key_O, Key_P, Key_Q, Key_R, Key_S, Key_T, Key_U, Key_V, Key_W, Key_X, Key_Y, Key_Z,
 	Key_NumPad0 = 0x60, Key_NumPad1, Key_NumPad2, Key_NumPad3, Key_NumPad4, Key_NumPad5, Key_NumPad6, Key_NumPad7, Key_NumPad8, Key_NumPad9,
+	Key_NumPadMultiply, Key_NumPadAdd, Key_NumPadSeparator, Key_NumPadMinus, Key_NumPadDot, Key_NumPadDivide,
 	Key_Plus = 0xBB, Key_Comma, Key_Minus, Key_Dot
 };
 
 class Input {
 public:
-	static Vec2 mousePos, mousePosRelative, mouseDownPos;
+	static Vec2 mousePos, mousePosRelative, mouseDelta, mouseDownPos;
 	static bool mouse0, mouse1, mouse2;
 	static byte mouse0State, mouse1State, mouse2State;
 	static string inputString;
@@ -315,6 +322,8 @@ public:
 protected:
 	static bool keyStatusOld[256], keyStatusNew[256];
 private:
+	static Vec2 mousePosOld;
+
 	Input(Input const &); //deliberately not defined
 	Input& operator= (Input const &);
 };

@@ -428,7 +428,7 @@ void Camera::_RenderProbes(vector<ReflectionProbe*>& probes, Mat4x4 mat) {
 }
 
 void Camera::_RenderSky(Mat4x4 ip, GLuint d_texs[], GLuint d_depthTex, float w, float h) {
-	if (Scene::active->settings.sky == nullptr) return;
+	if (Scene::active->settings.sky == nullptr || !Scene::active->settings.sky->loaded) return;
 	if (d_skyProgram == 0) {
 		Debug::Error("SkyLightPass", "Fatal: Shader not initialized!");
 		abort();

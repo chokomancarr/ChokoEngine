@@ -256,7 +256,7 @@ void EB_Viewer::_DoAddObjectBl(EditorBlock* b, void* v) {
 	string name = *((string*)v);
 	string path = b->editor->projectFolder + "Assets\\" + name + ".meta";
 	name = name.substr(name.find_last_of('\\') + 1, string::npos).substr(0, name.find_last_of('.'));
-	SceneObject* o = new SceneObject(name);
+	SceneObject* o = new SceneObject(name, ((EB_Viewer*)b)->rotCenter, Quat(), Vec3(1,1,1));
 	b->editor->activeScene->objects.push_back(o);
 	ifstream file(path.c_str(), ios::in | ios::binary);
 	if (file.is_open()) {

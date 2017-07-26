@@ -277,12 +277,17 @@ public:
 	RenderTexture(uint w, uint h, bool depth);
 	~RenderTexture();
 
+	static void Blit(Texture* src, RenderTexture* dst, ShaderBase* shd, string texName = "mainTex");
 	static void Blit(Texture* src, RenderTexture* dst, Material* mat, string texName = "mainTex");
+
+	vector<float> pixels();
 
 	//void Resize(uint w, uint h);
 	friend class Texture;
 	friend class Editor;
+	friend class Background;
 protected:
+	static void Blit(GLuint src, RenderTexture* dst, GLuint shd, string texName = "mainTex");
 	GLuint d_fbo, d_depthTex;
 	void Load(string path);
 	void Load(ifstream& strm);
@@ -304,6 +309,7 @@ private:
 	Background(int i, Editor* editor);
 	Background(ifstream& strm, uint offset);
 	static bool Parse(string path);
+	static void B_DS(Background* b, vector<float> data);
 	static vector<float> Downsample(vector<float>&, uint, uint, uint&, uint&);
 };
 
@@ -724,8 +730,7 @@ public:
 	int childCount;
 	Transform transform;
 
-	void Enable(), Disable();
-	void Enable(bool enableAll), Disable(bool disableAll);
+	void SetActive(bool active, bool enableAll = false);
 
 	SceneObject* parent;
 	vector<SceneObject*> children;

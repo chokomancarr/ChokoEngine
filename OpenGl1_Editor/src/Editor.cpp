@@ -282,7 +282,7 @@ EB_Browser::EB_Browser(Editor* e, int x1, int y1, int x2, int y2, string dir) : 
 	this->y1 = y1;
 	this->x2 = x2;
 	this->y2 = y2;
-	Refresh();
+	//Refresh();
 
 	shortcuts.emplace(GetShortcutInt(Key_A), &_AddAsset);
 }
@@ -639,7 +639,7 @@ void EB_Viewer::Draw() {
 			}
 		}
 		else {
-			Engine::DrawLineWDotted(Vec3(spos.x, spos.y, 0), Vec3(Input::mousePos.x / Display::width * 2 - 1, -(Input::mousePos.y / Display::height * 2 - 1), 0), white(1, 0.1f), 1, 12.0f / Display::height);
+			Engine::DrawLineWDotted(Vec3(spos.x, spos.y, 0), Vec3((Input::mousePos.x - v.r)/v.b * 2 - 1, -((Input::mousePos.y - v.g - EB_HEADER_SIZE - 1)/(v.a - EB_HEADER_SIZE - 1) * 2 - 1), 0), white(1, 0.1f), 1, 12.0f / Display::height);
 		}
 	}
 
@@ -713,7 +713,7 @@ void EB_Viewer::Draw() {
 		Engine::Label(v.x + 50, v.y + 30, 12, "z=" + to_string(rz) + " w = " + to_string(rw), editor->font, white());
 		Engine::Label(v.x + 50, v.y + 55, 12, "fov=" + to_string(fov) + " scale=" + to_string(scale), editor->font, white());
 		Vec4 r = invMatrix * Vec4(1, 0, 0, 0);
-		Engine::Label(v.x + 50, v.y + 80, 12, "right=" + to_string(r.x) + " " + to_string(r.y) + " " + to_string(r.z), editor->font, white());
+		Engine::Label(v.x + 50, v.y + 80, 12, "center=" + to_string(rotCenter), editor->font, white());
 	}
 }
 
@@ -780,6 +780,7 @@ void EB_Viewer::DrawSArrows(Vec3 pos, float size) {
 }
 
 void EB_Viewer::OnMouseM(Vec2 d) {
+	cout << Input::KeyHold(Key_Dot) ? "1" : "0";
 	if (editor->mousePressType == 1 || (editor->mousePressType == 0 && Input::KeyHold(Key_Alt))) {
 		if (Input::KeyHold(Key_Shift)) {
 			//float w = Display::width*(editor->xPoss[x2] - editor->xPoss[x1]);
@@ -804,47 +805,47 @@ void EB_Viewer::OnMouseM(Vec2 d) {
 		}
 	}
 	else if (modifying > 0) {
-		//cout << (int)(modifying & 0x0f) << endl;
-		modVal += Vec2(d.x / Display::width, -d.y / Display::height);
+		float scl = pow(2, scale);
+		modVal += Vec2(Input::mouseDelta.x / Display::width, Input::mouseDelta.y / Display::height);
 		if (modifying >> 4 == 1) {
 			switch (modifying & 0x0f) {
 			case 1:
-				editor->selected->transform.position = preModVals + Vec3((modVal.x + modVal.y) * 40 / scale, 0, 0);
+				editor->selected->transform.position = preModVals + Vec3((modVal.x) * 40 / scl, 0, 0);
 				break;
 			case 2:
-				editor->selected->transform.position = preModVals + Vec3(0, (modVal.x + modVal.y) * 40 / scale, 0);
+				editor->selected->transform.position = preModVals + Vec3(0, (modVal.x) * 40 / scl, 0);
 				break;
 			case 3:
-				editor->selected->transform.position = preModVals + Vec3(0, 0, (modVal.x + modVal.y) * 40 / scale);
+				editor->selected->transform.position = preModVals + Vec3(0, 0, (modVal.x) * 40 / scl);
 				break;
 			}
 		}
 		else if (modifying >> 4 == 2) {
 			switch (modifying & 0x0f) {
 			case 1:
-				editor->selected->transform.Rotate(Vec3((modVal.x + modVal.y) * 36, 0, 0));
+				editor->selected->transform.Rotate(Vec3((Input::mouseDelta.x / Display::width) * 360, 0, 0), selectedOrient == 0 ? Space_World : Space_Self);
 				break;
 			case 2:
-				editor->selected->transform.Rotate(Vec3(0, (modVal.x + modVal.y) * 36, 0));
+				editor->selected->transform.Rotate(Vec3(0, (Input::mouseDelta.x / Display::width) * 360, 0), selectedOrient == 0 ? Space_World : Space_Self);
 				break;
 			case 3:
-				editor->selected->transform.Rotate(Vec3(0, 0, (modVal.x + modVal.y) * 36));
+				editor->selected->transform.Rotate(Vec3(0, 0, (Input::mouseDelta.x / Display::width) * 360), selectedOrient == 0 ? Space_World : Space_Self);
 				break;
 			}
 		}
 		else {
 			switch (modifying & 0x0f) {
 			case 0:
-				editor->selected->transform.scale = Vec3(preModVals + Vec3(1, 1, 1)*((modVal.x + modVal.y) * 40 / scale));
+				editor->selected->transform.scale = Vec3(preModVals + Vec3(1, 1, 1)*((modVal.x) * 40 / scl));
 				break;
 			case 1:
-				editor->selected->transform.scale = Vec3(preModVals + Vec3((modVal.x + modVal.y) * 40 / scale, 0, 0));
+				editor->selected->transform.scale = Vec3(preModVals + Vec3((modVal.x) * 40 / scl, 0, 0));
 				break;
 			case 2:
-				editor->selected->transform.scale = Vec3(preModVals + Vec3(0, (modVal.x + modVal.y) * 40 / scale, 0));
+				editor->selected->transform.scale = Vec3(preModVals + Vec3(0, (modVal.x) * 40 / scl, 0));
 				break;
 			case 3:
-				editor->selected->transform.scale = Vec3(preModVals + Vec3(0, 0, (modVal.x + modVal.y) * 40 / scale));
+				editor->selected->transform.scale = Vec3(preModVals + Vec3(0, 0, (modVal.x) * 40 / scl));
 				break;
 			}
 		}
@@ -2073,15 +2074,15 @@ void Editor::DrawHandles() {
 		previewTime += Time::delta;
 		if (previewTime > minPreviewTime) {
 			float px = Input::mousePos.x;
-			if (px > Display::width - 256) px -= 256;
+			if (px > Display::width - 300) px -= 300;
 			float py = Input::mousePos.y;
-			if (py > 256) py -= 256;
-			Engine::DrawQuad(px, py, 256, 256, black(0.85f));
-			if (!((AssetObject*)GetCache(previewType, previewId))->DrawPreview(px + 2, py + 2, 252, 252)) {
-				Engine::DrawLine(Vec3(px, py, 0), Vec3(px + 256, py + 256, 0), grey1(), 1.5f);
-				Engine::DrawLine(Vec3(px, py + 256, 0), Vec3(px + 256, py, 0), grey1(), 1.5f);
+			if (py > 300) py -= 300;
+			Engine::DrawQuad(px + 20, py + 20, 256, 256, black(0.85f));
+			if (!((AssetObject*)GetCache(previewType, previewId))->DrawPreview(px + 22, py + 22, 252, 252)) {
+				Engine::DrawLine(Vec3(px + 20, py + 20, 0), Vec3(px + 276, py + 276, 0), grey1(), 1.5f);
+				Engine::DrawLine(Vec3(px + 20, py + 276, 0), Vec3(px + 276, py + 20, 0), grey1(), 1.5f);
 				font->Align(ALIGN_MIDCENTER);
-				Engine::Label(px + 128, py + 128, 12, "No preview", font, white());
+				Engine::Label(px + 148, py + 148, 12, "No preview", font, white());
 				font->Align(ALIGN_BOTLEFT);
 			}
 		}
@@ -2250,6 +2251,10 @@ void DoReloadAssets(Editor* e, string path, bool recursive, mutex* l) {
 		}
 	}
 	e->editorLayer = 0;
+	lock_guard<mutex> lock(*l);
+	for (auto b : e->blocks) {
+		b->Refresh();
+	}
 }
 
 void Editor::ClearLogs() {
