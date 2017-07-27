@@ -88,13 +88,12 @@ class KTMExporter():
                 #    for block in m.shape_keys.key_blocks:
                 #        self.write(file, "    shp " + block.name + "\r\n")
                 file.close()
-            #elif obj.type == "ARMATURE"
-            #    export_arm(file, obj)
+            elif obj.type == "ARMATURE":
+                self.export_arm(file2, obj, dirr, name)
         file2.close()
         #self.execute_anim(dirr + name + "_blend\\")
     
-    def export_arm(self, file, obj):
-        print ("arm " + obj.name)
+    def export_arm(self, file2, obj, dirr, name):
         self.write(file2, "arm " + obj.name)
         if obj.parent:
             self.write(file2, " \x00prt " + obj.parent.name)
@@ -107,30 +106,34 @@ class KTMExporter():
         
         print ("!writing to: " + dirr + name + "_blend\\" + obj.name + ".arma.meta")
         file = open(dirr + name + "_blend\\" + obj.name + ".arma.meta", "wb")
-        file.write("ARM\x00")
-        self.write_bone(file, obj.bones)
+        self.write(file, "ARM\x00")
+        self.write_bone(file, obj.data.bones)
         file.close()
     
     def write_bone(self, file, bones):
         for bone in bones:
-            file.write("B" + bone.name + "\x00")
-            file.write(struct.pack("<fff", bone.head[0], bone.head[1], bone.head[2]))
-            file.write(struct.pack("<fff", bone.vector[0], bone.vector[1], bone.vector[2]))
-            file.write(struct.pack("<fff", bone.x_axis[0], bone.x_axis[1], bone.x_axis[2]))
+            self.write(file, "B" + bone.name + "\x00")
+            if bone.parent:
+                self.write(file, bone.parent.name)
+            self.write(file, "\x00");
+            file.write(struct.pack("<fff", bone.head[0], bone.head[2], bone.head[1]))
+            file.write(struct.pack("<fff", bone.tail[0], bone.tail[2], bone.tail[1]))
+            #file.write(struct.pack("<fff", bone.vector[0], bone.vector[1], bone.vector[2]))
+            file.write(struct.pack("<fff", bone.x_axis[0], bone.x_axis[2], bone.x_axis[1]))
             datamask = 0
-            if dot(cross(bone.x_axis, bone.vector), bone.z_axis) > 0:
+            if self.dot(self.cross(bone.x_axis, bone.vector), bone.z_axis) > 0:
                 datamask += 240
             if bone.use_connect:
                 datamask += 15
             file.write(struct.pack("<B", datamask))
-            write_bone(bone.children)
-            file.write("b")
+            #self.write_bone(file, bone.children)
+            self.write(file, "b")
     
-    def cross(a, b):
-        c = [a[1]*b[2] - a[2]*b[1], a[2]*b[0] - a[0]*b[2], a[0]*b[1] - a[1]*b[0]]
+    def cross(self, a, b):
+        c = [a[2]*b[1] - a[1]*b[2], a[1]*b[0] - a[0]*b[1], a[0]*b[2] - a[2]*b[0]]
         return c
     
-    def dot(a, b):
+    def dot(self, a, b):
         return a[0]*b[0] + a[1]*b[1] + a[2]*b[2]
     
     #pose.bones["foo"].location 0x10 ~ 0x12

@@ -245,10 +245,10 @@ void LoadMeshMeta(std::vector<SceneObject*>& os, string& path) {
 			}
 			r++;
 		}
-		string anm = path + o->name + ".arma.meta";
-		if (IO::HasFile(anm.c_str())) {
-			o->AddComponent(new Armature(anm, o));
-		}
+		//string anm = path + o->name + ".arma.meta";
+		//if (IO::HasFile(anm.c_str())) {
+		//	o->AddComponent(new Armature(anm, o));
+		//}
 		LoadMeshMeta(o->children, path);
 	}
 }
@@ -270,7 +270,7 @@ void EB_Viewer::_DoAddObjectBl(EditorBlock* b, void* v) {
 		}
 		string d;
 		file >> d;
-		while (d == "obj") {
+		while (d == "obj" || d == "arm") {
 			string nm;
 			string prt;
 			file >> nm;
@@ -283,7 +283,7 @@ void EB_Viewer::_DoAddObjectBl(EditorBlock* b, void* v) {
 			Vec3 tr, sc;
 			Quat rt;
 			if (*(cc + 1) == '\0') {
-				ss = string(cc+2);
+				ss = string(cc + 2);
 			}
 			else {
 				b->editor->_Error("Add Object", *((string*)v) + " meta data corrupted!1");
@@ -350,11 +350,19 @@ void EB_Viewer::_DoAddObjectBl(EditorBlock* b, void* v) {
 			sc.y = stof(ss);
 			file >> ss;
 			sc.z = stof(ss);
-			if (prt == "")
-				o->AddChild(new SceneObject(nm, tr, rt, sc));
+			if (d == "obj") {
+				if (prt == "")
+					o->AddChild(new SceneObject(nm, tr, rt, sc));
+				else {
+					bool found;
+					AsCh(new SceneObject(nm, tr, rt, sc), prt, o->children, found);
+				}
+			}
 			else {
-				bool found;
-				AsCh(new SceneObject(nm, tr, rt, sc), prt, o->children, found);
+				auto so = new SceneObject(nm, tr, rt, sc);
+				o->AddChild(so);
+				//std::ifstream astrm(path.substr(0, path.size() - 11) + "_blend\\" + nm + ".arma.meta", std::ios::in | sd::ios::bin);
+				so->AddComponent(new Armature(path.substr(0, path.size() - 11) + "_blend\\" + nm + ".arma.meta", so));
 			}
 			file >> d;
 		}

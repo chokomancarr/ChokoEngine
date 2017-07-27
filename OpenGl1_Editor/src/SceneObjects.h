@@ -648,20 +648,17 @@ protected:
 #define COMP_ARM 0x30
 class ArmatureBone {
 public:
-	SceneObject* obj;
-	//transform is local
-	Vec3 position;
+	Transform* const tr;
 	Vec3 const restPosition;
-	Quat rotation;
 	Quat const restRotation;
-	Vec3 scale;
 	Vec3 const restScale;
+	Vec3 tailPos;
 	bool const connected;
-	std::vector<ArmatureBone*> children() { return _children; }
+	const std::vector<ArmatureBone*>& children() { return _children; }
 
 	friend class Armature;
 protected:
-	ArmatureBone(Vec3 pos, Quat rot, Vec3 scl, bool conn) : position(pos), restPosition(pos), rotation(rot), restRotation(rot), scale(scl), restScale(scl), connected(conn) {}
+	ArmatureBone(Vec3 pos, Quat rot, Vec3 scl, Vec3 tal, bool conn, Transform* tr) : restPosition(pos), restRotation(rot), restScale(scl), tailPos(tal), connected(conn), tr(tr) {}
 	std::vector<ArmatureBone*> _children;
 };
 class Armature : public Component {
@@ -674,7 +671,7 @@ public:
 	Vec3 restPosition;
 	Quat restRotation;
 	Vec3 restScale;
-	std::vector<ArmatureBone*> bones() { return _bones; }
+	const std::vector<ArmatureBone*>& bones() { return _bones; }
 
 	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override {}
 	void Serialize(Editor* e, std::ofstream* stream) override {}
@@ -683,10 +680,13 @@ public:
 	friend void Serialize(Editor* e, SceneObject* o, std::ofstream* stream);
 	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
 	friend void LoadMeshMeta(std::vector<SceneObject*>& os, string& path);
+	friend class Editor;
+	friend class EB_Viewer;
+	friend class EB_Previewer;
 protected:
 	Armature(string s, SceneObject* o);
 	Armature(std::ifstream& stream, SceneObject* o, long pos = -1);
-	static void AddBone(std::ifstream& stream, std::vector<ArmatureBone*>& bones);
+	static void AddBone(std::ifstream&, std::vector<ArmatureBone*>&, std::vector<ArmatureBone*>&, SceneObject*);
 	ASSETID _anim;
 	std::vector<ArmatureBone*> _bones;
 };

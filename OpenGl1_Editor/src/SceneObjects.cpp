@@ -982,7 +982,7 @@ void ReflectionProbe::Serialize(Editor* e, std::ofstream* stream) {
 	_StreamWrite(&softness, stream, 4);
 }
 
-Armature::Armature(string path, SceneObject* o) : Component("Armature", COMP_ARM, DRAWORDER_OVERLAY), overridePos(false), restPosition(o->transform.position), restRotation(o->transform.rotation()), restScale(o->transform.scale), _anim(-1) {
+Armature::Armature(string path, SceneObject* o) : Component("Armature", COMP_ARM, DRAWORDER_OVERLAY, o), overridePos(false), restPosition(o->transform.position), restRotation(o->transform.rotation()), restScale(o->transform.scale), _anim(-1) {
 	std::ifstream strm(path);
 	if (!strm.is_open()) {
 		Debug::Error("Armature", "File not found!");
@@ -996,9 +996,11 @@ Armature::Armature(string path, SceneObject* o) : Component("Armature", COMP_ARM
 		return;
 	}
 	delete[](c);
+	std::vector<ArmatureBone*> boneList;
 	char b = strm.get();
 	while (b == 'B') {
-		AddBone(strm, _bones);
+		AddBone(strm, _bones, boneList, object);
+		b = strm.get();
 	}
 }
 
@@ -1006,23 +1008,51 @@ Armature::Armature(std::ifstream& stream, SceneObject* o, long pos) : Component(
 
 }
 
-void Armature::AddBone(std::ifstream& strm, std::vector<ArmatureBone*>& bones) {
+void Armature::AddBone(std::ifstream& strm, std::vector<ArmatureBone*>& bones, std::vector<ArmatureBone*>& blist, SceneObject* o) {
 	char* c = new char[100];
 	strm.getline(c, 100, 0);
-	Vec3 pos, fwd, rht;
+	string nm = string(c);
+	strm.getline(c, 100, 0);
+	string pr = string(c);
+	ArmatureBone* prt = nullptr;
+	if (c[0] != 0) {
+		for (auto& bb : blist) {
+			if (bb->tr->object->name == pr) {
+				prt = bb;
+				break;
+			}
+		}
+	}
+	Vec3 pos, tal, rht;
 	Quat rot;
 	byte mask;
 	_Strm2Val(strm, pos.x);
 	_Strm2Val(strm, pos.y);
 	_Strm2Val(strm, pos.z);
-	_Strm2Val(strm, fwd.x);
-	_Strm2Val(strm, fwd.y);
-	_Strm2Val(strm, fwd.z);
+	_Strm2Val(strm, tal.x);
+	_Strm2Val(strm, tal.y);
+	_Strm2Val(strm, tal.z);
 	_Strm2Val(strm, rht.x);
 	_Strm2Val(strm, rht.y);
 	_Strm2Val(strm, rht.z);
 	mask = strm.get();
-	bones.push_back(new ArmatureBone(pos, Quat(), Vec3(), (mask & 0xf0) != 0));
+	SceneObject* oo = new SceneObject(nm, (prt == nullptr) ? pos : pos + prt->tailPos, Quat(), Vec3(1.0f));
+	auto bn = new ArmatureBone((prt == nullptr) ? pos : pos + prt->tailPos, Quat(), Vec3(), tal, (mask & 0xf0) != 0, &oo->transform);
+	if (prt == nullptr) {
+		bones.push_back(bn);
+		o->AddChild(oo);
+	}
+	else {
+		prt->_children.push_back(bn);
+		prt->tr->object->AddChild(oo);
+	}
+	blist.push_back(bn);
+	char b = strm.get();
+	if (b == 'b') return;
+	else while (b == 'B') {
+		AddBone(strm, bn->_children, blist, oo);
+		b = strm.get();
+	}
 }
 
 SceneScript::SceneScript(Editor* e, ASSETID id) : Component(e->headerAssets[id] + " (Script)", COMP_SCR, DRAWORDER_NONE), _script(id) {
