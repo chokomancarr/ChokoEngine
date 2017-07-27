@@ -30,7 +30,6 @@
 #define Lerp(a, b, c) (a*(1-c) + b*c)
 #define Normalize(a) glm::normalize(a)
 #define Distance(a, b) glm::distance(a, b)
-#define Quat2Mat(q) glm::mat4_cast(q)
 
 typedef unsigned char byte;
 typedef unsigned int uint;
@@ -50,14 +49,35 @@ string to_string(long f);
 string to_string(uint f);
 string to_string(int f);
 string to_string(Vec2 v), to_string(Vec3 v), to_string(Vec4 v), to_string(Quat v);
-//Vec2 normalize
+
+Vec3 to_vec3(Vec4 v);
+
+struct Vecc3 : public glm::vec3 {
+	Vecc3();
+	Vecc3(float m);
+	Vecc3(float x, float y, float z);
+
+	Vecc3& operator=(const Vecc3 &rhs);
+	Vecc3& operator+=(const Vecc3 &rhs);
+	Vecc3& operator-=(const Vecc3 &rhs);
+	Vecc3& operator*=(const float &rhs);
+	Vecc3& operator/=(const float &rhs);
+};
 
 class QuatFunc {
 public:
 	static Quat Inverse(const Quat&);
 	static Vec3 Rotate(const Vec3&, const Quat&);
 	static Vec3 ToEuler(const Quat&);
+	static Mat4x4 ToMatrix(const Quat&);
 	static Quat FromAxisAngle(const Vec3&, float);
+};
+
+struct BBox {
+	BBox() {}
+	BBox(float, float, float, float, float, float);
+
+	float x0, x1, y0, y1, z0, z1;
 };
 
 class Color {
@@ -539,6 +559,7 @@ public:
 	static void DrawTriangle(Vec2 centre, Vec2 dir, Vec4 col, bool fill = true, float width = 1);
 	static void DrawCircle(Vec2 c, float r, uint n, Vec4 col, float width);
 	static void DrawCircleW(Vec3 c, Vec3 x, Vec3 y, float r, uint n, Vec4 col, float width, bool dotted = false);
+	static void DrawCubeLinesW(float x0, float x1, float y0, float y1, float z0, float z1, float width, Vec4 col);
 	static void Label(float x, float y, float s, string str, Font* font);
 	static void Label(float x, float y, float s, string str, Font* font, Vec4 Vec4);
 	static void Label(float x, float y, float s, string str, Font* font, Vec4 Vec4, float maxw);

@@ -54,7 +54,9 @@ public:
 	virtual void OnMouseM(Vec2 d) {}
 	virtual void OnMousePress(int i) {}
 	virtual void OnMouseScr(bool up) {}
-//protected:
+protected:
+	float scrollOffset;
+	float maxScroll;
 	//void DrawControlButtons();
 	//EditorBlock(byte t, float x1, float y1, float x2, float y2) : type(t), x1(x1), x2(x2), y1(y1), y2(y2) {}
 };
@@ -107,6 +109,7 @@ public:
 
 	void Draw();
 	void Refresh(){} //nothing
+	void OnMouseScr(bool up) override;
 };
 
 class EB_Browser_File {

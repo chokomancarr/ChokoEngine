@@ -136,8 +136,8 @@ void EB_Debug::Draw() {
 	for (int x = drawIds.size() - 1, y = 0; x >= 0; x--, y++) {
 		byte t = editor->messageTypes[drawIds[x]];
 		Vec4 col = (t == 0) ? white() : ((t==1)? yellow() : red());
-		Engine::DrawQuad(v.r + 1, v.g + v.a - 36 - (y*15), v.b - 2, 14, Vec4(1, 1, 1, ((x&1)==1)? 0.2f : 0.1f));
-		Engine::Label(v.r + 3, v.g + v.a - 34 - y * 15, 12, editor->messages[drawIds[x]].first + " says: " + editor->messages[drawIds[x]].second, editor->font, col);
+		Engine::DrawQuad(v.r + 1, v.g + v.a - 36 - y * 15, v.b - 2, 14, Vec4(1, 1, 1, ((x&1)==1)? 0.2f : 0.1f));
+		Engine::Label(v.r + 3, v.g + v.a - 36 - y * 15, 12, editor->messages[drawIds[x]].first + " says: " + editor->messages[drawIds[x]].second, editor->font, col);
 	}
 	if (Engine::EButton((editor->editorLayer == 0), v.r + 1, v.g + v.a - 21, 80, 20, grey1(), "Messages", 12, editor->font, drawM ? white() : grey2()) == MOUSE_RELEASE) {
 		drawM = !drawM;
@@ -167,25 +167,25 @@ void EB_Debug::Refresh() {
 	}
 }
 
-void EBH_DrawItem(SceneObject* sc, Editor* e, Vec4* v, int& i, int indent) {
+void EBH_DrawItem(SceneObject* sc, Editor* e, Vec4* v, int& i, const float& offset, int indent) {
 	int xo = indent * 20;
 	//if (indent > 0) {
 	//	Engine::DrawLine(Vec2(xo - 10 + v->r, v->g + EB_HEADER_SIZE + 9 + 17 * i), Vec2(xo + v->r, v->g + EB_HEADER_SIZE + 10 + 17 * i), white(0.5f), 1);
 	//}
-	if (Engine::EButton((e->editorLayer == 0), v->r + xo + ((sc->childCount > 0) ? 16 : 0), v->g + EB_HEADER_SIZE + 1 + 17 * i, v->b - xo - ((sc->childCount > 0) ? 16 : 0), 16, grey2()) == MOUSE_RELEASE) {
+	if (Engine::EButton((e->editorLayer == 0), v->r + xo + ((sc->childCount > 0) ? 16 : 0), v->g + EB_HEADER_SIZE + 1 + 17 * i + offset, v->b - xo - ((sc->childCount > 0) ? 16 : 0), 16, grey2()) == MOUSE_RELEASE) {
 		e->selected = sc;
 		e->selectGlobal = false;
 		e->DeselectFile();
 	}
-	Engine::Label(v->r + 19 + xo, v->g + EB_HEADER_SIZE + 1 + 17 * i, 12, sc->name, e->font, white());
+	Engine::Label(v->r + 19 + xo, v->g + EB_HEADER_SIZE + 1 + 17 * i + offset, 12, sc->name, e->font, white());
 	i++;
 	if (sc->childCount > 0) {
-		if (Engine::EButton((e->editorLayer == 0), v->r + xo, v->g + EB_HEADER_SIZE + 1 + 17 * (i - 1), 16, 16, sc->_expanded ? e->collapse : e->expand, white(), white(), white(1, 0.6f)) == MOUSE_RELEASE) {
+		if (Engine::EButton((e->editorLayer == 0), v->r + xo, v->g + EB_HEADER_SIZE + 1 + 17 * (i - 1) + offset, 16, 16, sc->_expanded ? e->collapse : e->expand, white(), white(), white(1, 0.6f)) == MOUSE_RELEASE) {
 			sc->_expanded = !sc->_expanded;
 		}
 	}
 	if (e->selected == sc) {
-		Engine::DrawQuad(v->r + xo, v->g + EB_HEADER_SIZE + 1 + 17 * (i - 1), v->b - xo, 16, white(0.3f));
+		Engine::DrawQuad(v->r + xo, v->g + EB_HEADER_SIZE + 1 + 17 * (i - 1) + offset, v->b - xo, 16, white(0.3f));
 	}
 	if (sc->childCount > 0 && sc->_expanded) {
 		//int oi = i - 1;
@@ -193,7 +193,7 @@ void EBH_DrawItem(SceneObject* sc, Editor* e, Vec4* v, int& i, int indent) {
 		for (SceneObject* scc : sc->children)
 		{
 			//oii = i - 1;
-			EBH_DrawItem(scc, e, v, i, indent + 1);
+			EBH_DrawItem(scc, e, v, i, offset, indent + 1);
 		}
 		//Engine::DrawLine(Vec2(xo + 10 + v->r, v->g + EB_HEADER_SIZE + 18 + 17 * (oi)), Vec2(xo + 10 + v->r, v->g + EB_HEADER_SIZE + 10 + 17 * (oii) + sc->childCount * 17), white(0.5f), 1);
 	}
@@ -207,19 +207,29 @@ void EB_Hierarchy::Draw() {
 	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
 	glDisable(GL_DEPTH_TEST);
 	if (editor->sceneLoaded()) {
-		if (Engine::EButton((editor->editorLayer == 0), v.r, v.g + EB_HEADER_SIZE + 1, v.b, 16, Vec4(0.2f, 0.2f, 0.4f, 1)) == MOUSE_RELEASE) {
+		if (Engine::EButton((editor->editorLayer == 0), v.r, v.g + EB_HEADER_SIZE + 1 - scrollOffset, v.b, 16, Vec4(0.2f, 0.2f, 0.4f, 1)) == MOUSE_RELEASE) {
 			editor->selected = nullptr;
 			editor->selectGlobal = true;
 			editor->selectedFileType = ASSETTYPE_UNDEF;
 		}
-		Engine::Label(v.r + 19, v.g + EB_HEADER_SIZE + 1, 12, "Global", editor->font, white());
+		Engine::Label(v.r + 19, v.g + EB_HEADER_SIZE + 1 - scrollOffset, 12, "Global", editor->font, white());
 		int i = 1;
 		for (SceneObject* sc : editor->activeScene->objects)
 		{
-			EBH_DrawItem(sc, editor, &v, i, 0);
+			EBH_DrawItem(sc, editor, &v, i, -scrollOffset, 0);
+		}
+		maxScroll = 17.0f * i;
+
+		if (Rect(v.r, v.g, v.b, v.a).Inside(Input::mousePos) && (maxScroll - (Display::height*(editor->yPoss[y2] - editor->yPoss[y1]) - EB_HEADER_SIZE - 1))>0) {
+			Engine::DrawQuad(v.r + v.b - 8, v.g + EB_HEADER_SIZE + 1 + scrollOffset * (v.a - EB_HEADER_SIZE - 1) / (maxScroll - EB_HEADER_SIZE - 1), 6, (v.a - EB_HEADER_SIZE - 1)*(v.a - EB_HEADER_SIZE - 1) / (maxScroll - EB_HEADER_SIZE - 1), white(0.4f));
 		}
 	}
 	Engine::EndStencil();
+}
+
+void EB_Hierarchy::OnMouseScr(bool up) {
+	scrollOffset += up ? -17 : 17;
+	scrollOffset = clamp(scrollOffset, 0, max(maxScroll - (Display::height*(editor->yPoss[y2] - editor->yPoss[y1]) - EB_HEADER_SIZE - 1), 0));
 }
 
 HICON GetHighResolutionIcon(LPTSTR pszPath)
@@ -445,19 +455,11 @@ Vec2 xy(Vec3 v) {
 	return Vec2(v.x, v.y);
 }
 
-void DrawSceneObjectsOpaque(EB_Viewer* ebv, std::vector<SceneObject*> oo) {
+void DrawSceneObjectsOpaque(EB_Viewer* ebv, const std::vector<SceneObject*>& oo) {
 	for (SceneObject* sc : oo)
 	{
 		glPushMatrix();
-		//Vec3 v2 = sc->transform.worldPosition();
-		Vec3 v = sc->transform.position;
-		Vec3 vv = sc->transform.scale;
-		Quat vvv = sc->transform.rotation();
-		//glTranslatef(v.x - v2.x, v.y - v2.y, v.z - v2.z);
-		glTranslatef(v.x, v.y, v.z);
-		glScalef(vv.x, vv.y, vv.z);
-		glMultMatrixf(glm::value_ptr(Quat2Mat(vvv)));
-		//glRotatef(rad2deg*vvv.w, vvv.x, vvv.y, vvv.z);
+		glMultMatrixf(glm::value_ptr(sc->transform._localMatrix));
 		for (Component* com : sc->_components)
 		{
 			if (com->componentType == COMP_MRD || com->componentType == COMP_CAM)
@@ -475,17 +477,18 @@ void DrawSceneObjectsOpaque(EB_Viewer* ebv, std::vector<SceneObject*> oo) {
 	}
 }
 
-void DrawSceneObjectsGizmos(EB_Viewer* ebv, std::vector<SceneObject*> oo) {
+void DrawSceneObjectsGizmos(EB_Viewer* ebv, const std::vector<SceneObject*>& oo) {
 	for (SceneObject* sc : oo)
 	{
 		glPushMatrix();
-		Vec3 v = sc->transform.position;
-		Vec3 vv = sc->transform.scale;
-		Quat vvv = sc->transform.rotation();
+		//Vec3 v = sc->transform.position;
+		//Vec3 vv = sc->transform.scale;
+		//Quat vvv = sc->transform.rotation();
 		//glTranslatef(v.x - v2.x, v.y - v2.y, v.z - v2.z);
-		glTranslatef(v.x, v.y, v.z);
-		glScalef(vv.x, vv.y, vv.z);
-		glMultMatrixf(glm::value_ptr(Quat2Mat(vvv)));
+		//glTranslatef(v.x, v.y, v.z);
+		//glScalef(vv.x, vv.y, vv.z);
+		//glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(vvv)));
+		glMultMatrixf(glm::value_ptr(sc->transform._localMatrix));
 		for (Component* com : sc->_components)
 		{
 			if (com->componentType != COMP_MRD && com->componentType != COMP_CAM)
@@ -531,7 +534,7 @@ void EB_Viewer::Draw() {
 		glScalef(scale, -scale, 1);
 		glMultMatrixf(glm::value_ptr(glm::perspectiveFov(seeingCamera->fov * deg2rad, (float)Display::width, (float)Display::height, seeingCamera->nearClip, seeingCamera->farClip)));
 		glScalef(1, -1, -1);
-		glMultMatrixf(glm::value_ptr(Quat2Mat(q)));
+		glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(q)));
 		Vec3 pos = -seeingCamera->object->transform.worldPosition();
 		glTranslatef(pos.x, pos.y, pos.z);
 	}
@@ -780,7 +783,6 @@ void EB_Viewer::DrawSArrows(Vec3 pos, float size) {
 }
 
 void EB_Viewer::OnMouseM(Vec2 d) {
-	std::cout << Input::KeyHold(Key_Dot) ? "1" : "0";
 	if (editor->mousePressType == 1 || (editor->mousePressType == 0 && Input::KeyHold(Key_Alt))) {
 		if (Input::KeyHold(Key_Shift)) {
 			//float w = Display::width*(editor->xPoss[x2] - editor->xPoss[x1]);
@@ -867,7 +869,8 @@ void EB_Viewer::OnMousePress(int i) {
 				break;
 			}
 		}
-	modifying = 0;
+		else editor->selected->transform._UpdateLMatrix();
+		modifying = 0;
 	}
 }
 
@@ -1291,7 +1294,7 @@ void EB_Previewer::Draw() {
 			glScalef(scale, -scale, 1);
 			glMultMatrixf(glm::value_ptr(glm::perspectiveFov(seeingCamera->fov * deg2rad, (float)Display::width, (float)Display::height, seeingCamera->nearClip, seeingCamera->farClip)));
 			glScalef(1, -1, -1);
-			glMultMatrixf(glm::value_ptr(Quat2Mat(q)));
+			glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(q)));
 			Vec3 pos = -seeingCamera->object->transform.worldPosition();
 			glTranslatef(pos.x, pos.y, pos.z);
 		}

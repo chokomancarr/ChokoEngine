@@ -41,53 +41,6 @@ COMPONENT_TYPE Component::Name2Type(string nm) {
 	return COMP_UNDEF;
 }
 
-CameraEffect::CameraEffect(Material* mat) : AssetObject(ASSETTYPE_CAMEFFECT) {
-	material = mat;
-}
-
-CameraEffect::CameraEffect(string path) : AssetObject(ASSETTYPE_CAMEFFECT) {
-	string p = Editor::instance->projectFolder + "Assets\\" + path;
-	std::ifstream stream(p.c_str());
-	if (!stream.good()) {
-		std::cout << "cameffect not found!" << std::endl;
-		return;
-	}
-	char* c = new char[4];
-	stream.read(c, 3);
-	c[3] = char0;
-	string ss(c);
-	if (ss != "KEF") {
-		std::cerr << "file not supported" << std::endl;
-		return;
-	}
-	delete[](c);
-	char* nmm = new char[100];
-	stream.getline(nmm, 100, char0);
-	string shp(nmm);
-	if (shp == "") {
-		delete[](nmm);
-		return;
-	}
-	ASSETTYPE t;
-	Editor::instance->GetAssetInfo(shp, t, _material);
-	material = _GetCache<Material>(ASSETTYPE_MATERIAL, _material);
-	if (_material != -1) {
-		stream.getline(nmm, 100, char0);
-		mainTex = string(nmm);
-	}
-	delete[](nmm);
-}
-
-void CameraEffect::Save(string path) {
-	std::ofstream strm(path.c_str(), std::ios::out | std::ios::binary | std::ios::trunc);
-	strm << "KEF";
-	ASSETTYPE st;
-	ASSETID si = Editor::instance->GetAssetId(material, st);
-	_StreamWriteAsset(Editor::instance, &strm, ASSETTYPE_MATERIAL, si);
-	if (si != -1) strm << mainTex << char0;
-	strm.close();
-}
-
 int Camera::camVertsIds[19] = { 0, 1, 0, 2, 0, 3, 0, 4, 1, 2, 2, 4, 4, 3, 3, 1, 1, 2, 5 };
 
 Camera::Camera() : Component("Camera", COMP_CAM, DRAWORDER_NONE), ortographic(false), fov(60), orthoSize(10), screenPos(0.3f, 0.1f, 0.6f, 0.4f), clearType(CAM_CLEAR_COLOR), clearColor(black(1)), _tarRT(-1), nearClip(0.01f), farClip(500) {
@@ -133,7 +86,7 @@ void Camera::ApplyGL() {
 	Quat q = glm::inverse(object->transform.rotation());
 	glMultMatrixf(glm::value_ptr(glm::perspectiveFov(fov * deg2rad, (float)Display::width, (float)Display::height, 0.01f, 500.0f)));
 	glScalef(1, 1, -1);
-	glMultMatrixf(glm::value_ptr(Quat2Mat(q)));
+	glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(q)));
 	Vec3 pos = -object->transform.worldPosition();
 	glTranslatef(pos.x, pos.y, pos.z);
 }
@@ -464,14 +417,18 @@ void MeshFilter::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 		Engine::Label(v.r + 2, v.g + pos + 20, 12, "Mesh", e->font, white());
 		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 17, v.b*0.7f, 16, grey1(), ASSETTYPE_MESH, 12, e->font, &_mesh, &_UpdateMesh, this);
 		pos += 34;
+		Engine::Label(v.r + 2, v.g + pos, 12, "Show Bounding Box", e->font, white());
+		showBoundingBox = Engine::DrawToggle(v.r + v.b*0.3f, v.g + pos, 12, e->checkbox, showBoundingBox, white(), ORIENT_HORIZONTAL);
+		pos += 17;
 	}
 	else pos += 17;
 }
 
 void MeshFilter::SetMesh(int i) {
 	_mesh = i;
-	if (i >= 0)
+	if (i >= 0) {
 		mesh = _GetCache<Mesh>(ASSETTYPE_MESH, i);
+	}
 	else
 		mesh = nullptr;
 	object->Refresh();
@@ -529,7 +486,7 @@ void MeshRenderer::DrawEditor(EB_Viewer* ebv) {
 		return;
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glPolygonMode(GL_FRONT_AND_BACK, (ebv->selectedShading == 0) ? GL_FILL : GL_LINE);
-	glEnable(GL_CULL_FACE);
+	if (ebv->selectedShading == 0) glEnable(GL_CULL_FACE);
 	glVertexPointer(3, GL_FLOAT, 0, &(mf->mesh->vertices[0]));
 	glLineWidth(1);
 	GLfloat matrix[16], matrix2[16];
@@ -555,6 +512,10 @@ void MeshRenderer::DrawEditor(EB_Viewer* ebv) {
 	glUseProgram(0);
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glDisable(GL_CULL_FACE);
+	if (mf->showBoundingBox) {
+		BBox& b = mf->mesh->boundingBox;
+		Engine::DrawCubeLinesW(b.x0, b.x1, b.y0, b.y1, b.z0, b.z1, 1, white(1, 0.5f));
+	}
 }
 
 void MeshRenderer::DrawDeferred() {
@@ -714,472 +675,6 @@ SkinnedMeshRenderer::SkinnedMeshRenderer(std::ifstream& stream, SceneObject* o, 
 
 void SkinnedMeshRenderer::ApplyAnim() {
 
-}
-
-//-----------------mesh class------------------------
-Mesh::Mesh(Editor* e, int i) : AssetObject(ASSETTYPE_MESH) {
-	Mesh* m2 = _GetCache<Mesh>(type, i);
-	vertices = m2->vertices;
-	vertexCount = m2->vertexCount;
-	normals = m2->normals;
-	tangents = m2->tangents;
-	bitangents = m2->bitangents;
-	triangles = m2->triangles;
-	triangleCount = m2->triangleCount;
-	loaded = m2->loaded;
-}
-
-Mesh::Mesh(std::ifstream& stream, uint offset) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0), triangleCount(0), materialCount(0) {
-	if (stream.is_open()) {
-		stream.seekg(offset);
-
-		char* c = new char[100];
-		stream.read(c, 6);
-		c[6] = char0;
-		if (string(c) != "KTO123") {
-			Debug::Error("Mesh importer", "file not supported");
-			return;
-		}
-		stream.getline(c, 100, 0);
-		name += string(c);
-		delete[](c);
-
-		char cc;
-		cc = stream.get();
-
-		while (cc != 0) {
-			if (cc == 'V') {
-				_Strm2Val(stream, vertexCount);
-				for (uint vc = 0; vc < vertexCount; vc++) {
-					Vec3 v;
-					_Strm2Val(stream, v.x);
-					_Strm2Val(stream, v.y);
-					_Strm2Val(stream, v.z);
-					vertices.push_back(v);
-					_Strm2Val(stream, v.x);
-					_Strm2Val(stream, v.y);
-					_Strm2Val(stream, v.z);
-					normals.push_back(v);
-				}
-			}
-			else if (cc == 'F') {
-				_Strm2Val(stream, triangleCount);
-				for (uint fc = 0; fc < triangleCount; fc++) {
-					byte m;
-					_Strm2Val(stream, m);
-					while (materialCount <= m) {
-						_matTriangles.push_back(std::vector<int>());
-						materialCount++;
-					}
-					uint i;
-					_Strm2Val(stream, i);
-					_matTriangles[m].push_back(i);
-					triangles.push_back(i);
-					_Strm2Val(stream, i);
-					_matTriangles[m].push_back(i);
-					triangles.push_back(i);
-					_Strm2Val(stream, i);
-					_matTriangles[m].push_back(i);
-					triangles.push_back(i);
-				}
-			}
-			else if (cc == 'U') {
-				byte c;
-				_Strm2Val(stream, c);
-				for (uint vc = 0; vc < vertexCount; vc++) {
-					Vec2 i;
-					_Strm2Val(stream, i.x);
-					_Strm2Val(stream, i.y);
-					uv0.push_back(i);
-				}
-				if (c > 1) {
-					for (uint vc = 0; vc < vertexCount; vc++) {
-						Vec2 i;
-						_Strm2Val(stream, i.x);
-						_Strm2Val(stream, i.y);
-						uv1.push_back(i);
-					}
-				}
-			}
-			else {
-				Debug::Error("Mesh Importer", "Unknown char: " + to_string(cc));
-			}
-			cc = stream.get();
-		}
-
-		if (vertexCount > 0) {
-			if (normals.size() != vertexCount) {
-				Debug::Error("Mesh Importer", "mesh metadata corrupted (normals incomplete)!");
-				return;
-			}
-			else if (uv0.size() == 0)
-				uv0.resize(vertexCount);
-			else if (uv0.size() != vertexCount){
-				Debug::Error("Mesh Importer", "mesh metadata corrupted (uv0 incomplete)!");
-				return;
-			}
-			if (uv1.size() == 0)
-				uv1.resize(vertexCount);
-			else if (uv1.size() != vertexCount) {
-				Debug::Error("Mesh Importer", "mesh metadata corrupted (uv1 incomplete)!");
-				return;
-			}
-			CalcTangents();
-			loaded = true;
-		}
-		return;
-	}
-}
-
-Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0), triangleCount(0), materialCount(0) {
-	string p = Editor::instance->projectFolder + "Assets\\" + path + ".mesh.meta";
-	std::ifstream stream(p.c_str(), std::ios::in | std::ios::binary);
-	if (!stream.good()) {
-		std::cout << "mesh file not found!" << std::endl;
-		return;
-	}
-
-	char* c = new char[100];
-	stream.read(c, 6);
-	c[6] = char0;
-	if (string(c) != "KTO123") {
-		Debug::Error("Mesh importer", "file not supported");
-		return;
-	}
-	stream.getline(c, 100, 0);
-	name += string(c);
-	delete[](c);
-
-	char cc;
-	stream.read(&cc, 1);
-
-	std::cout << path << std::endl;
-	while (cc != 0) {
-		if (cc == 'V') {
-			_Strm2Val(stream, vertexCount);
-			for (uint vc = 0; vc < vertexCount; vc++) {
-				Vec3 v;
-				_Strm2Val(stream, v.x);
-				_Strm2Val(stream, v.y);
-				_Strm2Val(stream, v.z);
-				vertices.push_back(v);
-				_Strm2Val(stream, v.x);
-				_Strm2Val(stream, v.y);
-				_Strm2Val(stream, v.z);
-				normals.push_back(v);
-			}
-		}
-		else if (cc == 'F') {
-			_Strm2Val(stream, triangleCount);
-			for (uint fc = 0; fc < triangleCount; fc++) {
-				byte m;
-				_Strm2Val(stream, m);
-				while (materialCount <= m) {
-					_matTriangles.push_back(std::vector<int>());
-					materialCount++;
-				}
-				uint i;
-				_Strm2Val(stream, i);
-				_matTriangles[m].push_back(i);
-				triangles.push_back(i);
-				_Strm2Val(stream, i);
-				_matTriangles[m].push_back(i);
-				triangles.push_back(i);
-				_Strm2Val(stream, i);
-				_matTriangles[m].push_back(i);
-				triangles.push_back(i);
-			}
-		}
-		else if (cc == 'U') {
-			byte c;
-			_Strm2Val(stream, c);
-			for (uint vc = 0; vc < vertexCount; vc++) {
-				Vec2 i;
-				_Strm2Val(stream, i.x);
-				_Strm2Val(stream, i.y);
-				uv0.push_back(i);
-			}
-			if (c > 1) {
-				for (uint vc = 0; vc < vertexCount; vc++) {
-					Vec2 i;
-					_Strm2Val(stream, i.x);
-					_Strm2Val(stream, i.y);
-					uv1.push_back(i);
-				}
-			}
-		}
-		else {
-			Debug::Error("Mesh Importer", "Unknown char: " + to_string(cc));
-		}
-		stream.read(&cc, 1);
-	}
-
-	if (vertexCount > 0) {
-		if (normals.size() != vertexCount) {
-			Debug::Error("Mesh Importer", "mesh metadata corrupted (normals incomplete)!");
-			return;
-		}
-		else if (uv0.size() == 0)
-			uv0.resize(vertexCount);
-		else if (uv0.size() != vertexCount){
-			Debug::Error("Mesh Importer", "mesh metadata corrupted (uv0 incomplete)!");
-			return;
-		}
-		if (uv1.size() == 0)
-			uv1.resize(vertexCount);
-		else if (uv1.size() != vertexCount) {
-			Debug::Error("Mesh Importer", "mesh metadata corrupted (uv1 incomplete)!");
-			return;
-		}
-		CalcTangents();
-		loaded = true;
-	}
-	return;
-}
-
-void Mesh::CalcTangents() {
-	std::vector<bool> found(vertices.size());
-	tangents = std::vector<Vec3>(vertices.size());
-	bitangents = std::vector<Vec3>(vertices.size());
-	for (uint a = 0; a < triangleCount; a++) {
-		Vec2 u0, u1, u2;
-		u0 = uv0[a * 3];
-		u1 = uv0[a * 3 + 1];
-		u2 = uv0[a * 3 + 2];
-		if (u1 != u0 && u2 != u0) {
-			if ((glm::normalize(u1 - u0) != glm::normalize(u2 - u0)) && (glm::normalize(u0 - u1) != glm::normalize(u2 - u0))) {
-				if (!found[triangles[a*3]]) {
-					found[triangles[a * 3]] = true;
-					Vec2 _v1 = u1 - u0;
-					Vec2 _v2 = u2 - u0;
-					float _b = 1.0f/(_v2.x - (_v1.x*_v2.y/_v1.y));
-					float _a = -_b*_v2.y / _v1.y;
-					tangents[a * 3] = Normalize(_a*(vertices[a * 3 + 1] - vertices[a * 3]) + _b*(vertices[a * 3 + 2] - vertices[a * 3]));
-					_b = 1.0f / (_v2.y - (_v1.y*_v2.x / _v1.x));
-					_a = -_b*_v2.x / _v1.x;
-					bitangents[a * 3] = Normalize(_a*(vertices[a * 3 + 1] - vertices[a * 3]) + _b*(vertices[a * 3 + 2] - vertices[a * 3]));
-
-					_v1 = u0 - u1;
-					_v2 = u2 - u1;
-					_b = 1.0f / (_v2.x - (_v1.x*_v2.y / _v1.y));
-					_a = -_b*_v2.y / _v1.y;
-					tangents[a * 3 + 1] = Normalize(_a*(vertices[a * 3] - vertices[a * 3 + 1]) + _b*(vertices[a * 3 + 2] - vertices[a * 3 + 1]));
-					_b = 1.0f / (_v2.y - (_v1.y*_v2.x / _v1.x));
-					_a = -_b*_v2.x / _v1.x;
-					bitangents[a * 3 + 1] = Normalize(_a*(vertices[a * 3] - vertices[a * 3 + 1]) + _b*(vertices[a * 3 + 2] - vertices[a * 3 + 1]));
-
-					_v1 = u1 - u2;
-					_v2 = u0 - u2;
-					_b = 1.0f / (_v2.x - (_v1.x*_v2.y / _v1.y));
-					_a = -_b*_v2.y / _v1.y;
-					tangents[a * 3 + 2] = Normalize(_a*(vertices[a * 3 + 1] - vertices[a * 3 + 2]) + _b*(vertices[a * 3] - vertices[a * 3 + 2]));
-					_b = 1.0f / (_v2.y - (_v1.y*_v2.x / _v1.x));
-					_a = -_b*_v2.x / _v1.x;
-					bitangents[a * 3 + 2] = Normalize(_a*(vertices[a * 3 + 1] - vertices[a * 3 + 2]) + _b*(vertices[a * 3] - vertices[a * 3 + 2]));
-				}
-			}
-		}
-	}
-}
-
-bool Mesh::ParseBlend(Editor* e, string s) {
-	SECURITY_ATTRIBUTES sa;
-	sa.nLength = sizeof(SECURITY_ATTRIBUTES);
-	sa.bInheritHandle = TRUE;
-	sa.lpSecurityDescriptor = NULL;
-	HANDLE stdOutR, stdOutW, stdInR, stdInW;
-	if (!CreatePipe(&stdInR, &stdInW, &sa, 0)) {
-		std::cout << "failed to create pipe for stdin!";
-		return false;
-	}
-	if (!SetHandleInformation(stdInW, HANDLE_FLAG_INHERIT, 0)){
-		std::cout << "failed to set handle for stdin!";
-		return false;
-	}
-	if (!CreatePipe(&stdOutR, &stdOutW, &sa, 0)) {
-		std::cout << "failed to create pipe for stdout!";
-		return false;
-	}
-	if (!SetHandleInformation(stdOutR, HANDLE_FLAG_INHERIT, 0)){
-		std::cout << "failed to set handle for stdout!";
-		return false;
-	}
-	STARTUPINFO startInfo;
-	PROCESS_INFORMATION processInfo;
-	ZeroMemory(&startInfo, sizeof(STARTUPINFO));
-	ZeroMemory(&processInfo, sizeof(PROCESS_INFORMATION));
-	startInfo.cb = sizeof(STARTUPINFO);
-	startInfo.hStdInput = stdInR;
-	startInfo.hStdOutput = stdOutW;
-	startInfo.dwFlags |= STARTF_USESTDHANDLES;
-
-	//create meta directory
-	string ss = s.substr(0, s.find_last_of('.'));
-	string sss = ss + "_blend";
-	if (!CreateDirectory(sss.c_str(), NULL)) {
-		for (string file : IO::GetFiles(sss))
-			DeleteFile(file.c_str());
-	}
-	SetFileAttributes(sss.c_str(), FILE_ATTRIBUTE_HIDDEN);
-	string ms(s + ".meta");
-	DeleteFile(ms.c_str());
-
-	bool failed = true;
-	string cmd1(e->_blenderInstallationPath.substr(0, 2) + "\n"); //root
-	string cmd2("cd " + e->_blenderInstallationPath.substr(0, e->_blenderInstallationPath.find_last_of("\\")) + "\n");
-	string cmd3("blender \"" + s + "\" --background --python \"" + e->dataPath + "\\Python\\blend_exporter.py\" -- \"" + s.substr(0, s.find_last_of('\\')) + "?" + ss.substr(ss.find_last_of('\\') + 1, string::npos) + "\"\n");
-	//outputs object list, and meshes in subdir
-	if (CreateProcess("C:\\Windows\\System32\\cmd.exe", 0, NULL, NULL, true, CREATE_NO_WINDOW, NULL, "D:\\TestProject\\", &startInfo, &processInfo) != 0) {
-		std::cout << "executing Blender..." << std::endl;
-		bool bSuccess = false;
-		DWORD dwWrite;
-		bSuccess = WriteFile(stdInW, cmd1.c_str(), cmd1.size(), &dwWrite, NULL) != 0;
-		if (!bSuccess || dwWrite == 0) {
-			std::cout << "can't get to root!" << std::endl;
-			return false;
-		}
-		bSuccess = WriteFile(stdInW, cmd2.c_str(), cmd2.size(), &dwWrite, NULL) != 0;
-		if (!bSuccess || dwWrite == 0) {
-			std::cout << "can't navigate to blender dir!" << std::endl;
-			return false;
-		}
-		bSuccess = WriteFile(stdInW, cmd3.c_str(), cmd3.size(), &dwWrite, NULL) != 0;
-		if (!bSuccess || dwWrite == 0) {
-			std::cout << "can't execute blender!" << std::endl;
-			return false;
-		}
-		DWORD w;
-		bool finish = false;
-		do {
-			w = WaitForSingleObject(processInfo.hProcess, DWORD(200));
-			DWORD dwRead;
-			CHAR chBuf[4096];
-			string out = "";
-			bSuccess = ReadFile(stdOutR, chBuf, 4096, &dwRead, NULL) != 0;
-			if (bSuccess && dwRead > 0) {
-				string s(chBuf, dwRead);
-				out += s;
-			}
-			for (uint r = 0; r < out.size();) {
-				int rr = out.find_first_of('\n', r);
-				if (rr == string::npos)
-					rr = out.size() - 1;
-				string sss = out.substr(r, rr - r);
-				std::cout << sss << std::endl;
-				r = rr + 1;
-				if (sss.size() > 1 && sss[0] == '!')
-					e->_Message("Blender", sss.substr(1, string::npos));
-				if (sss.size() > 12 && sss.substr(0, 12) == "Blender quit"){
-					TerminateProcess(processInfo.hProcess, 0);
-					failed = false;
-					finish = true;
-				}
-			}
-		} while (w == WAIT_TIMEOUT && !finish);
-		CloseHandle(processInfo.hProcess);
-		CloseHandle(processInfo.hThread);
-		if (failed)
-			return false;
-	}
-	else {
-		std::cout << "Cannot start Blender!" << std::endl;
-		CloseHandle(stdOutR);
-		CloseHandle(stdOutW);
-		CloseHandle(stdInR);
-		CloseHandle(stdInW);
-		return false;
-	}
-	CloseHandle(stdOutR);
-	CloseHandle(stdOutW);
-	SetFileAttributes(ms.c_str(), FILE_ATTRIBUTE_HIDDEN);
-	return true;
-}
-
-
-AnimClip::AnimClip(string path) : AssetObject(ASSETTYPE_ANIMCLIP) {
-	string p = Editor::instance->projectFolder + "Assets\\" + path + ".animclip.meta";
-	std::ifstream stream(p.c_str(), std::ios::in | std::ios::binary);
-	if (!stream.good()) {
-		std::cout << "animclip file not found!" << std::endl;
-		return;
-	}
-
-	char* c = new char[100];
-	stream.read(c, 4);
-	c[4] = char0;
-	if (string(c) != "ANIM") {
-		Debug::Error("AnimClip importer", "file not supported");
-		return;
-	}
-
-	_Strm2Val(stream, curveLength);
-	for (ushort aa = 0; aa < curveLength; aa++) {
-		if (stream.eof()) {
-			Debug::Error("AnimClip", "Unexpected eof");
-			return;
-		}
-		curves.push_back(FCurve());
-		_Strm2Val(stream, curves[aa].type);
-		stream.getline(c, 100, 0);
-		curves[aa].name += string(c);
-		_Strm2Val(stream, curves[aa].keyCount);
-		for (ushort bb = 0; bb < curves[aa].keyCount; bb++) {
-			float ax, ay, bx, by, cx, cy;
-			_Strm2Val(stream, ax);
-			_Strm2Val(stream, ay);
-			_Strm2Val(stream, bx);
-			_Strm2Val(stream, by);
-			_Strm2Val(stream, cx);
-			_Strm2Val(stream, cy);
-			curves[aa].keys.push_back(FCurve_Key(Vec2(ax, ay), Vec2(bx, by), Vec2(cx, cy)));
-		}
-		curves[aa].startTime += curves[aa].keys[0].point.x;
-		curves[aa].endTime += curves[aa].keys[curves[aa].keyCount-1].point.x;
-	}
-}
-
-Animator::Animator() : AssetObject(ASSETTYPE_ANIMATOR), activeState(0), nextState(0), stateTransition(0), states(), transitions() {
-
-}
-
-Animator::Animator(string path) : Animator() {
-	string p = Editor::instance->projectFolder + "Assets\\" + path;
-	std::ifstream stream(p.c_str());
-	if (!stream.good()) {
-		std::cout << "animator not found!" << std::endl;
-		return;
-	}
-	char* c = new char[4];
-	stream.read(c, 3);
-	c[3] = char0;
-	string ss(c);
-	if (ss != "ANT") {
-		std::cerr << "file not supported" << std::endl;
-		return;
-	}
-	byte stateCount, transCount;
-	_Strm2Val(stream, stateCount);
-	for (byte a = 0; a < stateCount; a++) {
-		states.push_back(new Anim_State());
-		_Strm2Val(stream, states[a]->isBlend);
-		ASSETTYPE t;
-		if (!states[a]->isBlend) {
-			_Strm2Asset(stream, Editor::instance, t, states[a]->_clip);
-		}
-		else {
-			byte bc;
-			_Strm2Val(stream, bc);
-			for (byte c = 0; c < bc; c++) {
-				states[a]->_blendClips.push_back(-1);
-				_Strm2Asset(stream, Editor::instance, t, states[a]->_blendClips[c]);
-			}
-		}
-		_Strm2Val(stream, states[a]->speed);
-		_Strm2Val(stream, states[a]->editorPos.x);
-		_Strm2Val(stream, states[a]->editorPos.y);
-	}
-	_Strm2Val(stream, transCount);
-	
 }
 
 void Light::DrawEditor(EB_Viewer* ebv) {
@@ -1344,7 +839,7 @@ void Light::CalcShadowMatrix() {
 		Quat q = glm::inverse(object->transform.rotation());
 		glMultMatrixf(glm::value_ptr(glm::perspectiveFov(angle * deg2rad, 1024.0f, 1024.0f, minDist, maxDist)));
 		glScalef(1, 1, -1);
-		glMultMatrixf(glm::value_ptr(Quat2Mat(q)));
+		glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(q)));
 		Vec3 pos = -object->transform.worldPosition();
 		glTranslatef(pos.x, pos.y, pos.z);
 	}
@@ -1807,6 +1302,122 @@ void SceneScript::Parse(string s, Editor* e) {
 	if (!hasClass)
 		e->_Error("Script Importer", "SceneScript class for " + s + " not found!");
 }
+
+
+
+//-----------------transform class-------------------
+Transform::Transform(SceneObject* sc, Vec3 pos, Quat rot, Vec3 scl) : object(sc), _rotation(rot) {
+	Translate(pos)->Scale(scl);
+	_UpdateEuler();
+	_UpdateLMatrix();
+}
+
+const Vec3 Transform::worldPosition() {
+	/*
+	Vec3 w = position;
+	SceneObject* o = object;
+	while (o->parent != nullptr) {
+	o = o->parent;
+	w = w*o->transform.scale + o->transform.position;
+	}
+	return w;
+	*/
+	Vec4 v = _worldMatrix * Vec4(0, 0, 0, 1);
+	return Vec3(v.x, v.y, v.z);
+}
+
+const Vec3 Transform::forward() {
+	return rotate(Vec3(0, 0, 1), _rotation);
+}
+
+const Vec3 Transform::right() {
+	return rotate(Vec3(1, 0, 0), _rotation);
+}
+
+const Vec3 Transform::up() {
+	return rotate(Vec3(0, 1, 0), _rotation);
+}
+
+const Quat Transform::rotation() {
+	return _rotation;
+}
+
+const Quat Transform::worldRotation() {
+	return Quat();
+}
+
+void Transform::eulerRotation(Vec3 r) {
+	_eulerRotation = r;
+	_eulerRotation.x = repeat(_eulerRotation.x, 0, 360);
+	_eulerRotation.y = repeat(_eulerRotation.y, 0, 360);
+	_eulerRotation.z = repeat(_eulerRotation.z, 0, 360);
+	_UpdateQuat();
+	_UpdateLMatrix();
+}
+
+void Transform::_UpdateQuat() {
+	_rotation = Quat(deg2rad*_eulerRotation);
+}
+
+void Transform::_UpdateEuler() {
+	std::cout << to_string(_rotation) << std::endl;
+	_eulerRotation = QuatFunc::ToEuler(_rotation);
+}
+
+void Transform::_UpdateLMatrix() {
+	_localMatrix = glm::scale(scale);
+	_localMatrix = QuatFunc::ToMatrix(_rotation) * _localMatrix;
+	_localMatrix = glm::translate(position) * _localMatrix;
+	_UpdateWMatrix(object->parent ? object->parent->transform._worldMatrix : Mat4x4());
+}
+
+void Transform::_UpdateWMatrix(const Mat4x4& mat) {
+	_worldMatrix = mat*_localMatrix;
+
+	for (uint a = 0; a < object->childCount; a++)
+		object->children[a]->transform._UpdateWMatrix(_worldMatrix);
+}
+
+Transform* Transform::Translate(Vec3 v) {
+	position += v;
+	_UpdateLMatrix();
+	return this;
+}
+Transform* Transform::Rotate(Vec3 v, TransformSpace sp) {
+	if (sp == Space_Self) {
+		Quat qx = QuatFunc::FromAxisAngle(Vec3(1, 0, 0), v.x);
+		Quat qy = QuatFunc::FromAxisAngle(Vec3(0, 1, 0), v.y);
+		Quat qz = QuatFunc::FromAxisAngle(Vec3(0, 0, 1), v.z);
+		_rotation *= qx * qy * qz;
+	}
+	else if (object->parent == nullptr) {
+		Quat qx = QuatFunc::FromAxisAngle(Vec3(1, 0, 0), v.x);
+		Quat qy = QuatFunc::FromAxisAngle(Vec3(0, 1, 0), v.y);
+		Quat qz = QuatFunc::FromAxisAngle(Vec3(0, 0, 1), v.z);
+		_rotation = qx * qy * qz * _rotation;
+	}
+	else {
+		Mat4x4 im = glm::inverse(object->parent->transform._worldMatrix);
+		Vec4 vx = im*Vec4(1, 0, 0, 0);
+		Vec4 vy = im*Vec4(0, 1, 0, 0);
+		Vec4 vz = im*Vec4(0, 0, 1, 0);
+		Quat qx = QuatFunc::FromAxisAngle(Normalize(to_vec3(vx)), v.x);
+		Quat qy = QuatFunc::FromAxisAngle(Normalize(to_vec3(vy)), v.y);
+		Quat qz = QuatFunc::FromAxisAngle(Normalize(to_vec3(vz)), v.z);
+		_rotation = qx * qy * qz * _rotation;
+	}
+
+	_UpdateEuler();
+	_UpdateLMatrix();
+	return this;
+}
+
+Transform* Transform::Scale(Vec3 v) {
+	scale += v;
+	_UpdateLMatrix();
+	return this;
+}
+
 
 SceneObject::SceneObject() : SceneObject(Vec3(), Quat(), Vec3(1, 1, 1)) {}
 SceneObject::SceneObject(string s) : SceneObject(s, Vec3(), Quat(), Vec3(1, 1, 1)) {}

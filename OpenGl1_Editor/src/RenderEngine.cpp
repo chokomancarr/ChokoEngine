@@ -25,7 +25,7 @@ void DrawSceneObjectsOpaque(std::vector<SceneObject*> oo) {
 		Quat vvv = sc->transform.rotation();
 		glTranslatef(v.x, v.y, v.z);
 		glScalef(vv.x, vv.y, vv.z);
-		glMultMatrixf(glm::value_ptr(Quat2Mat(vvv)));
+		glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(vvv)));
 		MeshRenderer* mrd = sc->GetComponent<MeshRenderer>();
 		if (mrd != nullptr)
 			mrd->DrawDeferred();
@@ -118,43 +118,46 @@ void EB_Previewer::_InitDummyBBuffer() {
 }
 
 void EB_Previewer::_InitDebugPrograms() {
-	string error;
-	GLuint vs, fs;
-	std::ifstream strm("D:\\lightPassVert.txt");
-	std::stringstream vert, frag;
-	vert << strm.rdbuf();
-	if (!ShaderBase::LoadShader(GL_VERTEX_SHADER, vert.str(), vs, &error)) {
-		Debug::Error("Previewer", "Cannot init lumi shader(v)! " + error);
-	}
-	strm.close();
-	strm = std::ifstream("D:\\expVisFrag.txt");
-	frag << strm.rdbuf();
-	if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, frag.str(), fs, &error)) {
-		Debug::Error("Previewer", "Cannot init lumi shader(f)! " + error);
-	}
-	lumiProgram = glCreateProgram();
-	glAttachShader(lumiProgram, vs);
-	glAttachShader(lumiProgram, fs);
+	if (lumiProgram == 0) {
+		string error;
+		GLuint vs, fs;
+		std::ifstream strm("D:\\lightPassVert.txt");
+		std::stringstream vert, frag;
+		vert << strm.rdbuf();
+		if (!ShaderBase::LoadShader(GL_VERTEX_SHADER, vert.str(), vs, &error)) {
+			Debug::Error("Previewer", "Cannot init lumi shader(v)! " + error);
+		}
+		strm.close();
+		strm = std::ifstream("D:\\expVisFrag.txt");
+		frag << strm.rdbuf();
+		if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, frag.str(), fs, &error)) {
+			Debug::Error("Previewer", "Cannot init lumi shader(f)! " + error);
+		}
+		lumiProgram = glCreateProgram();
+		glAttachShader(lumiProgram, vs);
+		glAttachShader(lumiProgram, fs);
 
-	int link_result = 0;
-	glLinkProgram(lumiProgram);
-	glGetProgramiv(lumiProgram, GL_LINK_STATUS, &link_result);
-	if (link_result == GL_FALSE)
-	{
-		int info_log_length = 0;
-		glGetProgramiv(lumiProgram, GL_INFO_LOG_LENGTH, &info_log_length);
-		std::vector<char> program_log(info_log_length);
-		glGetProgramInfoLog(lumiProgram, info_log_length, NULL, &program_log[0]);
-		std::cerr << "Lumi shader link error" << std::endl << &program_log[0] << std::endl;
-		abort();
+		int link_result = 0;
+		glLinkProgram(lumiProgram);
+		glGetProgramiv(lumiProgram, GL_LINK_STATUS, &link_result);
+		if (link_result == GL_FALSE)
+		{
+			int info_log_length = 0;
+			glGetProgramiv(lumiProgram, GL_INFO_LOG_LENGTH, &info_log_length);
+			std::vector<char> program_log(info_log_length);
+			glGetProgramInfoLog(lumiProgram, info_log_length, NULL, &program_log[0]);
+			std::cerr << "Lumi shader link error" << std::endl << &program_log[0] << std::endl;
+			abort();
+		}
+		glDetachShader(lumiProgram, vs);
+		glDetachShader(lumiProgram, fs);
+		glDeleteShader(vs);
+		glDeleteShader(fs);
 	}
-	glDetachShader(lumiProgram, vs);
-	glDetachShader(lumiProgram, fs);
-	glDeleteShader(vs);
-	glDeleteShader(fs);
 }
 
 void EB_Previewer::InitGBuffer() {
+	if (previewWidth < 1 || previewHeight < 1) return;
 	if (d_fbo != 0) {
 		glDeleteTextures(3, d_texs);
 		glDeleteTextures(1, &d_depthTex);
@@ -167,12 +170,12 @@ void EB_Previewer::InitGBuffer() {
 	_InitGBuffer(&d_fbo, d_texs, &d_depthTex, previewWidth, previewHeight);
 	GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	if (Status != GL_FRAMEBUFFER_COMPLETE) {
-		Debug::Error("Previewer", "Fatal FB (MRT) error:" + Status);
+		Debug::Error("Previewer", "Fatal FB (MRT) error:" + to_string(Status));
 	}
 	_InitDummyBBuffer();
 	Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	if (Status != GL_FRAMEBUFFER_COMPLETE) {
-		Debug::Error("Previewer", "Fatal FB (back) error:" + Status);
+		Debug::Error("Previewer", "Fatal FB (back) error:" + to_string(Status));
 	}
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 	_InitDebugPrograms();

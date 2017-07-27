@@ -83,6 +83,7 @@
   <ItemGroup>
     <ClCompile Include="hdr\hdr.cpp" />
     <ClCompile Include="png\lodepng.cpp" />
+    <ClCompile Include="src\AssetObjects.cpp" />
     <ClCompile Include="src\Compressors.cpp" />
     <ClCompile Include="src\Editor.cpp" />
     <ClCompile Include="src\EditorShortcuts.cpp" />
@@ -91,6 +92,7 @@
     <ClCompile Include="src\RenderEngine.cpp" />
     <ClCompile Include="src\SceneObjects.cpp" />
     <ClCompile Include="src\Shader.cpp" />
+    <ClCompile Include="src\Types.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

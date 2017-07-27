@@ -29,7 +29,7 @@ public:
 	friend class SceneObject;
 	friend void EBI_DrawObj(Vec4 v, Editor* editor, EB_Inspector* b, SceneObject* o);
 	friend bool DrawComponentHeader(Editor* e, Vec4 v, uint pos, Component* c);
-	friend void DrawSceneObjectsOpaque(EB_Viewer* ebv, std::vector<SceneObject*> oo), DrawSceneObjectsGizmos(EB_Viewer* ebv, std::vector<SceneObject*> oo), DrawSceneObjectsTrans(EB_Viewer* ebv, std::vector<SceneObject*> oo);
+	friend void DrawSceneObjectsOpaque(EB_Viewer* ebv, const std::vector<SceneObject*> &oo), DrawSceneObjectsGizmos(EB_Viewer* ebv, const std::vector<SceneObject*> &oo), DrawSceneObjectsTrans(EB_Viewer* ebv, std::vector<SceneObject*> oo);
 
 protected:
 	std::vector<COMPONENT_TYPE> dependancies;
@@ -65,8 +65,12 @@ public:
 	Transform* Rotate(float x, float y, float z, TransformSpace sp = Space_Self) { return Rotate(Vec3(x, y, z), sp); }
 	Transform* Scale(float x, float y, float z) { return Scale(Vec3(x, y, z)); }
 	Transform* Translate(Vec3 v), *Rotate(Vec3 v, TransformSpace sp = Space_Self), *Scale(Vec3 v);
+	Transform* RotateAround(Vec3 a, float f);
 
 	friend class SceneObject;
+	friend class EB_Viewer;
+	friend void DrawSceneObjectsOpaque(EB_Viewer*, const std::vector<SceneObject*>&);
+	friend void DrawSceneObjectsGizmos(EB_Viewer*, const std::vector<SceneObject*>&);
 private:
 	//never call Transform constructor directly. Call SceneObject().transform instead.
 	Transform(SceneObject* sc, Vec3 pos, Quat rot, Vec3 scl);
@@ -89,9 +93,12 @@ public:
 	std::vector<Vec3> normals, tangents, bitangents;
 	std::vector<int> triangles;
 	std::vector<Vec2> uv0, uv1;
-
+	BBox boundingBox;
+	
 	uint vertexCount, triangleCount, materialCount;
-
+	
+	void RecalculateBoundingBox();
+	
 	friend int main(int argc, char **argv);
 	friend class Editor;
 	friend class MeshFilter;
@@ -449,11 +456,14 @@ public:
 
 	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, std::ofstream* stream) override;
-	
+
+	friend class MeshRenderer;
 	friend class Editor;
 	friend void LoadMeshMeta(std::vector<SceneObject*>& os, string& path);
 	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
 protected:
+	bool showBoundingBox;
+
 	MeshFilter(std::ifstream& stream, SceneObject* o, long pos = -1);
 
 	void SetMesh(int i);
