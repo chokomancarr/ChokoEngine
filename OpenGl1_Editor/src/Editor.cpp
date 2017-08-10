@@ -169,10 +169,7 @@ void EB_Debug::Refresh() {
 
 void EBH_DrawItem(SceneObject* sc, Editor* e, Vec4* v, int& i, const float& offset, int indent) {
 	int xo = indent * 20;
-	//if (indent > 0) {
-	//	Engine::DrawLine(Vec2(xo - 10 + v->r, v->g + EB_HEADER_SIZE + 9 + 17 * i), Vec2(xo + v->r, v->g + EB_HEADER_SIZE + 10 + 17 * i), white(0.5f), 1);
-	//}
-	if (Engine::EButton((e->editorLayer == 0), v->r + xo + ((sc->childCount > 0) ? 16 : 0), v->g + EB_HEADER_SIZE + 1 + 17 * i + offset, v->b - xo - ((sc->childCount > 0) ? 16 : 0), 16, grey2()) == MOUSE_RELEASE) {
+	if (Engine::EButton((e->editorLayer == 0), v->r + xo, v->g + EB_HEADER_SIZE + 1 + 17 * i + offset, v->b - xo, 16, grey2()) == MOUSE_RELEASE) {
 		e->selected = sc;
 		e->selectGlobal = false;
 		e->DeselectFile();
@@ -188,14 +185,10 @@ void EBH_DrawItem(SceneObject* sc, Editor* e, Vec4* v, int& i, const float& offs
 		Engine::DrawQuad(v->r + xo, v->g + EB_HEADER_SIZE + 1 + 17 * (i - 1) + offset, v->b - xo, 16, white(0.3f));
 	}
 	if (sc->childCount > 0 && sc->_expanded) {
-		//int oi = i - 1;
-		//int oii = i - 1;
 		for (SceneObject* scc : sc->children)
 		{
-			//oii = i - 1;
 			EBH_DrawItem(scc, e, v, i, offset, indent + 1);
 		}
-		//Engine::DrawLine(Vec2(xo + 10 + v->r, v->g + EB_HEADER_SIZE + 18 + 17 * (oi)), Vec2(xo + 10 + v->r, v->g + EB_HEADER_SIZE + 10 + 17 * (oii) + sc->childCount * 17), white(0.5f), 1);
 	}
 }
 
@@ -1023,11 +1016,7 @@ void EB_Inspector::Draw() {
 			else Engine::Label(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 12, "Select object to inspect.", editor->font, white());
 		}
 		if (lockGlobal == 2) { //no else to prevent 1 frame blank
-			Engine::DrawQuad(v.r + 20, v.g + 2 + EB_HEADER_SIZE, v.b - 21, 18, grey1());
-			Engine::Label(v.r + 22, v.g + 6 + EB_HEADER_SIZE, 12, "Scene Settings", editor->font, white());
-
-			Engine::Label(v.r, v.g + 23 + EB_HEADER_SIZE, 12, "Sky", editor->font, white());
-			editor->DrawAssetSelector(v.r + v.b*0.3f, v.g + 21 + EB_HEADER_SIZE, v.b*0.7f - 1, 14, grey2(), ASSETTYPE_HDRI, 12, editor->font, &editor->activeScene->settings.skyId, &_ApplySky, &*editor->activeScene);
+			DrawGlobal(v);
 		}
 		else if (lockGlobal == 1) {
 			EBI_DrawObj(v, editor, this, lockedObj);
@@ -1068,13 +1057,7 @@ void EB_Inspector::Draw() {
 		}
 	}
 	else if (editor->selectGlobal) {
-		//Engine::DrawTexture(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 18, 18, editor->object);
-		Engine::DrawQuad(v.r + 20, v.g + 2 + EB_HEADER_SIZE, v.b - 21, 18, grey1());
-		Engine::Label(v.r + 22, v.g + 6 + EB_HEADER_SIZE, 12, "Scene Settings", editor->font, white());
-
-		Engine::Label(v.r, v.g + 23 + EB_HEADER_SIZE, 12, "Sky", editor->font, white());
-		editor->DrawAssetSelector(v.r + v.b*0.3f, v.g + 21 + EB_HEADER_SIZE, v.b*0.7f - 1, 14, grey2(), ASSETTYPE_HDRI, 12, editor->font, &editor->activeScene->settings.skyId, &_ApplySky, &*editor->activeScene);
-
+		DrawGlobal(v);
 	}
 	else if (editor->selected != nullptr){
 		EBI_DrawObj(v, editor, this, editor->selected);
@@ -1082,6 +1065,22 @@ void EB_Inspector::Draw() {
 	else
 		Engine::Label(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 12, "Select object to inspect.", editor->font, white());
 	Engine::EndStencil();
+}
+
+void EB_Inspector::DrawGlobal(Vec4 v) {
+	int off = 0;
+	Engine::DrawQuad(v.r + 20, v.g + 2 + EB_HEADER_SIZE, v.b - 21, 18, grey1());
+	Engine::Label(v.r + 22, v.g + 6 + EB_HEADER_SIZE, 12, "Scene Settings", editor->font, white());
+
+	Engine::Label(v.r, v.g + 23 + EB_HEADER_SIZE, 12, "Sky", editor->font, white());
+	editor->DrawAssetSelector(v.r + v.b*0.3f, v.g + 21 + EB_HEADER_SIZE, v.b*0.7f - 1, 14, grey2(), ASSETTYPE_HDRI, 12, editor->font, &editor->activeScene->settings.skyId, &_ApplySky, &*editor->activeScene);
+	off = 40 + EB_HEADER_SIZE;
+	if (editor->activeScene->settings.skyId > -1) {
+		Engine::Label(v.r, v.g + off, 12, "Sky Strength", editor->font, white());
+		Engine::DrawQuad(v.r + v.b*0.3f, v.g + off, v.b*0.3f-1, 16, grey2());
+		Engine::Label(v.r + v.b*0.3f, v.g + off, 12, to_string(editor->activeScene->settings.skyStrength), editor->font, white());
+		editor->activeScene->settings.skyStrength = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + off, v.b*0.4f - 1, 16, 0, 3, editor->activeScene->settings.skyStrength, grey2(), white());
+	}
 }
 
 void EB_Inspector::DrawVector3(Editor* e, Vec4 v, float dh, string label, Vec3& value) {
@@ -1502,8 +1501,8 @@ void Editor::LoadDefaultAssets() {
 
 	placeholder = GetRes("placeholder");
 	checkers = GetRes("checkers", false, true);
-	expand = GetRes("expand");
-	collapse = GetRes("collapse");
+	expand = GetResExt("expand", "png");
+	collapse = GetResExt("collapse", "png");
 	object = GetRes("object");
 	browse = GetRes("browseicon");
 
@@ -1527,7 +1526,7 @@ void Editor::LoadDefaultAssets() {
 	ebIconTexs.emplace(6, GetResExt("eb icon previewer", "png"));
 	ebIconTexs.emplace(10, GetResExt("eb icon hierarchy", "png"));
 
-	checkbox = GetRes("checkbox");
+	checkbox = GetResExt("checkbox", "png");
 	keylock = GetRes("keylock");
 
 	assetExpand = GetRes("asset_expand");

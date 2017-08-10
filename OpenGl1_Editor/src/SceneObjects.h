@@ -353,7 +353,6 @@ enum GBUFFERS {
 	GBUFFER_NUM_TEXTURES
 };
 
-
 class CameraEffect : public AssetObject {
 public:
 	CameraEffect(Material* mat);
@@ -402,6 +401,7 @@ public:
 	friend class EB_Inspector;
 	friend class EB_Previewer;
 	friend class Background;
+	friend class MeshRenderer;
 	friend class Engine;
 	friend class Light;
 protected:
@@ -434,6 +434,8 @@ protected:
 	static GLuint DoFetchTexture(string s);
 	static void ClearFetchTextures();
 	
+	static const string _gbufferNames[];
+
 	void ApplyGL();
 
 	static void InitShaders();
@@ -492,6 +494,8 @@ protected:
 	void DrawDeferred();
 
 	std::vector<ASSETID> _materials;
+	bool overwriteWriteMask;
+	std::vector<bool> writeMask;
 	static void _UpdateMat(void* i);
 	static void _UpdateTex(void* i);
 };

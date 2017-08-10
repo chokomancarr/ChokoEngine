@@ -330,6 +330,7 @@ GLuint Camera::d_sLightProgram = 0;
 GLuint Camera::d_sLightCSProgram = 0;
 std::unordered_map<string, GLuint> Camera::fetchTextures = std::unordered_map<string, GLuint>();
 std::vector<string> Camera::fetchTexturesUpdated = std::vector<string>();
+const string Camera::_gbufferNames[4] = {"Diffuse", "Normal", "Specular-Gloss", "Unused"};
 
 GLuint Camera::DoFetchTexture(string s) {
 	if (s == "") {

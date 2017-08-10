@@ -468,7 +468,6 @@ protected:
 
 class Material : public AssetObject {
 public:
-
 	Material(void);
 	Material(ShaderBase* shad);
 	~Material();
@@ -507,6 +506,7 @@ protected:
 	std::vector<SHADER_VARTYPE> valOrders;
 	std::vector<byte> valOrderIds;
 	std::vector<byte> valOrderGLIds;
+	std::vector<bool> writeMask;
 
 	static void LoadOris();
 	static GLuint defTex_White, defTex_Black, defTex_Red, defTex_Green, defTex_Blue, defTex_Grey;
@@ -516,6 +516,8 @@ protected:
 	void Save(string path);
 	void ApplyGL(glm::mat4& _mv, glm::mat4& _p);
 	void ResetVals();
+	
+	bool _maskExpanded;
 };
 
 class Time {

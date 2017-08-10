@@ -545,6 +545,7 @@ void MeshRenderer::DrawDeferred() {
 		glDisableVertexAttribArray(0);
 		glDisableVertexAttribArray(1);
 		glDisableVertexAttribArray(2);
+		for (uint m = 0; m < GBUFFER_NUM_TEXTURES - 1; m++) glColorMaski(m, true, true, true, true);
 	}
 	glUseProgram(0);
 	glDisableClientState(GL_VERTEX_ARRAY);
@@ -552,7 +553,6 @@ void MeshRenderer::DrawDeferred() {
 }
 
 void MeshRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
-	//MeshRenderer* mrd = (MeshRenderer*)c;
 	if (DrawComponentHeader(e, v, pos, this)) {
 		MeshFilter* mft = (MeshFilter*)dependacyPointers[0];
 		if (mft->mesh == nullptr) {
@@ -561,56 +561,44 @@ void MeshRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 		}
 		else {
 			Engine::Label(v.r + 2, v.g + pos + 18, 12, "Materials: " + to_string(mft->mesh->materialCount), e->font, white());
+			pos += 35;
 			for (uint a = 0; a < mft->mesh->materialCount; a++) {
-				Engine::Label(v.r + 2, v.g + pos + 35, 12, "Material " + to_string(a), e->font, white());
-				e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 34, v.b*0.7f, 16, grey1(), ASSETTYPE_MATERIAL, 12, e->font, &_materials[a], & _UpdateMat, this);
+				Engine::Label(v.r + 2, v.g + pos , 12, "Material " + to_string(a), e->font, white());
+				e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos, v.b*0.7f, 16, grey1(), ASSETTYPE_MATERIAL, 12, e->font, &_materials[a], & _UpdateMat, this);
 				pos += 17;
 				if (materials[a] == nullptr)
 					continue;
+				if (Engine::EButton(e->editorLayer == 0, v.r, v.g + pos, 16, 16, e->expand, white()) == MOUSE_RELEASE) {
+					materials[a]->_maskExpanded = !materials[a]->_maskExpanded;
+				}
+				Engine::Label(v.r + 17, v.g + pos, 12, "Write Mask", e->font, white());
+				pos += 17;
+				if (materials[a]->_maskExpanded) {
+					for (uint ea = 0; ea < GBUFFER_NUM_TEXTURES - 1; ea++) {
+						materials[a]->writeMask[ea] = Engine::DrawToggle(v.r + 17, v.g + pos, 16, e->checkbox, materials[a]->writeMask[ea], white(), ORIENT_HORIZONTAL);
+						Engine::Label(v.r + 38, v.g + pos, 12, Camera::_gbufferNames[ea], e->font, white());
+						pos += 17;
+					}
+				}
 				for (uint q = 0, qq = materials[a]->valOrders.size(); q < qq; q++) {
-					Engine::Label(v.r + 20, v.g + pos + 35, 12, materials[a]->valNames[materials[a]->valOrders[q]][materials[a]->valOrderIds[q]], e->font, white());
-					Engine::DrawTexture(v.r + 3, v.g + pos + 35, 16, 16, e->matVarTexs[materials[a]->valOrders[q]]);
+					Engine::Label(v.r + 20, v.g + pos, 12, materials[a]->valNames[materials[a]->valOrders[q]][materials[a]->valOrderIds[q]], e->font, white());
+					Engine::DrawTexture(v.r + 3, v.g + pos, 16, 16, e->matVarTexs[materials[a]->valOrders[q]]);
 					void* bbs = materials[a]->vals[materials[a]->valOrders[q]][materials[a]->valOrderGLIds[q]];
 					switch (materials[a]->valOrders[q]) {
 					case SHADER_INT:
-						Engine::EButton(e->editorLayer == 0, v.r + v.b * 0.3f + 17, v.g + pos + 35, v.b*0.7f - 17, 16, grey1(), LerpVec4(grey1(), white(), 0.1f), LerpVec4(grey1(), black(), 0.5f), to_string(*(int*)bbs), 12, e->font, white());
+						Engine::EButton(e->editorLayer == 0, v.r + v.b * 0.3f + 17, v.g + pos , v.b*0.7f - 17, 16, grey1(), LerpVec4(grey1(), white(), 0.1f), LerpVec4(grey1(), black(), 0.5f), to_string(*(int*)bbs), 12, e->font, white());
 						break;
 					case SHADER_FLOAT:
-						Engine::EButton(e->editorLayer == 0, v.r + v.b * 0.3f + 17, v.g + pos + 35, v.b*0.7f - 17, 16, grey1(), LerpVec4(grey1(), white(), 0.1f), LerpVec4(grey1(), black(), 0.5f), to_string(*(float*)bbs), 12, e->font, white());
+						Engine::EButton(e->editorLayer == 0, v.r + v.b * 0.3f + 17, v.g + pos , v.b*0.7f - 17, 16, grey1(), LerpVec4(grey1(), white(), 0.1f), LerpVec4(grey1(), black(), 0.5f), to_string(*(float*)bbs), 12, e->font, white());
 						break;
 					case SHADER_SAMPLER:
-						e->DrawAssetSelector(v.r + v.b * 0.3f + 17, v.g + pos + 35, v.b*0.7f - 17, 16, grey1(), ASSETTYPE_TEXTURE, 12, e->font, &((MatVal_Tex*)bbs)->id, _UpdateTex, bbs);
+						e->DrawAssetSelector(v.r + v.b * 0.3f + 17, v.g + pos, v.b*0.7f - 17, 16, grey1(), ASSETTYPE_TEXTURE, 12, e->font, &((MatVal_Tex*)bbs)->id, _UpdateTex, bbs);
 						break;
 					}
 					pos += 17;
 				}
 				pos++;
-				/*
-				for (auto aa : materials[a]->vals) {
-					int r = 0;
-					for (auto bb : aa.second) {
-						Engine::Label(v.r + 27, v.g + pos + 38, 12, materials[a]->valNames[aa.first][r], e->font, white());
-
-						Engine::DrawTexture(v.r + v.b * 0.3f, v.g + pos + 35, 16, 16, e->matVarTexs[aa.first]);
-						switch (aa.first) {
-						case SHADER_INT:
-							Engine::Button(v.r + v.b * 0.3f + 17, v.g + pos + 35, v.b*0.7f - 17, 16, grey1(), to_string(*(int*)bb.second), 12, e->font, white());
-							break;
-						case SHADER_FLOAT:
-							Engine::Button(v.r + v.b * 0.3f + 17, v.g + pos + 35, v.b*0.7f - 17, 16, grey1(), to_string(*(float*)bb.second), 12, e->font, white());
-							break;
-						case SHADER_SAMPLER:
-							e->DrawAssetSelector(v.r + v.b * 0.3f + 17, v.g + pos + 35, v.b*0.7f - 17, 16, grey1(), ASSETTYPE_TEXTURE, 12, e->font, &((MatVal_Tex*)bb.second)->id, _UpdateTex, bb.second);
-							break;
-						}
-						r++;
-						pos += 17;
-					}
-				}
-				pos += 1;
-				*/
 			}
-			pos += 34;
 		}
 	}
 	else pos += 17;

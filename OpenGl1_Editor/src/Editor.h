@@ -225,7 +225,7 @@ public:
 
 	//void SelectAsset(EBI_Asset* e, string s);
 	void Deselect();
-	void Draw();
+	void Draw(), DrawGlobal(Vec4);
 	void Refresh() {}
 
 	static void DrawScalar(Editor* e, Vec4 v, float dh, string label, float& value);
