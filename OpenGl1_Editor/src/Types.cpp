@@ -1,40 +1,5 @@
 #include "Engine.h"
 
-Vecc3::Vecc3() : glm::vec3() {}
-Vecc3::Vecc3(float m) : glm::vec3(m) {}
-Vecc3::Vecc3(float x, float y, float z) : glm::vec3(x, y, z) {}
-
-Vecc3& Vecc3::operator=(const Vecc3 &v) {
-	x = v.x;
-	y = v.y;
-	z = v.z;
-	return *this;
-}
-Vecc3& Vecc3::operator+=(const Vecc3 &v) {
-	x += v.x;
-	y += v.y;
-	z += v.z;
-	return *this;
-}
-Vecc3& Vecc3::operator-=(const Vecc3 &v) {
-	x -= v.x;
-	y -= v.y;
-	z -= v.z;
-	return *this;
-}
-Vecc3& Vecc3::operator*=(const float &v) {
-	x *= v;
-	y *= v;
-	z *= v;
-	return *this;
-}
-Vecc3& Vecc3::operator/=(const float &v) {
-	x /= v;
-	y /= v;
-	z /= v;
-	return *this;
-}
-
 Quat QuatFunc::Inverse(const Quat& q) {
 	return Quat(-q.x, -q.y, -q.z, q.w);
 }

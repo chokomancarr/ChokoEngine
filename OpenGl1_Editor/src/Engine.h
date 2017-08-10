@@ -52,18 +52,6 @@ string to_string(Vec2 v), to_string(Vec3 v), to_string(Vec4 v), to_string(Quat v
 
 Vec3 to_vec3(Vec4 v);
 
-struct Vecc3 : public glm::vec3 {
-	Vecc3();
-	Vecc3(float m);
-	Vecc3(float x, float y, float z);
-
-	Vecc3& operator=(const Vecc3 &rhs);
-	Vecc3& operator+=(const Vecc3 &rhs);
-	Vecc3& operator-=(const Vecc3 &rhs);
-	Vecc3& operator*=(const float &rhs);
-	Vecc3& operator/=(const float &rhs);
-};
-
 class QuatFunc {
 public:
 	static Quat Inverse(const Quat&);

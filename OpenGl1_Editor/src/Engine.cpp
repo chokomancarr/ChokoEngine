@@ -385,15 +385,12 @@ void Engine::Init(string path) {
 		}
 		glDetachShader(blurProgram, vertex_shader);
 		glDetachShader(blurProgram, fragment_shaderB);
-		//defaultFont = &Font("D:\\ascii 2.font");
 	}
 	else {
 		Debug::Error("Engine", "Fatal: Cannot init blur shader! " + error);
 		abort();
 	}
 	glDeleteShader(fragment_shaderB);
-
-	glDeleteShader(vertex_shader);
 
 #ifdef IS_EDITOR
 	string colorPickerV = "#version 330 core\nlayout(location = 0) in vec3 pos;\nlayout(location = 1) in vec2 uv;\nout vec2 UV;\nvoid main(){ \ngl_Position.xyz = pos;\ngl_Position.w = 1.0;\nUV = uv;\n}";
@@ -424,6 +421,8 @@ void Engine::Init(string path) {
 	}
 	else std::cout << err << std::endl;
 #endif
+
+	glDeleteShader(vertex_shader);
 }
 
 std::vector<std::ifstream*> Engine::assetStreams = std::vector<std::ifstream*>();
@@ -1403,7 +1402,7 @@ void RenderTexture::Blit(GLuint src, RenderTexture* dst, GLuint shd, string texN
 	quadPoss[3].y = 1;
 	uint quadIndexes[4] = { 0, 1, 3, 2 };
 	glUseProgram(shd);
-	GLuint loc = glGetUniformLocation(shd, &texName[0]);
+	GLint loc = glGetUniformLocation(shd, &texName[0]);
 	glUniform1i(loc, 0);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE0, src);
@@ -1459,6 +1458,7 @@ std::vector<float> RenderTexture::pixels() {
 	std::vector<float> v = std::vector<float>(width*height * 3);
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, d_fbo);
 	glReadPixels(0, 0, width, height, GL_RGB, GL_FLOAT, &v[0]);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 	return v;
 }
 
