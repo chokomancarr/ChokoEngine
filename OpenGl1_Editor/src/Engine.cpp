@@ -1142,7 +1142,7 @@ void Debug::Error(string c, string s) {
 	*stream << "[e]" << c << ": " << s << std::endl;
 #endif
 	std::cout << "[e]" << c << " says: " << s << std::endl;
-	std::runtime_error(s.c_str());
+	abort();
 }
 
 void Debug::DoDebugObjectTree(std::vector<SceneObject*> o, int i) {

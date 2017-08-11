@@ -39,10 +39,10 @@ void _InitGBuffer(GLuint* d_fbo, GLuint* d_texs, GLuint* d_depthTex, float w = D
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, *d_fbo);
 
 	// Create the gbuffer textures
-	glGenTextures(3, d_texs);
+	glGenTextures(4, d_texs);
 	glGenTextures(1, d_depthTex);
 
-	for (uint i = 0; i < 3; i++) {
+	for (uint i = 0; i < 4; i++) {
 		glBindTexture(GL_TEXTURE_2D, d_texs[i]);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, (int)w, (int)h, 0, GL_RGBA, GL_FLOAT, NULL);
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, d_texs[i], 0);
@@ -53,27 +53,27 @@ void _InitGBuffer(GLuint* d_fbo, GLuint* d_texs, GLuint* d_depthTex, float w = D
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 #endif
 	}
-
 	// depth
 	glBindTexture(GL_TEXTURE_2D, *d_depthTex);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, (int)w, (int)h, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, *d_depthTex, 0);
+
 #ifdef SHOW_GBUFFERS
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 #else
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 #endif
-
-	GLenum DrawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
-	glDrawBuffers(3, DrawBuffers);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	GLenum DrawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3 };
+	glDrawBuffers(4, DrawBuffers);
 }
 
 void Camera::InitGBuffer() {
 	_InitGBuffer(&d_fbo, d_texs, &d_depthTex);
 	GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	if (Status != GL_FRAMEBUFFER_COMPLETE) {
-		Debug::Error("Camera (" + name + ")", "FB error:" + Status);
+		Debug::Error("Camera (" + name + ")", "FB error:" + std::to_string(Status));
 	}
 	else {
 		Debug::Message("Camera (" + name + ")", "FB ok");
@@ -159,7 +159,7 @@ void EB_Previewer::_InitDebugPrograms() {
 void EB_Previewer::InitGBuffer() {
 	if (previewWidth < 1 || previewHeight < 1) return;
 	if (d_fbo != 0) {
-		glDeleteTextures(3, d_texs);
+		glDeleteTextures(4, d_texs);
 		glDeleteTextures(1, &d_depthTex);
 		glDeleteFramebuffers(1, &d_fbo);
 		glDeleteTextures(2, b_texs);
@@ -262,6 +262,9 @@ void EB_Previewer::DrawPreview(Vec4 v) {
 
 		glReadBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_NORMAL);
 		glBlitFramebuffer(0, 0, (int)previewWidth, (int)previewHeight, (int)v.r, (int)(Display::height - v.g - v.a), (int)(v.b*0.5f + v.r), (int)(Display::height - v.g - v.a*0.5f - 1), GL_COLOR_BUFFER_BIT, GL_LINEAR);
+		
+		glReadBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_EMISSION_AO);
+		glBlitFramebuffer(0, 0, (int)previewWidth, (int)previewHeight, (int)(v.r + v.b*0.5f + 1), (int)(Display::height - v.g - v.a), (int)(v.b + v.r), (int)(Display::height - v.g - v.a*0.5f - 1), GL_COLOR_BUFFER_BIT, GL_LINEAR);
 	}
 	else {
 		_RenderLights(v);
@@ -290,6 +293,7 @@ void EB_Previewer::_RenderLights(Vec4 v) {
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, b_fbo);
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, b_fbo);
 
+	Camera::_ApplyEmission(d_fbo, d_texs, previewWidth, previewHeight, b_fbo);
 	Mat4x4 mat = glm::inverse(GetMatrix(GL_PROJECTION_MATRIX));
 	Camera::_RenderSky(mat, d_texs, d_depthTex, previewWidth, previewHeight); //wont work well on ortho, will it?
 	//glViewport(v.r, Display::height - v.g - v.a, v.b, v.a - EB_HEADER_SIZE - 2);
@@ -330,7 +334,7 @@ GLuint Camera::d_sLightProgram = 0;
 GLuint Camera::d_sLightCSProgram = 0;
 std::unordered_map<string, GLuint> Camera::fetchTextures = std::unordered_map<string, GLuint>();
 std::vector<string> Camera::fetchTexturesUpdated = std::vector<string>();
-const string Camera::_gbufferNames[4] = {"Diffuse", "Normal", "Specular-Gloss", "Unused"};
+const string Camera::_gbufferNames[4] = {"Diffuse", "Normal", "Specular-Gloss", "Emission"};
 
 GLuint Camera::DoFetchTexture(string s) {
 	if (s == "") {
@@ -517,6 +521,16 @@ void Light::ScanParams() {
 	PBSL "lightPos"));
 #undef PBSL
 }
+
+void Camera::_ApplyEmission(GLuint d_fbo, GLuint d_texs[], float w, float h, GLuint targetFbo) {
+	glViewport(0, 0, w, h);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, targetFbo);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, d_fbo);
+
+	glReadBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_EMISSION_AO);
+	glBlitFramebuffer(0, 0, (int)w, (int)h, 0, 0, (int)w, (int)h, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+}
+
 
 void Camera::_DoDrawLight_Point(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs[], GLuint d_depthTex, GLuint ctar, GLuint c_tex, float w, float h, GLuint tar) {
 	//draw 6 spotlights

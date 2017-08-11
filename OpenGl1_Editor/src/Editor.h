@@ -284,7 +284,7 @@ protected:
 
 	float previewWidth, previewHeight;
 	float previewWidth_o, previewHeight_o;
-	static GLuint d_fbo, d_texs[3], d_depthTex;
+	static GLuint d_fbo, d_texs[4], d_depthTex;
 	static GLuint b_fbo, b_texs[2], bb_fbo, bb_tex;
 	static GLuint lumiProgram;
 	void Blit(GLuint prog, uint w, uint h);

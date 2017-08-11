@@ -348,7 +348,7 @@ enum GBUFFERS {
 	GBUFFER_DIFFUSE,
 	GBUFFER_NORMAL,
 	GBUFFER_SPEC_GLOSS,
-	GBUFFER_EXTRA, //temporary one lights and stuff
+	GBUFFER_EMISSION_AO,
 	GBUFFER_Z,
 	GBUFFER_NUM_TEXTURES
 };
@@ -415,13 +415,14 @@ protected:
 	void _DoRenderProbeMask(ReflectionProbe* p, Mat4x4& ip), _DoRenderProbe(ReflectionProbe* p, Mat4x4& ip);
 	static void _RenderSky(Mat4x4 ip, GLuint d_texs[], GLuint d_depthTex, float w = Display::width, float h = Display::height);
 	void _DrawLights(std::vector<SceneObject*>& oo, Mat4x4& ip, GLuint targetFbo = 0);
+	static void _ApplyEmission(GLuint d_fbo, GLuint d_texs[], float w = Display::width, float h = Display::height, GLuint targetFbo = 0);
 	static void _DoDrawLight_Point(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs[], GLuint d_depthTex, GLuint ctar, GLuint c_tex, float w = Display::width, float h = Display::height, GLuint targetFbo = 0);
 	static void _DoDrawLight_Spot(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs[], GLuint d_depthTex, GLuint ctar, GLuint c_tex, float w = Display::width, float h = Display::height, GLuint targetFbo = 0);
 	static void _DoDrawLight_Spot_Contact(Light* l, Mat4x4& p, GLuint d_depthTex, float w, float h, GLuint src, GLuint tar);
 
 	Vec3 camVerts[6];
 	static int camVertsIds[19];
-	GLuint d_fbo, d_texs[3], d_depthTex;
+	GLuint d_fbo, d_texs[4], d_depthTex;
 	static GLuint d_probeMaskProgram, d_probeProgram, d_skyProgram, d_pLightProgram, d_sLightProgram, d_sLightCSProgram;
 
 	static Vec2 screenRectVerts[];
