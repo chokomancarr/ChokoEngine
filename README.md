@@ -1,32 +1,4 @@
-# OpenGl_Engine
-
-[Reference page](https://puakai.github.io/opengl)
-[Blog](https://puakai.github.io/blogs/blog0121)
-
-## List of Core Engine classes
-
-- Debug
-- Texture (bmp only)
-- IO
-- Font (bmp only)
-- Input
-- Display
-- ShaderBase
-- Material
-- Time
-- Object
- * SceneObject
- * [Component]
- * Transform
- * Camera
- * MeshFilter
- * MeshRenderer
- * SceneScript
-
-## TODO
-
-- Add _IS_EDITOR macro to prevent calling Editor functions in game
-- Unique / shared pointers ( ˘ω˘)
+Not gonna write anything here until its finished
 
 ## License
 
