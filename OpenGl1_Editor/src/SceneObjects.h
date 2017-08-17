@@ -60,6 +60,8 @@ public:
 	const Vec3& eulerRotation() { return _eulerRotation;  }
 	void eulerRotation(Vec3 r);
 	Vec3 scale;
+	const Mat4x4 localMatrix() { return _localMatrix; }
+	const Mat4x4 worldMatrix() { return _worldMatrix; }
 
 	Transform* Translate(float x, float y, float z) { return Translate(Vec3(x, y, z)); }
 	Transform* Rotate(float x, float y, float z, TransformSpace sp = Space_Self) { return Rotate(Vec3(x, y, z), sp); }

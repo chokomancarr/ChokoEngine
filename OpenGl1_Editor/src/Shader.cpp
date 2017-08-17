@@ -48,7 +48,7 @@ ShaderBase::ShaderBase(string path) : AssetObject(ASSETTYPE_SHADER) {
 	}
 	char* c = new char[4];
 	stream.read(c, 3);
-	c[3] = (char)0;
+	c[3] = char0;
 	string ss(c);
 	if (string(c) != "KTS") {
 		std::cerr << "file not supported" << std::endl;
@@ -64,28 +64,27 @@ ShaderBase::ShaderBase(string path) : AssetObject(ASSETTYPE_SHADER) {
 		stream.get(type);
 		byte bb = type;
 		vars.push_back(new ShaderVariable());
-		vars[r]->type = bb;
+		vars[r]->type = (SHADER_VARTYPE)bb;
 		switch (bb) {
 		case SHADER_INT:
 			_Strm2Val(stream, vars[r]->min);
 			_Strm2Val(stream, vars[r]->max);
 			_Strm2Val(stream, vars[r]->val.i);
-			stream.getline(nmm, 100, (char)0);
-			vars[r]->name += string(nmm);
 			break;
 		case SHADER_FLOAT:
 			_Strm2Val(stream, vars[r]->min);
 			_Strm2Val(stream, vars[r]->max);
 			_Strm2Val(stream, vars[r]->val.x);
-			stream.getline(nmm, 100, (char)0);
-			vars[r]->name += string(nmm);
 			break;
 		case SHADER_SAMPLER:
+			byte bbb;
+			_Strm2Val(stream, bbb);
+			vars[r]->def.i = bbb;
 			vars[r]->val.i = -1;
-			stream.getline(nmm, 100, (char)0);
-			vars[r]->name += string(nmm);
 			break;
 		}
+		stream.getline(nmm, 100, char0);
+		vars[r]->name += string(nmm);
 	}
 	stream.get(type);
 	if ((byte)type != 0xff)
@@ -95,7 +94,7 @@ ShaderBase::ShaderBase(string path) : AssetObject(ASSETTYPE_SHADER) {
 	_Strm2Val(stream, i);
 	char* cc = new char[i+1];
 	stream.read(cc, i);
-	cc[i] = (char)0;
+	cc[i] = char0;
 	vertex_shader_code = string(cc);
 	delete[](cc);
 
@@ -106,7 +105,7 @@ ShaderBase::ShaderBase(string path) : AssetObject(ASSETTYPE_SHADER) {
 	_Strm2Val(stream, i);
 	cc = new char[i + 1];
 	stream.read(cc, i);
-	cc[i] = (char)0;
+	cc[i] = char0;
 	fragment_shader_code = string(cc);
 	delete[](cc);
 	stream.close();
@@ -166,7 +165,7 @@ ShaderBase::ShaderBase(std::ifstream& stream, uint offset) : AssetObject(ASSETTY
 	string fragment_shader_code = "";
 	char* c = new char[4];
 	stream.read(c, 3);
-	c[3] = (char)0;
+	c[3] = char0;
 	string ss(c);
 	if (string(c) != "KTS") {
 		Debug::Error("ShaderLoader", "Wrong data header!");
@@ -182,25 +181,25 @@ ShaderBase::ShaderBase(std::ifstream& stream, uint offset) : AssetObject(ASSETTY
 		stream.get(type);
 		byte bb = type;
 		vars.push_back(new ShaderVariable());
-		vars[r]->type = bb;
+		vars[r]->type = (SHADER_VARTYPE)bb;
 		switch (bb) {
 		case SHADER_INT:
 			_Strm2Val(stream, vars[r]->min);
 			_Strm2Val(stream, vars[r]->max);
 			_Strm2Val(stream, vars[r]->val.i);
-			stream.getline(nmm, 100, (char)0);
+			stream.getline(nmm, 100, char0);
 			vars[r]->name += string(nmm);
 			break;
 		case SHADER_FLOAT:
 			_Strm2Val(stream, vars[r]->min);
 			_Strm2Val(stream, vars[r]->max);
 			_Strm2Val(stream, vars[r]->val.x);
-			stream.getline(nmm, 100, (char)0);
+			stream.getline(nmm, 100, char0);
 			vars[r]->name += string(nmm);
 			break;
 		case SHADER_SAMPLER:
 			vars[r]->val.i = -1;
-			stream.getline(nmm, 100, (char)0);
+			stream.getline(nmm, 100, char0);
 			vars[r]->name += string(nmm);
 			break;
 		}
@@ -213,7 +212,7 @@ ShaderBase::ShaderBase(std::ifstream& stream, uint offset) : AssetObject(ASSETTY
 	_Strm2Val(stream, i);
 	char* cc = new char[i + 1];
 	stream.read(cc, i);
-	cc[i] = (char)0;
+	cc[i] = char0;
 	vertex_shader_code = string(cc);
 	delete[](cc);
 
@@ -224,7 +223,7 @@ ShaderBase::ShaderBase(std::ifstream& stream, uint offset) : AssetObject(ASSETTY
 	_Strm2Val(stream, i);
 	cc = new char[i + 1];
 	stream.read(cc, i);
-	cc[i] = (char)0;
+	cc[i] = char0;
 	fragment_shader_code = string(cc);
 	delete[](cc);
 
@@ -275,62 +274,7 @@ ShaderBase::ShaderBase(std::ifstream& stream, uint offset) : AssetObject(ASSETTY
 	loaded = true;
 }
 
-/*
-ShaderBase::ShaderBase(string vertex_shader_code, string fragment_shader_code) : AssetObject(ASSETTYPE_SHADER) {
-	GLuint vertex_shader, fragment_shader;
-	if (vertex_shader_code != "") {
-		std::cout << "Vertex Shader: " << std::endl << vertex_shader_code;
-		if (!LoadShader(GL_VERTEX_SHADER, vertex_shader_code, vertex_shader))
-			return;
-	}
-	else return;
-	if (fragment_shader_code != "") {
-		std::cout << "Fragment Shader: " << std::endl << fragment_shader_code;
-		if (!LoadShader(GL_FRAGMENT_SHADER, fragment_shader_code, fragment_shader))
-			return;
-	}
-	else return;
-
-	pointer = glCreateProgram();
-	glAttachShader(pointer, vertex_shader);
-	glAttachShader(pointer, fragment_shader);
-
-	int link_result = 0;
-
-	glLinkProgram(pointer);
-	glGetProgramiv(pointer, GL_LINK_STATUS, &link_result);
-	if (link_result == GL_FALSE)
-	{
-		int info_log_length = 0;
-		glGetProgramiv(pointer, GL_INFO_LOG_LENGTH, &info_log_length);
-		std::vector<char> program_log(info_log_length);
-		glGetProgramInfoLog(pointer, info_log_length, NULL, &program_log[0]);
-		std::cout << "Shader link error" << std::endl << &program_log[0] << std::endl;
-		glDeleteProgram(pointer);
-		pointer = 0;
-		return;
-	}
-	std::cout << "shader linked" << std::endl;
-
-	glDetachShader(pointer, vertex_shader);
-	glDeleteShader(vertex_shader);
-	glDetachShader(pointer, fragment_shader);
-	glDeleteShader(fragment_shader);
-	loaded = true;
-}
-
-/* shader meta format, (x) = x bytes
-SHD
-//params
-[type(1)]{[min(4)][max(4)][default(4)](optional)}[name]\0
-
-VARSTART
-int range(0, 100) foo = 1;
-float range(-20.0, 200.0) boo = 2.5;
-texture mytex;
-VAREND
-
-//code
+/*code
 VRT
 [size(4)][codestring]\0
 FRG
@@ -422,7 +366,7 @@ bool ShaderBase::Parse(std::ifstream* stream, string path) {
 				texture mytex = white;
 				*/
 				bool nr = false; //range disallowed?
-				byte vt = 0; //i, f
+				byte vt = 0; //i, f, t
 				vrs.push_back(new ShaderVariable());
 				vrSize++;
 				vrs[vrSize]->min = std::numeric_limits<float>::lowest();
@@ -439,6 +383,7 @@ bool ShaderBase::Parse(std::ifstream* stream, string path) {
 				else if (x == "texture") {
 					vrs[vrSize]->type = SHADER_SAMPLER;
 					vrs[vrSize]->val.i = -1;
+					//vt = 2;
 					nr = true;
 				}
 				else {
@@ -494,19 +439,26 @@ bool ShaderBase::Parse(std::ifstream* stream, string path) {
 					string def = x.substr(y + 1, x.find(';') - y - 1);
 					try {
 						if (vrs[vrSize]->type == SHADER_INT)
-							vrs[vrSize]->def.i = stoi(def);
+							vrs[vrSize]->def.i = std::stoi(def);
 						else if (vrs[vrSize]->type == SHADER_FLOAT)
-							vrs[vrSize]->def.x = stof(def);
+							vrs[vrSize]->def.x = std::stof(def);
 						else if (vrs[vrSize]->type == SHADER_SAMPLER) {
 							if (def == "black")
-								vrs[vrSize]->def.i = Material::defTex_Black;
+								vrs[vrSize]->def.i = DEFTEX_BLACK;// Material::defTex_Black;
 							else if (def == "grey")
-								vrs[vrSize]->def.i = Material::defTex_Grey;
+								vrs[vrSize]->def.i = DEFTEX_GREY;// Material::defTex_Grey;
 							else if (def == "white")
-								vrs[vrSize]->def.i = Material::defTex_White;
-							else
+								vrs[vrSize]->def.i = DEFTEX_WHITE;// Material::defTex_White;
+							else if (def == "red")
+								vrs[vrSize]->def.i = DEFTEX_BLUE;// Material::defTex_White;
+							else if (def == "green")
+								vrs[vrSize]->def.i = DEFTEX_GREEN;// Material::defTex_White;
+							else if (def == "blue")
+								vrs[vrSize]->def.i = DEFTEX_BLUE;// Material::defTex_White;
+							else {
 								Editor::instance->_Error("Shader Importer", "Default variable value (" + def + ") cannot be parsed!");
-							return false;
+								return false;
+							}
 						}
 					}
 					catch (...) {
@@ -517,7 +469,7 @@ bool ShaderBase::Parse(std::ifstream* stream, string path) {
 				else {
 					vrs[vrSize]->name = x.substr(0, x.find(';'));
 					if (vrs[vrSize]->type == SHADER_SAMPLER) { //sampler default is black
-						vrs[vrSize]->def.i = Material::defTex_Black;
+						vrs[vrSize]->def.i = DEFTEX_BLACK;
 					}
 				}
 			}
@@ -599,230 +551,30 @@ bool ShaderBase::Parse(std::ifstream* stream, string path) {
 	int ii = vrs.size();
 	_StreamWrite(&ii, &strm, 4);
 	for (ShaderVariable* sv : vrs) {
-		strm << sv->type;
-		if (sv->type == SHADER_FLOAT || sv->type == SHADER_INT) {
+		strm << (byte)sv->type;
+		switch (sv->type) {
+		case SHADER_FLOAT:
+		case SHADER_INT:
 			_StreamWrite(&sv->min, &strm, 4);
 			_StreamWrite(&sv->max, &strm, 4);
 			if (sv->type == SHADER_FLOAT)
 				_StreamWrite(&sv->val.x, &strm, 4);
 			else
 				_StreamWrite(&sv->val.i, &strm, 4);
+			break;
+		case SHADER_SAMPLER:
+			_StreamWrite(&sv->def.i, &strm, 1);
 		}
-		strm << sv->name << (char)0;
+		strm << sv->name << char0;
 	}
 	strm << (char)255;
 	int s = vertCode.size();
 	_StreamWrite(&s, &strm, 4);
-	strm << vertCode << (char)0;
+	strm << vertCode << char0;
 	s = fragCode.size();
 	_StreamWrite(&s, &strm, 4);
-	strm << fragCode << (char)0;
+	strm << fragCode << char0;
 
 	strm.close();
 	return true;
 }
-
-/*old shader class
-
-GLuint Shader::pointer = 0;
-
-GLuint Shader::LoadShader(GLenum shaderType, string source) {
-
-	int compile_result = 0;
-
-	GLuint shader = glCreateShader(shaderType);
-	const char *shader_code_ptr = source.c_str();
-	const int shader_code_size = source.size();
-
-	glShaderSource(shader, 1, &shader_code_ptr, &shader_code_size);
-	glCompileShader(shader);
-	glGetShaderiv(shader, GL_COMPILE_STATUS, &compile_result);
-
-	//check for errors
-	if (compile_result == GL_FALSE)
-	{
-
-		int info_log_length = 0;
-		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &info_log_length);
-		std::vector<char> shader_log(info_log_length);
-		glGetShaderInfoLog(shader, info_log_length, NULL, &shader_log[0]);
-		std::cerr << "error compiling shader" << std::endl;
-		return 0;
-	}
-	std::std::cout << "shader compiled" << std::endl;
-	return shader;
-}
-
-GLuint Shader::CreateProgram(string& path){
-	string vertex_shader_code = "";
-	string fragment_shader_code = "";
-	std::ifstream stream(path.c_str());
-	if (!stream.good()) {
-		std::cout << "not found!" << std::endl;
-		return 0;
-	}
-	string a;
-	bool hasData;
-	int x;
-	stream >> a;
-	if (a != "KTS123") {
-		std::cerr << "file not supported" << std::endl;
-		return 0;
-	}
-	int readingType = 0;
-	while (!stream.eof()) {
-		getline(stream, a);
-		if (readingType == 0) {
-			if (a == "VERTEXBEGIN") {
-				readingType = 1;
-			}
-			else if (a == "FRAGMENTBEGIN") {
-				readingType = 2;
-			}
-		}
-		else if (readingType == 1) {
-			if (a == "VERTEXEND") {
-				readingType = 0;
-			}
-			else if (a != ""){
-				vertex_shader_code += a + "\n";
-				hasData = true;
-			}
-		}
-		else if (readingType == 2) {
-			if (a == "FRAGMENTEND") {
-				readingType = 0;
-			}
-			else if (a != ""){
-				fragment_shader_code += a + "\n";
-				hasData = true;
-			}
-		}
-	}
-
-	GLuint program = glCreateProgram();
-	GLuint vertex_shader, fragment_shader;
-	if (vertex_shader_code != "") {
-		std::cout << "Vertex Shader: " << std::endl << vertex_shader_code;
-		vertex_shader = LoadShader(GL_VERTEX_SHADER, vertex_shader_code);
-		glAttachShader(program, vertex_shader);
-	}
-	else return 0;
-	if (fragment_shader_code != "") {
-		std::cout << "Fragment Shader: " << std::endl << fragment_shader_code;
-		fragment_shader = LoadShader(GL_FRAGMENT_SHADER, fragment_shader_code);
-		glAttachShader(program, fragment_shader);
-	}
-	else return 0;
-
-	int link_result = 0;
-
-	glLinkProgram(program);
-	glGetProgramiv(program, GL_LINK_STATUS, &link_result);
-	if (link_result == GL_FALSE)
-	{
-
-		int info_log_length = 0;
-		glGetProgramiv(program, GL_INFO_LOG_LENGTH, &info_log_length);
-		std::vector<char> program_log(info_log_length);
-		glGetProgramInfoLog(program, info_log_length, NULL, &program_log[0]);
-		std::cout << "Shader link error" << std::endl << &program_log[0] << std::endl;
-		return 0;
-	}
-	std::cout << "shader linked" << std::endl;
-
-	glDetachShader(program, vertex_shader);
-	glDeleteShader(vertex_shader);
-	glDetachShader(program, fragment_shader);
-	glDeleteShader(fragment_shader);
-	
-	pointer = program;
-	return program;
-}
-
-
-GLuint Shader::GetTexture(const string& path) {
-	unsigned char header[54]; // Each BMP file begins by a 54-bytes header
-	unsigned int dataPos;     // Position in the file where the actual data begins
-	unsigned int width, height;
-	unsigned int imageSize;   // = width*height*3
-	unsigned char *data;
-
-	FILE *file;
-	fopen_s(&file, path.c_str(), "rb");
-	if (!file){ printf("Image could not be opened\n"); return 0; }
-	if (fread(header, 1, 54, file) != 54){ // If not 54 bytes read : problem
-		printf("Not a correct BMP file\n");
-		return false;
-	}
-	if (header[0] != 'B' || header[1] != 'M'){
-		printf("Not a correct BMP file\n");
-		return 0;
-	}
-	dataPos = *(int*)&(header[0x0A]);
-	imageSize = *(int*)&(header[0x22]);
-	width = *(int*)&(header[0x12]);
-	height = *(int*)&(header[0x16]);
-	// Some BMP files are misformatted, guess missing information
-	if (imageSize == 0)    imageSize = width*height * 3; // 3 : one byte for each Red, Green and Blue component
-	if (dataPos == 0)      dataPos = 54; // The BMP header is done that way
-	data = new unsigned char[imageSize];
-	// Read the actual data from the file into the buffer
-	fread(data, 1, imageSize, file);
-	//Everything is in memory now, the file can be closed
-	fclose(file);
-	GLuint textureID;
-	glGenTextures(1, &textureID);
-	glBindTexture(GL_TEXTURE_2D, textureID);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_BGR, GL_UNSIGNED_BYTE, data);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glBindTexture(GL_TEXTURE_2D, 0);
-}
-/*
-
-bool Shader::SetTexture(GLuint program, GLchar* name, string& path, int w, int h, GLenum slot) {
-	std::ifstream stream(path.c_str());
-	if (!stream.good()) {
-		std::cout << "not found!" << std::endl;
-		return false;
-	}
-	unsigned char* tex = GetTexture(path, w, h);
-	GLuint texi;
-	glGenTextures(1, &texi);
-	glUseProgram(program);
-	glActiveTexture(slot);
-	glBindTexture(GL_TEXTURE_2D, texi);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex);
-	GLint loc = glGetUniformLocation(program, name);
-	if (loc != -1)
-	{
-		glUniform1i(loc, 0);
-		glUseProgram(0);
-		return true;
-	}
-	else return false;
-}
-
-void Shader::SetUniform(GLuint program, GLchar* name, float val) {
-	glUseProgram(program);
-	GLint loc = glGetUniformLocation(program, name);
-	if (loc != -1)
-	{
-		glUniform1f(loc, val);
-	}
-	glUseProgram(0);
-}
-
-void Shader::SetWindow(GLuint program, float w, float h) {
-	glUseProgram(program);
-	GLint loc = glGetUniformLocation(program, "_windowSize");
-	if (loc != -1)
-	{
-		glUniform2f(loc, w, h);
-	}
-	else
-		std::cout << "program uniform not found";
-	glUseProgram(0);
-}
-*/

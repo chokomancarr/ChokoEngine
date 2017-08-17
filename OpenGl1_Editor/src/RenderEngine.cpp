@@ -20,12 +20,7 @@ void DrawSceneObjectsOpaque(std::vector<SceneObject*> oo) {
 	for (SceneObject* sc : oo)
 	{
 		glPushMatrix();
-		Vec3 v = sc->transform.position;
-		Vec3 vv = sc->transform.scale;
-		Quat vvv = sc->transform.rotation();
-		glTranslatef(v.x, v.y, v.z);
-		glScalef(vv.x, vv.y, vv.z);
-		glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(vvv)));
+		glMultMatrixf(glm::value_ptr(sc->transform.localMatrix()));
 		MeshRenderer* mrd = sc->GetComponent<MeshRenderer>();
 		if (mrd != nullptr)
 			mrd->DrawDeferred();
@@ -510,6 +505,7 @@ void Light::ScanParams() {
 	PBSL "_LD"));
 	PBSL "lightContShad"));
 	PBSL "lightContShadStrength"));
+	PBSL "inEmi"));
 #undef PBSL
 	paramLocs_SpotCS.clear();
 #define PBSL paramLocs_SpotCS.push_back(glGetUniformLocation(Camera::d_sLightCSProgram,
@@ -664,6 +660,9 @@ void Camera::_DoDrawLight_Spot(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs
 		glBindTexture(GL_TEXTURE_2D, c_tex);
 	}
 	glUniform1f(sloc[21], (l->drawShadow && l->contactShadows) ? 1.0f : 0.0f);
+	glUniform1i(sloc[22], 7);
+	glActiveTexture(GL_TEXTURE7);
+	glBindTexture(GL_TEXTURE_2D, d_texs[3]);
 #undef sloc
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, screenRectIndices);

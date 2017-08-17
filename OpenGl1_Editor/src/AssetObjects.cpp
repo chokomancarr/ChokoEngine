@@ -666,8 +666,10 @@ void Material::_ReloadParams() {
 			l = new int();
 		else if (v->type == SHADER_FLOAT)
 			l = new float();
-		else if (v->type == SHADER_SAMPLER)
+		else if (v->type == SHADER_SAMPLER) {
 			l = new MatVal_Tex();
+			((MatVal_Tex*)l)->defTex = defTexs[v->def.i];
+		}
 		valNames[v->type].push_back(v->name);
 		GLint ii = glGetUniformLocation(shader->pointer, v->name.c_str());
 		if (ii > -1) {
@@ -714,16 +716,16 @@ Material::Material(string path) : AssetObject(ASSETTYPE_MATERIAL), writeMask(4, 
 	}
 	ResetVals();
 	std::unordered_map<string, GLint> nMap;
-	//if (Editor::instance != nullptr)
-	//_shader = Editor::instance->GetAssetId(shader);
 	for (ShaderVariable* v : shader->vars) {
 		void* l = nullptr;
 		if (v->type == SHADER_INT)
 			l = new int();
 		else if (v->type == SHADER_FLOAT)
 			l = new float();
-		else if (v->type == SHADER_SAMPLER)
+		else if (v->type == SHADER_SAMPLER) {
 			l = new MatVal_Tex();
+			((MatVal_Tex*)l)->defTex = v->def.i;
+		}
 		valNames[v->type].push_back(v->name);
 		GLint loc = glGetUniformLocation(shader->pointer, v->name.c_str());
 		if (loc > -1) {
@@ -926,51 +928,38 @@ void Material::SetTexture(GLint id, Texture * texture) {
 	vals[SHADER_SAMPLER][id] = texture;
 }
 
-GLuint Material::defTex_Black = 0;
-GLuint Material::defTex_Grey = 0;
-GLuint Material::defTex_White = 0;
-GLuint Material::defTex_Red = 0;
-GLuint Material::defTex_Green = 0;
-GLuint Material::defTex_Blue = 0;
+std::vector<GLuint> Material::defTexs = std::vector<GLuint>(6);
 
 void Material::LoadOris() {
-	std::vector<byte> data(3);
+	std::vector<byte> data(12, 0x00);
 
-	data[0] = 0;
-	data[1] = 0;
-	data[2] = 0;
-	glGenTextures(1, &defTex_Black);
-	glBindTexture(GL_TEXTURE_2D, defTex_Black);
+	glGenTextures(1, &defTexs[0]);
+	glBindTexture(GL_TEXTURE_2D, defTexs[0]);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 2, 2, 0, GL_RGB, GL_UNSIGNED_BYTE, &data[0]);
-	data[0] = 0x80;
-	data[1] = 0x80;
-	data[2] = 0x80;
-	glGenTextures(1, &defTex_Grey);
-	glBindTexture(GL_TEXTURE_2D, defTex_Grey);
+	
+	for (int a = 0; a < 12; a++) data[a] = 0x80;
+	glGenTextures(1, &defTexs[1]);
+	glBindTexture(GL_TEXTURE_2D, defTexs[1]);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 2, 2, 0, GL_RGB, GL_UNSIGNED_BYTE, &data[0]);
-	data[0] = 0xFF;
-	data[1] = 0xFF;
-	data[2] = 0xFF;
-	glGenTextures(1, &defTex_White);
-	glBindTexture(GL_TEXTURE_2D, defTex_White);
+
+	for (int a = 0; a < 12; a++) data[a] = 0xFF;
+	glGenTextures(1, &defTexs[2]);
+	glBindTexture(GL_TEXTURE_2D, defTexs[2]);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 2, 2, 0, GL_RGB, GL_UNSIGNED_BYTE, &data[0]);
-	data[0] = 0xFF;
-	data[1] = 0;
-	data[2] = 0;
-	glGenTextures(1, &defTex_Red);
-	glBindTexture(GL_TEXTURE_2D, defTex_Red);
+
+	for (int a = 0; a < 12; a++) data[a] = (a / 3 == 0) ? 0xFF : 0x00;
+	glGenTextures(1, &defTexs[3]);
+	glBindTexture(GL_TEXTURE_2D, defTexs[3]);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 2, 2, 0, GL_RGB, GL_UNSIGNED_BYTE, &data[0]);
-	data[0] = 0;
-	data[1] = 0xFF;
-	data[2] = 0;
-	glGenTextures(1, &defTex_Green);
-	glBindTexture(GL_TEXTURE_2D, defTex_Green);
+
+	for (int a = 0; a < 12; a++) data[a] = ((a - 1) / 3 == 0) ? 0xFF : 0x00;
+	glGenTextures(1, &defTexs[4]);
+	glBindTexture(GL_TEXTURE_2D, defTexs[4]);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 2, 2, 0, GL_RGB, GL_UNSIGNED_BYTE, &data[0]);
-	data[0] = 0;
-	data[1] = 0;
-	data[2] = 0xFF;
-	glGenTextures(1, &defTex_Blue);
-	glBindTexture(GL_TEXTURE_2D, defTex_Blue);
+
+	for (int a = 0; a < 12; a++) data[a] = ((a + 1) / 3 == 0) ? 0xFF : 0x00;
+	glGenTextures(1, &defTexs[5]);
+	glBindTexture(GL_TEXTURE_2D, defTexs[5]);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 2, 2, 0, GL_RGB, GL_UNSIGNED_BYTE, &data[0]);
 
 	glBindTexture(GL_TEXTURE_2D, 0);
@@ -993,7 +982,7 @@ void Material::Save(string path) {
 	ASSETID si = Editor::instance->GetAssetId(shader, st);
 	_StreamWriteAsset(Editor::instance, &strm, ASSETTYPE_SHADER, si);
 	int i = 0, j = 0;
-	SHADER_VARTYPE t = 0;
+	SHADER_VARTYPE t = SHADER_INT;
 	long long p1 = strm.tellp();
 	strm << "0000";
 	//_StreamWrite(&i, &strm, 4);
@@ -1062,11 +1051,12 @@ void Material::ApplyGL(Mat4x4& _mv, Mat4x4& _p) {
 			if (a.second == nullptr)
 				continue;
 			MatVal_Tex* tx = (MatVal_Tex*)a.second;
-			if (tx->tex == nullptr)
-				continue;
-			glActiveTexture(GL_TEXTURE0 + ti);
-			glBindTexture(GL_TEXTURE_2D, tx->tex->pointer);
 			glUniform1i(a.first, ti);
+			glActiveTexture(GL_TEXTURE0 + ti);
+			if (tx->tex == nullptr)
+				glBindTexture(GL_TEXTURE_2D, tx->defTex);
+			else
+				glBindTexture(GL_TEXTURE_2D, tx->tex->pointer);
 		}
 		bool wm;
 		for (uint m = 0; m < GBUFFER_NUM_TEXTURES - 1; m++) {

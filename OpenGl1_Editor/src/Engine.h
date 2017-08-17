@@ -22,10 +22,10 @@
 #include FT_FREETYPE_H
 #include "Defines.h"
 
-#define PI 3.1415926535f
-#define rad2deg 57.2958f
-#define deg2rad 0.0174533f
-#define char0 (char)0
+const float PI = 3.1415926535f;
+const float rad2deg = 57.2958f;
+const float deg2rad = 0.0174533f;
+const char char0 = 0;
 
 #define Lerp(a, b, c) (a*(1-c) + b*c)
 #define Normalize(a) glm::normalize(a)
@@ -375,13 +375,14 @@ protected:
 	//virtual void Load() = 0;
 };
 
-typedef byte SHADER_VARTYPE;
-#define SHADER_INT 0x00
-#define SHADER_FLOAT 0x01
-#define SHADER_VEC2 0x02
-#define SHADER_VEC3 0x03
-#define SHADER_SAMPLER 0x10
-#define SHADER_MATRIX 0x20
+enum SHADER_VARTYPE : byte {
+	SHADER_INT = 0x00,
+	SHADER_FLOAT = 0x01,
+	SHADER_VEC2 = 0x02,
+	SHADER_VEC3 = 0x03,
+	SHADER_SAMPLER = 0x10,
+	SHADER_MATRIX = 0x20
+};
 
 class ShaderValue {
 public:
@@ -460,10 +461,20 @@ class MatVal_Tex {
 	friend class MeshRenderer;
 	friend void EBI_DrawAss_Mat(Vec4 v, Editor* editor, EB_Inspector* b, float &off);
 protected:
-	MatVal_Tex() : id(-1), tex(nullptr) {}
+	MatVal_Tex() : id(-1), tex(nullptr), defTex(0) {}
 
 	int id;
 	Texture* tex;
+	GLuint defTex;
+};
+
+enum DEFTEX {
+	DEFTEX_BLACK,
+	DEFTEX_GREY,
+	DEFTEX_WHITE,
+	DEFTEX_RED,
+	DEFTEX_GREEN,
+	DEFTEX_BLUE
 };
 
 class Material : public AssetObject {
@@ -509,12 +520,12 @@ protected:
 	std::vector<bool> writeMask;
 
 	static void LoadOris();
-	static GLuint defTex_White, defTex_Black, defTex_Red, defTex_Green, defTex_Blue, defTex_Grey;
+	static std::vector<GLuint> defTexs;
 
 	static void _UpdateTexCache(void*);
 
 	void Save(string path);
-	void ApplyGL(glm::mat4& _mv, glm::mat4& _p);
+	void ApplyGL(Mat4x4& _mv, Mat4x4& _p);
 	void ResetVals();
 	
 	bool _maskExpanded;
