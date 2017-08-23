@@ -231,6 +231,7 @@ void Engine::Init(string path) {
 			std::cout << "cannot load fallback texture!" << std::endl;
 	}
 
+	Material::LoadOris();
 	Light::InitShadow();
 //#ifdef IS_EDITOR
 	Camera::InitShaders();
@@ -1072,7 +1073,7 @@ void Input::UpdateMouseNKeyboard() {
 	for (byte a = 187; a < 191; a++) {
 		keyStatusNew[a] = ((GetAsyncKeyState(a) >> 8) == -128);
 	}
-
+	
 	inputString = "";
 	bool shift = KeyDown(Key_Shift);
 	for (byte c = Key_0; c <= Key_9; c++) {

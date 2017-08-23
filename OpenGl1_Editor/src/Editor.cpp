@@ -777,7 +777,7 @@ void EB_Viewer::DrawSArrows(Vec3 pos, float size) {
 
 void EB_Viewer::OnMouseM(Vec2 d) {
 	if (editor->mousePressType == 1 || (editor->mousePressType == 0 && Input::KeyHold(Key_Alt))) {
-		if (Input::KeyHold(Key_Shift)) {
+		if (Input::KeyHold(Key_Control)) {
 			//float w = Display::width*(editor->xPoss[x2] - editor->xPoss[x1]);
 			//float h = Display::height*(editor->yPoss[y2] - editor->yPoss[y1]);
 			Vec4 r = invMatrix * Vec4(2.0f / Display::width, 0, 0, 0);

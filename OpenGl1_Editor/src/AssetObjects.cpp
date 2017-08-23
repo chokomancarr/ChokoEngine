@@ -724,7 +724,7 @@ Material::Material(string path) : AssetObject(ASSETTYPE_MATERIAL), writeMask(4, 
 			l = new float();
 		else if (v->type == SHADER_SAMPLER) {
 			l = new MatVal_Tex();
-			((MatVal_Tex*)l)->defTex = v->def.i;
+			((MatVal_Tex*)l)->defTex = defTexs[v->def.i];
 		}
 		valNames[v->type].push_back(v->name);
 		GLint loc = glGetUniformLocation(shader->pointer, v->name.c_str());
@@ -988,7 +988,7 @@ void Material::Save(string path) {
 	//_StreamWrite(&i, &strm, 4);
 	for (auto& v : vals[SHADER_INT]) {
 		t = SHADER_INT;
-		strm << t;
+		strm << (char)t;
 		strm << valNames[SHADER_INT][j] << (char)0;
 		int ii(*(int*)v.second);
 		_StreamWrite(&ii, &strm, 4);
@@ -998,7 +998,7 @@ void Material::Save(string path) {
 	j = 0;
 	for (auto& v : vals[SHADER_FLOAT]) {
 		t = SHADER_FLOAT;
-		strm << t;
+		strm << (char)t;
 		strm << valNames[SHADER_FLOAT][j] << (char)0;
 		float ff(*(float*)v.second);
 		_StreamWrite(&ff, &strm, 4);
@@ -1010,7 +1010,7 @@ void Material::Save(string path) {
 		if (v.second == nullptr)
 			continue;
 		t = SHADER_SAMPLER;
-		strm << t;
+		strm << (char)t;
 		strm << valNames[SHADER_SAMPLER][j] << (char)0;
 		_StreamWriteAsset(Editor::instance, &strm, ASSETTYPE_TEXTURE, ((MatVal_Tex*)v.second)->id);
 		i++;

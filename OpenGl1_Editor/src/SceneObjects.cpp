@@ -484,11 +484,12 @@ MeshRenderer::MeshRenderer(std::ifstream& stream, SceneObject* o, long pos) : Co
 
 void MeshRenderer::DrawEditor(EB_Viewer* ebv) {
 	MeshFilter* mf = (MeshFilter*)dependacyPointers[0];
-	if (mf == nullptr || mf->mesh == nullptr || !mf->mesh->loaded)
+	if (mf->mesh == nullptr || !mf->mesh->loaded)
 		return;
+	bool isE = (ebv != nullptr);
 	glEnableClientState(GL_VERTEX_ARRAY);
-	glPolygonMode(GL_FRONT_AND_BACK, (ebv->selectedShading == 0) ? GL_FILL : GL_LINE);
-	if (ebv->selectedShading == 0) glEnable(GL_CULL_FACE);
+	glPolygonMode(GL_FRONT_AND_BACK, (!isE || ebv->selectedShading == 0) ? GL_FILL : GL_LINE);
+	if (!isE || ebv->selectedShading == 0) glEnable(GL_CULL_FACE);
 	glVertexPointer(3, GL_FLOAT, 0, &(mf->mesh->vertices[0]));
 	glLineWidth(1);
 	GLfloat matrix[16], matrix2[16];
@@ -514,44 +515,14 @@ void MeshRenderer::DrawEditor(EB_Viewer* ebv) {
 	glUseProgram(0);
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glDisable(GL_CULL_FACE);
-	if (mf->showBoundingBox) {
+	if (isE && mf->showBoundingBox) {
 		BBox& b = mf->mesh->boundingBox;
 		Engine::DrawCubeLinesW(b.x0, b.x1, b.y0, b.y1, b.z0, b.z1, 1, white(1, 0.5f));
 	}
 }
 
 void MeshRenderer::DrawDeferred() {
-	MeshFilter* mf = (MeshFilter*)dependacyPointers[0];
-	if (mf == nullptr || mf->mesh == nullptr || !mf->mesh->loaded)
-		return;
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glEnable(GL_CULL_FACE);
-	glVertexPointer(3, GL_FLOAT, 0, &(mf->mesh->vertices[0]));
-	GLfloat matrix[16], matrix2[16];
-	glGetFloatv(GL_MODELVIEW_MATRIX, matrix); //model -> world
-	glGetFloatv(GL_PROJECTION_MATRIX, matrix2); //world -> screen
-	Mat4x4 m1(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
-	Mat4x4 m2(matrix2[0], matrix2[1], matrix2[2], matrix2[3], matrix2[4], matrix2[5], matrix2[6], matrix2[7], matrix2[8], matrix2[9], matrix2[10], matrix2[11], matrix2[12], matrix2[13], matrix2[14], matrix2[15]);
-	for (uint m = 0; m < mf->mesh->materialCount; m++) {
-		if (materials[m] == nullptr)
-			continue;
-		materials[m]->ApplyGL(m1, m2);
-		glEnableVertexAttribArray(0);
-		glEnableVertexAttribArray(1);
-		glEnableVertexAttribArray(2);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->vertices[0]));
-		glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->uv0[0]));
-		glVertexAttribPointer(2, 3, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->normals[0]));
-		glDrawElements(GL_TRIANGLES, mf->mesh->_matTriangles[m].size(), GL_UNSIGNED_INT, &(mf->mesh->_matTriangles[m][0]));
-		glDisableVertexAttribArray(0);
-		glDisableVertexAttribArray(1);
-		glDisableVertexAttribArray(2);
-		for (uint m = 0; m < GBUFFER_NUM_TEXTURES - 1; m++) glColorMaski(m, true, true, true, true);
-	}
-	glUseProgram(0);
-	glDisableClientState(GL_VERTEX_ARRAY);
-	glDisable(GL_CULL_FACE);
+	DrawEditor(nullptr);
 }
 
 void MeshRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {

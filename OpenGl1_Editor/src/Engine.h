@@ -468,7 +468,7 @@ protected:
 	GLuint defTex;
 };
 
-enum DEFTEX {
+enum DEFTEX : byte {
 	DEFTEX_BLACK,
 	DEFTEX_GREY,
 	DEFTEX_WHITE,
@@ -496,6 +496,7 @@ public:
 	void SetInt(string name, int val);
 	void SetInt(GLint id, int val);
 
+	friend class Engine;
 	friend class Editor;
 	friend class EB_Browser;
 	friend class EB_Inspector;

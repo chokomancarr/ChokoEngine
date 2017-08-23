@@ -519,7 +519,7 @@ void Light::ScanParams() {
 }
 
 void Camera::_ApplyEmission(GLuint d_fbo, GLuint d_texs[], float w, float h, GLuint targetFbo) {
-	glViewport(0, 0, w, h);
+	glViewport(0, 0, (GLsizei)w, (GLsizei)h);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, targetFbo);
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, d_fbo);
 
