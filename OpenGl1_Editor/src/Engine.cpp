@@ -502,16 +502,17 @@ void Engine::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4, 
 	GLuint tex = font->glyph((uint)round(s));
 	font->SizeVec(sz);
 
-	if ((font->alignment & 15) > 0) {
+	byte align = (byte)font->alignment;
+	if ((align & 15) > 0) {
 		float totalW = 0;
 		for (uint i = 0; i < sz * 4; i += 4) {
 			char c = st[i / 4];
 			totalW = ceil(totalW + font->w2s[c] * s + s*0.1f);
 		}
-		x -= totalW * (font->alignment & 15) * 0.5f;
+		x -= totalW * (align & 15) * 0.5f;
 	}
 
-	y -= (1-(0.5f * (font->alignment >> 4))) * s;
+	y -= (1-(0.5f * (align >> 4))) * s;
 
 	y = Display::height - y;
 	float w = 0;
@@ -1898,6 +1899,10 @@ void Scene::ReadD0() {
 	}
 }
 
+void Scene::Unload() {
+	
+}
+
 Scene::Scene(std::ifstream& stream, long pos) : sceneName("") {
 	std::vector<SceneObject*>().swap(objects);
 	stream.seekg(pos);
@@ -1948,19 +1953,7 @@ void Scene::AddObject(SceneObject* object, SceneObject* parent) {
 void Scene::DeleteObject(SceneObject* o) {
 	if (active == nullptr)
 		return;
-	if (o->parent == nullptr){
-		auto it = std::find(active->objects.begin(), active->objects.end(), o);
-		if (it != active->objects.end()) {
-			std::swap(*it, active->objects.back());
-			active->objects.pop_back();
-		}
-	}
-	else {
-		SceneObject* p = o->parent;
-		p->RemoveChild(o);
-	}
-
-	delete(o);
+	o->_pendingDelete = true;
 }
 
 std::shared_ptr<Scene> Scene::active = nullptr;

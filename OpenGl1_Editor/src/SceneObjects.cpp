@@ -1447,16 +1447,6 @@ SceneObject* SceneObject::AddChild(SceneObject* child) {
 	return this;
 }
 
-void SceneObject::RemoveChild(SceneObject* o) {
-	auto it = std::find(children.begin(), children.end(), o);
-	if (it != children.end()) {
-		std::swap(*it, children.back());
-		children.pop_back();
-		o->parent = nullptr;
-		o->transform._UpdateWMatrix(Mat4x4());
-	}
-}
-
 Component* SceneObject::AddComponent(Component* c) {
 	c->object = this;
 	int i = 0;

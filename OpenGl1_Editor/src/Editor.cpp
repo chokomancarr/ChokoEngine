@@ -121,6 +121,12 @@ void CalcV(Vec4& v) {
 	v.r = round(v.r) + 1;
 }
 
+void EB_DrawScrollBar(const Vec4& v, const float& maxScroll, const float& scrollOffset) {
+	if (Rect(v.r, v.g, v.b, v.a).Inside(Input::mousePos) && (maxScroll - (v.a - EB_HEADER_SIZE - 1))>0) {
+		Engine::DrawQuad(v.r + v.b - 8, v.g + EB_HEADER_SIZE + 1 + scrollOffset * (v.a - EB_HEADER_SIZE - 1) / (maxScroll - EB_HEADER_SIZE - 1), 6, (v.a - EB_HEADER_SIZE - 1)*(v.a - EB_HEADER_SIZE - 1) / (maxScroll - EB_HEADER_SIZE - 1), white(0.4f));
+	}
+}
+
 void EB_Empty::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	CalcV(v);
@@ -1065,6 +1071,11 @@ void EB_Inspector::Draw() {
 	else
 		Engine::Label(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 12, "Select object to inspect.", editor->font, white());
 	Engine::EndStencil();
+}
+
+void EB_Inspector::OnMouseScr(bool up) {
+	scrollOffset += up ? -17 : 17;
+	scrollOffset = clamp(scrollOffset, 0, max(maxScroll - (Display::height*(editor->yPoss[y2] - editor->yPoss[y1]) - EB_HEADER_SIZE - 1), 0));
 }
 
 void EB_Inspector::DrawGlobal(Vec4 v) {

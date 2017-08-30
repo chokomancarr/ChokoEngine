@@ -754,7 +754,6 @@ public:
 
 	SceneObject* AddChild(SceneObject* child);
 	SceneObject* GetChild(int i) { return children[i]; }
-	void RemoveChild(SceneObject* o);
 	Component* AddComponent(Component* c);
 	
 	Component* GetComponent(COMPONENT_TYPE type);
@@ -781,6 +780,8 @@ public:
 	friend class Scene;
 protected:
 	void Refresh();
+
+	bool _pendingDelete;
 };
 
 #endif

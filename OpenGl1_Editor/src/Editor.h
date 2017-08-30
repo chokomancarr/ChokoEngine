@@ -228,6 +228,8 @@ public:
 	void Draw(), DrawGlobal(Vec4);
 	void Refresh() {}
 
+	void OnMouseScr(bool up) override;
+
 	static void DrawScalar(Editor* e, Vec4 v, float dh, string label, float& value);
 	static void DrawVector2(Editor* e, Vec4 v, float dh, string label, Vec2& value);
 	static void DrawVector3(Editor* e, Vec4 v, float dh, string label, Vec3& value);

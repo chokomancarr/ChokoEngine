@@ -116,21 +116,23 @@ public:
 #define MOUSE_PRESS 0x12 //use for buttons
 #define MOUSE_RELEASE 0x13 //use for buttons
 
-typedef unsigned char ALIGNMENT;
-#define ALIGN_BOTLEFT 0x00
-#define ALIGN_BOTCENTER 0x01
-#define ALIGN_BOTRIGHT 0x02
-#define ALIGN_MIDLEFT 0x10
-#define ALIGN_MIDCENTER 0x11
-#define ALIGN_MIDRIGHT 0x12
-#define ALIGN_TOPLEFT 0x20
-#define ALIGN_TOPCENTER 0x21
-#define ALIGN_TOPRIGHT 0x22
+enum ALIGNMENT : byte {
+	ALIGN_BOTLEFT = 0x00,
+	ALIGN_BOTCENTER = 0x01,
+	ALIGN_BOTRIGHT = 0x02,
+	ALIGN_MIDLEFT = 0x10,
+	ALIGN_MIDCENTER = 0x11,
+	ALIGN_MIDRIGHT = 0x12,
+	ALIGN_TOPLEFT = 0x20,
+	ALIGN_TOPCENTER = 0x21,
+	ALIGN_TOPRIGHT = 0x22
+};
 
-typedef unsigned char ORIENTATION;
-#define ORIENT_NONE 0x00
-#define ORIENT_HORIZONTAL 0x01
-#define ORIENT_VERTICAL 0x02
+enum ORIENTATION : byte {
+	ORIENT_NONE,
+	ORIENT_HORIZONTAL,
+	ORIENT_VERTICAL
+};
 
 enum TransformSpace : byte {
 	Space_Self = 0x00,
@@ -578,7 +580,7 @@ public:
 	static byte EButton(bool a, float x, float y, float w, float h, Texture* texture, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4);
 	static byte EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4);
 	static bool DrawToggle(float x, float y, float s, Vec4 col, bool t);
-	static bool DrawToggle(float x, float y, float s, Texture* texture, bool t, Vec4 col=white(), ORIENTATION o = 0x00);
+	static bool DrawToggle(float x, float y, float s, Texture* texture, bool t, Vec4 col=white(), ORIENTATION o = ORIENT_NONE);
 	static float DrawSliderFill(float x, float y, float w, float h, float min, float max, float val, Vec4 background, Vec4 foreground);
 	//scaleType: 0=scale, 1=clip, 2=tile
 	static void DrawProgressBar(float x, float y, float w, float h, float progress, Vec4 background, Texture* foreground, Vec4 tint, int padding, byte scaleType);
