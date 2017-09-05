@@ -1,5 +1,7 @@
 #include "Engine.h"
 
+using namespace ChokoEngine;
+
 Quat QuatFunc::Inverse(const Quat& q) {
 	return Quat(-q.x, -q.y, -q.z, q.w);
 }

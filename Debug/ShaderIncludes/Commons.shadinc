@@ -2,11 +2,14 @@ INSTART
 layout(location=0) in vec3 pos;
 layout(location=1) in vec2 texCoord;
 layout(location=2) in vec3 normal;
+layout(location=3) in vec3 tangent;
 INEND
 
 V2FSTART
 vec2 v2f_uv;
 vec4 v2f_normal;
+vec4 v2f_tangent;
+vec4 v2f_bitangent;
 float v2f_depth;
 V2FEND
 

@@ -52,47 +52,49 @@ string to_string(Vec2 v), to_string(Vec3 v), to_string(Vec4 v), to_string(Quat v
 
 Vec3 to_vec3(Vec4 v);
 
-class QuatFunc {
-public:
-	static Quat Inverse(const Quat&);
-	static Vec3 Rotate(const Vec3&, const Quat&);
-	static Vec3 ToEuler(const Quat&);
-	static Mat4x4 ToMatrix(const Quat&);
-	static Quat FromAxisAngle(const Vec3&, float);
-};
+namespace ChokoEngine {
+	class QuatFunc {
+	public:
+		static Quat Inverse(const Quat&);
+		static Vec3 Rotate(const Vec3&, const Quat&);
+		static Vec3 ToEuler(const Quat&);
+		static Mat4x4 ToMatrix(const Quat&);
+		static Quat FromAxisAngle(const Vec3&, float);
+	};
 
-struct BBox {
-	BBox() {}
-	BBox(float, float, float, float, float, float);
+	struct BBox {
+		BBox() {}
+		BBox(float, float, float, float, float, float);
 
-	float x0, x1, y0, y1, z0, z1;
-};
+		float x0, x1, y0, y1, z0, z1;
+	};
 
-class Color {
-public:
-	Color() : r(0), g(0), b(0), a(0), useA(true) {}
-	Color(Vec4 v) : r((byte)round(v.r * 255)), g((byte)round(v.g * 255)), b((byte)round(v.b * 255)), a((byte)round(v.a * 255)) {}
+	class Color {
+	public:
+		Color() : r(0), g(0), b(0), a(0), useA(true) {}
+		Color(Vec4 v) : r((byte)round(v.r * 255)), g((byte)round(v.g * 255)), b((byte)round(v.b * 255)), a((byte)round(v.a * 255)) {}
 	
-	bool useA;
-	byte r, g, b, a;
-	//float h(), s(), v();
+		bool useA;
+		byte r, g, b, a;
+		//float h(), s(), v();
 
-	Vec4 vec4() {
-		return Vec4(r, g, b, a);
-	}
+		Vec4 vec4() {
+			return Vec4(r, g, b, a);
+		}
 
-	static GLuint pickerProgH, pickerProgSV;
+		static GLuint pickerProgH, pickerProgSV;
 
-	string hex();
+		string hex();
 
-	static void Rgb2Hsv(byte r, byte g, byte b, float& h, float& s, float& v);
-	static string Col2Hex(Vec4 col);
-	static void DrawPicker(float x, float y, Color& c);
+		static void Rgb2Hsv(byte r, byte g, byte b, float& h, float& s, float& v);
+		static string Col2Hex(Vec4 col);
+		static void DrawPicker(float x, float y, Color& c);
 
-protected:
+	protected:
 
-	static void DrawSV(float x, float y, float w, float h);
-};
+		static void DrawSV(float x, float y, float w, float h);
+	};
+}
 
 class Rect {
 public:
@@ -621,13 +623,19 @@ protected:
 	static bool LoadDatas(string path);
 };
 
+enum GITYPE : byte {
+	GITYPE_NONE,
+	GITYPE_RSM
+};
+
 class SceneSettings {
 public:
 	SceneSettings(): sky(nullptr), skyId(-1), skyStrength(1) {}
 	
 	Background* sky;
 	float skyStrength;
-	Color ambientCol;
+	ChokoEngine::Color ambientCol;
+	GITYPE GIType = GITYPE_RSM;
 
 	bool useFog, sunFog;
 	float fogDensity, fogSunSpread;

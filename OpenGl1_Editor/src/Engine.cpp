@@ -27,6 +27,7 @@
 #include "Defines.h"
 #include "SceneScriptResolver.h"
 
+using namespace ChokoEngine;
 
 string to_string(float f) { return std::to_string(f); }
 string to_string(double f) { return std::to_string(f); }
@@ -1817,7 +1818,7 @@ void Deserialize(std::ifstream& stream, SceneObject* obj) {
 	obj->transform.eulerRotation(r); //so matrix will be updated
 	c = stream.get();
 	while (c != 'o') {
-		Debug::Message("Object Deserializer", to_string(c) + " " + to_string(stream.tellg()));
+		//Debug::Message("Object Deserializer", to_string(c) + " " + to_string(stream.tellg()));
 		if (c == 'O') {
 			SceneObject* sc = new SceneObject();
 			obj->AddChild(sc);
@@ -1862,7 +1863,7 @@ void Deserialize(std::ifstream& stream, SceneObject* obj) {
 				stream.seekg(ss - 1);
 				break;
 			}
-			Debug::Message("Object Deserializer", "2 " + to_string(stream.tellg()));
+			//Debug::Message("Object Deserializer", "2 " + to_string(stream.tellg()));
 			c = stream.get();
 			if (c != 'c') {
 				Debug::Error("Object Deserializer", "scene data corrupted(component)");
@@ -1875,6 +1876,7 @@ void Deserialize(std::ifstream& stream, SceneObject* obj) {
 		}
 		c = stream.get();
 	}
+	Debug::Message("Object Deserializer", "-- End --");
 }
 
 void Scene::ReadD0() {

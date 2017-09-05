@@ -3,6 +3,8 @@
 #include "Editor.h"
 #include <sstream>
 
+using namespace ChokoEngine;
+
 Object::Object(string nm) : id(Engine::GetNewId()), name(nm) {}
 
 bool DrawComponentHeader(Editor* e, Vec4 v, uint pos, Component* c) {
@@ -93,12 +95,49 @@ void Camera::ApplyGL() {
 	glTranslatef(pos.x, pos.y, pos.z);
 }
 
+void GenShaderFromPath(GLuint vertex_shader, const string& path, GLuint* program) {
+	GLuint fragment_shader;
+	std::string err;
+	std::ifstream strm(path);
+	if (strm.fail()) {
+		Debug::Error("Cam Shader Compiler", "fs frag not found!");
+		abort();
+	}
+	std::stringstream ss;
+	ss << strm.rdbuf();
+	if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, ss.str(), fragment_shader, &err)) {
+		Debug::Error("Cam Shader Compiler", path + "! " + err);
+		abort();
+	}
+
+	*program = glCreateProgram();
+	glAttachShader(*program, vertex_shader);
+	glAttachShader(*program, fragment_shader);
+	glLinkProgram(*program);
+	GLint link_result;
+	glGetProgramiv(*program, GL_LINK_STATUS, &link_result);
+	if (link_result == GL_FALSE)
+	{
+		int info_log_length = 0;
+		glGetProgramiv(*program, GL_INFO_LOG_LENGTH, &info_log_length);
+		std::vector<char> program_log(info_log_length);
+		glGetProgramInfoLog(*program, info_log_length, NULL, &program_log[0]);
+		std::cout << "cam shader error" << std::endl << &program_log[0] << std::endl;
+		glDeleteProgram(*program);
+		*program = 0;
+		abort();
+	}
+	glDetachShader(*program, vertex_shader);
+	glDetachShader(*program, fragment_shader);
+	glDeleteShader(fragment_shader);
+}
+
 void Camera::InitShaders() {
 	int link_result = 0;
-	GLuint vertex_shader, fragment_shader;
+	GLuint vertex_shader;
 	string err = "";
 	std::ifstream strm("D:\\lightPassVert.txt");
-	std::stringstream ss, ss2, ss3, ss4, ss5, ss6, ss7;
+	std::stringstream ss;
 	ss << strm.rdbuf();
 
 	if (!ShaderBase::LoadShader(GL_VERTEX_SHADER, ss.str(), vertex_shader, &err)) {
@@ -106,206 +145,13 @@ void Camera::InitShaders() {
 		abort();
 	}
 
-	//sky
-	strm.close();
-	strm.open("D:\\lightPassFrag_Sky.txt");
-	if (strm.fail()) {
-		Debug::Error("Cam Shader Compiler", "fs frag not found!");
-		abort();
-	}
-	ss2 << strm.rdbuf();
-	if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, ss2.str(), fragment_shader, &err)) {
-		Debug::Error("Cam Shader Compiler", "fs! " + err);
-		abort();
-	}
-
-	d_skyProgram = glCreateProgram();
-	glAttachShader(d_skyProgram, vertex_shader);
-	glAttachShader(d_skyProgram, fragment_shader);
-	glLinkProgram(d_skyProgram);
-	glGetProgramiv(d_skyProgram, GL_LINK_STATUS, &link_result);
-	if (link_result == GL_FALSE)
-	{
-		int info_log_length = 0;
-		glGetProgramiv(d_skyProgram, GL_INFO_LOG_LENGTH, &info_log_length);
-		std::vector<char> program_log(info_log_length);
-		glGetProgramInfoLog(d_skyProgram, info_log_length, NULL, &program_log[0]);
-		std::cout << "cam shader(sky) error" << std::endl << &program_log[0] << std::endl;
-		glDeleteProgram(d_skyProgram);
-		d_skyProgram = 0;
-		abort();
-	}
-	std::cout << "cam shader(sky) ok" << std::endl;
-	glDetachShader(d_skyProgram, vertex_shader);
-	glDetachShader(d_skyProgram, fragment_shader);
-	glDeleteShader(fragment_shader);
-
-	//point light
-	strm.close();
-	strm.open("D:\\lightPassFrag_Point.txt");
-	if (strm.fail()) {
-		Debug::Error("Cam Shader Compiler", "fp frag not found!");
-		abort();
-	}
-	ss3 << strm.rdbuf();
-	if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, ss3.str(), fragment_shader, &err)) {
-		Debug::Error("Cam Shader Compiler", "fp! " + err);
-		abort();
-	}
-
-	d_pLightProgram = glCreateProgram();
-	glAttachShader(d_pLightProgram, vertex_shader);
-	glAttachShader(d_pLightProgram, fragment_shader);
-	glLinkProgram(d_pLightProgram);
-	glGetProgramiv(d_pLightProgram, GL_LINK_STATUS, &link_result);
-	if (link_result == GL_FALSE)
-	{
-		int info_log_length = 0;
-		glGetProgramiv(d_pLightProgram, GL_INFO_LOG_LENGTH, &info_log_length);
-		std::vector<char> program_log(info_log_length);
-		glGetProgramInfoLog(d_pLightProgram, info_log_length, NULL, &program_log[0]);
-		std::cout << "cam shader(pl) error" << std::endl << &program_log[0] << std::endl;
-		glDeleteProgram(d_pLightProgram);
-		d_pLightProgram = 0;
-		abort();
-	}
-	std::cout << "cam shader(pl) ok" << std::endl;
-	glDetachShader(d_pLightProgram, vertex_shader);
-	glDetachShader(d_pLightProgram, fragment_shader);
-	glDeleteShader(fragment_shader);
-
-	//spotlight
-	strm.close();
-	strm.open("D:\\lightPassFrag_Spot.txt");
-	if (strm.fail()) {
-		Debug::Error("Cam Shader Compiler", "fc frag not found!");
-		abort();
-	}
-	ss4 << strm.rdbuf();
-	if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, ss4.str(), fragment_shader, &err)) {
-		Debug::Error("Cam Shader Compiler", "fc! " + err);
-		abort();
-	}
-
-	d_sLightProgram = glCreateProgram();
-	glAttachShader(d_sLightProgram, vertex_shader);
-	glAttachShader(d_sLightProgram, fragment_shader);
-	glLinkProgram(d_sLightProgram);
-	glGetProgramiv(d_sLightProgram, GL_LINK_STATUS, &link_result);
-	if (link_result == GL_FALSE)
-	{
-		int info_log_length = 0;
-		glGetProgramiv(d_sLightProgram, GL_INFO_LOG_LENGTH, &info_log_length);
-		std::vector<char> program_log(info_log_length);
-		glGetProgramInfoLog(d_sLightProgram, info_log_length, NULL, &program_log[0]);
-		std::cout << "cam shader(sl) error" << std::endl << &program_log[0] << std::endl;
-		glDeleteProgram(d_sLightProgram);
-		d_sLightProgram = 0;
-		abort();
-	}
-	std::cout << "cam shader(sl) ok" << std::endl;
-	glDetachShader(d_sLightProgram, vertex_shader);
-	glDetachShader(d_sLightProgram, fragment_shader);
-	glDeleteShader(fragment_shader);
-
-	//probe mask
-	strm.close();
-	strm.open("D:\\lightPassFrag_ProbeMask.txt");
-	if (strm.fail()) {
-		Debug::Error("Cam Shader Compiler", "pm frag not found!");
-		abort();
-	}
-	ss5 << strm.rdbuf();
-	if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, ss5.str(), fragment_shader, &err)) {
-		Debug::Error("Cam Shader Compiler", "pm! " + err);
-		abort();
-	}
-
-	d_probeMaskProgram = glCreateProgram();
-	glAttachShader(d_probeMaskProgram, vertex_shader);
-	glAttachShader(d_probeMaskProgram, fragment_shader);
-	glLinkProgram(d_probeMaskProgram);
-	glGetProgramiv(d_probeMaskProgram, GL_LINK_STATUS, &link_result);
-	if (link_result == GL_FALSE)
-	{
-		int info_log_length = 0;
-		glGetProgramiv(d_probeMaskProgram, GL_INFO_LOG_LENGTH, &info_log_length);
-		std::vector<char> program_log(info_log_length);
-		glGetProgramInfoLog(d_probeMaskProgram, info_log_length, NULL, &program_log[0]);
-		std::cout << "cam shader(pm) error" << std::endl << &program_log[0] << std::endl;
-		glDeleteProgram(d_probeMaskProgram);
-		d_probeMaskProgram = 0;
-		abort();
-	}
-	std::cout << "cam shader(pm) ok" << std::endl;
-	glDetachShader(d_probeMaskProgram, vertex_shader);
-	glDetachShader(d_probeMaskProgram, fragment_shader);
-	glDeleteShader(fragment_shader);
-
-	//spot contact shadows
-	strm.close();
-	strm.open("D:\\lightPassFrag_Spot_ContShad.txt");
-	if (strm.fail()) {
-		Debug::Error("Cam Shader Compiler", "sc frag not found!");
-		abort();
-	}
-	ss6 << strm.rdbuf();
-	if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, ss6.str(), fragment_shader, &err)) {
-		Debug::Error("Cam Shader Compiler", "sc! " + err);
-		abort();
-	}
-
-	d_sLightCSProgram = glCreateProgram();
-	glAttachShader(d_sLightCSProgram, vertex_shader);
-	glAttachShader(d_sLightCSProgram, fragment_shader);
-	glLinkProgram(d_sLightCSProgram);
-	glGetProgramiv(d_sLightCSProgram, GL_LINK_STATUS, &link_result);
-	if (link_result == GL_FALSE)
-	{
-		int info_log_length = 0;
-		glGetProgramiv(d_sLightCSProgram, GL_INFO_LOG_LENGTH, &info_log_length);
-		std::vector<char> program_log(info_log_length);
-		glGetProgramInfoLog(d_sLightCSProgram, info_log_length, NULL, &program_log[0]);
-		std::cout << "cam shader(sc) error" << std::endl << &program_log[0] << std::endl;
-		glDeleteProgram(d_sLightCSProgram);
-		d_sLightCSProgram = 0;
-		abort();
-	}
-	std::cout << "cam shader(sc) ok" << std::endl;
-	glDetachShader(d_sLightCSProgram, vertex_shader);
-	glDetachShader(d_sLightCSProgram, fragment_shader);
-	glDeleteShader(fragment_shader);
-
-	/*probe
-	strm.close();
-	strm.open("D:\\lightPassFrag_Probe.txt");
-	ss5 << strm.rdbuf();
-	if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, ss5.str(), fragment_shader, &err)) {
-	Debug::Error("Cam Shader Compiler", "pm! " + err);
-	abort();
-	}
-
-	d_probeMaskProgram = glCreateProgram();
-	glAttachShader(d_probeMaskProgram, vertex_shader);
-	glAttachShader(d_probeMaskProgram, fragment_shader);
-	glLinkProgram(d_probeMaskProgram);
-	glGetProgramiv(d_probeMaskProgram, GL_LINK_STATUS, &link_result);
-	if (link_result == GL_FALSE)
-	{
-	int info_log_length = 0;
-	glGetProgramiv(d_probeMaskProgram, GL_INFO_LOG_LENGTH, &info_log_length);
-	std::vector<char> program_log(info_log_length);
-	glGetProgramInfoLog(d_probeMaskProgram, info_log_length, NULL, &program_log[0]);
-	std::cout << "cam shader(pm) error" << std::endl << &program_log[0] << std::endl;
-	glDeleteProgram(d_probeMaskProgram);
-	d_probeMaskProgram = 0;
-	abort();
-	}
-	std::cout << "cam shader(pm) ok" << std::endl;
-	glDetachShader(d_probeMaskProgram, vertex_shader);
-	glDetachShader(d_probeMaskProgram, fragment_shader);
-	glDeleteShader(fragment_shader);
-	*/
+	GenShaderFromPath(vertex_shader, "D:\\lightPassFrag_Sky.txt", &d_skyProgram);
+	GenShaderFromPath(vertex_shader, "D:\\lightPassFrag_Point.txt", &d_pLightProgram);
+	GenShaderFromPath(vertex_shader, "D:\\lightPassFrag_Spot.txt", &d_sLightProgram);
+	GenShaderFromPath(vertex_shader, "D:\\lightPassFrag_Spot_ContShad.txt", &d_sLightCSProgram);
+	GenShaderFromPath(vertex_shader, "D:\\lightPassFrag_Spot_GI_RSM.txt", &d_sLightRSMProgram);
+	GenShaderFromPath(vertex_shader, "D:\\lightPassFrag_Spot_GI_FluxPrep.txt", &d_sLightRSMFluxProgram);
+	GenShaderFromPath(vertex_shader, "D:\\lightPassFrag_ProbeMask.txt", &d_probeMaskProgram);
 
 	glDeleteShader(vertex_shader);
 
@@ -504,13 +350,16 @@ void MeshRenderer::DrawEditor(EB_Viewer* ebv) {
 		glEnableVertexAttribArray(0);
 		glEnableVertexAttribArray(1);
 		glEnableVertexAttribArray(2);
+		glEnableVertexAttribArray(3);
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->vertices[0]));
 		glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->uv0[0]));
 		glVertexAttribPointer(2, 3, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->normals[0]));
+		glVertexAttribPointer(3, 3, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->tangents[0]));
 		glDrawElements(GL_TRIANGLES, mf->mesh->_matTriangles[m].size(), GL_UNSIGNED_INT, &(mf->mesh->_matTriangles[m][0]));
 		glDisableVertexAttribArray(0);
 		glDisableVertexAttribArray(1);
 		glDisableVertexAttribArray(2);
+		glDisableVertexAttribArray(3);
 	}
 	glUseProgram(0);
 	glDisableClientState(GL_VERTEX_ARRAY);
@@ -824,7 +673,7 @@ void Light::Serialize(Editor* e, std::ofstream* stream) {
 	_StreamWrite(&color.a, stream, 4);
 }
 
-Light::Light() : Component("Light", COMP_LHT, DRAWORDER_LIGHT), _lightType(LIGHTTYPE_POINT) {}
+Light::Light() : Component("Light", COMP_LHT, DRAWORDER_LIGHT), _lightType(LIGHTTYPE_POINT), color(Vec4(1, 1, 1, 1)) {}
 
 Light::Light(std::ifstream& stream, SceneObject* o, long pos) : Light() {
 	if (pos >= 0)

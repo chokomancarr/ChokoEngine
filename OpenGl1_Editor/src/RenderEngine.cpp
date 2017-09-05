@@ -1,6 +1,9 @@
 #include "Engine.h"
 #include "Editor.h"
 #include <sstream>
+#include <random>
+
+using namespace ChokoEngine;
 
 void CheckGLOK() {
 	int err = glGetError();
@@ -327,6 +330,8 @@ GLuint Camera::d_skyProgram = 0;
 GLuint Camera::d_pLightProgram = 0;
 GLuint Camera::d_sLightProgram = 0;
 GLuint Camera::d_sLightCSProgram = 0;
+GLuint Camera::d_sLightRSMProgram = 0;
+GLuint Camera::d_sLightRSMFluxProgram = 0;
 std::unordered_map<string, GLuint> Camera::fetchTextures = std::unordered_map<string, GLuint>();
 std::vector<string> Camera::fetchTexturesUpdated = std::vector<string>();
 const string Camera::_gbufferNames[4] = {"Diffuse", "Normal", "Specular-Gloss", "Emission"};
@@ -516,6 +521,40 @@ void Light::ScanParams() {
 	PBSL "sampleLength"));
 	PBSL "lightPos"));
 #undef PBSL
+	paramLocs_SpotFluxer.clear();
+#define PBSL paramLocs_SpotFluxer.push_back(glGetUniformLocation(Camera::d_sLightRSMFluxProgram,
+	PBSL "screenSize"));
+	PBSL "inColor"));
+	PBSL "inNormal"));
+	PBSL "lightDir"));
+	PBSL "lightColor"));
+	PBSL "lightStrength"));
+	PBSL "lightIsSquare"));
+#undef PBSL
+	paramLocs_SpotRSM.clear();
+	paramLocs_SpotRSM.push_back((GLint)glGetUniformBlockIndex(Camera::d_sLightRSMProgram, "SampleBuffer"));
+	/*
+	GLint blockSize;
+	glGetActiveUniformBlockiv(Camera::d_sLightRSMProgram, (GLuint)paramLocs_SpotRSM[0], GL_UNIFORM_BLOCK_DATA_SIZE, &blockSize);
+	const GLchar *names[] = { "posX", "posY", "weight"};
+	GLuint indices[4];
+	glGetUniformIndices(Camera::d_sLightRSMProgram, 3, names, indices);
+	GLint offset[4];
+	glGetActiveUniformsiv(Camera::d_sLightRSMProgram, 3, indices, GL_UNIFORM_OFFSET, offset);
+	*/
+#define PBSL paramLocs_SpotRSM.push_back(glGetUniformLocation(Camera::d_sLightRSMProgram,
+	PBSL "_IP"));
+	PBSL "_LP"));
+	PBSL "_ILP"));
+	PBSL "screenSize"));
+	PBSL "inColor"));
+	PBSL "inNormal"));
+	PBSL "inSpec"));
+	PBSL "inDepth"));
+	PBSL "lightFlux"));
+	PBSL "lightNormal"));
+	PBSL "lightDepth"));
+#undef PBSL
 }
 
 void Camera::_ApplyEmission(GLuint d_fbo, GLuint d_texs[], float w, float h, GLuint targetFbo) {
@@ -602,6 +641,14 @@ void Camera::_DoDrawLight_Spot(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs
 		abort();
 	}
 
+	/*
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, l->_fluxFbo);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, tar);
+	glReadBuffer(GL_COLOR_ATTACHMENT0);
+	glBlitFramebuffer(0, 0, 512, 512, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+	return;
+	*/
+
 	if (l->drawShadow && l->contactShadows) _DoDrawLight_Spot_Contact(l, glm::inverse(ip), d_depthTex, w, h, d_fbo, ctar);
 
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, d_fbo);
@@ -666,6 +713,9 @@ void Camera::_DoDrawLight_Spot(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs
 #undef sloc
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, screenRectIndices);
+
+	if (Scene::active->settings.GIType == GITYPE_RSM)
+		l->DrawRSM(ip, lp, w, h, d_texs, d_depthTex);
 
 	glDisableVertexAttribArray(0);
 	glUseProgram(0);
@@ -733,15 +783,33 @@ void Camera::DumpBuffers() {
 }
 
 GLuint Light::_shadowFbo = 0;
+GLuint Light::_shadowGITexs[] = {0, 0, 0};
 GLuint Light::_shadowMap = 0;
+GLuint Light::_fluxFbo = 0;
+GLuint Light::_fluxTex = 0;
+GLuint Light::_rsmFbo = 0;
+GLuint Light::_rsmTex = 0;
+GLuint Light::_rsmUBO = 0;
+RSM_RANDOM_BUFFER Light::_rsmBuffer = RSM_RANDOM_BUFFER();
 std::vector<GLint> Light::paramLocs_Spot = std::vector<GLint>();
 std::vector<GLint> Light::paramLocs_SpotCS = std::vector<GLint>();
+std::vector<GLint> Light::paramLocs_SpotFluxer = std::vector<GLint>();
+std::vector<GLint> Light::paramLocs_SpotRSM = std::vector<GLint>();
 
 void Light::InitShadow() {
 	glGenFramebuffers(1, &_shadowFbo);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _shadowFbo);
 
+	glGenTextures(3, _shadowGITexs);
 	glGenTextures(1, &_shadowMap);
+
+	for (uint i = 0; i < 3; i++) {
+		glBindTexture(GL_TEXTURE_2D, _shadowGITexs[i]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 1024, 1024, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, _shadowGITexs[i], 0);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	}
 
 	// depth
 	glBindTexture(GL_TEXTURE_2D, _shadowMap);
@@ -749,6 +817,9 @@ void Light::InitShadow() {
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, _shadowMap, 0);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	GLenum DrawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
+	glDrawBuffers(3, DrawBuffers);
 
 	GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 
@@ -760,7 +831,78 @@ void Light::InitShadow() {
 		Debug::Message("ShadowMap", "FB ok");
 	}
 
+	InitRSM();
+
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+}
+
+void Light::InitRSM() {
+	glGenFramebuffers(1, &_rsmFbo);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _rsmFbo);
+
+	glGenTextures(1, &_rsmTex);
+
+	glBindTexture(GL_TEXTURE_2D, _rsmTex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 512, 512, 0, GL_RGBA, GL_FLOAT, NULL);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _rsmTex, 0);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	GLenum DrawBuffers[] = { GL_COLOR_ATTACHMENT0 };
+	glDrawBuffers(1, DrawBuffers);
+
+	GLint Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+
+	if (Status != GL_FRAMEBUFFER_COMPLETE) {
+		Debug::Error("GI_RsmMap", "FB error:" + Status);
+		abort();
+	}
+	else {
+		Debug::Message("GI_RsmMap", "FB ok");
+	}
+
+	glGenFramebuffers(1, &_fluxFbo);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _fluxFbo);
+
+	glGenTextures(1, &_fluxTex);
+
+	glBindTexture(GL_TEXTURE_2D, _fluxTex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 512, 512, 0, GL_RGBA, GL_FLOAT, NULL);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _fluxTex, 0);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	GLenum DrawBuffers2[] = { GL_COLOR_ATTACHMENT0 };
+	glDrawBuffers(1, DrawBuffers2);
+
+	Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+
+	if (Status != GL_FRAMEBUFFER_COMPLETE) {
+		Debug::Error("GI_FluxMap", "FB error:" + Status);
+		abort();
+	}
+	else {
+		Debug::Message("GI_FluxMap", "FB ok");
+	}
+
+	std::default_random_engine generator;
+	std::normal_distribution<float> distri(5, 2);
+	for (uint a = 0; a < 1024; a++) {
+		_rsmBuffer.xPos[a] = (distri(generator)*10.0f);
+		_rsmBuffer.yPos[a] = (distri(generator)*10.0f);
+		float sz = sqrt(pow(_rsmBuffer.xPos[a], 2) + pow(_rsmBuffer.yPos[a], 2))*0.001f;
+		_rsmBuffer.size[a] = 0.5f;// sz;
+	}
+	glGenBuffers(1, &_rsmUBO);
+	//glBindBufferBase(GL_UNIFORM_BUFFER, BUFFERLOC_LIGHT_RSM, _rsmUBO);
+	glBindBuffer(GL_UNIFORM_BUFFER, _rsmUBO);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(_rsmBuffer), &_rsmBuffer, GL_STATIC_DRAW);
+	//glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	//glBindBuffer(GL_UNIFORM_BUFFER, gbo);
+	GLvoid* p = glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
+	memcpy(p, &_rsmBuffer, sizeof(_rsmBuffer));
+	glUnmapBuffer(GL_UNIFORM_BUFFER);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 void Light::DrawShadowMap(GLuint tar) {
@@ -786,18 +928,91 @@ void Light::DrawShadowMap(GLuint tar) {
 	//switch (_lightType) {
 	//case LIGHTTYPE_SPOT:
 	//case LIGHTTYPE_DIRECTIONAL:
-		CalcShadowMatrix();
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
-		DrawSceneObjectsOpaque(Scene::active->objects);
-	//	break;
+	CalcShadowMatrix();
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	DrawSceneObjectsOpaque(Scene::active->objects);
+	//	break;           
 	//}
 
 	glDisable(GL_DEPTH_TEST);
 	glDepthMask(false);
+
+	if (Scene::active->settings.GIType == GITYPE_RSM) {
+		BlitRSMFlux();
+	}
+
 	glEnable(GL_BLEND);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, tar);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, tar);
 	//glViewport(0, 0, Display::width, Display::height);
+}
+
+void Light::BlitRSMFlux() {
+	glViewport(0, 0, 512, 512);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, _shadowFbo);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _fluxFbo);
+#define sloc paramLocs_SpotFluxer
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(2, GL_FLOAT, 0, Camera::screenRectVerts);
+	glUseProgram(Camera::d_sLightRSMFluxProgram);
+
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, Camera::screenRectVerts);
+
+	glUniform2f(sloc[0], 512.0f, 512.0f);
+	glUniform1i(sloc[1], 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, _shadowGITexs[0]);
+	glUniform1i(sloc[2], 1);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, _shadowGITexs[1]);
+	Vec3 fwd = object->transform.forward();
+	glUniform3f(sloc[3], fwd.x, fwd.y, fwd.z);
+	glUniform4f(sloc[4], color.r, color.g, color.b, color.a);
+	glUniform1f(sloc[5], intensity);
+	glUniform1f(sloc[6], square? 1.0f : 0.0f);
+#undef sloc
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, Camera::screenRectIndices);
+
+	glDisableVertexAttribArray(0);
+	glUseProgram(0);
+	glDisableClientState(GL_VERTEX_ARRAY);
+}
+
+void Light::DrawRSM(Mat4x4& ip, Mat4x4& lp, float w, float h, GLuint gtexs[], GLuint gdepth) {
+	glUseProgram(Camera::d_sLightRSMProgram);
+#define sloc paramLocs_SpotRSM
+	//glUniformBlockBinding(Camera::d_sLightRSMProgram, (GLuint)sloc[0], _rsmUBO);
+	glBindBufferBase(GL_UNIFORM_BUFFER, (GLuint)sloc[0], _rsmUBO);
+	glUniformMatrix4fv(sloc[1], 1, GL_FALSE, glm::value_ptr(ip));
+	glUniformMatrix4fv(sloc[2], 1, GL_FALSE, glm::value_ptr(lp));
+	glUniformMatrix4fv(sloc[3], 1, GL_FALSE, glm::value_ptr(glm::inverse(lp)));
+	glUniform2f(sloc[4], w, h);
+	glUniform1i(sloc[5], 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, gtexs[0]);
+	glUniform1i(sloc[6], 1);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, gtexs[1]);
+	glUniform1i(sloc[7], 2);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, gtexs[2]);
+	glUniform1i(sloc[8], 3);
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D, gdepth);
+	glUniform1i(sloc[9], 4);
+	glActiveTexture(GL_TEXTURE4);
+	glBindTexture(GL_TEXTURE_2D, _fluxTex);
+	glUniform1i(sloc[10], 5);
+	glActiveTexture(GL_TEXTURE5);
+	glBindTexture(GL_TEXTURE_2D, _shadowGITexs[1]);
+	glUniform1i(sloc[11], 6);
+	glActiveTexture(GL_TEXTURE6);
+	glBindTexture(GL_TEXTURE_2D, _shadowMap);
+#undef sloc
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, Camera::screenRectIndices);
 }
 
 void ReflectionProbe::_DoUpdate() {

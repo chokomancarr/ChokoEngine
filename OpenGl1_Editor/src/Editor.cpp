@@ -25,6 +25,8 @@
 #include <thread>
 #include <filesystem>
 
+using namespace ChokoEngine;
+
 HWND Editor::hwnd = 0;
 //#ifdef IS_EDITOR
 Editor* Editor::instance = nullptr;
@@ -1223,7 +1225,6 @@ void EB_AnimEditor::OnMouseScr(bool up) {
 	scale += (up ? 0.1f : -0.1f);
 	scale = min(max(scale, 1), 5);
 }
-
 
 GLuint EB_Previewer::d_fbo = 0;
 GLuint EB_Previewer::d_texs[] = {0, 0, 0};

@@ -22,6 +22,8 @@
 #include <sstream>
 //#include <signal.h>
 
+using namespace ChokoEngine;
+
 void InitGL(int argc, char* argv[]);
 void DisplayGL();
 void InitGL(int i);

@@ -92,10 +92,10 @@ public:
 	bool loaded;
 
 	std::vector<Vec3> vertices;
-	std::vector<Vec3> normals, tangents, bitangents;
+	std::vector<Vec3> normals, tangents;// , bitangents;
 	std::vector<int> triangles;
 	std::vector<Vec2> uv0, uv1;
-	BBox boundingBox;
+	ChokoEngine::BBox boundingBox;
 	
 	uint vertexCount, triangleCount, materialCount;
 	
@@ -425,7 +425,7 @@ protected:
 	Vec3 camVerts[6];
 	static int camVertsIds[19];
 	GLuint d_fbo, d_texs[4], d_depthTex;
-	static GLuint d_probeMaskProgram, d_probeProgram, d_skyProgram, d_pLightProgram, d_sLightProgram, d_sLightCSProgram;
+	static GLuint d_probeMaskProgram, d_probeProgram, d_skyProgram, d_pLightProgram, d_sLightProgram, d_sLightCSProgram, d_sLightRSMProgram, d_sLightRSMFluxProgram;
 
 	static Vec2 screenRectVerts[];
 	static const int screenRectIndices[];
@@ -558,6 +558,12 @@ protected:
 	static void _UpdateTex(void* i);
 };
 
+struct RSM_RANDOM_BUFFER {
+	float xPos[1024];
+	float yPos[1024];
+	float size[1024];
+};
+
 enum LIGHTTYPE : byte {
 	LIGHTTYPE_POINT,
 	LIGHTTYPE_DIRECTIONAL,
@@ -565,6 +571,7 @@ enum LIGHTTYPE : byte {
 };
 #define COMP_LHT 0x20
 #define LIGHT_POINT_MINSTR 0.01f
+#define BUFFERLOC_LIGHT_RSM 2
 class Light : public Component {
 public:
 	Light();
@@ -575,8 +582,8 @@ public:
 	float angle = 60;
 	float minDist = 0.01f, maxDist = 5;
 	bool drawShadow = true;
-	float shadowBias = 0.01f, shadowStrength = 1;
-	bool contactShadows = true;
+	float shadowBias = 0.001f, shadowStrength = 1;
+	bool contactShadows = false;
 	float contactShadowDistance = 0.1f;
 	uint contactShadowSamples = 20;
 	Texture* cookie;
@@ -584,7 +591,7 @@ public:
 	bool square = false;
 
 	void DrawEditor(EB_Viewer* ebv) override;
-	void DrawShadowMap(GLuint tar = 0);
+	void DrawShadowMap(GLuint tar = 0), BlitRSMFlux(), DrawRSM(Mat4x4& ip, Mat4x4& lp, float w, float h, GLuint gtexs[], GLuint gdepth);
 
 	friend int main(int argc, char **argv);
 	friend void Serialize(Editor* e, SceneObject* o, std::ofstream* stream);
@@ -602,11 +609,13 @@ protected:
 	void Serialize(Editor* e, std::ofstream* stream) override;
 	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
 
-	static void InitShadow();
+	static void InitShadow(), InitRSM();
 	void CalcShadowMatrix();
-	static GLuint _shadowFbo, _shadowMap;
+	static GLuint _shadowFbo, _shadowGITexs[3], _shadowMap;
+	static GLuint _fluxFbo, _fluxTex, _rsmFbo, _rsmTex, _rsmUBO;
+	static RSM_RANDOM_BUFFER _rsmBuffer;
 
-	static std::vector<GLint> paramLocs_Spot, paramLocs_SpotCS; //make writing faster
+	static std::vector<GLint> paramLocs_Spot, paramLocs_SpotCS, paramLocs_SpotFluxer, paramLocs_SpotRSM; //make writing faster
 	static void ScanParams();
 	//static CubeMap* _shadowCube;
 };

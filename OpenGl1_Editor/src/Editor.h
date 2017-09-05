@@ -1,7 +1,14 @@
+#include "Defines.h"
+
+#ifndef IS_EDITOR
+#error Editor inclusion is not allowed in game
+#endif
+
 #ifndef EDITOR_H
 #define EDITOR_H
 #include "Engine.h"
 
+using namespace ChokoEngine;
 /*
 Editor functions
 */
@@ -15,10 +22,10 @@ Editor functions
 #define EB_HEADER_SIZE 16
 #define EB_HEADER_PADDING 16
 
+
 //class Editor;
 //class EditorBlock;
 
-typedef unsigned char byte;
 typedef void(*dataFunc)(EditorBlock*, void*);
 typedef void(*shortcutFunc)(EditorBlock*);
 typedef void(*shortcutFuncGlobal)(Editor*);

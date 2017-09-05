@@ -27,6 +27,8 @@
 #include "Defines.h"
 #include "SceneScriptResolver.h"
 
+using namespace ChokoEngine;
+
 bool LoadJPEG(string fileN, uint &x, uint &y, byte& channels, byte** data)
 {
 	//unsigned int texture_id;
@@ -1022,7 +1024,7 @@ void Material::Save(string path) {
 }
 
 void Material::ApplyGL(Mat4x4& _mv, Mat4x4& _p) {
-	if (shader == nullptr) {
+	if (shader == nullptr || !shader->loaded) {
 		glUseProgram(0);
 		return;
 	}
@@ -1122,7 +1124,7 @@ Mesh::Mesh(Editor* e, int i) : AssetObject(ASSETTYPE_MESH) {
 	vertexCount = m2->vertexCount;
 	normals = m2->normals;
 	tangents = m2->tangents;
-	bitangents = m2->bitangents;
+	//bitangents = m2->bitangents;
 	triangles = m2->triangles;
 	triangleCount = m2->triangleCount;
 	boundingBox = m2->boundingBox;
@@ -1357,47 +1359,51 @@ void Mesh::RecalculateBoundingBox() {
 }
 
 void Mesh::CalcTangents() {
-	std::vector<bool> found(vertices.size());
-	tangents = std::vector<Vec3>(vertices.size());
-	bitangents = std::vector<Vec3>(vertices.size());
-	for (uint a = 0; a < triangleCount; a++) {
-		Vec2 u0, u1, u2;
-		u0 = uv0[a * 3];
-		u1 = uv0[a * 3 + 1];
-		u2 = uv0[a * 3 + 2];
-		if (u1 != u0 && u2 != u0) {
-			if ((glm::normalize(u1 - u0) != glm::normalize(u2 - u0)) && (glm::normalize(u0 - u1) != glm::normalize(u2 - u0))) {
-				if (!found[triangles[a * 3]]) {
-					found[triangles[a * 3]] = true;
-					Vec2 _v1 = u1 - u0;
-					Vec2 _v2 = u2 - u0;
-					float _b = 1.0f / (_v2.x - (_v1.x*_v2.y / _v1.y));
-					float _a = -_b*_v2.y / _v1.y;
-					tangents[a * 3] = Normalize(_a*(vertices[a * 3 + 1] - vertices[a * 3]) + _b*(vertices[a * 3 + 2] - vertices[a * 3]));
-					_b = 1.0f / (_v2.y - (_v1.y*_v2.x / _v1.x));
-					_a = -_b*_v2.x / _v1.x;
-					bitangents[a * 3] = Normalize(_a*(vertices[a * 3 + 1] - vertices[a * 3]) + _b*(vertices[a * 3 + 2] - vertices[a * 3]));
+	tangents = std::vector<Vec3>(vertices.size(), Vec3(0, 0, 0));
+	std::vector<int> tC = std::vector<int>(vertices.size(), 0);
 
-					_v1 = u0 - u1;
-					_v2 = u2 - u1;
-					_b = 1.0f / (_v2.x - (_v1.x*_v2.y / _v1.y));
-					_a = -_b*_v2.y / _v1.y;
-					tangents[a * 3 + 1] = Normalize(_a*(vertices[a * 3] - vertices[a * 3 + 1]) + _b*(vertices[a * 3 + 2] - vertices[a * 3 + 1]));
-					_b = 1.0f / (_v2.y - (_v1.y*_v2.x / _v1.x));
-					_a = -_b*_v2.x / _v1.x;
-					bitangents[a * 3 + 1] = Normalize(_a*(vertices[a * 3] - vertices[a * 3 + 1]) + _b*(vertices[a * 3 + 2] - vertices[a * 3 + 1]));
+	Vec2 u0, u1, u2, r1, r2;
+	Vec3 p0, p1, p2;
+	float a, b, db;
+	int n0, n1, n2;
+	for (uint n = 0; n < triangleCount; n++) {
+		n0 = triangles[n * 3];
+		n1 = triangles[n * 3 + 1];
+		n2 = triangles[n * 3 + 2];
 
-					_v1 = u1 - u2;
-					_v2 = u0 - u2;
-					_b = 1.0f / (_v2.x - (_v1.x*_v2.y / _v1.y));
-					_a = -_b*_v2.y / _v1.y;
-					tangents[a * 3 + 2] = Normalize(_a*(vertices[a * 3 + 1] - vertices[a * 3 + 2]) + _b*(vertices[a * 3] - vertices[a * 3 + 2]));
-					_b = 1.0f / (_v2.y - (_v1.y*_v2.x / _v1.x));
-					_a = -_b*_v2.x / _v1.x;
-					bitangents[a * 3 + 2] = Normalize(_a*(vertices[a * 3 + 1] - vertices[a * 3 + 2]) + _b*(vertices[a * 3] - vertices[a * 3 + 2]));
-				}
-			}
+		u0 = uv0[n0];
+		u1 = uv0[n1];
+		u2 = uv0[n2];
+		p0 = vertices[n0];
+		p1 = vertices[n1];
+		p2 = vertices[n2];
+
+		if ((u0 == u1) || (u1 == u2) || (u0 == u2)) {
+			//Debug::Warning("Tangent calculator", "Triangle " + to_string(n) + " does not have well-defined UVs!");
+			continue;
 		}
+		r1 = u1 - u0;
+		r2 = u2 - u0;
+
+		//t = ar + br';
+		db = r1.y*r2.x - r1.x*r2.y;
+		if (db == 0) {
+			//Debug::Warning("Tangent calculator", "Triangle " + to_string(n) + " does not have well-defined UVs!");
+			continue;
+		}
+		b = r1.y / db;
+		if (r1.y == 0) a = (1 - b*r2.x) / r1.x;
+		else a = -b*r2.y / r1.y;
+		Vec3 t = (p1 - p0)*a + (p2 - p0)*b;
+		tangents[n0] += t;
+		tangents[n1] += t;
+		tangents[n2] += t;
+		tC[n0]++;
+		tC[n1]++;
+		tC[n2]++;
+	}
+	for (uint a = 0; a < vertexCount; a++) {
+		if (tC[a] > 0) tangents[a] = Normalize(tangents[a] / ((float)tC[a]));
 	}
 }
 

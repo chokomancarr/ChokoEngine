@@ -3,6 +3,8 @@ void main(){
 	gl_Position = _MVP*vec4(pos, 1);
 	v2f_uv = texCoord;
 	v2f_normal = vec4(normal, 0);
+	v2f_tangent = vec4(tangent, 0);
+	v2f_bitangent = vec4(-cross(tangent, normal), 0);
 	v2f_depth = encodeDepth(gl_Position.z);
 }
 VERTEND
