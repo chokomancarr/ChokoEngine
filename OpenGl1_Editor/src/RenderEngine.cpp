@@ -533,15 +533,6 @@ void Light::ScanParams() {
 #undef PBSL
 	paramLocs_SpotRSM.clear();
 	paramLocs_SpotRSM.push_back((GLint)glGetUniformBlockIndex(Camera::d_sLightRSMProgram, "SampleBuffer"));
-	/*
-	GLint blockSize;
-	glGetActiveUniformBlockiv(Camera::d_sLightRSMProgram, (GLuint)paramLocs_SpotRSM[0], GL_UNIFORM_BLOCK_DATA_SIZE, &blockSize);
-	const GLchar *names[] = { "posX", "posY", "weight"};
-	GLuint indices[4];
-	glGetUniformIndices(Camera::d_sLightRSMProgram, 3, names, indices);
-	GLint offset[4];
-	glGetActiveUniformsiv(Camera::d_sLightRSMProgram, 3, indices, GL_UNIFORM_OFFSET, offset);
-	*/
 #define PBSL paramLocs_SpotRSM.push_back(glGetUniformLocation(Camera::d_sLightRSMProgram,
 	PBSL "_IP"));
 	PBSL "_LP"));
@@ -554,6 +545,7 @@ void Light::ScanParams() {
 	PBSL "lightFlux"));
 	PBSL "lightNormal"));
 	PBSL "lightDepth"));
+	PBSL "bufferRadius"));
 #undef PBSL
 }
 
@@ -1011,6 +1003,7 @@ void Light::DrawRSM(Mat4x4& ip, Mat4x4& lp, float w, float h, GLuint gtexs[], GL
 	glUniform1i(sloc[11], 6);
 	glActiveTexture(GL_TEXTURE6);
 	glBindTexture(GL_TEXTURE_2D, _shadowMap);
+	glUniform1f(sloc[12], Scene::active->settings.rsmRadius);
 #undef sloc
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, Camera::screenRectIndices);
 }

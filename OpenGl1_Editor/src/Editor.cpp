@@ -1094,6 +1094,11 @@ void EB_Inspector::DrawGlobal(Vec4 v) {
 		Engine::Label(v.r + v.b*0.3f, v.g + off, 12, to_string(editor->activeScene->settings.skyStrength), editor->font, white());
 		editor->activeScene->settings.skyStrength = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + off, v.b*0.4f - 1, 16, 0, 3, editor->activeScene->settings.skyStrength, grey2(), white());
 	}
+	off += 17;
+	Engine::Label(v.r, v.g + off, 12, "RSM Radius", editor->font, white());
+	Engine::DrawQuad(v.r + v.b*0.3f, v.g + off, v.b*0.3f - 1, 16, grey2());
+	Engine::Label(v.r + v.b*0.3f, v.g + off, 12, to_string(editor->activeScene->settings.rsmRadius), editor->font, white());
+	editor->activeScene->settings.rsmRadius = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + off, v.b*0.4f - 1, 16, 0, 3, editor->activeScene->settings.rsmRadius, grey2(), white());
 }
 
 void EB_Inspector::DrawVector3(Editor* e, Vec4 v, float dh, string label, Vec3& value) {

@@ -636,6 +636,7 @@ public:
 	float skyStrength;
 	ChokoEngine::Color ambientCol;
 	GITYPE GIType = GITYPE_RSM;
+	float rsmRadius;
 
 	bool useFog, sunFog;
 	float fogDensity, fogSunSpread;
