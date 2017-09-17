@@ -271,6 +271,8 @@ public:
 	static bool HasFile(LPCTSTR szPath);
 	static string ReadFile(const string& path);
 	static std::vector<string> GetRegistryKeys(HKEY key);
+	static string GetText(const string& path);
+	static std::vector<byte> GetBytes(const string& path);
 };
 
 class Font {
@@ -440,6 +442,8 @@ class ShaderBase : public AssetObject {
 public:
 	ShaderBase(string path);
 	ShaderBase(std::ifstream& stream, uint offset);
+	ShaderBase(const string& vert, const string& frag);
+	ShaderBase(GLuint p) : AssetObject(ASSETTYPE_SHADER), pointer(p), loaded(!!p) {}
 	//ShaderBase(string vert, string frag);
 	~ShaderBase() {
 		glDeleteProgram(pointer);
@@ -499,6 +503,8 @@ public:
 	void SetFloat(GLint id, float val);
 	void SetInt(string name, int val);
 	void SetInt(GLint id, int val);
+	void SetVec2(string name, Vec2 val);
+	void SetVec2(GLint id, Vec2 val);
 
 	friend class Engine;
 	friend class Editor;

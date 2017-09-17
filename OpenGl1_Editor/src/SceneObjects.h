@@ -244,6 +244,11 @@ enum TEX_FILTERING : byte {
 	TEX_FILTER_TRILINEAR
 };
 
+enum TEX_WARPING : byte {
+	TEX_WARP_CLAMP,
+	TEX_WARP_REPEAT
+};
+
 enum TEX_TYPE : byte {
 	TEX_TYPE_NORMAL = 0x00,
 	TEX_TYPE_RENDERTEXTURE,
@@ -252,9 +257,7 @@ enum TEX_TYPE : byte {
 
 class Texture : public AssetObject {
 public:
-	Texture(const string& path);
-	Texture(const string& path, bool mipmap);
-	Texture(const string& path, bool mipmap, TEX_FILTERING filter, byte aniso);
+	Texture(const string& path, bool mipmap = true, TEX_FILTERING filter = TEX_FILTER_BILINEAR, byte aniso = 5, TEX_WARPING warp = TEX_WARP_REPEAT);
 	//Texture(std::ifstream& stream, long pos);
 	~Texture(){ glDeleteTextures(1, &pointer); }
 	bool loaded;
@@ -281,13 +284,23 @@ protected:
 	bool DrawPreview(uint x, uint y, uint w, uint h) override;
 };
 
+enum RT_FLAGS : byte {
+	RT_FLAG_NONE = 0U,
+	RT_FLAG_DEPTH = 1U,
+	RT_FLAG_STENCIL = 2U, //doesn't do anything for now
+	RT_FLAG_HDR = 4U
+};
+
 class RenderTexture : public Texture {
 public:
-	RenderTexture(uint w, uint h, bool depth);
+	RenderTexture(uint w, uint h, RT_FLAGS flags = RT_FLAG_NONE, const GLvoid* pixels = NULL, GLenum pixelFormat = GL_RGBA);
 	~RenderTexture();
+
+	const bool depth, stencil, hdr;
 
 	static void Blit(Texture* src, RenderTexture* dst, ShaderBase* shd, string texName = "mainTex");
 	static void Blit(Texture* src, RenderTexture* dst, Material* mat, string texName = "mainTex");
+	static void Blit(GLuint src, RenderTexture* dst, GLuint shd, string texName = "mainTex");
 
 	std::vector<float> pixels();
 
@@ -295,9 +308,9 @@ public:
 	friend class Texture;
 	friend class Editor;
 	friend class Background;
+	friend int main(int argc, char **argv);
 protected:
-	static void Blit(GLuint src, RenderTexture* dst, GLuint shd, string texName = "mainTex");
-	GLuint d_fbo, d_depthTex;
+	GLuint d_fbo;
 	void Load(string path);
 	void Load(std::ifstream& strm);
 	static bool Parse(string path); //just tell Texture to load as rendtex
@@ -406,6 +419,7 @@ public:
 	friend class MeshRenderer;
 	friend class Engine;
 	friend class Light;
+	friend class RenderTexture;
 protected:
 	Camera(std::ifstream& stream, SceneObject* o, long pos = -1);
 
@@ -425,7 +439,7 @@ protected:
 	Vec3 camVerts[6];
 	static int camVertsIds[19];
 	GLuint d_fbo, d_texs[4], d_depthTex;
-	static GLuint d_probeMaskProgram, d_probeProgram, d_skyProgram, d_pLightProgram, d_sLightProgram, d_sLightCSProgram, d_sLightRSMProgram, d_sLightRSMFluxProgram;
+	static GLuint d_probeMaskProgram, d_probeProgram, d_blurProgram, d_skyProgram, d_pLightProgram, d_sLightProgram, d_sLightCSProgram, d_sLightRSMProgram, d_sLightRSMFluxProgram;
 
 	static Vec2 screenRectVerts[];
 	static const int screenRectIndices[];

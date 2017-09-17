@@ -145,6 +145,7 @@ void Camera::InitShaders() {
 		abort();
 	}
 
+	GenShaderFromPath(vertex_shader, "D:\\blurPassFrag.txt", &d_blurProgram);
 	GenShaderFromPath(vertex_shader, "D:\\lightPassFrag_Sky.txt", &d_skyProgram);
 	GenShaderFromPath(vertex_shader, "D:\\lightPassFrag_Point.txt", &d_pLightProgram);
 	GenShaderFromPath(vertex_shader, "D:\\lightPassFrag_Spot.txt", &d_sLightProgram);

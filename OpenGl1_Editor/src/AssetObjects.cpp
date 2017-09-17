@@ -138,9 +138,7 @@ bool LoadBMP(string fileN, uint &x, uint &y, byte& channels, byte** data) {
 	return true;
 }
 
-Texture::Texture(const string& path) : Texture(path, true, TEX_FILTER_TRILINEAR, 5) {}
-Texture::Texture(const string& path, bool mipmap) : Texture(path, mipmap, mipmap ? TEX_FILTER_TRILINEAR : TEX_FILTER_BILINEAR, 5) {}
-Texture::Texture(const string& path, bool mipmap, TEX_FILTERING filter, byte aniso) : AssetObject(ASSETTYPE_TEXTURE), _mipmap(mipmap), _filter(filter), _aniso(aniso) {
+Texture::Texture(const string& path, bool mipmap, TEX_FILTERING filter, byte aniso, TEX_WARPING warp) : AssetObject(ASSETTYPE_TEXTURE), _mipmap(mipmap), _filter(filter), _aniso(aniso) {
 	string sss = path.substr(path.find_last_of('.'), string::npos);
 	byte *data;
 	std::vector<byte> dataV;
@@ -182,6 +180,8 @@ Texture::Texture(const string& path, bool mipmap, TEX_FILTERING filter, byte ani
 	if (mipmap) glGenerateMipmap(GL_TEXTURE_2D);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (mipmap && (filter == TEX_FILTER_TRILINEAR)) ? GL_LINEAR_MIPMAP_LINEAR : (filter == TEX_FILTER_POINT) ? GL_NEAREST : GL_LINEAR);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, (warp == TEX_WARP_CLAMP) ? GL_CLAMP_TO_EDGE : GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, (warp == TEX_WARP_CLAMP) ? GL_CLAMP_TO_EDGE : GL_REPEAT);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	if (dataV.size() == 0) delete[](data);
 	loaded = true;
@@ -407,25 +407,6 @@ Background::Background(const string& path) : width(0), height(0), AssetObject(AS
 	//std::cout << "HDR Image loaded: " << width << "x" << height << std::endl;
 }
 
-void Background::B_DS(Background* b, std::vector<float> data) {
-	uint width_1 = b->width, height_1 = b->height, width_2, height_2, mips = 0;
-	while (mips < 6 && b->height > 16) {
-		//std::cout << "Downsampling " << mips << std::endl;
-		mips++;
-		data = Downsample(data, width_1, height_1, width_2, height_2);
-
-		glBindTexture(GL_TEXTURE_2D, b->pointer);
-
-		glTexImage2D(GL_TEXTURE_2D, mips, GL_RGB, width_2, height_2, 0, GL_RGB, GL_FLOAT, &data[0]);
-
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, mips);
-		glBindTexture(GL_TEXTURE_2D, 0);
-		width_1 = width_2 + 0;
-		height_1 = height_2 + 0;
-	}
-	b->loaded = true;
-}
-
 Background::Background(int i, Editor* editor) : width(0), height(0), AssetObject(ASSETTYPE_HDRI), loaded(false) {
 	string path = editor->projectFolder + "Assets\\" + editor->normalAssets[ASSETTYPE_HDRI][i] + ".meta";
 	std::ifstream strm(path.c_str(), std::ios::in | std::ios::binary);
@@ -448,20 +429,47 @@ Background::Background(int i, Editor* editor) : width(0), height(0), AssetObject
 	auto data = hdr2float(data2, width, height);
 	delete[](data2);
 
+	uint width_1 = width, height_1 = height, width_2, height_2, mips = 0;
+
+	ShaderBase shd = ShaderBase(Camera::d_blurProgram);
+	Material mat = Material(&shd);
+
+	std::vector<RenderTexture*> rts = std::vector<RenderTexture*>();
+	std::vector<Vec2> szs = std::vector<Vec2>();
+	rts.push_back(new RenderTexture(width, height, RT_FLAG_HDR, &data[0], GL_RGB));
+	szs.push_back(Vec2(width, height));
+
+	while (mips < 6 && height_1 > 16) {
+		width_2 = width_1 / 2;
+		height_2 = height_1 / 2;
+
+		mat.SetVec2("screenSize", Vec2(width_2, height_2));
+		RenderTexture rx = RenderTexture(width_2, height_2, RT_FLAG_HDR);
+		mat.SetFloat("isY", 0);
+		RenderTexture::Blit(rts[mips], &rx, &mat);
+		rts.push_back(new RenderTexture(width_2, height_2, RT_FLAG_HDR));
+		mat.SetFloat("isY", 1);
+		RenderTexture::Blit(&rx, rts[mips+1], &mat);
+
+		szs.push_back(Vec2(width_2, height_2));
+		width_1 = width_2 + 0;
+		height_1 = height_2 + 0;
+		mips++;
+	}
+
 	glGenTextures(1, &pointer);
 	glBindTexture(GL_TEXTURE_2D, pointer);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_FLOAT, &data[0]);
-
+	for (uint a = 0; a <= mips; a++) {
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, rts[a]->d_fbo);
+		glCopyTexImage2D(GL_TEXTURE_2D, a, GL_RGB, 0, 0, szs[a].x, szs[a].y, 0);
+	}
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, mips);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 	glBindTexture(GL_TEXTURE_2D, 0);
-
-	B_DS(this, data);
-	//thread t = thread(B_DS, this, data);
-	//t.detach();
-	//std::cout << "HDR Image loaded: " << width << "x" << height << std::endl;
+	loaded = true;
 }
 
 Background::Background(std::ifstream& strm, uint offset) : width(0), height(0), AssetObject(ASSETTYPE_HDRI) {
@@ -501,7 +509,6 @@ Background::Background(std::ifstream& strm, uint offset) : width(0), height(0), 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, mips);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	loaded = true;
@@ -927,7 +934,34 @@ void Material::SetTexture(string name, Texture * texture) {
 	SetTexture(glGetUniformLocation(shader->pointer, name.c_str()), texture);
 }
 void Material::SetTexture(GLint id, Texture * texture) {
-	vals[SHADER_SAMPLER][id] = texture;
+	if (id > -1) {
+		if (vals[SHADER_SAMPLER].find(id) == vals[SHADER_SAMPLER].end()) vals[SHADER_SAMPLER][id] = new MatVal_Tex();
+		((MatVal_Tex*)vals[SHADER_SAMPLER][id])->tex = texture;
+	}
+}
+
+void Material::SetFloat(string name, float val) {
+	SetFloat(glGetUniformLocation(shader->pointer, name.c_str()), val);
+}
+void Material::SetFloat(GLint id, float val) {
+	if (id > -1)
+		vals[SHADER_FLOAT][id] = new float(val);
+}
+
+void Material::SetInt(string name, int val) {
+	SetInt(glGetUniformLocation(shader->pointer, name.c_str()), val);
+}
+void Material::SetInt(GLint id, int val) {
+	if (id > -1)
+		vals[SHADER_INT][id] = new int(val);
+}
+
+void Material::SetVec2(string name, Vec2 val) {
+	SetVec2(glGetUniformLocation(shader->pointer, name.c_str()), val);
+}
+void Material::SetVec2(GLint id, Vec2 val) {
+	if (id > -1)
+		vals[SHADER_VEC2][id] = new Vec2(val);
 }
 
 std::vector<GLuint> Material::defTexs = std::vector<GLuint>(6);

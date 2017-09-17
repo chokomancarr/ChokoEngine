@@ -59,6 +59,9 @@ std::mutex lockMutex;
 //	MessageBox(hwnd, "aaa", "title", MB_OK);
 //}
 
+RenderTexture* rt;
+Texture* tex;
+
 int main(int argc, char **argv)
 {
 	path = argv[0];
@@ -174,29 +177,23 @@ int main(int argc, char **argv)
 		editor->blockCombos[1]->blocks.push_back(editor->blocks[7]);
 		editor->blockCombos[1]->blocks.push_back(editor->blocks[4]);
 		editor->blockCombos[1]->Set();
-		//editor->activeScene.sky = new Background(editor->dataPath + "res\\bg_refl.hdr");
 		editor->SetBackground(editor->dataPath + "res\\bg.jpg", 0.3f);
 		font = editor->font;
-		//ShaderBase* s = (ShaderBase*)editor->GetCache(ASSETTYPE_SHADER, 0);
-		//Material m(s);
-		//m.Save(editor->projectFolder + "Assets\\test.material");
 
-		//*
-			//ifstream strm(editor->projectFolder + "Assets\\newScene.scene", ios::in | ios::binary);
-			//AssetManager::Init("D:\\TestProject\\Release\\data");
-			//Scene::Load(0);
-			//editor->activeScene = Scene(*Scene::strm, Scene::scenePoss[0]);
-			//editor->activeScene = make_shared<Scene>(strm, 0);
-			//editor->activeScene.sceneName = "newScene";
-			//editor->sceneLoaded = true;
-			//strm.close();
-		//*/
+		/*
+		rt = new RenderTexture(256, 256);
+		tex = new Texture("D:\\1.jpg", false, TEX_FILTER_BILINEAR, 0);
+		ShaderBase *shd = new ShaderBase(IO::GetText("D:\\lightPassVert.txt"), IO::GetText("D:\\blurPassFrag.txt"));
+		Material mat = Material(shd);
+		mat.SetVec2("screenSize", Vec2(256, 256));
+		mat.SetFloat("isY", 1);
+		RenderTexture::Blit(tex, rt, &mat);
+		*/
 
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glFrontFace(GL_CW);
 		glutDisplayFunc(renderScene);
-		//glutTimerFunc(10, InitGL, 0);
 		glutTimerFunc(1000, TimerGL, 0);
 		glutMouseFunc(MouseGL);
 		glutReshapeFunc(ReshapeGL);
@@ -375,26 +372,9 @@ void renderScene()
 		glLoadIdentity();
 		DrawOverlay();
 
-		/*
-		FCurve curve = FCurve();
-		curve.keys.push_back(FCurve_Key(Vec2(0, 0), Vec2(-30, 20), Vec2(30, -20)));
-		curve.keys.push_back(FCurve_Key(Vec2(50, 50), Vec2(35, 50), Vec2(65, 50)));
-		curve.keys.push_back(FCurve_Key(Vec2(100, 20), Vec2(90, 50), Vec2(110, -10)));
-		curve.keys.push_back(FCurve_Key(Vec2(150, 120), Vec2(120, 120), Vec2(180, 120)));
-		curve.keyCount = 4;
-		curve.startTime = 0;
-		curve.endTime = 150;
-		Engine::DrawLine(Vec2(150, 150), Vec2(450, 150), white(), 2);
-		for (int a = 0; a < 150; a++) {
-			Engine::DrawLine(Vec2(a * 2 + 150, curve.Eval((float)a) * 2 + 150), Vec2((a + 1) * 2 + 150, curve.Eval(a + 1.0f) * 2 + 150), red(), 2);
-		}
-		for (FCurve_Key k : curve.keys) {
-			Engine::DrawLine(k.point* 2.0f + Vec2(150, 150), k.left* 2.0f + Vec2(150, 150), green(), 1);
-			Engine::DrawLine(k.point* 2.0f + Vec2(150, 150), k.right* 2.0f + Vec2(150, 150), green(), 1);
-			Engine::DrawCircle(k.left* 2.0f + Vec2(150, 150), 5, 24, green(), 1.5f);
-			Engine::DrawCircle(k.right* 2.0f + Vec2(150, 150), 5, 24, green(), 1.5f);
-		}
-		*/
+		//Engine::DrawQuad(0, 0, 512, 512, rt->pointer);
+		//Engine::DrawQuad(513, 0, 512, 512, rt->pointer);
+		//Engine::DrawQuad(1026, 0, 512, 512, rt2->pointer);
 
 		glutSwapBuffers();
 		redrawn = true;

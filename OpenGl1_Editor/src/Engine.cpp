@@ -1284,6 +1284,13 @@ std::vector<string> IO::GetRegistryKeys(HKEY key) {
 	return res;
 }
 
+string IO::GetText(const string& path) {
+	std::ifstream strm(path);
+	std::stringstream ss;
+	ss << strm.rdbuf();
+	return ss.str();
+}
+
 //-----------------time class---------------------
 long long Time::startMillis = 0;
 long long Time::millis = 0;
@@ -1341,142 +1348,6 @@ Vec3 rotate(Vec3 v, Quat q) {
 	float s = q.w;
 	// Do the math
 	return (2.0f * dot(u, v) * u + (s*s - dot(u, u)) * v + 2.0f * s * cross(u, v));
-}
-
-//-----------------rendertexture class---------------
-RenderTexture::RenderTexture(uint w, uint h, bool depth) : Texture() {
-	width = w;
-	height = h;
-	_texType = TEX_TYPE_RENDERTEXTURE;
-
-	glGenFramebuffers(1, &d_fbo);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, d_fbo);
-
-	glGenTextures(1, &pointer);
-
-	glBindTexture(GL_TEXTURE_2D, pointer);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, w, h, 0, GL_RGBA, GL_FLOAT, NULL);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pointer, 0);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-	if (depth) {
-		glGenTextures(1, &d_depthTex);
-		glBindTexture(GL_TEXTURE_2D, d_depthTex);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, w, h, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, d_depthTex, 0);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	}
-	else d_depthTex = 0;
-
-	GLenum DrawBuffers[] = { GL_COLOR_ATTACHMENT0 };
-	glDrawBuffers(1, DrawBuffers);
-	loaded = true;
-}
-
-RenderTexture::~RenderTexture() {
-	if (d_depthTex > 0) glDeleteTextures(1, &d_depthTex);
-	glDeleteFramebuffers(1, &d_fbo);
-}
-
-void RenderTexture::Blit(Texture* src, RenderTexture* dst, ShaderBase* shd, string texName) {
-	if (src == nullptr || dst == nullptr || shd == nullptr) {
-		Debug::Warning("Blit", "Parameter is null!");
-		return;
-	}
-	Blit(src->pointer, dst, shd->pointer, texName);
-}
-
-void RenderTexture::Blit(GLuint src, RenderTexture* dst, GLuint shd, string texName) {
-	glViewport(0, 0, dst->width, dst->height);
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dst->d_fbo);
-	float zero[] = { 0,0,0,0 };
-	glClearBufferfv(GL_COLOR, 0, zero);
-	glDisable(GL_DEPTH_TEST);
-	glDepthMask(false);
-	glDisable(GL_BLEND);
-
-	Vec3 quadPoss[4];
-	quadPoss[1].x = 1;
-	quadPoss[2].y = 1;
-	quadPoss[3].x = 1;
-	quadPoss[3].y = 1;
-	uint quadIndexes[4] = { 0, 1, 3, 2 };
-	glUseProgram(shd);
-	GLint loc = glGetUniformLocation(shd, &texName[0]);
-	glUniform1i(loc, 0);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE0, src);
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
-
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &quadPoss[0]);
-
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glDrawElements(GL_QUADS, 4, GL_UNSIGNED_INT, &quadIndexes[0]);
-
-	glDisableVertexAttribArray(0);
-	glUseProgram(0);
-
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-}
-
-void RenderTexture::Blit(Texture* src, RenderTexture* dst, Material* mat, string texName) {
-	mat->SetTexture(texName, src);
-	glViewport(0, 0, dst->width, dst->height);
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dst->d_fbo);
-	float zero[] = { 0,0,0,0 };
-	glClearBufferfv(GL_COLOR, 0, zero);
-	glDisable(GL_DEPTH_TEST);
-	glDepthMask(false);
-	glDisable(GL_BLEND);
-
-	Vec3 quadPoss[4];
-	quadPoss[1].x = 1;
-	quadPoss[2].y = 1;
-	quadPoss[3].x = 1;
-	quadPoss[3].y = 1;
-	uint quadIndexes[4] = { 0, 1, 3, 2 };
-	mat->ApplyGL(Mat4x4(), Mat4x4());
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
-
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &quadPoss[0]);
-
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glDrawElements(GL_QUADS, 4, GL_UNSIGNED_INT, &quadIndexes[0]);
-
-	glDisableVertexAttribArray(0);
-	glUseProgram(0);
-
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-}
-
-std::vector<float> RenderTexture::pixels() {
-	std::vector<float> v = std::vector<float>(width*height * 3);
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, d_fbo);
-	glReadPixels(0, 0, width, height, GL_RGB, GL_FLOAT, &v[0]);
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-	return v;
-}
-
-void RenderTexture::Load(string path) {
-	throw std::runtime_error("RT Load (s) not implemented");
-}
-void RenderTexture::Load(std::ifstream& strm) {
-	throw std::runtime_error("RT Load (i) not implemented");
-}
-
-bool RenderTexture::Parse(string path) {
-	string ss(path + ".meta");
-	std::ofstream str(ss, std::ios::out | std::ios::trunc | std::ios::binary);
-	str << "IMR";
-	return true;
 }
 
 //-----------------font class---------------------
