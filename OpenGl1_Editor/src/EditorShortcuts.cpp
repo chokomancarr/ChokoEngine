@@ -558,6 +558,23 @@ void Editor::DoDeleteActive(EditorBlock* b) {
 
 }
 
+void Editor::Maximize(Editor* e) {
+	e->hasMaximize = !e->hasMaximize;
+	if (e->hasMaximize) {
+		for (EditorBlock* b : e->blocks)
+		{
+			Vec4 v = Vec4(Display::width*e->xPoss[b->x1], Display::height*e->yPoss[b->y1], Display::width*e->xPoss[b->x2], Display::height*e->yPoss[b->y2]);
+			b->maximize = (Rect(v.r, v.g, v.b - v.r, v.a - v.g).Inside(Input::mousePos));
+		}
+	}
+	else {
+		for (EditorBlock* b : e->blocks)
+		{
+			b->maximize = false;
+		}
+	}
+}
+
 void GetSceneFiles(string path, string sub, std::vector<string>& list) {
 	for (string s : IO::GetFiles(path + sub, ".scene")) {
 		string ss(s.substr(path.size(), string::npos));

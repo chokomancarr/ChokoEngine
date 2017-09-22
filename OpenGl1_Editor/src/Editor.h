@@ -50,7 +50,7 @@ public:
 	byte editorType;
 	Editor* editor;
 	ShortcutMap shortcuts;
-	bool hidden = false;
+	bool hidden = false, maximize = false;
 
 	//bool clipM0, clipM1, clipM2;
 
@@ -333,6 +333,9 @@ class yPossLerper;
 class xPossMerger;
 class yPossMerger;
 
+#define WAITINGBUILDSTARTFLAG 1U
+#define WAITINGREFRESHFLAG 2U
+
 class Editor {
 public:
 	Editor();
@@ -360,6 +363,7 @@ public:
 	std::vector<EditorBlock*> blocks;
 	std::vector<BlockCombo*> blockCombos;
 	Vec2 popupPos;
+	bool hasMaximize;
 
 	EditorBlock* dialogBlock;
 
@@ -404,7 +408,8 @@ public:
 	void BeginProgress(string n);
 	//prefs = layer5
 
-	bool WAITINGBUILDSTARTFLAG = false, WAITINGREFRESHFLAG = false;
+	byte flags;
+
 	std::mutex* lockMutex;
 	//building - layer6: custom progress to look cool
 	std::vector<string> buildLog;
@@ -440,6 +445,7 @@ public:
 	bool sceneLoaded() { return activeScene != nullptr; }
 	SceneObject* selected;
 	Mat4x4 selectedMvMatrix;
+	Vec4 selectedSpos;
 	bool selectGlobal = false;
 	std::vector<string> includedScenes;
 	std::vector<bool> includedScenesUse;
@@ -450,6 +456,7 @@ public:
 	ASSETTYPE selectedFileType;
 	ASSETID selectedFile;
 	void* selectedFileCache;
+	std::vector<string> selectedFileTexts;
 	void DeselectFile();
 
 	Mat4x4 viewMatrix;
@@ -520,6 +527,7 @@ public:
 	static void DoOpenScene(EditorBlock* b, void* v);
 	static void DeleteActive(Editor* e);
 	static void DoDeleteActive(EditorBlock* b);
+	static void Maximize(Editor* e);
 
 	void DoCompile();
 

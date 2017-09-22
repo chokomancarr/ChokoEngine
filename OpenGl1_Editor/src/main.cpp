@@ -16,7 +16,7 @@
 #include <thread>
 #include <mutex>
 #include "Engine.h"
-#include "editor.h"
+#include "Editor.h"
 #include "SceneObjects.h"
 #include "Compressors.h"
 #include <sstream>
@@ -24,8 +24,6 @@
 
 using namespace ChokoEngine;
 
-void InitGL(int argc, char* argv[]);
-void DisplayGL();
 void InitGL(int i);
 void TimerGL(int i);
 void MouseGL(int button, int state, int x, int y);
@@ -265,13 +263,13 @@ void CheckShortcuts() {
 }
 
 void DoUpdate() {
-	if (editor->WAITINGBUILDSTARTFLAG) {
-		editor->WAITINGBUILDSTARTFLAG = false;
+	if (!!(editor->flags & WAITINGBUILDSTARTFLAG)) {
+		editor->flags &= ~WAITINGBUILDSTARTFLAG;
 		editor->DoCompile();
 		return;
 	}
 	std::lock_guard<std::mutex> lock(lockMutex);
-	editor->WAITINGREFRESHFLAG = false;
+	editor->flags &= ~WAITINGREFRESHFLAG;
 	CheckShortcuts();
 	int i = -1, k = 0;
 	editor->mouseOn = 0;
@@ -287,7 +285,7 @@ void DoUpdate() {
 				editor->mouseOn = i;
 				break;
 			}
-			if (editor->WAITINGREFRESHFLAG) //deleted
+			if (!!(editor->flags & WAITINGREFRESHFLAG)) //deleted
 				return;
 		}
 		k++;
@@ -348,7 +346,7 @@ void DrawOverlay() {
 	if (editor->backgroundTex != nullptr)
 		Engine::DrawTexture(0, 0, (float)Display::width, (float)Display::height, editor->backgroundTex, editor->backgroundAlpha*0.01f);
 	for (int i = editor->blocks.size() - 1; i >= 0; i--) {
-		if (!editor->blocks[i]->hidden)
+		if (!editor->blocks[i]->hidden && !(editor->hasMaximize && !editor->blocks[i]->maximize))
 			editor->blocks[i]->Draw();
 	}
 	if (editor->dialogBlock) {
@@ -365,6 +363,7 @@ void renderScene()
 		glClearColor(0, 0, 0, 1.0f);
 		glDisable(GL_DEPTH_TEST);
 		glDepthFunc(GL_LEQUAL);
+		glEnable(GL_BLEND);
 
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();

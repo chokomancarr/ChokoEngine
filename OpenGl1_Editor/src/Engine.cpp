@@ -1212,13 +1212,18 @@ std::vector<EB_Browser_File> IO::GetFilesE (Editor* e, const string& folder)
 			// , delete '!' read other 2 default folder . and ..
 			if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
 				string aa(fd.cFileName);
-				if ((aa.length() > 5 && aa.substr(aa.length() - 5, string::npos) == ".meta"))
-					names.push_back(EB_Browser_File(e, folder, aa.substr(0, aa.length() - 5), aa));
-				else if ((aa.length() > 4 && aa.substr(aa.length() - 4, string::npos) == ".cpp"))
+				if ((aa.length() > 5 && aa.substr(aa.length() - 5) == ".meta") &&
+					(aa.length() < 7 || aa.substr(aa.length() - 7) != ".h.meta"))
+						names.push_back(EB_Browser_File(e, folder, aa.substr(0, aa.length() - 5), aa));
+				else if ((aa.length() > 4 && aa.substr(aa.length() - 4) == ".cpp"))
 					names.push_back(EB_Browser_File(e, folder, aa, aa));
-				else if ((aa.length() > 9 && (aa.substr(aa.length() - 9, string::npos) == ".material")))
+				else if ((aa.length() > 2 && aa.substr(aa.length() - 2) == ".h"))
 					names.push_back(EB_Browser_File(e, folder, aa, aa));
-				else if ((aa.length() > 9 && (aa.substr(aa.length() - 7, string::npos) == ".effect")))
+				else if ((aa.length() > 4 && aa.substr(aa.length() - 4) == ".txt"))
+					names.push_back(EB_Browser_File(e, folder, aa, aa));
+				else if ((aa.length() > 9 && (aa.substr(aa.length() - 9) == ".material")))
+					names.push_back(EB_Browser_File(e, folder, aa, aa));
+				else if ((aa.length() > 9 && (aa.substr(aa.length() - 7) == ".effect")))
 					names.push_back(EB_Browser_File(e, folder, aa, aa));
 			}
 		} while (::FindNextFile(hFind, &fd));

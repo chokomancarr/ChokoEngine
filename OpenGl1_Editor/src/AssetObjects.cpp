@@ -461,7 +461,7 @@ Background::Background(int i, Editor* editor) : width(0), height(0), AssetObject
 	glBindTexture(GL_TEXTURE_2D, pointer);
 	for (uint a = 0; a <= mips; a++) {
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, rts[a]->d_fbo);
-		glCopyTexImage2D(GL_TEXTURE_2D, a, GL_RGB, 0, 0, szs[a].x, szs[a].y, 0);
+		glCopyTexImage2D(GL_TEXTURE_2D, a, GL_RGB, 0, 0, (GLsizei)szs[a].x, (GLsizei)szs[a].y, 0);
 	}
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);

@@ -18,7 +18,7 @@ bool DrawComponentHeader(Editor* e, Vec4 v, uint pos, Component* c) {
 		//delete
 		c->object->RemoveComponent(c);
 		if (c == nullptr)
-			e->WAITINGREFRESHFLAG = true;
+			e->flags |= WAITINGREFRESHFLAG;
 		return false;
 	}
 	Engine::Label(v.r + 20, v.g + pos, 12, c->name, e->font, white());
@@ -565,6 +565,11 @@ void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
 			Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, to_string(maxDist), e->font, white());
 			maxDist = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 20, maxDist, grey1(), white());
+			pos += 17;
+			Engine::Label(v.r + 2, v.g + pos, 12, "falloff", e->font, white());
+			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
+			Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, to_string(falloff), e->font, white());
+			falloff = (LIGHT_FALLOFF)((int)round(Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 20, (float)falloff, grey1(), white())));
 			pos += 17;
 			break;
 		case LIGHTTYPE_DIRECTIONAL:

@@ -132,12 +132,14 @@ void EB_DrawScrollBar(const Vec4& v, const float& maxScroll, const float& scroll
 void EB_Empty::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	CalcV(v);
+	if (maximize) v = Vec4(0, 0, Display::width, Display::height);
 	DrawHeaders(editor, this, &v, "Hatena Title");
 }
 
 void EB_Debug::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	CalcV(v);
+	if (maximize) v = Vec4(0, 0, Display::width, Display::height);
 	DrawHeaders(editor, this, &v, "System Log");
 	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
 	//glDisable(GL_DEPTH_TEST);
@@ -203,6 +205,7 @@ void EBH_DrawItem(SceneObject* sc, Editor* e, Vec4* v, int& i, const float& offs
 void EB_Hierarchy::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	CalcV(v);
+	if (maximize) v = Vec4(0, 0, Display::width, Display::height);
 	DrawHeaders(editor, this, &v, "Scene Hierarchy");
 
 	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
@@ -321,9 +324,37 @@ bool DrawFileRect(float w, float h, float size, EB_Browser_File* file, EditorBlo
 	return b;
 }
 
+bool IsTextFile(const string& path) { 
+	std::vector<string> exts = std::vector<string>({"cpp", "h", "txt"});
+	string s = path.substr(path.find_last_of('.') + 1);
+	return std::find(exts.begin(), exts.end(), s) != exts.end();
+}
+
+string ReplaceTab(const string& str) {
+	string s = "";
+	for (auto a = str.begin(); a != str.end(); a++) {
+		if (*a == '\t') s += "    ";
+		else s += *a;
+	}
+	return s;
+}
+
+std::vector<string> GetTexts(const string& path) {
+	std::ifstream strm(path, std::ios::in);
+	std::vector<string> o;
+	char cc[500];
+	while (!strm.eof()) {
+		strm.getline(cc, 500);
+		string s(cc);
+		o.push_back(ReplaceTab(s));
+	}
+	return o;
+}
+
 void EB_Browser::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	CalcV(v);
+	if (maximize) v = Vec4(0, 0, Display::width, Display::height);
 	DrawHeaders(editor, this, &v, "Browser: " + currentDir);
 
 	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
@@ -350,14 +381,16 @@ void EB_Browser::Draw() {
 	byte fileSize = 70;
 	for (int ff = files.size() - 1; ff >= 0; ff--) {
 		if (DrawFileRect(v.r + 151 + ww, v.g + EB_HEADER_SIZE + (fileSize+1)* hh, fileSize, &files[ff], this)) {
-			//editor->_Message("1", files[ff].fullName);
 			editor->GetAssetInfo(files[ff].fullName, editor->selectedFileType, editor->selectedFile);
+			editor->selectedFileTexts.clear();
+			editor->selectedFileName = files[ff].name;
+			editor->selectedFilePath = files[ff].fullName;
 			if (editor->selectedFileType != ASSETTYPE_UNDEF) {
-				editor->selectedFileName = files[ff].name;
-				editor->selectedFilePath = files[ff].fullName;
 				editor->selectedFileCache = _GetCache<void>(editor->selectedFileType, editor->selectedFile);
 			}
-			//editor->_Message("1", files[ff].fullName + " " + to_string(editor->selectedFileType) + ":" + to_string(editor->selectedFile));
+			else if (IsTextFile(files[ff].fullName)) {
+				editor->selectedFileTexts = GetTexts(files[ff].fullName);
+			}
 		}
 		
 		ww += fileSize+1;
@@ -507,6 +540,7 @@ void DrawSceneObjectsTrans(EB_Viewer* ebv, std::vector<SceneObject*> oo) {
 void EB_Viewer::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	CalcV(v);
+	if (maximize) v = Vec4(0, 0, Display::width, Display::height);
 	DrawHeaders(editor, this, &v, "Viewer: SceneNameHere");
 
 	//Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
@@ -612,7 +646,12 @@ void EB_Viewer::Draw() {
 				Engine::DrawLineW(editor->selected->transform.worldPosition() + modAxisDir*-100000.0f, editor->selected->transform.worldPosition() + modAxisDir*100000.0f, white(), 2);
 			else if (bb == 0x20) {
 				bb = modifying & 0x0f;
-				if (bb == 1)
+				if (bb == 0) {
+					Vec4 rx = invMatrix*Vec4(1, 0, 0, 0);
+					Vec4 ry = invMatrix*Vec4(0, 1, 0, 0);
+					Engine::DrawCircleW(editor->selected->transform.worldPosition(), Normalize(Vec3(rx.x, rx.y, rx.z)), Normalize(Vec3(ry.x, ry.y, ry.z)), 2 / scale, 32, white(), 2);
+				}
+				else if (bb == 1)
 					Engine::DrawCircleW(editor->selected->transform.worldPosition(), Vec3(0, 1, 0), Vec3(0, 0, 1), 2 / scale, 32, white(), 2);
 				else if (bb == 2)
 					Engine::DrawCircleW(editor->selected->transform.worldPosition(), Vec3(1, 0, 0), Vec3(0, 0, 1), 2 / scale, 32, white(), 2);
@@ -634,16 +673,16 @@ void EB_Viewer::Draw() {
 	glLoadIdentity();
 
 	if (editor->selected != nullptr) {
-		Vec4 spos = projMatrix*editor->selectedMvMatrix*Vec4(0, 0, 0, 1);
-		spos /= spos.w;
-		Engine::DrawCircleW(Vec3(spos.x, spos.y, 0), Vec3(1.0f / Display::width, 0, 0), Vec3(0, 1.0f / Display::height, 0), 20, 24, white(), 2, true);
+		editor->selectedSpos = projMatrix*editor->selectedMvMatrix*Vec4(0, 0, 0, 1);
+		editor->selectedSpos /= editor->selectedSpos.w;
+		Engine::DrawCircleW(Vec3(editor->selectedSpos.x, editor->selectedSpos.y, 0), Vec3(1.0f / Display::width, 0, 0), Vec3(0, 1.0f / Display::height, 0), 20, 24, white(), 2, true);
 		if (modifying == 0) {
 			if (selectedTooltip == 1) {
-				Engine::DrawCircleW(Vec3(spos.x, spos.y, 0), Vec3(1.0f / Display::width, 0, 0), Vec3(0, 1.0f / Display::height, 0), 140, 24, yellow(), 2);
+				Engine::DrawCircleW(Vec3(editor->selectedSpos.x, editor->selectedSpos.y, 0), Vec3(1.0f / Display::width, 0, 0), Vec3(0, 1.0f / Display::height, 0), 140, 24, yellow(), 2);
 			}
 		}
 		else {
-			Engine::DrawLineWDotted(Vec3(spos.x, spos.y, 0), Vec3((Input::mousePos.x - v.r)/v.b * 2 - 1, -((Input::mousePos.y - v.g - EB_HEADER_SIZE - 1)/(v.a - EB_HEADER_SIZE - 1) * 2 - 1), 0), white(1, 0.1f), 1, 12.0f / Display::height);
+			Engine::DrawLineWDotted(Vec3(editor->selectedSpos.x, editor->selectedSpos.y, 0), Vec3((Input::mousePos.x - v.r)/v.b * 2 - 1, -((Input::mousePos.y - v.g - EB_HEADER_SIZE - 1)/(v.a - EB_HEADER_SIZE - 1) * 2 - 1), 0), white(1, 0.1f), 1, 12.0f / Display::height);
 		}
 	}
 
@@ -716,7 +755,7 @@ void EB_Viewer::Draw() {
 	if (editor->_showDebugInfo) {
 		Engine::Label(v.x + 50, v.y + 30, 12, "z=" + to_string(rz) + " w = " + to_string(rw), editor->font, white());
 		Engine::Label(v.x + 50, v.y + 55, 12, "fov=" + to_string(fov) + " scale=" + to_string(scale), editor->font, white());
-		Vec4 r = invMatrix * Vec4(1, 0, 0, 0);
+		//Vec4 r = invMatrix * Vec4(1, 0, 0, 0);
 		Engine::Label(v.x + 50, v.y + 80, 12, "center=" + to_string(rotCenter), editor->font, white());
 	}
 }
@@ -813,18 +852,24 @@ void EB_Viewer::OnMouseM(Vec2 d) {
 		if (modifying >> 4 == 1) {
 			switch (modifying & 0x0f) {
 			case 1:
-				editor->selected->transform.position = preModVals + Vec3((modVal.x) * 40 / scl, 0, 0);
+				editor->selected->transform.Translate(Vec3((Input::mouseDelta.x / Display::width) * 40 / scl, 0, 0));
 				break;
 			case 2:
-				editor->selected->transform.position = preModVals + Vec3(0, (modVal.x) * 40 / scl, 0);
+				editor->selected->transform.Translate(Vec3(0, (Input::mouseDelta.x / Display::width) * 40 / scl, 0));
 				break;
 			case 3:
-				editor->selected->transform.position = preModVals + Vec3(0, 0, (modVal.x) * 40 / scl);
+				editor->selected->transform.Translate(Vec3(0, 0, (Input::mouseDelta.x / Display::width) * 40 / scl));
 				break;
 			}
 		}
 		else if (modifying >> 4 == 2) {
+			Vec4 r;
 			switch (modifying & 0x0f) {
+			case 0:
+				r = Vec4(0, 0, -1, 0);
+				r = invMatrix*r;
+				editor->selected->transform.Rotate(Normalize(Vec3(r.x, r.y, r.z))*(Input::mouseDelta.x / Display::width)*360.0f, Space_World);
+				break;
 			case 1:
 				editor->selected->transform.Rotate(Vec3((Input::mouseDelta.x / Display::width) * 360, 0, 0), selectedOrient == 0 ? Space_World : Space_Self);
 				break;
@@ -870,7 +915,7 @@ void EB_Viewer::OnMousePress(int i) {
 				break;
 			}
 		}
-		else editor->selected->transform._UpdateLMatrix();
+		editor->selected->transform._UpdateLMatrix();
 		modifying = 0;
 	}
 }
@@ -923,7 +968,7 @@ void EBI_DrawObj(Vec4 v, Editor* editor, EB_Inspector* b, SceneObject* o) {
 	for (Component* c : o->_components)
 	{
 		c->DrawInspector(editor, c, v, off);
-		if (editor->WAITINGREFRESHFLAG) //deleted
+		if (!!(editor->flags & WAITINGREFRESHFLAG)) //deleted
 			return;
 	}
 }
@@ -998,9 +1043,18 @@ void EBI_DrawAss_Eff(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 	off += 34;
 }
 
+void EBI_DrawAss_Txt(Vec4 v, Editor* editor, EB_Inspector* b, float off) {
+	uint sz = editor->selectedFileTexts.size();
+	Engine::DrawQuad(v.r + 2, off, v.b - 4, 14*sz + 4, black(0.8f));
+	for (uint a = 0; a < sz; a++) {
+		Engine::Label(v.r + 4, off + a*14 + 2, 12, editor->selectedFileTexts[a], editor->font, white());
+	}
+}
+
 void EB_Inspector::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	CalcV(v);
+	if (maximize) v = Vec4(0, 0, Display::width, Display::height);
 	DrawHeaders(editor, this, &v, "Inspector");// isAsset ? (loaded ? label : "No object selected") : nm);
 	string nm;
 	if (lock)
@@ -1069,6 +1123,10 @@ void EB_Inspector::Draw() {
 	}
 	else if (editor->selected != nullptr){
 		EBI_DrawObj(v, editor, this, editor->selected);
+	}
+	else if (editor->selectedFileTexts.size() > 0) {
+		Engine::Label(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 12, editor->selectedFileName, editor->font, white());
+		EBI_DrawAss_Txt(v, editor, this, v.g + EB_HEADER_SIZE + 18);
 	}
 	else
 		Engine::Label(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 12, "Select object to inspect.", editor->font, white());
@@ -1164,6 +1222,7 @@ EB_AnimEditor::EB_AnimEditor(Editor* e, int x1, int y1, int x2, int y2): _editin
 void EB_AnimEditor::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	CalcV(v);
+	if (maximize) v = Vec4(0, 0, Display::width, Display::height);
 	DrawHeaders(editor, this, &v, "Animation Editor");
 	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
 
@@ -1269,6 +1328,7 @@ void EB_Previewer::FindEditor() {
 void EB_Previewer::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	CalcV(v);
+	if (maximize) v = Vec4(0, 0, Display::width, Display::height);
 	DrawHeaders(editor, this, &v, "Previewer");
 
 	if (viewer == nullptr) FindEditor();
@@ -1329,6 +1389,7 @@ void EB_Previewer::Draw() {
 void EB_ColorPicker::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	CalcV(v);
+	if (maximize) v = Vec4(0, 0, Display::width, Display::height);
 	DrawHeaders(editor, this, &v, "Color Picker");
 }
 
@@ -1422,12 +1483,15 @@ ASSETID Editor::GetAssetInfo(string p, ASSETTYPE &type, ASSETID& i) {
 				return x;
 			}
 			string uu;
-			if (t.first == ASSETTYPE_MATERIAL || t.first == ASSETTYPE_CAMEFFECT)
+			switch (t.first) {
+			case ASSETTYPE_MATERIAL:
+			case ASSETTYPE_CAMEFFECT:
 				uu = projectFolder + "Assets\\" + u;
-			//if (t.first == ASSETTYPE_MESH)
-			//	u = projectFolder + "Assets\\" + u + ".mesh.meta";
-			else
+				break;
+			default:
 				uu = projectFolder + "Assets\\" + u + ".meta";
+				break;
+			}
 			if (uu == p) {
 				type = t.first;
 				i = x;
@@ -1437,7 +1501,7 @@ ASSETID Editor::GetAssetInfo(string p, ASSETTYPE &type, ASSETID& i) {
 			x++;
 		}
 	}
-	type = -1;
+	type = ASSETTYPE_UNDEF;
 	i = -1;
 	return -1;
 }
@@ -1612,6 +1676,7 @@ void Editor::LoadDefaultAssets() {
 	globalShorts.emplace(GetShortcutInt(Key_S, Key_Control), &SaveScene);
 	globalShorts.emplace(GetShortcutInt(Key_O, Key_Control), &OpenScene);
 	globalShorts.emplace(GetShortcutInt(Key_X, Key_Control), &DeleteActive);
+	//globalShorts.emplace(GetShortcutInt(Key_Space, Key_Shift), &Maximize);
 
 	assetTypes.emplace("scene", ASSETTYPE_SCENE);
 	assetTypes.emplace("mesh", ASSETTYPE_MESH);
@@ -1836,6 +1901,8 @@ void Editor::DrawHandles() {
 	for (EditorBlock* b : blocks)
 	{
 		Vec4 v = Vec4(Display::width*xPoss[b->x1], Display::height*yPoss[b->y1], Display::width*xPoss[b->x2], Display::height*yPoss[b->y2]);
+		if (b->maximize) v = Vec4(0, 0, Display::width, Display::height);
+		else if (hasMaximize) continue;
 
 		//Engine::DrawQuad(v.r + 1, v.g + 2 + EB_HEADER_PADDING, EB_HEADER_PADDING, EB_HEADER_SIZE - 1 - EB_HEADER_PADDING, grey1());
 		//Engine::DrawQuad(v.b - EB_HEADER_PADDING, v.g + 2 + EB_HEADER_PADDING, EB_HEADER_PADDING, EB_HEADER_SIZE - 1 - EB_HEADER_PADDING, grey1());
@@ -1883,59 +1950,61 @@ void Editor::DrawHandles() {
 		r++;
 	}
 
-	for (BlockCombo* c : blockCombos) {
-		c->Draw();
-	}
+	if (!hasMaximize) {
+		for (BlockCombo* c : blockCombos) {
+			c->Draw();
+		}
 
-	// adjust lines
-	if (activeX == -1 && activeY == -1) {
-		byte b;
-		for (int q = xPoss.size() - 1; q >= 2; q--) { //ignore 0 1
-			Int2 lim = xLimits.at(q);
-			b = Engine::EButton((editorLayer == 0), xPoss.at(q)*Display::width - 2, Display::height*yPoss.at(lim.x), 4, Display::height*yPoss.at(lim.y), black(0), white(0.3f, 1), white(0.7f, 1));
-			if (b && MOUSE_HOVER_FLAG > 0) {
-				if (b == MOUSE_CLICK) {
-					activeX = q;
-					dw = 1.0f / Display::width;
-					dh = 1.0f / Display::height;
-					//mousePosOld = Input::mousePosRelative.x;
+		// adjust lines
+		if (activeX == -1 && activeY == -1) {
+			byte b;
+			for (int q = xPoss.size() - 1; q >= 2; q--) { //ignore 0 1
+				Int2 lim = xLimits.at(q);
+				b = Engine::EButton((editorLayer == 0), xPoss.at(q)*Display::width - 2, Display::height*yPoss.at(lim.x), 4, Display::height*yPoss.at(lim.y), black(0), white(0.3f, 1), white(0.7f, 1));
+				if (b && MOUSE_HOVER_FLAG > 0) {
+					if (b == MOUSE_CLICK) {
+						activeX = q;
+						dw = 1.0f / Display::width;
+						dh = 1.0f / Display::height;
+						//mousePosOld = Input::mousePosRelative.x;
+					}
+					moused = true;
 				}
-				moused = true;
+			}
+			for (int q = yPoss.size() - 1; q >= 2 && !moused; q--) { //ignore 0 1
+				Int2 lim = yLimits.at(q);
+				b = Engine::EButton((editorLayer == 0), xPoss.at(lim.x)*Display::width, yPoss.at(q)*Display::height - 2, xPoss.at(lim.y)*Display::width, 4, black(0), white(0.3f, 1), white(0.7f, 1));
+				if (b && MOUSE_HOVER_FLAG > 0) {
+					if (b == MOUSE_CLICK) {
+						activeY = q;
+						dw = 1.0f / Display::width;
+						dh = 1.0f / Display::height;
+						//mousePosOld = Input::mousePosRelative.x;
+					}
+					moused = true;
+				}
 			}
 		}
-		for (int q = yPoss.size() - 1; q >= 2 && !moused; q--) { //ignore 0 1
-			Int2 lim = yLimits.at(q);
-			b = Engine::EButton((editorLayer == 0), xPoss.at(lim.x)*Display::width, yPoss.at(q)*Display::height - 2, xPoss.at(lim.y)*Display::width, 4, black(0), white(0.3f, 1), white(0.7f, 1));
-			if (b && MOUSE_HOVER_FLAG > 0) {
-				if (b == MOUSE_CLICK) {
-					activeY = q;
-					dw = 1.0f / Display::width;
-					dh = 1.0f / Display::height;
-					//mousePosOld = Input::mousePosRelative.x;
-				}
-				moused = true;
+		else if (activeX > -1) {
+			if (!Input::mouse0) {
+				activeX = -1;
 			}
-		}
-	}
-	else if (activeX > -1) {
-		if (!Input::mouse0) {
-			activeX = -1;
-		}
-		else {
-			Engine::DrawQuad(Input::mousePosRelative.x*Display::width - 2, 0.0f, 4.0f, (float)Display::height, white(0.7f, 1));
-			xPoss[activeX] = clamp(Input::mousePosRelative.x, dw * 2, 1 - dw * 5);
-		}
-		moused = true;
-	}
-	else {
-		if (!Input::mouse0) {
-			activeY = -1;
+			else {
+				Engine::DrawQuad(Input::mousePosRelative.x*Display::width - 2, 0.0f, 4.0f, (float)Display::height, white(0.7f, 1));
+				xPoss[activeX] = clamp(Input::mousePosRelative.x, dw * 2, 1 - dw * 5);
+			}
+			moused = true;
 		}
 		else {
-			Engine::DrawQuad(0.0f, Input::mousePosRelative.y*Display::height - 2, (float)Display::width, 4.0f, white(0.7f, 1));
-			yPoss[activeY] = clamp(Input::mousePosRelative.y, dh * 2, 1 - dh * 5);
+			if (!Input::mouse0) {
+				activeY = -1;
+			}
+			else {
+				Engine::DrawQuad(0.0f, Input::mousePosRelative.y*Display::height - 2, (float)Display::width, 4.0f, white(0.7f, 1));
+				yPoss[activeY] = clamp(Input::mousePosRelative.y, dh * 2, 1 - dh * 5);
+			}
+			moused = true;
 		}
-		moused = true;
 	}
 
 	if (editorLayer > 0) {
@@ -2697,7 +2766,7 @@ bool DoMsBuild(Editor* e) {
 }
 
 void Editor::Compile(Editor* e) {
-	e->WAITINGBUILDSTARTFLAG = true;
+	e->flags |= WAITINGBUILDSTARTFLAG;
 }
 
 void AddOtherScenes(Editor* e, string dir, std::vector<string> &v1, std::vector<bool> &v2) {

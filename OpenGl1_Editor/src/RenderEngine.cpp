@@ -606,6 +606,27 @@ void Camera::_RenderSky(Mat4x4 ip, GLuint d_texs[], GLuint d_depthTex, float w, 
 }
 
 void Light::ScanParams() {
+	paramLocs_Point.clear();
+#define PBSL paramLocs_Point.push_back(glGetUniformLocation(Camera::d_pLightProgram,
+	PBSL "_IP"));
+	PBSL "inColor"));
+	PBSL "inNormal"));
+	PBSL "inSpec"));
+	PBSL "inDepth"));
+	PBSL "screenSize"));
+	PBSL "lightPos"));
+	PBSL "lightDir"));
+	PBSL "lightColor"));
+	PBSL "lightStrength"));
+	PBSL "lightMinDist"));
+	PBSL "lightMaxDist"));
+	PBSL "lightCookie"));
+	PBSL "lightCookieStrength"));
+	PBSL "lightDepth"));
+	PBSL "lightDepthBias"));
+	PBSL "lightDepthStrength"));
+	PBSL "lightFalloffType"));
+#undef PBSL
 	paramLocs_Spot.clear();
 #define PBSL paramLocs_Spot.push_back(glGetUniformLocation(Camera::d_sLightProgram,
 	PBSL "_IP"));
@@ -631,6 +652,7 @@ void Light::ScanParams() {
 	PBSL "lightContShad"));
 	PBSL "lightContShadStrength"));
 	PBSL "inEmi"));
+	PBSL "lightFalloffType"));
 #undef PBSL
 	paramLocs_SpotCS.clear();
 #define PBSL paramLocs_SpotCS.push_back(glGetUniformLocation(Camera::d_sLightCSProgram,
@@ -680,19 +702,64 @@ void Camera::_ApplyEmission(GLuint d_fbo, GLuint d_texs[], float w, float h, GLu
 
 
 void Camera::_DoDrawLight_Point(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs[], GLuint d_depthTex, GLuint ctar, GLuint c_tex, float w, float h, GLuint tar) {
-	//draw 6 spotlights
-	return;
-#define DSL _DoDrawLight_Spot(l, ip, d_fbo, d_texs, d_depthTex, ctar, c_tex, w, h, tar);
-#define RTT l->object->transform.Rotate(0, 0, 90);
-	l->angle = 45;
-	DSL RTT
-	DSL RTT
-	DSL RTT
-	DSL RTT
-	DSL RTT
-	DSL RTT
-#undef DSL
-#undef RTT
+	if (l->maxDist <= 0 || l->angle <= 0 || l->intensity <= 0) return;
+	if (l->minDist <= 0) l->minDist = 0.00001f;
+
+	if (d_pLightProgram == 0) {
+		Debug::Error("SpotLightPass", "Fatal: Shader not initialized!");
+		abort();
+	}
+
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, d_fbo);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, tar);
+#define sloc l->paramLocs_Point
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(2, GL_FLOAT, 0, screenRectVerts);
+	glUseProgram(d_pLightProgram);
+
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, screenRectVerts);
+
+	glUniformMatrix4fv(sloc[0], 1, GL_FALSE, glm::value_ptr(ip));
+
+	glUniform1i(sloc[1], 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, d_texs[0]);
+	glUniform1i(sloc[2], 1);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, d_texs[1]);
+	glUniform1i(sloc[3], 2);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, d_texs[2]);
+	glUniform1i(sloc[4], 3);
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D, d_depthTex);
+	glUniform2f(sloc[5], w, h);
+	Vec3 wpos = l->object->transform.worldPosition();
+	glUniform3f(sloc[6], wpos.x, wpos.y, wpos.z);
+	Vec3 dir = l->object->transform.forward();
+	glUniform3f(sloc[7], dir.x, dir.y, dir.z);
+	glUniform3f(sloc[8], l->color.x, l->color.y, l->color.z);
+	glUniform1f(sloc[9], l->intensity);
+	glUniform1f(sloc[10], l->minDist);
+	glUniform1f(sloc[11], l->maxDist);
+	/*
+	if (l->cookie) {
+		glUniform1i(sloc[16], 5);
+		glActiveTexture(GL_TEXTURE5);
+		glBindTexture(GL_TEXTURE_2D, l->cookie->pointer);
+	}
+	glUniform1f(sloc[17], l->cookie ? l->cookieStrength : 0);
+	*/
+	glUniform1i(sloc[17], (int)l->falloff);
+
+#undef sloc
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, screenRectIndices);
+
+	glDisableVertexAttribArray(0);
+	glUseProgram(0);
+	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
 void Camera::_DoDrawLight_Spot_Contact(Light* l, Mat4x4& p, GLuint d_depthTex, float w, float h, GLuint src, GLuint tar) {
@@ -742,6 +809,7 @@ void Camera::_DoDrawLight_Spot_Contact(Light* l, Mat4x4& p, GLuint d_depthTex, f
 void Camera::_DoDrawLight_Spot(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs[], GLuint d_depthTex, GLuint ctar, GLuint c_tex, float w, float h, GLuint tar) {
 	if (l->maxDist <= 0 || l->angle <= 0 || l->intensity <= 0) return;
 	if (l->minDist <= 0) l->minDist = 0.00001f;
+	l->CalcShadowMatrix();
 	if (l->drawShadow) {
 		l->DrawShadowMap(tar);
 		glViewport(0, 0, (int)w, (int)h); //shadow map modifies viewport
@@ -897,12 +965,15 @@ void Camera::DumpBuffers() {
 GLuint Light::_shadowFbo = 0;
 GLuint Light::_shadowGITexs[] = {0, 0, 0};
 GLuint Light::_shadowMap = 0;
+GLuint Light::_shadowCubeFbos[] = { 0, 0, 0, 0, 0, 0 };
+GLuint Light::_shadowCubeMap = 0;
 GLuint Light::_fluxFbo = 0;
 GLuint Light::_fluxTex = 0;
 GLuint Light::_rsmFbo = 0;
 GLuint Light::_rsmTex = 0;
 GLuint Light::_rsmUBO = 0;
 RSM_RANDOM_BUFFER Light::_rsmBuffer = RSM_RANDOM_BUFFER();
+std::vector<GLint> Light::paramLocs_Point = std::vector<GLint>();
 std::vector<GLint> Light::paramLocs_Spot = std::vector<GLint>();
 std::vector<GLint> Light::paramLocs_SpotCS = std::vector<GLint>();
 std::vector<GLint> Light::paramLocs_SpotFluxer = std::vector<GLint>();
@@ -942,7 +1013,36 @@ void Light::InitShadow() {
 	else {
 		Debug::Message("ShadowMap", "FB ok");
 	}
+	glBindTexture(GL_TEXTURE_2D, 0);
+	GLenum e;
+	/* depth cube
+	glGenFramebuffers(6, _shadowCubeFbos);
+	glGenTextures(1, &_shadowCubeMap);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, _shadowCubeMap);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BASE_LEVEL, 0);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAX_LEVEL, 0);
+	glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	e = glGetError();
+	for (uint a = 0; a < 1; a++) {
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _shadowCubeFbos[a]);
+		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + a, 0, GL_DEPTH_COMPONENT32F, 512, 512, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_CUBE_MAP_POSITIVE_X + a, _shadowCubeMap, 0);
+
+		Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+		if (Status != GL_FRAMEBUFFER_COMPLETE) {
+			Debug::Error("ShadowMap", "FB cube error:" + Status);
+			abort();
+		}
+	}
+
+	Debug::Message("ShadowMap", "FB cube ok");
+	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+	*/
 	InitRSM();
 
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
@@ -1040,7 +1140,7 @@ void Light::DrawShadowMap(GLuint tar) {
 	//switch (_lightType) {
 	//case LIGHTTYPE_SPOT:
 	//case LIGHTTYPE_DIRECTIONAL:
-	CalcShadowMatrix();
+	//CalcShadowMatrix();
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	DrawSceneObjectsOpaque(Scene::active->objects);
