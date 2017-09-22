@@ -19,15 +19,15 @@ Mat4x4 GetMatrix(GLenum type) {
 	return Mat4x4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
 }
 
-void DrawSceneObjectsOpaque(std::vector<SceneObject*> oo) {
+void Camera::DrawSceneObjectsOpaque(std::vector<SceneObject*> oo, GLuint shader) {
 	for (SceneObject* sc : oo)
 	{
 		glPushMatrix();
 		glMultMatrixf(glm::value_ptr(sc->transform.localMatrix()));
 		MeshRenderer* mrd = sc->GetComponent<MeshRenderer>();
 		if (mrd != nullptr)
-			mrd->DrawDeferred();
-		DrawSceneObjectsOpaque(sc->children);
+			mrd->DrawDeferred(shader);
+		Camera::DrawSceneObjectsOpaque(sc->children, shader);
 		glPopMatrix();
 	}
 }
@@ -362,7 +362,7 @@ void EB_Previewer::DrawPreview(Vec4 v) {
 	//render opaque
 
 	glViewport(0, 0, (int)previewWidth, (int)previewHeight);
-	DrawSceneObjectsOpaque(editor->activeScene->objects);
+	Camera::DrawSceneObjectsOpaque(editor->activeScene->objects);
 
 	//*glDisable(GL_DEPTH_TEST);
 	//glDepthMask(false);
@@ -485,7 +485,7 @@ void Camera::Render(RenderTexture* target) {
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	//render opaque
-	DrawSceneObjectsOpaque(Scene::active->objects);
+	Camera::DrawSceneObjectsOpaque(Scene::active->objects);
 
 	glDisable(GL_DEPTH_TEST);
 	glDepthMask(false);
@@ -1015,7 +1015,7 @@ void Light::InitShadow() {
 	}
 	glBindTexture(GL_TEXTURE_2D, 0);
 	GLenum e;
-	/* depth cube
+	//* depth cube
 	glGenFramebuffers(6, _shadowCubeFbos);
 	glGenTextures(1, &_shadowCubeMap);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, _shadowCubeMap);
@@ -1027,22 +1027,26 @@ void Light::InitShadow() {
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 	e = glGetError();
-	for (uint a = 0; a < 1; a++) {
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _shadowCubeFbos[a]);
+	for (uint a = 0; a < 6; a++) {
 		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + a, 0, GL_DEPTH_COMPONENT32F, 512, 512, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 
+	}
+	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+	e = glGetError();
+
+	for (uint a = 0; a < 6; a++) {
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _shadowCubeFbos[a]);
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_CUBE_MAP_POSITIVE_X + a, _shadowCubeMap, 0);
 
 		Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 		if (Status != GL_FRAMEBUFFER_COMPLETE) {
-			Debug::Error("ShadowMap", "FB cube error:" + Status);
+			Debug::Error("ShadowMap", "FB cube error: " + Status);
 			abort();
 		}
 	}
 
 	Debug::Message("ShadowMap", "FB cube ok");
-	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-	*/
+	//*/
 	InitRSM();
 
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
@@ -1143,7 +1147,7 @@ void Light::DrawShadowMap(GLuint tar) {
 	//CalcShadowMatrix();
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	DrawSceneObjectsOpaque(Scene::active->objects);
+	Camera::DrawSceneObjectsOpaque(Scene::active->objects);
 	//	break;           
 	//}
 
@@ -1242,8 +1246,64 @@ void ReflectionProbe::_DoUpdate() {
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
 		//render opaque
-		DrawSceneObjectsOpaque(Scene::active->objects);
+		Camera::DrawSceneObjectsOpaque(Scene::active->objects);
 	}
 	glDisable(GL_DEPTH_TEST);
 	glDepthMask(false);
+}
+
+void CubeMap::_RenderCube(Vec3 pos, Vec3 xdir, GLuint fbos[], uint size, GLuint shader) {
+	glViewport(0, 0, size, size);
+	glUseProgram(shader);
+
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LEQUAL);
+	glDepthMask(true);
+	glDisable(GL_BLEND);
+	
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glMultMatrixf(glm::value_ptr(glm::perspectiveFov(PI, (float)size, (float)size, 0.001f, 1000.0f)));
+	glScalef(1, -1, -1);
+	//glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(QuatFunc::FromAxisAngle(Vec3(0, 1, 0), PI))));
+	glTranslatef(pos.x, pos.y, pos.z);
+	_DoRenderCubeFace(fbos[4]);
+	glTranslatef(-pos.x, -pos.y, -pos.z);
+	glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(QuatFunc::FromAxisAngle(Vec3(0, 1, 0), PI))));
+	glTranslatef(pos.x, pos.y, pos.z);
+	_DoRenderCubeFace(fbos[0]);
+	glTranslatef(-pos.x, -pos.y, -pos.z);
+	glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(QuatFunc::FromAxisAngle(Vec3(0, 1, 0), PI))));
+	glTranslatef(pos.x, pos.y, pos.z);
+	_DoRenderCubeFace(fbos[5]);
+	glTranslatef(-pos.x, -pos.y, -pos.z);
+	glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(QuatFunc::FromAxisAngle(Vec3(0, 1, 0), PI))));
+	glTranslatef(pos.x, pos.y, pos.z);
+	_DoRenderCubeFace(fbos[1]);
+	glTranslatef(-pos.x, -pos.y, -pos.z);
+	glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(QuatFunc::FromAxisAngle(Vec3(0, 0, 1), PI))));
+	glTranslatef(pos.x, pos.y, pos.z);
+	_DoRenderCubeFace(fbos[2]);
+	glTranslatef(-pos.x, -pos.y, -pos.z);
+	glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(QuatFunc::FromAxisAngle(Vec3(0, 0, 1), 2*PI))));
+	glTranslatef(pos.x, pos.y, pos.z);
+	_DoRenderCubeFace(fbos[3]);
+
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+}
+
+void CubeMap::_DoRenderCubeFace(GLuint fbo) {
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
+	float zero[] = { 0,0,0,0 };
+	float one = 1;
+	glClearBufferfv(GL_COLOR, 0, zero);
+	glClearBufferfv(GL_DEPTH, 0, &one);
+	glClearBufferfv(GL_COLOR, 1, zero);
+	glClearBufferfv(GL_COLOR, 2, zero);
+	glClearBufferfv(GL_COLOR, 3, zero);
+	glMatrixMode(GL_MODELVIEW);
+	Camera::DrawSceneObjectsOpaque(Scene::active->objects);
 }

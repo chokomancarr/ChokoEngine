@@ -43,7 +43,7 @@ protected:
 	static COMPONENT_TYPE Name2Type(string nm);
 
 	virtual void LoadDefaultValues() {} //also loads assets
-	virtual void DrawEditor(EB_Viewer* ebv) {} //trs matrix not applied, apply before calling
+	virtual void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) {} //trs matrix not applied, apply before calling
 	virtual void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) = 0;
 	//virtual void DrawGameCamera() {}
 	virtual void Serialize(Editor* e, std::ofstream* stream) = 0;
@@ -90,6 +90,7 @@ class Mesh : public AssetObject {
 public:
 	//Mesh(); //until i figure out normal recalc algorithm
 	bool loaded;
+	Mesh(const std::vector<Vec3>& verts, const std::vector<Vec3>& norms, const std::vector<int>& tris, std::vector<Vec2> uvs = std::vector<Vec2>());
 
 	std::vector<Vec3> vertices;
 	std::vector<Vec3> normals, tangents;// , bitangents;
@@ -340,11 +341,16 @@ public:
 	const ushort size;
 	bool loaded;
 	CubeMap(ushort size, bool mips = false, GLenum type = GL_RGBA, byte dataSize = 4, GLenum format = GL_RGBA, GLenum dataType = GL_UNSIGNED_BYTE);
+	
+	friend class Camera;
 	friend class ReflectionProbe;
 protected:
 	uint pointer;
 	uint facePointers[6];
 	std::vector<uint> facePointerMips[6]; //[face id] [mip level]
+
+	static void _RenderCube(Vec3 pos, Vec3 xdir, GLuint fbos[], uint size, GLuint shader = 0);
+	static void _DoRenderCubeFace(GLuint fbo);
 };
 
 #define COMP_UNDEF 0x00
@@ -420,13 +426,17 @@ public:
 	friend class Engine;
 	friend class Light;
 	friend class RenderTexture;
+	friend class ReflectionProbe;
+	friend class CubeMap;
 protected:
 	Camera(std::ifstream& stream, SceneObject* o, long pos = -1);
 
 	std::vector<ASSETID> _effects;
 
+	static void DrawSceneObjectsOpaque(std::vector<SceneObject*> oo, GLuint shader = 0);
 	void RenderLights(GLuint targetFbo = 0);
 	void DumpBuffers();
+
 	void _RenderProbesMask(std::vector<SceneObject*>& objs, Mat4x4 mat, std::vector<ReflectionProbe*>& probes), _RenderProbes(std::vector<ReflectionProbe*>& probes, Mat4x4 mat);
 	void _DoRenderProbeMask(ReflectionProbe* p, Mat4x4& ip), _DoRenderProbe(ReflectionProbe* p, Mat4x4& ip);
 	static void _RenderSky(Mat4x4 ip, GLuint d_texs[], GLuint d_depthTex, float w = Display::width, float h = Display::height);
@@ -435,7 +445,7 @@ protected:
 	static void _DoDrawLight_Point(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs[], GLuint d_depthTex, GLuint ctar, GLuint c_tex, float w = Display::width, float h = Display::height, GLuint targetFbo = 0);
 	static void _DoDrawLight_Spot(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs[], GLuint d_depthTex, GLuint ctar, GLuint c_tex, float w = Display::width, float h = Display::height, GLuint targetFbo = 0);
 	static void _DoDrawLight_Spot_Contact(Light* l, Mat4x4& p, GLuint d_depthTex, float w, float h, GLuint src, GLuint tar);
-
+	
 	Vec3 camVerts[6];
 	static int camVertsIds[19];
 	GLuint d_fbo, d_texs[4], d_depthTex;
@@ -458,7 +468,7 @@ protected:
 	static void InitShaders();
 	void UpdateCamVerts();
 	void InitGBuffer();
-	void DrawEditor(EB_Viewer* ebv) override;
+	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
 	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, std::ofstream* stream) override;
 
@@ -496,19 +506,19 @@ public:
 	MeshRenderer();
 	std::vector<Material*> materials;
 
-	void DrawEditor(EB_Viewer* ebv) override;
+	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
 	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
 
 	void Serialize(Editor* e, std::ofstream* stream) override;
 	void Refresh() override;
 
+	friend class Camera;
 	friend class Editor;
 	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
-	friend void DrawSceneObjectsOpaque(std::vector<SceneObject*> oo);
 protected:
 	MeshRenderer(std::ifstream& stream, SceneObject* o, long pos = -1);
 
-	void DrawDeferred();
+	void DrawDeferred(GLuint shader = 0);
 
 	std::vector<ASSETID> _materials;
 	bool overwriteWriteMask;
@@ -548,7 +558,7 @@ public:
 	std::vector<Material*> materials;
 	Animator* anim;
 
-	//void DrawEditor(EB_Viewer* ebv) override;
+	//void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
 	//void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
 
 	//void Serialize(Editor* e, std::ofstream* stream) override;
@@ -612,7 +622,7 @@ public:
 	bool square = false;
 	LIGHT_FALLOFF falloff;
 
-	void DrawEditor(EB_Viewer* ebv) override;
+	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
 	void DrawShadowMap(GLuint tar = 0), BlitRSMFlux(), DrawRSM(Mat4x4& ip, Mat4x4& lp, float w, float h, GLuint gtexs[], GLuint gdepth);
 
 	friend int main(int argc, char **argv);
@@ -677,7 +687,7 @@ protected:
 	CubeMap* map;
 	GLuint mipFbos[7];
 
-	void DrawEditor(EB_Viewer* ebv) override;
+	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
 	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, std::ofstream* stream) override;
 

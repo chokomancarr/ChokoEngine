@@ -70,7 +70,6 @@ Camera::Camera(std::ifstream& stream, SceneObject* o, long pos) : Camera() {
 */
 }
 
-/// <summary>Clear, Reset Projection Matrix</summary>
 void Camera::ApplyGL() {
 	switch (clearType) {
 	case CAM_CLEAR_COLOR:
@@ -170,7 +169,7 @@ void Camera::UpdateCamVerts() {
 #endif
 }
 
-void Camera::DrawEditor(EB_Viewer* ebv) {
+void Camera::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(3, GL_FLOAT, 0, &camVerts[0]);
 	glLineWidth(1);
@@ -329,7 +328,7 @@ MeshRenderer::MeshRenderer(std::ifstream& stream, SceneObject* o, long pos) : Co
 	//_Strm2Asset(stream, Editor::instance, t, _mat);
 }
 
-void MeshRenderer::DrawEditor(EB_Viewer* ebv) {
+void MeshRenderer::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 	MeshFilter* mf = (MeshFilter*)dependacyPointers[0];
 	if (mf->mesh == nullptr || !mf->mesh->loaded)
 		return;
@@ -347,7 +346,8 @@ void MeshRenderer::DrawEditor(EB_Viewer* ebv) {
 	for (uint m = 0; m < mf->mesh->materialCount; m++) {
 		if (materials[m] == nullptr)
 			continue;
-		materials[m]->ApplyGL(m1, m2);
+		if (shader == 0) materials[m]->ApplyGL(m1, m2);
+		else glUseProgram(shader);
 		glEnableVertexAttribArray(0);
 		glEnableVertexAttribArray(1);
 		glEnableVertexAttribArray(2);
@@ -371,8 +371,8 @@ void MeshRenderer::DrawEditor(EB_Viewer* ebv) {
 	}
 }
 
-void MeshRenderer::DrawDeferred() {
-	DrawEditor(nullptr);
+void MeshRenderer::DrawDeferred(GLuint shader) {
+	DrawEditor(nullptr, shader);
 }
 
 void MeshRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
@@ -410,9 +410,11 @@ void MeshRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 					switch (materials[a]->valOrders[q]) {
 					case SHADER_INT:
 						Engine::EButton(e->editorLayer == 0, v.r + v.b * 0.3f + 17, v.g + pos , v.b*0.7f - 17, 16, grey1(), LerpVec4(grey1(), white(), 0.1f), LerpVec4(grey1(), black(), 0.5f), to_string(*(int*)bbs), 12, e->font, white());
+						*(int*)bbs = (int)round(Engine::DrawSliderFill(v.r + v.b*0.6f + 18, v.g + pos, v.b*0.4f - 19, 16, 0, 1, (float)(*(int*)bbs), grey2(), white()));
 						break;
 					case SHADER_FLOAT:
-						Engine::EButton(e->editorLayer == 0, v.r + v.b * 0.3f + 17, v.g + pos , v.b*0.7f - 17, 16, grey1(), LerpVec4(grey1(), white(), 0.1f), LerpVec4(grey1(), black(), 0.5f), to_string(*(float*)bbs), 12, e->font, white());
+						Engine::EButton(e->editorLayer == 0, v.r + v.b * 0.3f + 17, v.g + pos , v.b*0.6f - 17, 16, grey1(), LerpVec4(grey1(), white(), 0.1f), LerpVec4(grey1(), black(), 0.5f), to_string(*(float*)bbs), 12, e->font, white());
+						*(float*)bbs = Engine::DrawSliderFill(v.r + v.b*0.6f + 18, v.g + pos, v.b*0.4f - 19, 16, 0, 1, *(float*)bbs, grey2(), white());
 						break;
 					case SHADER_SAMPLER:
 						e->DrawAssetSelector(v.r + v.b * 0.3f + 17, v.g + pos, v.b*0.7f - 17, 16, grey1(), ASSETTYPE_TEXTURE, 12, e->font, &((MatVal_Tex*)bbs)->id, _UpdateTex, bbs);
@@ -488,7 +490,7 @@ void SkinnedMeshRenderer::ApplyAnim() {
 
 }
 
-void Light::DrawEditor(EB_Viewer* ebv) {
+void Light::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 	if (ebv->editor->selected != object) return;
 	switch (_lightType) { 
 	case LIGHTTYPE_POINT:
@@ -701,7 +703,7 @@ Light::Light(std::ifstream& stream, SceneObject* o, long pos) : Light() {
 	_cookie = -1;
 }
 
-void ReflectionProbe::DrawEditor(EB_Viewer* ebv) {
+void ReflectionProbe::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 	Engine::DrawCircleW(Vec3(), Vec3(1, 0, 0), Vec3(0, 1, 0), 0.2f, 12, Vec4(1, 0.76f, 0.80, 1), 1);
 	Engine::DrawCircleW(Vec3(), Vec3(0, 1, 0), Vec3(0, 0, 1), 0.2f, 12, Vec4(1, 0.76f, 0.80, 1), 1);
 	Engine::DrawCircleW(Vec3(), Vec3(0, 0, 1), Vec3(1, 0, 0), 0.2f, 12, Vec4(1, 0.76f, 0.80, 1), 1);

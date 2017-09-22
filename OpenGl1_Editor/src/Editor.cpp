@@ -146,8 +146,8 @@ void EB_Debug::Draw() {
 	for (int x = drawIds.size() - 1, y = 0; x >= 0; x--, y++) {
 		byte t = editor->messageTypes[drawIds[x]];
 		Vec4 col = (t == 0) ? white() : ((t==1)? yellow() : red());
-		Engine::DrawQuad(v.r + 1, v.g + v.a - 36 - y * 15, v.b - 2, 14, Vec4(1, 1, 1, ((x&1)==1)? 0.2f : 0.1f));
-		Engine::Label(v.r + 3, v.g + v.a - 36 - y * 15, 12, editor->messages[drawIds[x]].first + " says: " + editor->messages[drawIds[x]].second, editor->font, col);
+		Engine::DrawQuad(v.r + 1, v.g + v.a - 36 - y * 15 + scrollOffset, v.b - 2, 14, Vec4(1, 1, 1, ((x&1)==1)? 0.2f : 0.1f));
+		Engine::Label(v.r + 3, v.g + v.a - 36 - y * 15 + scrollOffset, 12, editor->messages[drawIds[x]].first + " says: " + editor->messages[drawIds[x]].second, editor->font, col);
 	}
 	if (Engine::EButton((editor->editorLayer == 0), v.r + 1, v.g + v.a - 21, 80, 20, grey1(), "Messages", 12, editor->font, drawM ? white() : grey2()) == MOUSE_RELEASE) {
 		drawM = !drawM;
@@ -175,6 +175,13 @@ void EB_Debug::Refresh() {
 			drawIds.push_back(q);
 		q++;
 	}
+	maxScroll = q*17;
+	scrollOffset = 0;
+}
+
+void EB_Debug::OnMouseScr(bool up) {
+	scrollOffset += up ? 17 : -17;
+	scrollOffset = clamp(scrollOffset, 0, max(maxScroll - (Display::height*(editor->yPoss[y2] - editor->yPoss[y1]) - EB_HEADER_SIZE - 1), 0));
 }
 
 void EBH_DrawItem(SceneObject* sc, Editor* e, Vec4* v, int& i, const float& offset, int indent) {
@@ -1977,9 +1984,9 @@ void Editor::DrawHandles() {
 				if (b && MOUSE_HOVER_FLAG > 0) {
 					if (b == MOUSE_CLICK) {
 						activeY = q;
-						dw = 1.0f / Display::width;
-						dh = 1.0f / Display::height;
-						//mousePosOld = Input::mousePosRelative.x;
+dw = 1.0f / Display::width;
+dh = 1.0f / Display::height;
+//mousePosOld = Input::mousePosRelative.x;
 					}
 					moused = true;
 				}
@@ -2018,7 +2025,7 @@ void Editor::DrawHandles() {
 					canPress = menuFuncSingle != nullptr;
 				else
 					canPress = menuFuncs[r] != nullptr;
-				if (Engine::Button(popupPos.x, popupPos.y + off, 200, 15, white(1, Input::KeyHold(InputKey(Key_1 + r))? 0.3f : 0.7f), "(" + to_string(r + 1) + ") " + menuNames[r], 12, font, canPress? black() : red(1, 0.6f)) == MOUSE_RELEASE || Input::KeyUp(InputKey(Key_1 + r))) {
+				if (Engine::Button(popupPos.x, popupPos.y + off, 200, 15, white(1, Input::KeyHold(InputKey(Key_1 + r)) ? 0.3f : 0.7f), "(" + to_string(r + 1) + ") " + menuNames[r], 12, font, canPress ? black() : red(1, 0.6f)) == MOUSE_RELEASE || Input::KeyUp(InputKey(Key_1 + r))) {
 					editorLayer = 0;
 					if (menuFuncIsSingle) {
 						if (canPress) {
@@ -2050,8 +2057,8 @@ void Editor::DrawHandles() {
 		}
 		else if (editorLayer == 3) {
 			Engine::DrawQuad(0, 0, (float)Display::width, (float)Display::height, black(0.8f));
-			Engine::Label(Display::width*0.2f + 6, Display::height*0.2f, 22, browseIsComp? "Select Component" : "Select Asset", font, white());
-			if (Engine::Button(Display::width*0.2f + 6, Display::height*0.2f + 26, Display::width*0.3f - 7, 14, grey2(), "undefined", 12, font, white()) == MOUSE_RELEASE) {
+			Engine::Label(Display::width*0.2f + 6, Display::height*0.2f, 22, browseIsComp ? "Select Component" : "Select Asset", font, white());
+			if (Engine::Button(Display::width*0.2f + 6, Display::height*0.2f + 26, Display::width*0.3f - 7, 14, Vec4(0.4f, 0.2f, 0.2f, 1), "undefined", 12, font, white()) == MOUSE_RELEASE) {
 				if (browseIsComp) {
 					browseTargetComp->comp = nullptr;
 					browseTargetComp->path = "";
@@ -2076,8 +2083,15 @@ void Editor::DrawHandles() {
 				}
 			}
 			else {
-				for (int r = 0, rr = normalAssets[browseType].size(); r < rr; r++) {
-					byte b = Engine::Button(Display::width*0.2f + 6 + (Display::width*0.3f - 5)*((r + 1) & 1), Display::height*0.2f + 41 + 15 * (((r + 1) >> 1) - 1), Display::width*0.3f - 7, 14, grey2(), normalAssets[browseType][r], 12, font, white());
+				int ar = 1;
+				for (int e = 0, ee = internalAssets[browseType].size(); e < ee; e++, ar++) {
+					byte b = Engine::Button(Display::width*0.2f + 6 + (Display::width*0.3f - 5)*(ar & 1), Display::height*0.2f + 41 + 15 * ((ar >> 1) - 1), Display::width*0.3f - 7, 14, Vec4(0.2f, 0.2f, 0.4f, 1), internalAssets[browseType][e], 12, font, white());
+					if (b & MOUSE_HOVER_FLAG) {
+						
+					}
+				}
+				for (int r = 0, rr = normalAssets[browseType].size(); r < rr; r++, ar++) {
+					byte b = Engine::Button(Display::width*0.2f + 6 + (Display::width*0.3f - 5)*(ar & 1), Display::height*0.2f + 41 + 15 * ((ar >> 1) - 1), Display::width*0.3f - 7, 14, grey2(), normalAssets[browseType][r], 12, font, white());
 					if (b & MOUSE_HOVER_FLAG) {
 						pendingPreview = true;
 						previewType = browseType;
@@ -2381,6 +2395,36 @@ void Editor::ResetAssetMap() {
 	normalAssetCaches[ASSETTYPE_ANIMCLIP] = std::vector<AssetObject*>(); //AnimClip*
 	normalAssetCaches[ASSETTYPE_ANIMATOR] = std::vector<AssetObject*>(); //Animator*
 	normalAssetCaches[ASSETTYPE_CAMEFFECT] = std::vector<AssetObject*>(); //CameraEffect*
+
+	if (!internalAssetsLoaded) {
+		internalAssets = std::unordered_map<ASSETTYPE, std::vector<string>>(normalAssets);
+		internalAssetCaches = std::unordered_map<ASSETTYPE, std::vector<AssetObject*>>(normalAssetCaches);
+		LoadInternalAssets();
+	}
+}
+
+void Editor::LoadInternalAssets() {
+	std::ifstream strm(dataPath + "res\\InternalAssets\\index");
+	char cs[50];
+	ASSETTYPE actt = ASSETTYPE_UNDEF;
+	while (!strm.eof()) {
+		strm.getline(cs, 50);
+		string s(cs);
+		if (s.empty() || cs[0] == '#') continue;
+		if (s.substr(0, 2) == "0x") actt = (ASSETTYPE)std::stoul(s, nullptr, 16);
+		else {
+			if (s.substr(0, 11) == "procedural\\") {
+				internalAssets[actt].push_back(s);
+				switch (actt) {
+				case ASSETTYPE_MESH:
+					internalAssetCaches[actt].push_back(Procedurals::UVSphere(16, 12));
+					break;
+				}
+			}
+		}
+	}
+
+	internalAssetsLoaded = true;
 }
 
 void Editor::ReloadAssets(string path, bool recursive) {
@@ -2492,13 +2536,18 @@ void Editor::AddBuildLog(Editor* e, string s, bool forceE) {
 }
 
 void* Editor::GetCache(ASSETTYPE type, int i) {
-	if (i < 0)
+	if (i == -1)
 		return nullptr;
-	void *data = normalAssetCaches[type][i];
-	if (data != nullptr)
-		return data;
+	else if (i < 0) {
+		return internalAssetCaches[type][-i-2];
+	}
 	else {
-		return GenCache(type, i);
+		void *data = normalAssetCaches[type][i];
+		if (data != nullptr)
+			return data;
+		else {
+			return GenCache(type, i);
+		}
 	}
 }
 

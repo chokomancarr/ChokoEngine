@@ -1152,6 +1152,18 @@ void CameraEffect::Save(string path) {
 
 
 //-----------------mesh class------------------------
+Mesh::Mesh(const std::vector<Vec3>& verts, const std::vector<Vec3>& norms, const std::vector<int>& tris, std::vector<Vec2> uvs) : AssetObject(ASSETTYPE_MESH) {
+	vertices = std::vector<Vec3>(verts);
+	vertexCount = verts.size();
+	normals = std::vector<Vec3>(norms);
+	triangles = std::vector<int>(tris);
+	triangleCount = tris.size() / 3;
+	uv0 = std::vector<Vec2>(uvs);
+	materialCount = 1;
+	_matTriangles.push_back(std::vector<int>(tris));
+	loaded = (vertexCount > 0) && (normals.size() == vertexCount) && (triangleCount > 0);
+}
+
 Mesh::Mesh(Editor* e, int i) : AssetObject(ASSETTYPE_MESH) {
 	Mesh* m2 = _GetCache<Mesh>(type, i);
 	vertices = m2->vertices;

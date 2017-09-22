@@ -52,6 +52,8 @@ string to_string(Vec2 v), to_string(Vec3 v), to_string(Vec4 v), to_string(Quat v
 
 Vec3 to_vec3(Vec4 v);
 
+class Mesh;
+
 namespace ChokoEngine {
 	class QuatFunc {
 	public:
@@ -93,6 +95,11 @@ namespace ChokoEngine {
 	protected:
 
 		static void DrawSV(float x, float y, float w, float h);
+	};
+
+	class Procedurals {
+	public:
+		static Mesh* UVSphere(uint uCount, uint vCount);
 	};
 }
 
@@ -267,8 +274,8 @@ public:
 	static std::vector<string> GetFiles(const string& path, string ext = "");
 	static std::vector<EB_Browser_File> GetFilesE(Editor* e, const string& path);
 	static void GetFolders(const string& path, std::vector<string>* names, bool hidden = false);
-	static bool HasDirectory(LPCTSTR szPath);
-	static bool HasFile(LPCTSTR szPath);
+	static bool HasDirectory(string szPath);
+	static bool HasFile(string szPath);
 	static string ReadFile(const string& path);
 	static std::vector<string> GetRegistryKeys(HKEY key);
 	static string GetText(const string& path);

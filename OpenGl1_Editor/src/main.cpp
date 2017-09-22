@@ -78,12 +78,12 @@ int main(int argc, char **argv)
 	std::cout << "Enter project folder path" << std::endl;
 
 	std::getline(std::cin, editor->projectFolder);
-	if (editor->projectFolder == "")
+	//if (editor->projectFolder == "")
 		editor->projectFolder = "D:\\TestProject2\\";
-	else while (!IO::HasDirectory(editor->projectFolder.c_str())) {
-		std::cout << "Invalid project folder path: " << editor->projectFolder << std::endl;
-		std::getline(std::cin, editor->projectFolder);
-	}
+	//else while (!IO::HasDirectory(editor->projectFolder.c_str())) {
+	//	std::cout << "Invalid project folder path: " << editor->projectFolder << std::endl;
+	//	std::getline(std::cin, editor->projectFolder);
+	//}
 	//*/
 
 	editor->hwnd = hwnd;
@@ -191,6 +191,7 @@ int main(int argc, char **argv)
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glFrontFace(GL_CW);
+		glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 		glutDisplayFunc(renderScene);
 		glutTimerFunc(1000, TimerGL, 0);
 		glutMouseFunc(MouseGL);

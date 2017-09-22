@@ -1,8 +1,8 @@
 #include "Defines.h"
 
-#ifndef IS_EDITOR
-#error Editor inclusion is not allowed in game
-#endif
+//#ifndef IS_EDITOR
+//#error Editor inclusion is not allowed in game
+//#endif
 
 #ifndef EDITOR_H
 #define EDITOR_H
@@ -101,6 +101,7 @@ public:
 
 	void Draw();
 	void Refresh();
+	void OnMouseScr(bool up) override;
 };
 
 class EB_Hierarchy: public EditorBlock {
@@ -478,11 +479,12 @@ public:
 	std::unordered_map<string, ASSETTYPE> assetTypes;
 	std::unordered_map<ASSETTYPE, std::vector<string>> allAssets;
 	std::vector<string> headerAssets, cppAssets, blendAssets;
-	std::unordered_map<ASSETTYPE, std::vector<string>> normalAssets;
+	std::unordered_map<ASSETTYPE, std::vector<string>> normalAssets, internalAssets;
 	std::unordered_map <ASSETTYPE, std::pair<ASSETTYPE, std::vector<uint>>> derivedAssets;
-	std::unordered_map<ASSETTYPE, std::vector<AssetObject*>> normalAssetCaches;
+	std::unordered_map<ASSETTYPE, std::vector<AssetObject*>> normalAssetCaches, internalAssetCaches;
+	bool internalAssetsLoaded;
 
-	void ResetAssetMap();
+	void ResetAssetMap(), LoadInternalAssets();
 
 	void DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASSETTYPE type, float labelSize, Font* labelFont, ASSETID* tar, callbackFunc func = nullptr, void* param = nullptr);
 	void DrawCompSelector(float x, float y, float w, float h, Vec4 col, float labelSize, Font* labelFont, CompRef* tar, callbackFunc func = nullptr, void* param = nullptr);
