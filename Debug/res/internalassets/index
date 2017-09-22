@@ -1,0 +1,7 @@
+# internal and procedural assets
+# lines starting with # will be ignored
+
+# mesh
+0x21
+teapot
+procedural\sphere
