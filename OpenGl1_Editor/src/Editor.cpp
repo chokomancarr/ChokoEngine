@@ -1435,7 +1435,7 @@ void Editor::DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASS
 	}
 	ALIGNMENT al = labelFont->alignment;
 	labelFont->alignment = ALIGN_MIDLEFT;
-	Engine::Label(round((*tar == -1) ? x + 2 : x + h + 3), round(y + 0.4f*h), labelSize, (*tar == -1) ? "undefined" : normalAssets[type][*tar], labelFont, (*tar == -1) ? Vec4(0.7f, 0.4f, 0.4f, 1) : Vec4(0.4f, 0.4f, 0.7f, 1));
+	Engine::Label(round((*tar == -1) ? x + 2 : x + h + 3), round(y + 0.4f*h), labelSize, GetAssetName(type, *tar), labelFont, (*tar == -1) ? Vec4(0.7f, 0.4f, 0.4f, 1) : Vec4(0.4f, 0.4f, 0.7f, 1));
 	labelFont->alignment = al;
 }
 
@@ -1541,6 +1541,18 @@ ASSETID Editor::GetAssetId(AssetObject* i, ASSETTYPE&) {
 		}
 	}
 	return -1;
+}
+
+string Editor::GetAssetName(ASSETTYPE type, ASSETID i) {
+	if (i == -1)
+		return "undefined";
+	else if (i < 0) {
+		if (i <= -(1 << 8))
+			return proceduralAssets[type][(-i) - (1 << 8)];
+		else
+			return internalAssets[type][-i - 2];
+	}
+	else return normalAssets[type][i];
 }
 
 void Editor::ReadPrefs() {
@@ -2124,6 +2136,18 @@ dh = 1.0f / Display::height;
 						
 					}
 				}
+				for (int r = 0, rr = proceduralAssets[browseType].size(); r < rr; r++, ar++) {
+					byte b = Engine::Button(Display::width*0.2f + 6 + (Display::width*0.3f - 5)*(ar & 1), Display::height*0.2f + 41 + 15 * ((ar >> 1) - 1), Display::width*0.3f - 7, 14, Vec4(0.2f, 0.4f, 0.2f, 1), proceduralAssets[browseType][r], 12, font, white());
+					if (b & MOUSE_HOVER_FLAG) {
+						if (b == MOUSE_RELEASE) {
+							*browseTarget = -(r + (1 << 8));
+							editorLayer = 0;
+							if (browseCallback != nullptr)
+								(*browseCallback)(browseCallbackParam);
+							return;
+						}
+					}
+				}
 				for (int r = 0, rr = normalAssets[browseType].size(); r < rr; r++, ar++) {
 					byte b = Engine::Button(Display::width*0.2f + 6 + (Display::width*0.3f - 5)*(ar & 1), Display::height*0.2f + 41 + 15 * ((ar >> 1) - 1), Display::width*0.3f - 7, 14, grey2(), normalAssets[browseType][r], 12, font, white());
 					if (b & MOUSE_HOVER_FLAG) {
@@ -2467,10 +2491,10 @@ void Editor::LoadInternalAssets() {
 		if (s.substr(0, 2) == "0x") actt = (ASSETTYPE)std::stoul(s, nullptr, 16);
 		else {
 			if (s.substr(0, 11) == "procedural\\") {
-				internalAssets[actt].push_back(s);
+				proceduralAssets[actt].push_back(s);
 				switch (actt) {
 				case ASSETTYPE_MESH:
-					internalAssetCaches[actt].push_back(Procedurals::UVSphere(16, 12));
+					proceduralAssetCaches[actt].push_back(Procedurals::UVSphere(16, 12));
 					break;
 				}
 			}
@@ -2598,7 +2622,10 @@ void* Editor::GetCache(ASSETTYPE type, int i) {
 	if (i == -1)
 		return nullptr;
 	else if (i < 0) {
-		return internalAssetCaches[type][-i-2];
+		if (i <= -(1 << 8))
+			return proceduralAssetCaches[type][(-i) - (1 << 8)];
+		else
+			return internalAssetCaches[type][-i - 2];
 	}
 	else {
 		void *data = normalAssetCaches[type][i];

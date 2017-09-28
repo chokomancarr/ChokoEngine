@@ -1161,6 +1161,8 @@ Mesh::Mesh(const std::vector<Vec3>& verts, const std::vector<Vec3>& norms, const
 	uv0 = std::vector<Vec2>(uvs);
 	materialCount = 1;
 	_matTriangles.push_back(std::vector<int>(tris));
+	CalcTangents();
+	RecalculateBoundingBox();
 	loaded = (vertexCount > 0) && (normals.size() == vertexCount) && (triangleCount > 0);
 }
 

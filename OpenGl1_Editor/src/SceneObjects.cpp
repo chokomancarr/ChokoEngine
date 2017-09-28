@@ -302,7 +302,7 @@ void MeshFilter::SetMesh(int i) {
 
 void MeshFilter::_UpdateMesh(void* i) {
 	MeshFilter* mf = (MeshFilter*)i;
-	if (mf->_mesh >= 0) {
+	if (mf->_mesh != -1) {
 		mf->mesh = _GetCache<Mesh>(ASSETTYPE_MESH, mf->_mesh);
 	}
 	else

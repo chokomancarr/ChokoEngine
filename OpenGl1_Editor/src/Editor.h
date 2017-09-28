@@ -509,6 +509,7 @@ public:
 	void DrawColorSelector(float x, float y, float w, float h, Vec4 col, float labelSize, Font* labelFont, Vec4* tar);
 	ASSETID GetAssetInfoH(string p), GetAssetInfo(string p, ASSETTYPE &type, ASSETID& i);
 	ASSETID GetAssetId(AssetObject* p), GetAssetId(AssetObject* p, ASSETTYPE& t);
+	string GetAssetName(ASSETTYPE t, ASSETID id);
 
 	void ReadPrefs(), SavePrefs();
 	void LoadDefaultAssets();
