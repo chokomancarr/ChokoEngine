@@ -431,7 +431,7 @@ Background::Background(int i, Editor* editor) : width(0), height(0), AssetObject
 
 	uint width_1 = width, height_1 = height, width_2, height_2, mips = 0;
 
-	ShaderBase shd = ShaderBase(Camera::d_blurProgram);
+	ShaderBase shd = ShaderBase(Camera::d_blurSBProgram);
 	Material mat = Material(&shd);
 
 	std::vector<RenderTexture*> rts = std::vector<RenderTexture*>();
@@ -692,8 +692,8 @@ void Material::_ReloadParams() {
 	}
 }
 
-Material::Material(string path) : AssetObject(ASSETTYPE_MATERIAL), writeMask(4, true) {
-	string p = Editor::instance->projectFolder + "Assets\\" + path;
+Material::Material(string p) : AssetObject(ASSETTYPE_MATERIAL), writeMask(4, true) {
+	//string p = Editor::instance->projectFolder + "Assets\\" + path;
 	std::ifstream stream(p.c_str());
 	if (!stream.good()) {
 		std::cout << "material not found!" << std::endl;
@@ -1107,8 +1107,8 @@ CameraEffect::CameraEffect(Material* mat) : AssetObject(ASSETTYPE_CAMEFFECT) {
 	material = mat;
 }
 
-CameraEffect::CameraEffect(string path) : AssetObject(ASSETTYPE_CAMEFFECT) {
-	string p = Editor::instance->projectFolder + "Assets\\" + path;
+CameraEffect::CameraEffect(string p) : AssetObject(ASSETTYPE_CAMEFFECT) {
+	//string p = Editor::instance->projectFolder + "Assets\\" + path;
 	std::ifstream stream(p.c_str());
 	if (!stream.good()) {
 		std::cout << "cameffect not found!" << std::endl;
@@ -1280,8 +1280,8 @@ Mesh::Mesh(std::ifstream& stream, uint offset) : AssetObject(ASSETTYPE_MESH), lo
 	}
 }
 
-Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0), triangleCount(0), materialCount(0) {
-	string p = Editor::instance->projectFolder + "Assets\\" + path + ".mesh.meta";
+Mesh::Mesh(string p) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0), triangleCount(0), materialCount(0) {
+	//string p = Editor::instance->projectFolder + "Assets\\" + path + ".mesh.meta";
 	std::ifstream stream(p.c_str(), std::ios::in | std::ios::binary);
 	if (!stream.good()) {
 		std::cout << "mesh file not found!" << std::endl;
@@ -1302,7 +1302,7 @@ Mesh::Mesh(string path) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCoun
 	char cc;
 	stream.read(&cc, 1);
 
-	std::cout << path << std::endl;
+	//std::cout << path << std::endl;
 	while (cc != 0) {
 		if (cc == 'V') {
 			_Strm2Val(stream, vertexCount);
@@ -1567,8 +1567,8 @@ bool Mesh::ParseBlend(Editor* e, string s) {
 }
 
 
-AnimClip::AnimClip(string path) : AssetObject(ASSETTYPE_ANIMCLIP) {
-	string p = Editor::instance->projectFolder + "Assets\\" + path + ".animclip.meta";
+AnimClip::AnimClip(string p) : AssetObject(ASSETTYPE_ANIMCLIP) {
+	//string p = Editor::instance->projectFolder + "Assets\\" + path + ".animclip.meta";
 	std::ifstream stream(p.c_str(), std::ios::in | std::ios::binary);
 	if (!stream.good()) {
 		std::cout << "animclip file not found!" << std::endl;
@@ -1613,8 +1613,8 @@ Animator::Animator() : AssetObject(ASSETTYPE_ANIMATOR), activeState(0), nextStat
 
 }
 
-Animator::Animator(string path) : Animator() {
-	string p = Editor::instance->projectFolder + "Assets\\" + path;
+Animator::Animator(string p) : Animator() {
+	//string p = Editor::instance->projectFolder + "Assets\\" + path;
 	std::ifstream stream(p.c_str());
 	if (!stream.good()) {
 		std::cout << "animator not found!" << std::endl;

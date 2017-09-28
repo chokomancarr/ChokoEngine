@@ -129,6 +129,9 @@ void EB_DrawScrollBar(const Vec4& v, const float& maxScroll, const float& scroll
 	}
 }
 
+float PopupBlock::x() { return editor->popupPos.x; }
+float PopupBlock::y() { return editor->popupPos.y; }
+
 void EB_Empty::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	CalcV(v);
@@ -1393,11 +1396,12 @@ void EB_Previewer::Draw() {
 }
 
 
-void EB_ColorPicker::Draw() {
-	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
-	CalcV(v);
-	if (maximize) v = Vec4(0, 0, Display::width, Display::height);
-	DrawHeaders(editor, this, &v, "Color Picker");
+void PB_ColorPicker::Draw() {
+	//Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
+	//CalcV(v);
+	//DrawHeaders(editor, this, &v, "Color Picker");
+	Color::DrawPicker(x(), y(), col);
+	*target = col.vec4();
 }
 
 void Editor::DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASSETTYPE type, float labelSize, Font* labelFont, ASSETID* tar, callbackFunc func, void* param) {
@@ -1457,7 +1461,10 @@ void Editor::DrawCompSelector(float x, float y, float w, float h, Vec4 col, floa
 void Editor::DrawColorSelector(float x, float y, float w, float h, Vec4 col, float labelSize, Font* labelFont, Vec4* tar) {
 	Engine::DrawQuad(x, y, w * 0.7f - 1, h, col);
 	Engine::Label(x + 2, y + 2, labelSize, Color::Col2Hex(*tar), labelFont, white());
-	Engine::DrawQuad(x + w*0.7f, y, w*0.3f, h*0.8f, Vec4(tar->r, tar->g, tar->b, 1));
+	//Engine::DrawQuad(x + w*0.7f, y, w*0.3f, h*0.8f, Vec4(tar->r, tar->g, tar->b, 1));
+	if (Engine::EButton(editorLayer == 0, x + w*0.7f, y, w*0.3f, h, Vec4(tar->r, tar->g, tar->b, 1)) == MOUSE_RELEASE) {
+		RegisterPopup(new PB_ColorPicker(this, tar), Vec2(Display::width*0.5f, Display::height*0.5f));
+	}
 	Engine::DrawQuad(x + w*0.7f, y + h * 0.8f, w*0.3f, h*0.2f, black());
 	Engine::DrawQuad(x + w*0.7f, y + h * 0.8f, w*0.3f*tar->a, h*0.2f, white());
 }
@@ -1467,6 +1474,10 @@ Editor::Editor() {
 	throw runtime_error("Editor class usage not allowed in game!");
 #endif
 	instance = this;
+}
+
+void Editor::InitShaders() {
+	Camera::GenShaderFromPath("D://lightPassVert.txt", "D://e_popupShadowFrag.txt", &instance->popupShadeProgram);
 }
 
 ASSETID Editor::GetAssetInfoH(string p) {
@@ -1902,6 +1913,29 @@ void Editor::UpdateLerpers() {
 	}
 }
 
+Color _col(Vec4(1.0f, 0.0f, 0.0f, 1.0f));
+void Editor::DrawPopup() {
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(2, GL_FLOAT, 0, Camera::screenRectVerts);
+	glUseProgram(popupShadeProgram);
+
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, Camera::screenRectVerts);
+
+	glUniform2f(glGetUniformLocation(popupShadeProgram, "screenSize"), Display::width, Display::height);
+	glUniform1f(glGetUniformLocation(popupShadeProgram, "distance"), 10);
+	glUniform1f(glGetUniformLocation(popupShadeProgram, "intensity"), 0.2f);
+	glUniform4f(glGetUniformLocation(popupShadeProgram, "pos"), popupPos.x, Display::height - popupPos.y - popup->h, popup->w, popup->h);
+
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, Camera::screenRectIndices);
+
+	glDisableVertexAttribArray(0);
+	glUseProgram(0);
+	glDisableClientState(GL_VERTEX_ARRAY);
+	popup->Draw();
+}
+
 void Editor::DrawHandles() {
 	bool moused = false;
 	int r = 0;
@@ -2039,7 +2073,7 @@ dh = 1.0f / Display::height;
 					return;
 				}
 				off += 16;
-				if ((menuPadding & (r + 1)) > 0) {
+				if ((menuPadding & (1 << r)) > 0) {
 					off++;
 				}
 
@@ -2171,6 +2205,15 @@ dh = 1.0f / Display::height;
 			}
 		}
 	}
+
+	if (popup) {
+		DrawPopup();
+		if (Input::mouse0State == MOUSE_DOWN && !Rect(popupPos.x, popupPos.y, popup->w, popup->h).Inside(Input::mousePos)) {
+			delete(popup);
+			popup = nullptr;
+		}
+	}
+
 	if (pendingPreview) {
 		pendingPreview = false;
 		previewTime += Time::delta;
@@ -2201,6 +2244,10 @@ void Editor::RegisterMenu(EditorBlock* block, string title, std::vector<string> 
 	menuFuncs = funcs;
 	popupPos = pos;
 	menuPadding = padding;
+	if (popup) {
+		delete(popup);
+		popup = nullptr;
+	}
 }
 
 void Editor::RegisterMenu(EditorBlock* block, string title, std::vector<string> names, dataFunc func, std::vector<void*> vals, int padding, Vec2 pos) {
@@ -2213,6 +2260,10 @@ void Editor::RegisterMenu(EditorBlock* block, string title, std::vector<string> 
 	menuFuncVals = vals;
 	popupPos = pos;
 	menuPadding = padding;
+	if (popup) {
+		delete(popup);
+		popup = nullptr;
+	}
 }
 
 Texture* Editor::GetRes(string name) {
@@ -2399,6 +2450,8 @@ void Editor::ResetAssetMap() {
 	if (!internalAssetsLoaded) {
 		internalAssets = std::unordered_map<ASSETTYPE, std::vector<string>>(normalAssets);
 		internalAssetCaches = std::unordered_map<ASSETTYPE, std::vector<AssetObject*>>(normalAssetCaches);
+		proceduralAssets = std::unordered_map<ASSETTYPE, std::vector<string>>(normalAssets);
+		proceduralAssetCaches = std::unordered_map<ASSETTYPE, std::vector<AssetObject*>>(normalAssetCaches);
 		LoadInternalAssets();
 	}
 }
@@ -2514,6 +2567,12 @@ void Editor::ScanBrowseComp() {
 		DoScanBrowseComp(o, browseTargetComp->type, "", browseCompList, browseCompListNames);
 }
 
+void Editor::RegisterPopup(PopupBlock* blk, Vec2 pos) {
+	if (popup) delete(popup);
+	popup = blk;
+	popupPos = pos;
+}
+
 void Editor::AddBuildLog(Editor* e, string s, bool forceE) {
 	std::lock_guard<std::mutex> lock(*Editor::lockMutex);
 	buildLog.push_back(s);
@@ -2552,21 +2611,22 @@ void* Editor::GetCache(ASSETTYPE type, int i) {
 }
 
 void* Editor::GenCache(ASSETTYPE type, int i) {
+	string pth = projectFolder + "Assets\\" + normalAssets[type][i];
 	switch (type) {
 	case ASSETTYPE_MESH:
-		normalAssetCaches[type][i] = new Mesh(normalAssets[type][i]);
+		normalAssetCaches[type][i] = new Mesh(pth + ".mesh.meta");
 		break;
 	case ASSETTYPE_ANIMCLIP:
-		normalAssetCaches[type][i] = new AnimClip(normalAssets[type][i]);
+		normalAssetCaches[type][i] = new AnimClip(pth + ".animclip.meta");
 		break;
 	case ASSETTYPE_ANIMATOR:
-		normalAssetCaches[type][i] = new Animator(normalAssets[type][i]);
+		normalAssetCaches[type][i] = new Animator(pth);
 		break;
 	case ASSETTYPE_SHADER:
-		normalAssetCaches[type][i] = new ShaderBase(normalAssets[type][i]);
+		normalAssetCaches[type][i] = new ShaderBase(pth + ".meta");
 		break;
 	case ASSETTYPE_MATERIAL:
-		normalAssetCaches[type][i] = new Material(normalAssets[type][i]);
+		normalAssetCaches[type][i] = new Material(pth);
 		break;
 	case ASSETTYPE_TEXTURE:
 		normalAssetCaches[type][i] = new Texture(i, this);
@@ -2575,7 +2635,7 @@ void* Editor::GenCache(ASSETTYPE type, int i) {
 		normalAssetCaches[type][i] = new Background(i, this);
 		break;
 	case ASSETTYPE_CAMEFFECT:
-		normalAssetCaches[type][i] = new CameraEffect(normalAssets[type][i]);
+		normalAssetCaches[type][i] = new CameraEffect(pth);
 		break;
 	default:
 		return nullptr;

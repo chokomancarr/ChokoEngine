@@ -48,6 +48,17 @@ string to_string(Quat v) {
 	return "(" + to_string(v.w) + ", " + to_string(v.x) + ", " + to_string(v.y) + ", " + to_string(v.z) + ")";
 }
 
+std::vector<string> string_split(string s, char c) {
+	std::vector<string> o = std::vector<string>();
+	size_t pos = -1;
+	do {
+		s = s.substr(pos + 1);
+		pos = s.find_first_of(c);
+		o.push_back(s.substr(0, pos));
+	} while (pos != string::npos);
+	return o;
+}
+
 Vec3 to_vec3(Vec4 v) {
 	if (v.w != 0) v /= v.w;
 	return Vec3(v.x, v.y, v.z);
@@ -84,24 +95,44 @@ void Color::Rgb2Hsv(byte r, byte g, byte b, float& h, float& s, float& v) {
 	float mn = min(min(R, G), B);
 	float mx = max(max(R, G), B);
 
-	v = 0.5f*(mn + mx);
-	if (mn != mx) {
-		if (v < 0.5f)
-			s = (mx - mn) / (mx + mn);
-		else
-			s = (mx - mn) / (2.0f - mx - mn);
-
-		if (R == mx) {
-			h = (G - B) / (mx - mn);
+	v = mx;// 0.5f*(mn + mx);
+	if (mx > 0) {
+		s = (mx - mn) / mx;// (1 - abs(2 * v - 1));
+		if (mn != mx) {
+			/*
+			if (v < 0.5f)
+				s = (mx - mn) / (mx + mn);
+			else
+				s = (mx - mn) / (2.0f - mx - mn);
+			*/
+			if (R == mx) {
+				h = (G - B) / (mx - mn);
+			}
+			else if (G == mx) {
+				h = 2.0f + (B - R) / (mx - mn);
+			}
+			else {
+				h = 4.0f + (R - G) / (mx - mn);
+			}
+			h /= 6;
+			if (h < 0) h += 1;
 		}
-		else if (G == mx) {
-			h = 2.0f + (B - R) / (mx - mn);
-		}
-		else {
-			h = 4.0f + (R - G) / (mx - mn);
-		}
-		h *= 60;
 	}
+	//else s = 0;
+}
+
+void Color::Hsv2Rgb(float h, float s, float v, byte& r, byte& g, byte& b) {
+	Vec4 cb = HueBaseCol(h);
+	Vec4 c(LerpVec4(LerpVec4(cb, Vec4(1, 1, 1, 1), 1 - s), Vec4(), 1-v));
+	r = (byte)round(c.r*255);
+	g = (byte)round(c.g*255);
+	b = (byte)round(c.b*255);
+}
+
+Vec3 Color::Rgb2Hsv(Vec4 col) {
+	Vec3 o = Vec3();
+	Rgb2Hsv(col.r, col.g, col.b, o.r, o.g, o.b);
+	return o;
 }
 
 string Color::Col2Hex(Vec4 col) {
@@ -115,37 +146,70 @@ string Color::Col2Hex(Vec4 col) {
 }
 
 void Color::DrawPicker(float x, float y, Color& c) {
-	Engine::DrawQuad(x, y, 270, 350, white(0.8f, 0.1f));
-	DrawSV(x + 10, y + 25, 200, 200);
-	Engine::DrawQuad(x + 220, y + 25, 15, 200, white());
+	Engine::DrawQuad(x, y, 270, c.useA ? 335 : 318, white(0.8f, 0.1f));
+	Vec2 v2 = Engine::DrawSliderFill2D(x + 10, y + 10, 220, 220, Vec2(), Vec2(1, 1), Vec2(1 - c.s, c.v), black(), grey1());
+	c.s = 1 - v2.x;
+	c.v = v2.y;
+	DrawSV(x + 10, y + 10, 220, 220, c.h);
+	Engine::DrawCircle(Vec2(x + 10 + 220 * (1 - c.s), y + 10 + 220 * (1 - c.v)), 8, 24, black(), 4);
+	Engine::DrawCircle(Vec2(x + 10 + 220 * (1 - c.s), y + 10 + 220 * (1 - c.v)), 8, 24, white(), 2);
+	//Engine::DrawQuad(x + 244, y + 10, 15, 220, white());
+	c.h = Engine::DrawSliderFillY(x + 244, y + 10, 15, 220, 0, 1, c.h, black(), white());
+	DrawH(x + 244, y + 10, 15, 220);
+	Engine::DrawLine(Vec3(x + 242, y + 10 + 220*c.h, 0), Vec3(x + 261, y + 10 + 220*c.h, 0), white(), 2);
 	
-	Engine::Label(x + 10, y + 235, 12, "HEX", Editor::instance->font, white());
-	Engine::Label(x + 10, y + 235 + 18, 12, "R", Editor::instance->font, white());
-	Engine::Label(x + 10, y + 235 + 35, 12, "G", Editor::instance->font, white());
-	Engine::Label(x + 10, y + 235 + 52, 12, "B", Editor::instance->font, white());
+	c.RecalcRGB();
 
-	Engine::DrawQuad(x + 40, y + 233, 170, 16, grey2());
-	Engine::Label(x + 42, y + 235, 12, c.hex(), Editor::instance->font, white());
-	c.r = (byte)Engine::DrawSliderFill(x + 40, y + 235 + 16, 170, 16, 0, 255, c.r, grey2(), red());
-	c.g = (byte)Engine::DrawSliderFill(x + 40, y + 235 + 33, 170, 16, 0, 255, c.g, grey2(), green());
-	c.b = (byte)Engine::DrawSliderFill(x + 40, y + 235 + 50, 170, 16, 0, 255, c.b, grey2(), blue());
+	y += 242;
 
-	Engine::DrawQuad(x + 212, y + 235 + 16, 47, 16, grey2());
-	Engine::Label(x + 214, y + 235 + 18, 12, to_string(c.r), Editor::instance->font, white());
-	Engine::DrawQuad(x + 212, y + 235 + 33, 47, 16, grey2());
-	Engine::Label(x + 214, y + 235 + 35, 12, to_string(c.g), Editor::instance->font, white());
-	Engine::DrawQuad(x + 212, y + 235 + 50, 47, 16, grey2());
-	Engine::Label(x + 214, y + 235 + 52, 12, to_string(c.b), Editor::instance->font, white());
+	Engine::Label(x + 10, y, 12, "HEX", Editor::instance->font, white());
+	Engine::Label(x + 10, y + 18, 12, "R", Editor::instance->font, white());
+	Engine::Label(x + 10, y + 35, 12, "G", Editor::instance->font, white());
+	Engine::Label(x + 10, y + 52, 12, "B", Editor::instance->font, white());
+
+	Engine::DrawQuad(x + 40, y - 2, 170, 16, grey2());
+	Engine::Label(x + 42, y, 12, c.hex(), Editor::instance->font, white());
+	c.r = (byte)round(Engine::DrawSliderFill(x + 40, y + 16, 170, 16, 0, 255, c.r, grey2(), red()));
+	c.g = (byte)round(Engine::DrawSliderFill(x + 40, y + 33, 170, 16, 0, 255, c.g, grey2(), green()));
+	c.b = (byte)round(Engine::DrawSliderFill(x + 40, y + 50, 170, 16, 0, 255, c.b, grey2(), blue()));
+
+	Engine::DrawQuad(x + 212, y + 16, 47, 16, grey2());
+	Engine::Label(x + 214, y + 18, 12, to_string(c.r), Editor::instance->font, white());
+	Engine::DrawQuad(x + 212, y + 33, 47, 16, grey2());
+	Engine::Label(x + 214, y + 35, 12, to_string(c.g), Editor::instance->font, white());
+	Engine::DrawQuad(x + 212, y + 50, 47, 16, grey2());
+	Engine::Label(x + 214, y + 52, 12, to_string(c.b), Editor::instance->font, white());
 
 	if (c.useA) {
-		Engine::Label(x + 10, y + 235 + 69, 12, "A", Editor::instance->font, white());
-		c.a = (byte)Engine::DrawSliderFill(x + 40, y + 235 + 67, 170, 16, 0, 255, c.a, grey2(), white());
-		Engine::DrawQuad(x + 212, y + 235 + 67, 47, 16, grey2());
-		Engine::Label(x + 214, y + 235 + 69, 12, to_string(c.a), Editor::instance->font, white());
+		Engine::Label(x + 10, y + 69, 12, "A", Editor::instance->font, white());
+		c.a = (byte)Engine::DrawSliderFill(x + 40, y + 67, 170, 16, 0, 255, c.a, grey2(), white());
+		Engine::DrawQuad(x + 212, y + 67, 47, 16, grey2());
+		Engine::Label(x + 214, y + 69, 12, to_string(c.a), Editor::instance->font, white());
 	}
+
+	c.RecalcHSV();
+	std::cout << to_string(c.vec4()) << std::endl << to_string(c.hsv()) << std::endl;
 }
 
-void Color::DrawSV(float x, float y, float w, float h) {
+Vec4 Color::HueBaseCol(float hue) {
+	hue *= 6;
+	Vec4 v;
+	v.r = clamp(abs(hue - 3) - 1, 0, 1);
+	v.g = 1 - clamp(abs(hue - 2) - 1, 0, 1);
+	v.b = 1 - clamp(abs(hue - 4) - 1, 0, 1);
+	v.a = 1;
+	return v;
+}
+
+void Color::RecalcRGB() {
+	Hsv2Rgb(h, s, v, r, g, b);
+}
+
+void Color::RecalcHSV() {
+	Rgb2Hsv(r, g, b, h, s, v);
+}
+
+void Color::DrawSV(float x, float y, float w, float h, float hue) {
 	Vec3 quadPoss[4];
 	Vec2 quadUvs[4] {Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0)};
 	quadPoss[0].x = x;
@@ -166,8 +230,45 @@ void Color::DrawSV(float x, float y, float w, float h) {
 	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
 	glUseProgram(pickerProgSV);
 
+	Vec4 bc = HueBaseCol(hue);
 	GLint baseColLoc = glGetUniformLocation(pickerProgSV, "col");
-	glUniform3f(baseColLoc, 1, 0, 0);
+	glUniform3f(baseColLoc, bc.r, bc.g, bc.b);
+
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &quadPoss[0]);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, &quadUvs[0]);
+
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glDrawElements(GL_QUADS, 4, GL_UNSIGNED_INT, &quadIndexes[0]);
+
+	glDisableVertexAttribArray(0);
+	glDisableVertexAttribArray(1);
+	glUseProgram(0);
+
+	glDisableClientState(GL_VERTEX_ARRAY);
+}
+
+void Color::DrawH(float x, float y, float w, float h) {
+	Vec3 quadPoss[4];
+	Vec2 quadUvs[4]{ Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0) };
+	quadPoss[0].x = x;
+	quadPoss[0].y = y;
+	quadPoss[1].x = x + w;
+	quadPoss[1].y = y;
+	quadPoss[2].x = x;
+	quadPoss[2].y = y + h;
+	quadPoss[3].x = x + w;
+	quadPoss[3].y = y + h;
+	for (int y = 0; y < 4; y++) {
+		quadPoss[y].z = 1;
+		//Vec3 v = quadPoss[y];
+		quadPoss[y] = Ds(Display::uiMatrix*quadPoss[y]);
+	}
+	uint quadIndexes[4] = { 0, 1, 3, 2 };
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
+	glUseProgram(pickerProgH);
 
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
@@ -220,8 +321,16 @@ Mesh* Procedurals::UVSphere(uint uCount, uint vCount) {
 	return new Mesh(verts, norms, tris, uvs);
 }
 
-bool Rect::Inside(Vec2 v) {
+bool Rect::Inside(const Vec2& v) {
 	return ((w > 0) ? (v.x > x && v.x < (x + w)) : (v.x >(x + w) && v.x < x)) && ((h > 0) ? (v.y > y && v.y < (y + h)) : (v.y >(y + h) && v.y < y));
+}
+
+Rect Rect::Intersection(const Rect& r2) {
+	float ox = max(x, r2.x);
+	float oy = max(y, r2.y);
+	float p2x = min(x + w, r2.x + r2.w);
+	float p2y = min(y + h, r2.y + r2.h);
+	return Rect(ox, oy, p2x - ox, p2y - oy);
 }
 
 float Random::Value() {
@@ -251,8 +360,8 @@ uint Engine::unlitProgram = 0;
 uint Engine::unlitProgramA = 0;
 uint Engine::unlitProgramC = 0;
 uint Engine::skyProgram = 0;
-uint Engine::blurProgram = 0;
 Font* Engine::defaultFont;
+Rect* Engine::stencilRect = nullptr;
 bool Input::mouse0 = false;
 bool Input::mouse1 = false;
 bool Input::mouse2 = false;
@@ -274,6 +383,7 @@ void Engine::Init(string path) {
 	Camera::InitShaders();
 //#endif
 	Font::Init();
+	Editor::InitShaders();
 
 	string vertcode = "#version 330 core\nlayout(location = 0) in vec3 pos;\nlayout(location = 1) in vec2 uv;\nout vec2 UV;\nvoid main(){ \ngl_Position.xyz = pos;\ngl_Position.w = 1.0;\nUV = uv;\n}";
 	string fragcode = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = textureLod(sampler, UV, 0)*col;\n}"; //out vec3 Vec4;\n
@@ -283,184 +393,30 @@ void Engine::Init(string path) {
 	//string fragcodeSky = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec2 dir;\nuniform float length;\nout vec4 Vec4;\nvoid main(){\nfloat ay = asin((dir.y + UV.y)/length);\nfloat l2 = length*cos(ay);\nfloat ax = asin((dir.x + UV.x)/l2);\nVec4 = texture(sampler, vec2(0.5, 0.5) + vec2(ax, ay));\nVec4.a = 1;\n}";
 	string fragcodeSky = "in vec2 UV;uniform sampler2D sampler;uniform vec2 dir;uniform float length;out vec4 color;void main(){float ay = asin((UV.y) / length);float l2 = length*cos(ay);float ax = asin((dir.x + UV.x) / l2);color = textureLod(sampler, vec2((dir.x + ax / 3.14159)*sin(dir.y + ay / 3.14159) + 0.5, (dir.y + ay / 3.14159)), 0);color.a = 1;}";
 
-	unlitProgram = glCreateProgram();
-	GLuint vertex_shader, fragment_shader;
-	int link_result = 0;
-	int info_log_length = 0;
-	if (ShaderBase::LoadShader(GL_VERTEX_SHADER, vertcode, vertex_shader)
-		&& ShaderBase::LoadShader(GL_FRAGMENT_SHADER, fragcode, fragment_shader)) {
-		glAttachShader(unlitProgram, vertex_shader);
-		glAttachShader(unlitProgram, fragment_shader);
-
-
-		glLinkProgram(unlitProgram);
-		glGetProgramiv(unlitProgram, GL_LINK_STATUS, &link_result);
-		if (link_result == GL_FALSE)
-		{
-			glGetProgramiv(unlitProgram, GL_INFO_LOG_LENGTH, &info_log_length);
-			std::vector<char> program_log(info_log_length);
-			glGetProgramInfoLog(unlitProgram, info_log_length, NULL, &program_log[0]);
-			std::cerr << "Default Shader link error" << std::endl << &program_log[0] << std::endl;
-			return;
-		}
-		glDetachShader(unlitProgram, vertex_shader);
-		glDetachShader(unlitProgram, fragment_shader);
-	}
-	else {
-		Debug::Error("Engine", "Fatal: Cannot init vert shader!");
-		abort();
-	}
-	glDeleteShader(fragment_shader);
-
-	GLuint fragment_shaderA;
-	if (ShaderBase::LoadShader(GL_FRAGMENT_SHADER, fragcode2, fragment_shaderA)) {
-		unlitProgramA = glCreateProgram();
-		glAttachShader(unlitProgramA, vertex_shader);
-		glAttachShader(unlitProgramA, fragment_shaderA);
-
-		link_result = 0;
-
-		glLinkProgram(unlitProgramA);
-		glGetProgramiv(unlitProgramA, GL_LINK_STATUS, &link_result);
-		if (link_result == GL_FALSE)
-		{
-			int info_log_length = 0;
-			glGetProgramiv(unlitProgramA, GL_INFO_LOG_LENGTH, &info_log_length);
-			std::vector<char> program_log(info_log_length);
-			glGetProgramInfoLog(unlitProgramA, info_log_length, NULL, &program_log[0]);
-			std::cerr << "Default Shader (Alpha) link error" << std::endl << &program_log[0] << std::endl;
-			abort();
-		}
-		glDetachShader(unlitProgramA, vertex_shader);
-		glDetachShader(unlitProgramA, fragment_shaderA);
-	}
-	else {
-		Debug::Error("Engine", "Fatal: Cannot init frag shader1!");
-		abort();
-	}
-	glDeleteShader(fragment_shaderA);
-
-	GLuint fragment_shaderC;
-	if (ShaderBase::LoadShader(GL_FRAGMENT_SHADER, fragcode3, fragment_shaderC)) {
-		unlitProgramC = glCreateProgram();
-		glAttachShader(unlitProgramC, vertex_shader);
-		glAttachShader(unlitProgramC, fragment_shaderC);
-
-		link_result = 0;
-
-		glLinkProgram(unlitProgramC);
-		glGetProgramiv(unlitProgramC, GL_LINK_STATUS, &link_result);
-		if (link_result == GL_FALSE)
-		{
-			int info_log_length = 0;
-			glGetProgramiv(unlitProgramC, GL_INFO_LOG_LENGTH, &info_log_length);
-			std::vector<char> program_log(info_log_length);
-			glGetProgramInfoLog(unlitProgramC, info_log_length, NULL, &program_log[0]);
-			std::cerr << "Default Shader (Vec4) link error" << std::endl << &program_log[0] << std::endl;
-			abort();
-		}
-		glDetachShader(unlitProgramC, vertex_shader);
-		glDetachShader(unlitProgramC, fragment_shaderC);
-		//defaultFont = &Font("D:\\ascii 2.font");
-	}
-	else {
-		Debug::Error("Engine", "Fatal: Cannot init frag shader2!");
-		abort();
-	}
-	glDeleteShader(fragment_shaderC);
-
-	GLuint fragment_shaderS;
-	if (ShaderBase::LoadShader(GL_FRAGMENT_SHADER, fragcodeSky, fragment_shaderS)) {
-		skyProgram = glCreateProgram();
-		glAttachShader(skyProgram, vertex_shader);
-		glAttachShader(skyProgram, fragment_shaderS);
-
-		link_result = 0;
-
-		glLinkProgram(skyProgram);
-		glGetProgramiv(skyProgram, GL_LINK_STATUS, &link_result);
-		if (link_result == GL_FALSE)
-		{
-			int info_log_length = 0;
-			glGetProgramiv(skyProgram, GL_INFO_LOG_LENGTH, &info_log_length);
-			std::vector<char> program_log(info_log_length);
-			glGetProgramInfoLog(skyProgram, info_log_length, NULL, &program_log[0]);
-			std::cerr << "Sky shader link error" << std::endl << &program_log[0] << std::endl;
-			abort();
-		}
-		glDetachShader(skyProgram, vertex_shader);
-		glDetachShader(skyProgram, fragment_shaderS);
-		//defaultFont = &Font("D:\\ascii 2.font");
-	}
-	else {
-		Debug::Error("Engine", "Fatal: Cannot init frag shader3!");
-		abort();
-	}
-	glDeleteShader(fragment_shaderS);
-
-	GLuint fragment_shaderB;
-	std::ifstream strm("D:\\blurPassFrag.txt");
-	std::stringstream ss;
-	ss << strm.rdbuf();
-	string error = "";
-	if (ShaderBase::LoadShader(GL_FRAGMENT_SHADER, ss.str(), fragment_shaderB, &error)) {
-		blurProgram = glCreateProgram();
-		glAttachShader(blurProgram, vertex_shader);
-		glAttachShader(blurProgram, fragment_shaderB);
-
-		link_result = 0;
-
-		glLinkProgram(blurProgram);
-		glGetProgramiv(blurProgram, GL_LINK_STATUS, &link_result);
-		if (link_result == GL_FALSE)
-		{
-			int info_log_length = 0;
-			glGetProgramiv(blurProgram, GL_INFO_LOG_LENGTH, &info_log_length);
-			std::vector<char> program_log(info_log_length);
-			glGetProgramInfoLog(blurProgram, info_log_length, NULL, &program_log[0]);
-			std::cerr << "Blur shader link error" << std::endl << &program_log[0] << std::endl;
-			abort();
-		}
-		glDetachShader(blurProgram, vertex_shader);
-		glDetachShader(blurProgram, fragment_shaderB);
-	}
-	else {
-		Debug::Error("Engine", "Fatal: Cannot init blur shader! " + error);
-		abort();
-	}
-	glDeleteShader(fragment_shaderB);
+	unlitProgram = ShaderBase::FromVF(vertcode, fragcode);
+	unlitProgramA = ShaderBase::FromVF(vertcode, fragcode2);
+	unlitProgramC = ShaderBase::FromVF(vertcode, fragcode3);
+	skyProgram = ShaderBase::FromVF(vertcode, fragcodeSky);
 
 #ifdef IS_EDITOR
-	string colorPickerV = "#version 330 core\nlayout(location = 0) in vec3 pos;\nlayout(location = 1) in vec2 uv;\nout vec2 UV;\nvoid main(){ \ngl_Position.xyz = pos;\ngl_Position.w = 1.0;\nUV = uv;\n}";
-	string colorPickerF = "#version 330 core\nin vec2 UV;\nuniform vec3 col;\nout vec4 color;void main(){\ncolor = vec4(mix(mix(col, vec3(1, 1, 1), UV.x), vec3(0, 0, 0), 1-UV.y), 1);\n}";
+	//string colorPickerV = "#version 330 core\nlayout(location = 0) in vec3 pos;\nlayout(location = 1) in vec2 uv;\nout vec2 UV;\nvoid main(){ \ngl_Position.xyz = pos;\ngl_Position.w = 1.0;\nUV = uv;\n}";
+	//string colorPickerF = "#version 330 core\nin vec2 UV;\nuniform vec3 col;\nout vec4 color;void main(){\ncolor = vec4(mix(mix(col, vec3(1, 1, 1), UV.x), vec3(0, 0, 0), 1-UV.y), 1);\n}";
 
-	Color::pickerProgSV = glCreateProgram();
-	string err;
-	if (ShaderBase::LoadShader(GL_VERTEX_SHADER, colorPickerV, vertex_shader, &err)
-		&& ShaderBase::LoadShader(GL_FRAGMENT_SHADER, colorPickerF, fragment_shader, &err)) {
-		glAttachShader(Color::pickerProgSV, vertex_shader);
-		glAttachShader(Color::pickerProgSV, fragment_shader);
+	std::ifstream strm("D:\\e_colorPickerSV.txt");
+	if (strm.fail()) { abort(); }
+	std::stringstream ss;
+	ss << strm.rdbuf();
+	std::vector<string> s2 = string_split(ss.str(), '$');
+	Color::pickerProgSV = ShaderBase::FromVF(s2[0], s2[1]);
 
-
-		glLinkProgram(Color::pickerProgSV);
-		glGetProgramiv(Color::pickerProgSV, GL_LINK_STATUS, &link_result);
-		if (link_result == GL_FALSE)
-		{
-			glGetProgramiv(Color::pickerProgSV, GL_INFO_LOG_LENGTH, &info_log_length);
-			std::vector<char> program_log(info_log_length);
-			glGetProgramInfoLog(Color::pickerProgSV, info_log_length, NULL, &program_log[0]);
-			std::cerr << "ColorPicker SV Shader link error" << std::endl << &program_log[0] << std::endl;
-			return;
-		}
-		glDetachShader(Color::pickerProgSV, vertex_shader);
-		glDetachShader(Color::pickerProgSV, fragment_shader);
-		glDeleteShader(fragment_shader);
-		glDeleteShader(vertex_shader);
-	}
-	else std::cout << err << std::endl;
+	strm.close();
+	strm.open("D:\\e_colorPickerH.txt");
+	if (strm.fail()) { abort(); }
+	std::stringstream ss2;
+	ss2 << strm.rdbuf();
+	std::vector<string> s22 = string_split(ss2.str(), '$');
+	Color::pickerProgH = ShaderBase::FromVF(s22[0], s22[1]);
 #endif
-
-	glDeleteShader(vertex_shader);
 }
 
 std::vector<std::ifstream*> Engine::assetStreams = std::vector<std::ifstream*>();
@@ -499,11 +455,16 @@ void Engine::BeginStencil(float x, float y, float w, float h) {
 	glDepthMask(GL_TRUE);
 	glStencilMask(0x0);
 	glStencilFunc(GL_EQUAL, 1, 0xFF);
+
+	stencilRect = new Rect(x, y, w, h);
 }
 
 void Engine::EndStencil() {
 	glDisable(GL_STENCIL_TEST);
 	glDisable(GL_DEPTH_TEST);
+
+	delete(stencilRect);
+	stencilRect = nullptr;
 }
 
 void Engine::DrawTexture(float x, float y, float w, float h, Texture* texture, DrawTex_Scaling scl) {
@@ -600,6 +561,9 @@ void Engine::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4, 
 }
 
 byte Engine::Button(float x, float y, float w, float h) {
+	if (stencilRect) {
+		if (!stencilRect->Intersection(Rect(x, y, w, h)).Inside(Input::mousePos)) return 0;
+	}
 	return Rect(x, y, w, h).Inside(Input::mousePos) ? (MOUSE_HOVER_FLAG | Input::mouse0State) : 0;
 }
 byte Engine::Button(float x, float y, float w, float h, Vec4 normalVec4) {
@@ -614,6 +578,10 @@ byte Engine::Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 hi
 		return 0;
 	}
 	bool inside = Rect(x, y, w, h).Inside(Input::mousePos);
+	if (stencilRect) {
+		if (!stencilRect->Intersection(Rect(x, y, w, h)).Inside(Input::mousePos))
+			inside = false;
+	}
 	switch (Input::mouse0State) {
 	case 0:
 	case MOUSE_UP:
@@ -632,6 +600,10 @@ byte Engine::Button(float x, float y, float w, float h, Texture* texture, Vec4 n
 		return 0;
 	}
 	bool inside = Rect(x, y, w, h).Inside(Input::mousePos);
+	if (stencilRect) {
+		if (!stencilRect->Intersection(Rect(x, y, w, h)).Inside(Input::mousePos))
+			inside = false;
+	}
 	switch (Input::mouse0State) {
 	case 0:
 	case MOUSE_UP:
@@ -663,6 +635,10 @@ byte Engine::EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4
 	}
 	if (a) {
 		bool inside = Rect(x, y, w, h).Inside(Input::mousePos);
+		if (stencilRect) {
+			if (!stencilRect->Intersection(Rect(x, y, w, h)).Inside(Input::mousePos))
+				inside = false;
+		}
 		switch (Input::mouse0State) {
 		case 0:
 		case MOUSE_UP:
@@ -693,6 +669,10 @@ byte Engine::EButton(bool a, float x, float y, float w, float h, Texture* textur
 	}
 	if (a) {
 	bool inside = Rect(x, y, w, h).Inside(Input::mousePos);
+	if (stencilRect) {
+		if (!stencilRect->Intersection(Rect(x, y, w, h)).Inside(Input::mousePos))
+			inside = false;
+	}
 	switch (Input::mouse0State) {
 	case 0:
 	case MOUSE_UP:
@@ -751,6 +731,38 @@ float Engine::DrawSliderFill(float x, float y, float w, float h, float min, floa
 		}
 	}
 	else DrawQuad(x + 1, y + 1, (w - 2)*vv, h - 2, foreground*(Rect(x, y, w, h).Inside(Input::mousePos)? 1 : 0.8f));
+	return v;
+}
+float Engine::DrawSliderFillY(float x, float y, float w, float h, float min, float max, float val, Vec4 background, Vec4 foreground) {
+	DrawQuad(x, y, w, h, background);
+	val = clamp(val, min, max);
+	float v = val, vv = (val - min) / (max - min);
+	if (Rect(x, y, w, h).Inside(Input::mouseDownPos)) {
+		if (Input::mouse0) {
+			vv = clamp((Input::mousePos.y - (y + 1)) / (h - 2), 0, 1);
+			v = vv*(max - min) + min;
+			DrawQuad(x + 1, y + 1 + (h-2)*(1-vv), w - 2, (h - 2)*vv, foreground*white(1, 0.4f));
+			return v;
+		}
+	}
+	else DrawQuad(x + 1, y + 1 + (h - 2)*(1 - vv), w - 2, (h - 2)*vv, foreground*(Rect(x, y, w, h).Inside(Input::mousePos) ? 1 : 0.8f));
+	return v;
+}
+
+Vec2 Engine::DrawSliderFill2D(float x, float y, float w, float h, Vec2 min, Vec2 max, Vec2 val, Vec4 background, Vec4 foreground) {
+	DrawQuad(x, y, w, h, background);
+	val = clamp(val, min, max);
+	Vec2 v = val, vv = (val - min) / (max - min);
+	if (Rect(x, y, w, h).Inside(Input::mouseDownPos)) {
+		if (Input::mouse0) {
+			vv = clamp((Input::mousePos - Vec2(x + 1, y + 1)) / Vec2(w - 2, h - 2), Vec2(0, 0), Vec2(1, 1));
+			vv.y = 1 - vv.y;
+			v = vv*(max - min) + min;
+			DrawQuad(x + 1, y + 1 + (h - 2)*(1 - vv.y), (w - 2)*vv.x, (h - 2)*vv.y, foreground*white(1, 0.4f));
+			return v;
+		}
+	}
+	else DrawQuad(x + 1, y + 1 + (h - 2)*(1 - vv.y), (w - 2)*vv.x, (h - 2)*vv.y, foreground*(Rect(x, y, w, h).Inside(Input::mousePos) ? 1 : 0.8f));
 	return v;
 }
 

@@ -446,6 +446,7 @@ const int Camera::screenRectIndices[] = { 0, 1, 2, 1, 3, 2 };
 GLuint Camera::d_probeMaskProgram = 0;
 GLuint Camera::d_probeProgram = 0;
 GLuint Camera::d_blurProgram = 0;
+GLuint Camera::d_blurSBProgram = 0;
 GLuint Camera::d_skyProgram = 0;
 GLuint Camera::d_pLightProgram = 0;
 GLuint Camera::d_sLightProgram = 0;

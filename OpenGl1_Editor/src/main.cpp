@@ -60,6 +60,8 @@ std::mutex lockMutex;
 RenderTexture* rt;
 Texture* tex;
 
+Vec4 _col(1.0f, 0.5f, 0.1f, 1);
+
 int main(int argc, char **argv)
 {
 	path = argv[0];
@@ -153,6 +155,8 @@ int main(int argc, char **argv)
 	SendMessage(GetWindow(hwnd2, GW_OWNER), WM_SETICON, ICON_BIG, hIcon);
 	*/
 
+	//editor->RegisterPopup(new PB_ColorPicker(editor, &_col), Vec2(200, 200));
+
 	string p;
 	GLint GlewInitResult = glewInit();
 	if (GLEW_OK != GlewInitResult)
@@ -177,16 +181,6 @@ int main(int argc, char **argv)
 		editor->blockCombos[1]->Set();
 		editor->SetBackground(editor->dataPath + "res\\bg.jpg", 0.3f);
 		font = editor->font;
-
-		/*
-		rt = new RenderTexture(256, 256);
-		tex = new Texture("D:\\1.jpg", false, TEX_FILTER_BILINEAR, 0);
-		ShaderBase *shd = new ShaderBase(IO::GetText("D:\\lightPassVert.txt"), IO::GetText("D:\\blurPassFrag.txt"));
-		Material mat = Material(shd);
-		mat.SetVec2("screenSize", Vec2(256, 256));
-		mat.SetFloat("isY", 1);
-		RenderTexture::Blit(tex, rt, &mat);
-		*/
 
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

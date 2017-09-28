@@ -27,7 +27,7 @@ const float rad2deg = 57.2958f;
 const float deg2rad = 0.0174533f;
 const char char0 = 0;
 
-#define Lerp(a, b, c) (a*(1-c) + b*c)
+#define Lerp(a, b, c) ((a)*(1-(c)) + (b)*(c))
 #define Normalize(a) glm::normalize(a)
 #define Distance(a, b) glm::distance(a, b)
 
@@ -49,6 +49,7 @@ string to_string(long f);
 string to_string(uint f);
 string to_string(int f);
 string to_string(Vec2 v), to_string(Vec3 v), to_string(Vec4 v), to_string(Quat v);
+std::vector<string> string_split(string s, char c);
 
 Vec3 to_vec3(Vec4 v);
 
@@ -74,27 +75,33 @@ namespace ChokoEngine {
 	class Color {
 	public:
 		Color() : r(0), g(0), b(0), a(0), useA(true) {}
-		Color(Vec4 v) : r((byte)round(v.r * 255)), g((byte)round(v.g * 255)), b((byte)round(v.b * 255)), a((byte)round(v.a * 255)) {}
+		Color(Vec4 v, bool hasA = true) : r((byte)round(v.r * 255)), g((byte)round(v.g * 255)), b((byte)round(v.b * 255)), a((byte)round(v.a * 255)), useA(hasA) {}
 	
 		bool useA;
 		byte r, g, b, a;
-		//float h(), s(), v();
+		float h, s, v;
+
+		Vec3 hsv() { return Vec3(h, s, v); }
 
 		Vec4 vec4() {
-			return Vec4(r, g, b, a);
+			return Vec4(r, g, b, a)*(1.0f/255);
 		}
 
 		static GLuint pickerProgH, pickerProgSV;
 
 		string hex();
 
-		static void Rgb2Hsv(byte r, byte g, byte b, float& h, float& s, float& v);
+		static void Rgb2Hsv(byte r, byte g, byte b, float& h, float& s, float& v), Hsv2Rgb(float h, float s, float v, byte& r, byte& g, byte& b);
+		static Vec3 Rgb2Hsv(Vec4 col);
 		static string Col2Hex(Vec4 col);
 		static void DrawPicker(float x, float y, Color& c);
+		static Vec4 HueBaseCol(float hue);
 
 	protected:
 
-		static void DrawSV(float x, float y, float w, float h);
+		void RecalcRGB(), RecalcHSV();
+		static void DrawSV(float x, float y, float w, float h, float hue);
+		static void DrawH(float x, float y, float w, float h);
 	};
 
 	class Procedurals {
@@ -109,7 +116,8 @@ public:
 	Rect(float x, float y, float w, float h) : x(x), y(y), w(w), h(h) {}
 	float x, y, w, h;
 
-	bool Inside(Vec2 v);
+	bool Inside(const Vec2& v);
+	Rect Intersection(const Rect& r2);
 };
 
 class Random {
@@ -469,6 +477,12 @@ public:
 	//removes macros, insert include files
 	static bool Parse(std::ifstream* text, string path);
 	static bool LoadShader(GLenum shaderType, string source, GLuint& shader, string* err = nullptr);
+
+	friend class Camera;
+	friend class Engine;
+
+protected:
+	static GLuint FromVF(const string& vert, const string& frag);
 };
 
 class MatVal_Tex {
@@ -597,6 +611,8 @@ public:
 	static bool DrawToggle(float x, float y, float s, Vec4 col, bool t);
 	static bool DrawToggle(float x, float y, float s, Texture* texture, bool t, Vec4 col=white(), ORIENTATION o = ORIENT_NONE);
 	static float DrawSliderFill(float x, float y, float w, float h, float min, float max, float val, Vec4 background, Vec4 foreground);
+	static float DrawSliderFillY(float x, float y, float w, float h, float min, float max, float val, Vec4 background, Vec4 foreground);
+	static Vec2 DrawSliderFill2D(float x, float y, float w, float h, Vec2 min, Vec2 max, Vec2 val, Vec4 background, Vec4 foreground);
 	//scaleType: 0=scale, 1=clip, 2=tile
 	static void DrawProgressBar(float x, float y, float w, float h, float progress, Vec4 background, Texture* foreground, Vec4 tint, int padding, byte scaleType);
 
@@ -604,7 +620,7 @@ public:
 	static void ResetUIMatrix();
 
 	static uint unlitProgram, unlitProgramA, unlitProgramC, skyProgram;
-	static uint blurProgram;
+	//static uint blurProgram, blurSBProgram;
 	static Font* defaultFont;
 	
 	static ulong GetNewId();
@@ -634,6 +650,8 @@ public:
 protected:
 	static void Init(string path = "");
 	static bool LoadDatas(string path);
+
+	static Rect* stencilRect;
 };
 
 enum GITYPE : byte {

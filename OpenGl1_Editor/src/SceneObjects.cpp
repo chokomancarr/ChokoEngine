@@ -94,7 +94,24 @@ void Camera::ApplyGL() {
 	glTranslatef(pos.x, pos.y, pos.z);
 }
 
-void GenShaderFromPath(GLuint vertex_shader, const string& path, GLuint* program) {
+void Camera::GenShaderFromPath(const string& pathv, const string& pathf, GLuint* program) {
+	GLuint vertex_shader;
+	std::string err;
+	std::ifstream strm(pathv);
+	if (strm.fail()) {
+		Debug::Error("Cam Shader Compiler", "vs vert not found!");
+		abort();
+	}
+	std::stringstream ss;
+	ss << strm.rdbuf();
+	if (!ShaderBase::LoadShader(GL_VERTEX_SHADER, ss.str(), vertex_shader, &err)) {
+		Debug::Error("Cam Shader Compiler", pathv + "! " + err);
+		abort();
+	}
+	GenShaderFromPath(vertex_shader, pathf, program);
+}
+
+void Camera::GenShaderFromPath(GLuint vertex_shader, const string& path, GLuint* program) {
 	GLuint fragment_shader;
 	std::string err;
 	std::ifstream strm(path);
@@ -145,6 +162,7 @@ void Camera::InitShaders() {
 	}
 
 	GenShaderFromPath(vertex_shader, "D:\\blurPassFrag.txt", &d_blurProgram);
+	GenShaderFromPath(vertex_shader, "D:\\blurPassFrag_Skybox.txt", &d_blurSBProgram);
 	GenShaderFromPath(vertex_shader, "D:\\lightPassFrag_Sky.txt", &d_skyProgram);
 	GenShaderFromPath(vertex_shader, "D:\\lightPassFrag_Point.txt", &d_pLightProgram);
 	GenShaderFromPath(vertex_shader, "D:\\lightPassFrag_Spot.txt", &d_sLightProgram);

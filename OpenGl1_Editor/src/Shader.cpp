@@ -39,8 +39,8 @@ bool ShaderBase::LoadShader(GLenum shaderType, string source, GLuint& shader, st
 	return true;
 }
 
-ShaderBase::ShaderBase(string path) : AssetObject(ASSETTYPE_SHADER) {
-	string p = Editor::instance->projectFolder + "Assets\\" + path + ".meta";
+ShaderBase::ShaderBase(string p) : AssetObject(ASSETTYPE_SHADER) {
+	//string p = Editor::instance->projectFolder + "Assets\\" + path + ".meta";
 	string vertex_shader_code = "";
 	string fragment_shader_code = "";
 	std::ifstream stream(p.c_str());
@@ -117,7 +117,7 @@ ShaderBase::ShaderBase(string path) : AssetObject(ASSETTYPE_SHADER) {
 	if (vertex_shader_code != "") {
 		//std::cout << "Vertex Shader: " << std::endl << vertex_shader_code;
 		if (!LoadShader(GL_VERTEX_SHADER, vertex_shader_code, vertex_shader, &err)) {
-			Editor::instance->_Error("Shader Compiler", path + " " + err);
+			Editor::instance->_Error("Shader Compiler", p + " " + err);
 			return;
 		}
 	}
@@ -125,7 +125,7 @@ ShaderBase::ShaderBase(string path) : AssetObject(ASSETTYPE_SHADER) {
 	if (fragment_shader_code != "") {
 		//std::cout << "Fragment Shader: " << std::endl << fragment_shader_code;
 		if (!LoadShader(GL_FRAGMENT_SHADER, fragment_shader_code, fragment_shader, &err)) {
-			Editor::instance->_Error("Shader Compiler", path + " " + err);
+			Editor::instance->_Error("Shader Compiler", p + " " + err);
 			return;
 		}
 	}
@@ -273,30 +273,35 @@ ShaderBase::ShaderBase(std::ifstream& stream, uint offset) : AssetObject(ASSETTY
 	glDeleteShader(vertex_shader);
 	glDetachShader(pointer, fragment_shader);
 	glDeleteShader(fragment_shader);
-	loaded = true;
+	loaded = pointer != 0;
 }
 
 ShaderBase::ShaderBase(const string& vert, const string& frag) : AssetObject(ASSETTYPE_SHADER) {
+	pointer = FromVF(vert, frag);
+	loaded = true;
+}
+
+GLuint ShaderBase::FromVF(const string& vert, const string& frag) {
 	GLuint vertex_shader, fragment_shader;
 	string err = "";
 	if (vert != "") {
 		//std::cout << "Vertex Shader: " << std::endl << vert;
 		if (!LoadShader(GL_VERTEX_SHADER, vert, vertex_shader, &err)) {
 			Debug::Error("Shader Compiler", "Vert error: " + err);
-			return;
+			return 0;
 		}
 	}
-	else return;
+	else return 0;
 	if (frag != "") {
 		//std::cout << "Fragment Shader: " << std::endl << frag;
 		if (!LoadShader(GL_FRAGMENT_SHADER, frag, fragment_shader, &err)) {
 			Debug::Error("Shader Compiler", "Frag error: " + err);
-			return;
+			return 0;
 		}
 	}
-	else return;
+	else return 0;
 
-	pointer = glCreateProgram();
+	GLuint pointer = glCreateProgram();
 	glAttachShader(pointer, vertex_shader);
 	glAttachShader(pointer, fragment_shader);
 
@@ -312,8 +317,7 @@ ShaderBase::ShaderBase(const string& vert, const string& frag) : AssetObject(ASS
 		glGetProgramInfoLog(pointer, info_log_length, NULL, &program_log[0]);
 		std::cout << "Shader link error" << std::endl << &program_log[0] << std::endl;
 		glDeleteProgram(pointer);
-		pointer = 0;
-		return;
+		return 0;
 	}
 	std::cout << "shader linked" << std::endl;
 
@@ -321,7 +325,7 @@ ShaderBase::ShaderBase(const string& vert, const string& frag) : AssetObject(ASS
 	glDeleteShader(vertex_shader);
 	glDetachShader(pointer, fragment_shader);
 	glDeleteShader(fragment_shader);
-	loaded = true;
+	return pointer;
 }
 
 /*code

@@ -177,7 +177,7 @@ void EB_Viewer::_Z(EditorBlock* b) {
 
 void EB_Viewer::_OpenMenuAdd(EditorBlock* b) {
 	if (b->editor->activeScene != nullptr)
-		b->editor->RegisterMenu(b, "Add Scene Object", { "Empty", "Blender Object", "Camera", "Audio Source" }, { _AddObjectE, _AddObjectBl, _AddObjectCam, _AddObjectAud }, 3);
+		b->editor->RegisterMenu(b, "Add Scene Object", { "Empty", "Procedural Object", "Blender Object", "Camera", "Audio Source" }, { _AddObjectE, nullptr, _AddObjectBl, _AddObjectCam, _AddObjectAud }, 5);
 }
 void EB_Viewer::_OpenMenuCom(EditorBlock* b) {
 	if (b->editor->selected != nullptr)

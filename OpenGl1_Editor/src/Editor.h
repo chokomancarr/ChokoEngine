@@ -68,6 +68,19 @@ protected:
 	//EditorBlock(byte t, float x1, float y1, float x2, float y2) : type(t), x1(x1), x2(x2), y1(y1), y2(y2) {}
 };
 
+class PopupBlock {
+public:
+
+	virtual ~PopupBlock() {}
+	Editor* editor;
+
+	float x(), y();
+	int w, h;
+	bool exitOnClick = true;
+
+	virtual void Draw() = 0;
+};
+
 class EB_Empty : public EditorBlock { //for test, does nothing
 public:
 	EB_Empty(Editor* e, int x1, int y1, int x2, int y2) {
@@ -300,22 +313,19 @@ protected:
 	void Blit(GLuint prog, uint w, uint h);
 };
 
-class EB_ColorPicker : public EditorBlock {
+class PB_ColorPicker : public PopupBlock {
 public:
-	EB_ColorPicker(Editor* e, int x1, int y1, int x2, int y2, Color* tar): target(tar) {
-		if (tar == nullptr)
-			std::runtime_error("Color Picker with no color target!");
-		editorType = 100;
+	PB_ColorPicker(Editor* e, Vec4* tar, bool hasA = true): target(tar), col(*tar) {
 		editor = e;
-		this->x1 = x1;
-		this->y1 = y1;
-		this->x2 = x2;
-		this->y2 = y2;
+		this->w = 270;
+		this->h = hasA? 335 : 318;
+		col.useA = hasA;
 	}
 
-	Color* target;
+	Vec4* target;
+	Color col;
 
-	void Draw();
+	void Draw() override;
 	void Refresh(){}
 };
 
@@ -340,6 +350,7 @@ class yPossMerger;
 class Editor {
 public:
 	Editor();
+	static void InitShaders();
 	static Editor* instance;
 	Color cc;
 	//prefs
@@ -363,12 +374,12 @@ public:
 	std::vector<Int2> xLimits, yLimits; //not include 0 1
 	std::vector<EditorBlock*> blocks;
 	std::vector<BlockCombo*> blockCombos;
-	Vec2 popupPos;
 	bool hasMaximize;
 
 	EditorBlock* dialogBlock;
 
-	EditorBlock* menuBlock; //menu = layer1
+	//menu = layer1
+	EditorBlock* menuBlock;
 	int menuPadding;
 	string menuTitle;
 	std::vector<string> menuNames;
@@ -402,12 +413,19 @@ public:
 	CompRef* browseTargetComp;
 	callbackFunc browseCallback;
 	void* browseCallbackParam;
+
 	//progress = layer4
 	string progressName;
 	float progressValue;
 	string progressDesc;
 	void BeginProgress(string n);
+
 	//prefs = layer5
+
+	PopupBlock* popup;
+	Vec2 popupPos;
+	GLuint popupShadeProgram;
+	void RegisterPopup(PopupBlock* blk, Vec2 pos);
 
 	byte flags;
 
@@ -479,9 +497,9 @@ public:
 	std::unordered_map<string, ASSETTYPE> assetTypes;
 	std::unordered_map<ASSETTYPE, std::vector<string>> allAssets;
 	std::vector<string> headerAssets, cppAssets, blendAssets;
-	std::unordered_map<ASSETTYPE, std::vector<string>> normalAssets, internalAssets;
+	std::unordered_map<ASSETTYPE, std::vector<string>> normalAssets, internalAssets, proceduralAssets;
 	std::unordered_map <ASSETTYPE, std::pair<ASSETTYPE, std::vector<uint>>> derivedAssets;
-	std::unordered_map<ASSETTYPE, std::vector<AssetObject*>> normalAssetCaches, internalAssetCaches;
+	std::unordered_map<ASSETTYPE, std::vector<AssetObject*>> normalAssetCaches, internalAssetCaches, proceduralAssetCaches;
 	bool internalAssetsLoaded;
 
 	void ResetAssetMap(), LoadInternalAssets();
@@ -498,7 +516,7 @@ public:
 	void GenerateScriptValuesReader(string& s);
 	void NewScene();
 	void UpdateLerpers();
-	void DrawHandles();
+	void DrawHandles(), DrawPopup();
 
 	void RegisterMenu(EditorBlock* block, string title, std::vector<string> names, std::vector<shortcutFunc> funcs, int padding, Vec2 pos = Input::mousePos);
 	void RegisterMenu(EditorBlock* block, string title, std::vector<string> names, dataFunc func, std::vector<void*> vals, int padding, Vec2 pos = Input::mousePos);
