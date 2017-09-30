@@ -209,7 +209,7 @@ public:
 	static void _OpenMenuChgMani(EditorBlock*), _OpenMenuChgOrient(EditorBlock*);
 
 	static byte preAddType;
-	static void _AddObjectE(EditorBlock*), _AddObjectBl(EditorBlock*), _AddObjectCam(EditorBlock*), _AddObjectAud(EditorBlock*);
+	static void _AddObjectE(EditorBlock*), _AddObjectPr(EditorBlock*), _AddObjectBl(EditorBlock*), _AddObjectCam(EditorBlock*), _AddObjectAud(EditorBlock*);
 	static void _AddComScr(EditorBlock*), _AddComAud(EditorBlock*), _AddComRend(EditorBlock*), _AddComMesh(EditorBlock*);
 	
 	static void _DoAddObjectBl(EditorBlock* b, void* v);
@@ -326,7 +326,17 @@ public:
 	Color col;
 
 	void Draw() override;
-	void Refresh(){}
+};
+
+class PB_ProceduralGenerator : public PopupBlock {
+public:
+	PB_ProceduralGenerator(Editor* e) {
+		editor = e;
+		this->w = 400;
+		this->h = 500;
+	}
+
+	void Draw() override;
 };
 
 class CompRef {

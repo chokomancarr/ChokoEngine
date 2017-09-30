@@ -1253,6 +1253,41 @@ void ReflectionProbe::_DoUpdate() {
 	glDepthMask(false);
 }
 
+
+CubeMap::CubeMap(ushort size, bool mips, GLenum type, byte dataSize, GLenum format, GLenum dataType) : size(size), AssetObject(ASSETTYPE_HDRI), loaded(false) {
+	if (size != 64 && size != 128 && size != 256 && size != 512 && size != 1024 && size != 2048) {
+		Debug::Error("Cubemap", "CubeMaps must be sized POT between 64 and 2048! (" + to_string(size) + ")");
+		abort();
+	}
+	glGenFramebuffers(6, fbos);
+	glGenTextures(1, &pointer);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, pointer);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BASE_LEVEL, 0);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAX_LEVEL, 0);
+	glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	for (uint a = 0; a < 6; a++) {
+		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + a, 0, type, size, size, 0, format, dataType, NULL);
+	}
+	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+
+	for (uint a = 0; a < 6; a++) {
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbos[a]);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + a, pointer, 0);
+
+		GLenum DrawBuffers[] = { GL_COLOR_ATTACHMENT0 };
+		glDrawBuffers(1, DrawBuffers);
+		GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+		if (Status != GL_FRAMEBUFFER_COMPLETE) {
+			Debug::Error("CubeMap", "FBO error: " + Status);
+			abort();
+		}
+	}
+}
+
 void CubeMap::_RenderCube(Vec3 pos, Vec3 xdir, GLuint fbos[], uint size, GLuint shader) {
 	glViewport(0, 0, size, size);
 	glUseProgram(shader);

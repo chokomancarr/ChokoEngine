@@ -29,6 +29,13 @@
 
 using namespace ChokoEngine;
 
+std::stringstream GetSStream(const string& p) {
+	std::ifstream strm(p.c_str(), std::ios::in | std::ios::binary);
+	std::stringstream strm2; //15% faster
+	if (strm.is_open()) strm2 << strm.rdbuf();
+	return strm2;
+}
+
 bool LoadJPEG(string fileN, uint &x, uint &y, byte& channels, byte** data)
 {
 	//unsigned int texture_id;
@@ -191,11 +198,15 @@ Texture::Texture(const string& path, bool mipmap, TEX_FILTERING filter, byte ani
 Texture::Texture(int i, Editor* e) : AssetObject(ASSETTYPE_TEXTURE) {
 	string p = e->projectFolder + "Assets\\" + e->normalAssets[ASSETTYPE_TEXTURE][i] + ".meta";
 	std::ifstream strm(p, std::ios::in | std::ios::binary);
-	if (strm.is_open()) {
+	//if (strm.is_open()) {
 		byte chn;
 		GLenum rgb = GL_RGB, rgba = GL_RGBA;
 		byte* data;
 		TEX_TYPE t = _ReadStrm(this, strm, chn, rgb, rgba);
+		if (t == TEX_TYPE_UNDEF) {
+			Debug::Error("Texture", "Texture header wrong/missing!");
+			return;
+		}
 		if (t == TEX_TYPE_RENDERTEXTURE) {
 			((RenderTexture*)this)->Load(e->projectFolder + "Assets\\" + e->normalAssets[ASSETTYPE_TEXTURE][i]);
 			return;
@@ -214,7 +225,7 @@ Texture::Texture(int i, Editor* e) : AssetObject(ASSETTYPE_TEXTURE) {
 		glBindTexture(GL_TEXTURE_2D, 0);
 		delete[](data);
 		loaded = true;
-	}
+	//}
 }
 
 Texture::Texture(std::ifstream& strm, uint offset) : AssetObject(ASSETTYPE_TEXTURE) {
@@ -246,15 +257,15 @@ Texture::Texture(std::ifstream& strm, uint offset) : AssetObject(ASSETTYPE_TEXTU
 	}
 }
 
-TEX_TYPE Texture::_ReadStrm(Texture* tex, std::ifstream& strm, byte& chn, GLenum& rgb, GLenum& rgba) {
+TEX_TYPE Texture::_ReadStrm(Texture* tex, std::istream& strm, byte& chn, GLenum& rgb, GLenum& rgba) {
 	std::vector<char> hd(4);
 	strm.read((&hd[0]), 3);
 	if (hd[0] == 'I' && hd[1] == 'M' && hd[2] == 'R') {
 		return TEX_TYPE_RENDERTEXTURE;
 	}
-	if (hd[0] != 'I' || hd[1] != 'M' || hd[2] != 'G') {
+	else if (hd[0] != 'I' || hd[1] != 'M' || hd[2] != 'G') {
 		Debug::Error("Image Cacher", "Image cache header wrong!");
-		return TEX_TYPE_NORMAL;
+		return TEX_TYPE_UNDEF;
 	}
 	byte bb;
 	_Strm2Val<byte>(strm, chn);
@@ -409,7 +420,9 @@ Background::Background(const string& path) : width(0), height(0), AssetObject(AS
 
 Background::Background(int i, Editor* editor) : width(0), height(0), AssetObject(ASSETTYPE_HDRI), loaded(false) {
 	string path = editor->projectFolder + "Assets\\" + editor->normalAssets[ASSETTYPE_HDRI][i] + ".meta";
-	std::ifstream strm(path.c_str(), std::ios::in | std::ios::binary);
+	//std::ifstream strm(path.c_str(), std::ios::in | std::ios::binary);
+	std::stringstream strm2 = GetSStream(path);
+	std::istream strm(strm2.rdbuf());
 	std::vector<char> hd(6);
 	strm.read((&hd[0]), 4);
 	if (hd[0] != 'I' || hd[1] != 'M' || hd[2] != 'G' || hd[3] != (char)4) {
@@ -611,39 +624,6 @@ bool Background::Parse(string path) {
 	return true;
 }
 
-CubeMap::CubeMap(ushort size, bool mips, GLenum type, byte dataSize, GLenum format, GLenum dataType) : size(size), AssetObject(ASSETTYPE_HDRI), loaded(false) {
-	if (size != 64 && size != 128 && size != 256 && size != 512 && size != 1024 && size != 2048) {
-		Debug::Error("Cubemap", "CubeMaps must be sized POT between 64 and 2048! (" + to_string(size) + ")");
-		abort();
-	}
-	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
-	glGenTextures(1, &pointer);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, pointer);
-	//std::vector<byte> data = std::vector<byte>(size*size*dataSize, 0);
-	glGenTextures(6, facePointers);
-	for (byte aa = 0; aa < 6; aa++) {
-		glBindTexture(GL_TEXTURE_CUBE_MAP_POSITIVE_X + aa, facePointers[aa]);
-		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + aa, 0, type, size, size, 0, format, dataType, NULL);
-		if (mips) {
-			for (byte aaa = 1; aaa < 7; aaa++) {
-				facePointerMips[aa].push_back(0);
-				glGenTextures(1, &facePointerMips[aa][aaa - 1]);
-				glBindTexture(GL_TEXTURE_CUBE_MAP_POSITIVE_X + aa, facePointers[aa]);
-				glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + aa, aaa, type, size / (2 * aaa), size / (2 * aaa), 0, format, dataType, NULL);
-			}
-			glTexParameteri(GL_TEXTURE_CUBE_MAP_POSITIVE_X + aa, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-			glTexParameteri(GL_TEXTURE_CUBE_MAP_POSITIVE_X + aa, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_CUBE_MAP_POSITIVE_X + aa, GL_TEXTURE_MAX_LEVEL, 6);
-		}
-		else {
-			glTexParameteri(GL_TEXTURE_CUBE_MAP_POSITIVE_X + aa, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_CUBE_MAP_POSITIVE_X + aa, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		}
-	}
-	glBindTexture(GL_TEXTURE_2D, 0);
-	loaded = true;
-}
-
 
 //-------------------Material class--------------
 Material::Material() : _shader(-1), AssetObject(ASSETTYPE_MATERIAL), writeMask(4, true) {
@@ -694,7 +674,9 @@ void Material::_ReloadParams() {
 
 Material::Material(string p) : AssetObject(ASSETTYPE_MATERIAL), writeMask(4, true) {
 	//string p = Editor::instance->projectFolder + "Assets\\" + path;
-	std::ifstream stream(p.c_str());
+	//std::ifstream stream(p.c_str());
+	std::stringstream strm2 = GetSStream(p);
+	std::istream stream(strm2.rdbuf());
 	if (!stream.good()) {
 		std::cout << "material not found!" << std::endl;
 		return;
@@ -798,7 +780,7 @@ Material::Material(string p) : AssetObject(ASSETTYPE_MATERIAL), writeMask(4, tru
 		}
 	}
 	delete[](nmm);
-	stream.close();
+	//stream.close();
 }
 
 Material::Material(std::ifstream& stream, uint offset) : AssetObject(ASSETTYPE_MATERIAL), writeMask(4, true) {
@@ -1284,7 +1266,11 @@ Mesh::Mesh(std::ifstream& stream, uint offset) : AssetObject(ASSETTYPE_MESH), lo
 
 Mesh::Mesh(string p) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0), triangleCount(0), materialCount(0) {
 	//string p = Editor::instance->projectFolder + "Assets\\" + path + ".mesh.meta";
-	std::ifstream stream(p.c_str(), std::ios::in | std::ios::binary);
+	//std::ifstream strm(p.c_str(), std::ios::in | std::ios::binary);
+	//std::stringstream strm2; //15% faster
+	//strm2 << strm.rdbuf();
+	std::stringstream strm2 = GetSStream(p);
+	std::istream stream(strm2.rdbuf());
 	if (!stream.good()) {
 		std::cout << "mesh file not found!" << std::endl;
 		return;
@@ -1571,7 +1557,9 @@ bool Mesh::ParseBlend(Editor* e, string s) {
 
 AnimClip::AnimClip(string p) : AssetObject(ASSETTYPE_ANIMCLIP) {
 	//string p = Editor::instance->projectFolder + "Assets\\" + path + ".animclip.meta";
-	std::ifstream stream(p.c_str(), std::ios::in | std::ios::binary);
+	//std::ifstream stream(p.c_str(), std::ios::in | std::ios::binary);
+	std::stringstream strm2 = GetSStream(p);
+	std::istream stream(strm2.rdbuf());
 	if (!stream.good()) {
 		std::cout << "animclip file not found!" << std::endl;
 		return;
@@ -1617,7 +1605,9 @@ Animator::Animator() : AssetObject(ASSETTYPE_ANIMATOR), activeState(0), nextStat
 
 Animator::Animator(string p) : Animator() {
 	//string p = Editor::instance->projectFolder + "Assets\\" + path;
-	std::ifstream stream(p.c_str());
+	//std::ifstream stream(p.c_str());
+	std::stringstream strm2 = GetSStream(p);
+	std::istream stream(strm2.rdbuf());
 	if (!stream.good()) {
 		std::cout << "animator not found!" << std::endl;
 		return;

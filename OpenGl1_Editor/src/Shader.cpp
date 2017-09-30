@@ -41,9 +41,13 @@ bool ShaderBase::LoadShader(GLenum shaderType, string source, GLuint& shader, st
 
 ShaderBase::ShaderBase(string p) : AssetObject(ASSETTYPE_SHADER) {
 	//string p = Editor::instance->projectFolder + "Assets\\" + path + ".meta";
+	std::ifstream strm(p.c_str(), std::ios::in | std::ios::binary);
+	std::stringstream strm2; //15% faster
+	strm2 << strm.rdbuf();
+	std::istream stream(strm2.rdbuf());
 	string vertex_shader_code = "";
 	string fragment_shader_code = "";
-	std::ifstream stream(p.c_str());
+	//std::ifstream stream(p.c_str());
 	if (!stream.good()) {
 		std::cout << "shader not found!" << std::endl;
 		return;
@@ -110,7 +114,7 @@ ShaderBase::ShaderBase(string p) : AssetObject(ASSETTYPE_SHADER) {
 	cc[i] = char0;
 	fragment_shader_code = string(cc);
 	delete[](cc);
-	stream.close();
+	//stream.close();
 
 	GLuint vertex_shader, fragment_shader;
 	string err = "";

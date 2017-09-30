@@ -285,6 +285,42 @@ void Color::DrawH(float x, float y, float w, float h) {
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
+Mesh* Procedurals::Plane(uint xCount, uint yCount) {
+	std::vector<Vec3> norms = std::vector<Vec3>();
+	std::vector<Vec3> verts = std::vector<Vec3>();
+	std::vector<Vec2> uvs = std::vector<Vec2>();
+	std::vector<int> tris = std::vector<int>();
+	for (uint a = 0; a <= xCount; a++) {
+		for (uint b = 0; b <= yCount; b++) {
+			verts.push_back(Vec3(xCount * (a*1.0f / xCount - 0.5f), 0, xCount * (b*1.0f / yCount - 0.5f)));
+			norms.push_back(Vec3(0, 1, 0));
+			uvs.push_back(Vec2(a*1.0f / xCount, b*1.0f / yCount));
+		}
+	}
+	int va1, va2, vb1, vb2;
+	for (uint a = 0; a < xCount; a++) {
+		for (uint b = 0; b < yCount; b++) {
+			va1 = (yCount + 1)*a + b;
+			va2 = va1 + 1;
+			vb1 = (yCount + 1)*(a + 1) + b;
+			vb2 = vb1 + 1;
+			/*
+			if (b == uCount - 1) {
+			va2 -= uCount;
+			vb2 -= uCount;
+			}
+			*/
+			tris.push_back(va1);
+			tris.push_back(vb2);
+			tris.push_back(vb1);
+			tris.push_back(va1);
+			tris.push_back(va2);
+			tris.push_back(vb2);
+		}
+	}
+	return new Mesh(verts, norms, tris, uvs);
+}
+
 Mesh* Procedurals::UVSphere(uint uCount, uint vCount) {
 	std::vector<Vec3> verts, norms;
 	std::vector<Vec2> uvs = std::vector<Vec2>();
@@ -1642,10 +1678,10 @@ void _StreamWriteAsset(Editor* e, std::ofstream* stream, ASSETTYPE t, ASSETID i)
 	(*stream) << p << char0;
 }
 
-ASSETID _Strm2H(std::ifstream& strm) {
+ASSETID _Strm2H(std::istream& strm) {
 	return -1;
 }
-string _Strm2Asset(std::ifstream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int max) {
+string _Strm2Asset(std::istream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int max) {
 	char* c = new char[max];
 	strm.getline(c, max, (char)0);
 	string s(c);
@@ -1832,6 +1868,7 @@ void Scene::Unload() {
 }
 
 Scene::Scene(std::ifstream& stream, long pos) : sceneName("") {
+	Debug::Message("SceneLoader", "Begin Loading Scene...");
 	std::vector<SceneObject*>().swap(objects);
 	stream.seekg(pos);
 	char h1, h2;
@@ -1848,8 +1885,8 @@ Scene::Scene(std::ifstream& stream, long pos) : sceneName("") {
 		Debug::Error("Scene", "Sky asset invalid!");
 		return;
 	}
-	settings.sky = _GetCache<Background>(t, settings.skyId);
 
+	Debug::Message("SceneLoader", "Loading SceneObjects...");
 	char o;
 	stream >> o;
 	while (!stream.eof() && o == 'O') {
@@ -1859,6 +1896,10 @@ Scene::Scene(std::ifstream& stream, long pos) : sceneName("") {
 		sc->Refresh();
 		stream >> o;
 	}
+
+	Debug::Message("SceneLoader", "Loading Background...");
+	settings.sky = _GetCache<Background>(t, settings.skyId);
+	Debug::Message("SceneLoader", "Scene Loaded.");
 }
 
 /*

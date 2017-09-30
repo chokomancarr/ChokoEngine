@@ -1404,6 +1404,10 @@ void PB_ColorPicker::Draw() {
 	*target = col.vec4();
 }
 
+void PB_ProceduralGenerator::Draw() {
+	Engine::DrawQuad(x(), y(), w, h, white(0.8f, 0.1f));
+}
+
 void Editor::DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASSETTYPE type, float labelSize, Font* labelFont, ASSETID* tar, callbackFunc func, void* param) {
 	if (*tar > -1) {
 		if (Engine::EButton(editorLayer == 0, x, y, h, h, browse, white()) == MOUSE_RELEASE) {
@@ -1497,7 +1501,7 @@ ASSETID Editor::GetAssetInfo(string p, ASSETTYPE &type, ASSETID& i) {
 			if (u == p) {
 				type = t.first;
 				i = x;
-				GetCache(type, i);
+				//GetCache(type, i);
 				return x;
 			}
 			string uu;
@@ -1513,7 +1517,7 @@ ASSETID Editor::GetAssetInfo(string p, ASSETTYPE &type, ASSETID& i) {
 			if (uu == p) {
 				type = t.first;
 				i = x;
-				GetCache(type, i);
+				//GetCache(type, i);
 				return x;
 			}
 			x++;
@@ -1565,7 +1569,7 @@ void Editor::ReadPrefs() {
 		_Error("Editor", "Fail to load project prefs!");
 		return;
 	}
-	ushort n;
+	byte n;
 	_Strm2Val(strm, n);
 	savedIncludedScenes = n;
 	char* cc = new char[100];
@@ -1579,6 +1583,43 @@ void Editor::ReadPrefs() {
 		includedScenesUse.push_back(c == 1);
 		strm.getline(cc, 100, (char)0);
 		includedScenes.push_back(cc);
+	}
+	_Strm2Val(strm, n);
+	if (n != 255) {
+		_Error("Editor", "Separator byte missing in prefs file! " + to_string(strm.tellg()));
+		return;
+	}
+	_Strm2Val(strm, n);
+	for (short a = 0; a < n; a++) {
+		ASSETTYPE t;
+		_Strm2Val(strm, t);
+		strm.getline(cc, 100, (char)0);
+		string s(cc);
+		if (s.substr(0, 11) == "procedural\\") {
+			size_t is = s.find_first_of(' ');
+			string fn = s.substr(0, is);
+			string nm = fn.substr(11);
+			switch (t) {
+			case ASSETTYPE_MESH:
+				if (nm == "plane") {
+					string sx = s.substr(is + 1, 2);
+					string sy = s.substr(is + 3, 2);
+					uint xc = (uint)std::stoi(sx);
+					uint yc = (uint)std::stoi(sy);
+					proceduralAssets[t].push_back(fn + "(x=" + sx + ",y=" + sy + ")");
+					proceduralAssetCaches[t].push_back(Procedurals::Plane(xc, yc));
+				}
+				else if (nm == "sphere") {
+					string sx = s.substr(is + 1, 2);
+					string sy = s.substr(is + 3, 2);
+					uint xc = (uint)std::stoi(sx);
+					uint yc = (uint)std::stoi(sy);
+					proceduralAssets[t].push_back(fn + "(u=" + sx + ",v=" + sy + ")");
+					proceduralAssetCaches[t].push_back(Procedurals::UVSphere(xc, yc));
+				}
+				break;
+			}
+		}
 	}
 }
 
@@ -2490,6 +2531,7 @@ void Editor::LoadInternalAssets() {
 		if (s.empty() || cs[0] == '#') continue;
 		if (s.substr(0, 2) == "0x") actt = (ASSETTYPE)std::stoul(s, nullptr, 16);
 		else {
+			/*
 			if (s.substr(0, 11) == "procedural\\") {
 				proceduralAssets[actt].push_back(s);
 				switch (actt) {
@@ -2498,6 +2540,7 @@ void Editor::LoadInternalAssets() {
 					break;
 				}
 			}
+			*/
 		}
 	}
 

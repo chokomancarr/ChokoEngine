@@ -106,6 +106,7 @@ namespace ChokoEngine {
 
 	class Procedurals {
 	public:
+		static Mesh* Plane(uint xCount, uint yCount);
 		static Mesh* UVSphere(uint uCount, uint vCount);
 	};
 }
@@ -177,7 +178,7 @@ void _StreamWrite(const void* val, std::ofstream* stream, int size);
 void _StreamWriteAsset(Editor* e, std::ofstream* stream, ASSETTYPE t, ASSETID i);
 //void _Strm2Int(std::ifstream& strm, int& i), _Strm2Float(std::ifstream& strm, float& f), _Strm2Short(std::ifstream& strm, short& i);
 
-template<typename T> void _Strm2Val(std::ifstream& strm, T &val) {
+template<typename T> void _Strm2Val(std::istream& strm, T &val) {
 	/*
 	long long pos = strm.tellg();
 	byte size = sizeof(T);
@@ -195,9 +196,9 @@ template<typename T> void _Strm2Val(std::ifstream& strm, T &val) {
 		Debug::Error("Strm2Val", "Fail bit raised! (probably eof reached) " + std::to_string(pos));
 	}
 }
-ASSETID _Strm2H(std::ifstream& strm);
+ASSETID _Strm2H(std::istream& strm);
 
-string _Strm2Asset(std::ifstream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int maxL = 100);
+string _Strm2Asset(std::istream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int maxL = 100);
 
 //void* __GetCacheE(ASSETTYPE t, ASSETID i);
 template<typename T> T* _GetCache(ASSETTYPE t, ASSETID i) {

@@ -766,22 +766,7 @@ void ReflectionProbe::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos)
 }
 
 ReflectionProbe::ReflectionProbe(ushort size) : Component("Reflection Probe", COMP_RDP, DRAWORDER_LIGHT), size(size), map(new CubeMap(size, true)), updateMode(ReflProbe_UpdateMode_Start), intensity(1), clearType(ReflProbe_Clear_Sky), clearColor(), range(1, 1, 1), softness(0) {
-	glGenFramebuffers(7, mipFbos);
-	for (byte a = 0; a < 7; a++) {
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, mipFbos[a]);
-		for (byte i = 0; i < 7; i++) {
-			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, (a == 0) ? map->facePointers[i] : map->facePointerMips[i][a-1], 0);
-		}
-
-		GLenum DrawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5 };
-		glDrawBuffers(6, DrawBuffers);
-
-		GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-
-		if (Status != GL_FRAMEBUFFER_COMPLETE)
-			Debug::Error("ReflProbe (" + name + ")", "FB error:" + Status);
-	}
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+	
 }
 
 ReflectionProbe::ReflectionProbe(std::ifstream& stream, SceneObject* o, long pos) : Component("Reflection Probe", COMP_RDP, DRAWORDER_LIGHT) {
@@ -800,7 +785,7 @@ ReflectionProbe::ReflectionProbe(std::ifstream& stream, SceneObject* o, long pos
 	_Strm2Val(stream, range.z);
 	_Strm2Val(stream, softness);
 
-	map = new CubeMap(size);
+	//map = new CubeMap(size);
 }
 
 void ReflectionProbe::Serialize(Editor* e, std::ofstream* stream) {

@@ -177,7 +177,7 @@ void EB_Viewer::_Z(EditorBlock* b) {
 
 void EB_Viewer::_OpenMenuAdd(EditorBlock* b) {
 	if (b->editor->activeScene != nullptr)
-		b->editor->RegisterMenu(b, "Add Scene Object", { "Empty", "Procedural Object", "Blender Object", "Camera", "Audio Source" }, { _AddObjectE, nullptr, _AddObjectBl, _AddObjectCam, _AddObjectAud }, 5);
+		b->editor->RegisterMenu(b, "Add Scene Object", { "Empty", "Procedural Object", "Blender Object", "Camera", "Audio Source" }, { _AddObjectE, _AddObjectPr, _AddObjectBl, _AddObjectCam, _AddObjectAud }, 5);
 }
 void EB_Viewer::_OpenMenuCom(EditorBlock* b) {
 	if (b->editor->selected != nullptr)
@@ -397,6 +397,9 @@ void EB_Viewer::_D2AddComRdp(EditorBlock* b) {
 void EB_Viewer::_AddObjectE(EditorBlock* b) {
 	preAddType = 0;
 	DoPreAdd(b);
+}
+void EB_Viewer::_AddObjectPr(EditorBlock* b) {
+	b->editor->RegisterPopup(new PB_ProceduralGenerator(b->editor), Vec2(100, 100));
 }
 void EB_Viewer::_AddObjectBl(EditorBlock* b) {
 	std::vector<void*> vals;
