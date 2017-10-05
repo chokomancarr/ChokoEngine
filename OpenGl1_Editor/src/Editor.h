@@ -562,6 +562,15 @@ public:
 
 	void DoCompile();
 
+	struct PipeModeObj {
+	public:
+		uint pboLoc, //out: pbo array buffer (byte*pboCount)
+			pboCount, //out: pbo array size (uint)
+			hasDataLoc, //inout: pbo buffer updated? (bool)
+			screenSizeLoc, //in: screen size (ushort ushort)
+			okLoc; //inout: confirmation (bool)
+	};
+
 private:
 	Editor(Editor const &);
 	Editor& operator= (Editor const &);

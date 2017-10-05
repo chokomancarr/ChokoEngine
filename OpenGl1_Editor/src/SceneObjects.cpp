@@ -765,7 +765,7 @@ void ReflectionProbe::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos)
 	else pos += 17;
 }
 
-ReflectionProbe::ReflectionProbe(ushort size) : Component("Reflection Probe", COMP_RDP, DRAWORDER_LIGHT), size(size), map(new CubeMap(size, true)), updateMode(ReflProbe_UpdateMode_Start), intensity(1), clearType(ReflProbe_Clear_Sky), clearColor(), range(1, 1, 1), softness(0) {
+ReflectionProbe::ReflectionProbe(ushort size) : Component("Reflection Probe", COMP_RDP, DRAWORDER_LIGHT), size(size), map(new CubeMap(size)), updateMode(ReflProbe_UpdateMode_Start), intensity(1), clearType(ReflProbe_Clear_Sky), clearColor(), range(1, 1, 1), softness(0) {
 	
 }
 

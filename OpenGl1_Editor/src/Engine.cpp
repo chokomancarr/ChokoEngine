@@ -417,12 +417,11 @@ void Engine::Init(string path) {
 
 	Material::LoadOris();
 	Light::InitShadow();
-//#ifdef IS_EDITOR
 	Camera::InitShaders();
-//#endif
 	Font::Init();
+#ifdef IS_EDITOR
 	Editor::InitShaders();
-
+#endif
 	string vertcode = "#version 330 core\nlayout(location = 0) in vec3 pos;\nlayout(location = 1) in vec2 uv;\nout vec2 UV;\nvoid main(){ \ngl_Position.xyz = pos;\ngl_Position.w = 1.0;\nUV = uv;\n}";
 	string fragcode = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = textureLod(sampler, UV, 0)*col;\n}"; //out vec3 Vec4;\n
 	string fragcode2 = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = vec4(1, 1, 1, textureLod(sampler, UV, 0).r)*col;\n}"; //out vec3 Vec4;\n
@@ -1288,6 +1287,9 @@ std::vector<string> IO::GetFiles(const string& folder, string ext)
 }
 std::vector<EB_Browser_File> IO::GetFilesE (Editor* e, const string& folder)
 {
+#ifndef IS_EDITOR
+#error you cannot call GetFilesE! (Editor Functions only)
+#endif
 	std::vector<EB_Browser_File> names;
 	string search_path = folder + "/*.*";
 	WIN32_FIND_DATA fd;
@@ -1380,6 +1382,25 @@ string IO::GetText(const string& path) {
 	std::stringstream ss;
 	ss << strm.rdbuf();
 	return ss.str();
+}
+
+BOOL CALLBACK EnumWindowsProcMy(HWND hwnd, LPARAM lParam) {
+	DWORD lpdwProcessId;
+	GetWindowThreadProcessId(hwnd, &lpdwProcessId);
+	auto v = (std::pair<DWORD, HWND>*)lParam;
+	if (lpdwProcessId == v->first)
+	{
+		v->second = hwnd;
+		return FALSE;
+	}
+	return TRUE;
+}
+
+HWND WinFunc::GetHwndFromProcessID(DWORD id) {
+	HWND h;
+	auto var = std::pair<DWORD, HWND>(id, h);
+	EnumWindows(EnumWindowsProcMy, (LPARAM)&var);
+	return h;
 }
 
 //-----------------time class---------------------

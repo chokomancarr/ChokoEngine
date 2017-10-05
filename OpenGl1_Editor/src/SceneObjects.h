@@ -339,22 +339,30 @@ private:
 
 class CubeMap : public AssetObject {
 public:
-	CubeMap *FromFaces(Texture* px, Texture* nx, Texture* py, Texture* ny, Texture* pz, Texture* nz), *FromLongLatMap(Texture* tex);
+	CubeMap(Texture* px, Texture* nx, Texture* py, Texture* ny, Texture* pz, Texture* nz);
+	CubeMap(Texture* tex);
 
 	const ushort size;
 	bool loaded;
 	
 	friend class Camera;
+	friend class RenderCubeMap;
 	friend class ReflectionProbe;
 protected:
 	CubeMap(ushort size, bool mips = false, GLenum type = GL_RGBA, byte dataSize = 4, GLenum format = GL_RGBA, GLenum dataType = GL_UNSIGNED_BYTE);
 	
 	uint pointer;
-	uint fbos[6];
-	std::vector<uint> facePointerMips[6]; //[face id] [mip level]
 
 	static void _RenderCube(Vec3 pos, Vec3 xdir, GLuint fbos[], uint size, GLuint shader = 0);
 	static void _DoRenderCubeFace(GLuint fbo);
+};
+
+class RenderCubeMap {
+protected:
+	RenderCubeMap();
+
+	CubeMap map;
+	std::vector<GLuint> fbos[]; //[face][mip]
 };
 
 #define COMP_UNDEF 0x00

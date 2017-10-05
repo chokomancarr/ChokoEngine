@@ -291,6 +291,11 @@ public:
 	static std::vector<byte> GetBytes(const string& path);
 };
 
+class WinFunc {
+public:
+	static HWND GetHwndFromProcessID(DWORD id);
+};
+
 class Font {
 public:
 	Font(const string& path, int size = 12);

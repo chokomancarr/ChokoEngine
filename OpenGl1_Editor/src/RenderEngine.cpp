@@ -1234,38 +1234,21 @@ void Light::DrawRSM(Mat4x4& ip, Mat4x4& lp, float w, float h, GLuint gtexs[], GL
 }
 
 void ReflectionProbe::_DoUpdate() {
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, mipFbos[0]);
-	glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_LEQUAL);
-	glDepthMask(true);
-	glDisable(GL_BLEND);
-	for (byte a = 0; a < 6; a++) {
-		glReadBuffer(GL_COLOR_ATTACHMENT0 + a);
-		//clear
-		//ApplyGL();
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
-		//render opaque
-		Camera::DrawSceneObjectsOpaque(Scene::active->objects);
-	}
-	glDisable(GL_DEPTH_TEST);
-	glDepthMask(false);
+	
 }
 
 
 CubeMap::CubeMap(ushort size, bool mips, GLenum type, byte dataSize, GLenum format, GLenum dataType) : size(size), AssetObject(ASSETTYPE_HDRI), loaded(false) {
 	if (size != 64 && size != 128 && size != 256 && size != 512 && size != 1024 && size != 2048) {
-		Debug::Error("Cubemap", "CubeMaps must be sized POT between 64 and 2048! (" + to_string(size) + ")");
+		Debug::Error("Cubemap", "CubeMaps must be POT-sized between 64 and 2048! (" + to_string(size) + ")");
 		abort();
 	}
-	glGenFramebuffers(6, fbos);
 	glGenTextures(1, &pointer);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, pointer);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BASE_LEVEL, 0);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAX_LEVEL, 0);
-	glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, mips? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
+	glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
@@ -1273,19 +1256,7 @@ CubeMap::CubeMap(ushort size, bool mips, GLenum type, byte dataSize, GLenum form
 		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + a, 0, type, size, size, 0, format, dataType, NULL);
 	}
 	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-
-	for (uint a = 0; a < 6; a++) {
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbos[a]);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + a, pointer, 0);
-
-		GLenum DrawBuffers[] = { GL_COLOR_ATTACHMENT0 };
-		glDrawBuffers(1, DrawBuffers);
-		GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-		if (Status != GL_FRAMEBUFFER_COMPLETE) {
-			Debug::Error("CubeMap", "FBO error: " + Status);
-			abort();
-		}
-	}
+	loaded = true;
 }
 
 void CubeMap::_RenderCube(Vec3 pos, Vec3 xdir, GLuint fbos[], uint size, GLuint shader) {
@@ -1342,4 +1313,20 @@ void CubeMap::_DoRenderCubeFace(GLuint fbo) {
 	glClearBufferfv(GL_COLOR, 3, zero);
 	glMatrixMode(GL_MODELVIEW);
 	Camera::DrawSceneObjectsOpaque(Scene::active->objects);
+}
+
+RenderCubeMap::RenderCubeMap() : map(256, true) {
+	for (uint a = 0; a < 6; a++) {
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbos[a][0]);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + a, map.pointer, 0);
+
+		GLenum DrawBuffers[] = { GL_COLOR_ATTACHMENT0 };
+		glDrawBuffers(1, DrawBuffers);
+		GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+		if (Status != GL_FRAMEBUFFER_COMPLETE) {
+			Debug::Error("CubeMap", "FBO error: " + Status);
+			abort();
+
+		}
+	}
 }
