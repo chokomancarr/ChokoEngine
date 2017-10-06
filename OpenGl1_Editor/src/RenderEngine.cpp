@@ -435,6 +435,9 @@ void EB_Previewer::_DrawLights(std::vector<SceneObject*> oo, Mat4x4 ip) {
 					break;
 				}
 			}
+			else if (c->componentType == COMP_RFQ) {
+				Camera::_DoDrawLight_ReflQuad((ReflectiveQuad*)c, ip, d_fbo, d_texs, d_depthTex, bb_fbo, bb_tex, previewWidth, previewHeight, b_fbo);
+			}
 		}
 
 		_DrawLights(o->children, ip);
@@ -453,6 +456,7 @@ GLuint Camera::d_sLightProgram = 0;
 GLuint Camera::d_sLightCSProgram = 0;
 GLuint Camera::d_sLightRSMProgram = 0;
 GLuint Camera::d_sLightRSMFluxProgram = 0;
+GLuint Camera::d_reflQuadProgram = 0;
 std::unordered_map<string, GLuint> Camera::fetchTextures = std::unordered_map<string, GLuint>();
 std::vector<string> Camera::fetchTexturesUpdated = std::vector<string>();
 const string Camera::_gbufferNames[4] = {"Diffuse", "Normal", "Specular-Gloss", "Emission"};
@@ -692,6 +696,23 @@ void Light::ScanParams() {
 #undef PBSL
 }
 
+void ReflectiveQuad::ScanParams() {
+	paramLocs.clear();
+#define PBSL paramLocs.push_back(glGetUniformLocation(Camera::d_reflQuadProgram,
+	PBSL "_IP"));
+	PBSL "inColor"));
+	PBSL "inNormal"));
+	PBSL "inSpec"));
+	PBSL "inDepth"));
+	PBSL "screenSize"));
+	PBSL "mesh_u"));
+	PBSL "mesh_v"));
+	PBSL "meshPos"));
+	PBSL "meshTex"));
+	PBSL "intensity"));
+#undef PBSL
+}
+
 void Camera::_ApplyEmission(GLuint d_fbo, GLuint d_texs[], float w, float h, GLuint targetFbo) {
 	glViewport(0, 0, (GLsizei)w, (GLsizei)h);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, targetFbo);
@@ -903,6 +924,61 @@ void Camera::_DoDrawLight_Spot(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
+void Camera::_DoDrawLight_ReflQuad(ReflectiveQuad* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs[], GLuint d_depthTex, GLuint ctar, GLuint c_tex, float w, float h, GLuint tar) {
+	if (l->intensity <= 0 || l->texture == nullptr) return;
+
+	if (d_reflQuadProgram == 0) {
+		Debug::Error("ReflQuadPass", "Fatal: Shader not initialized!");
+		abort();
+	}
+
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, d_fbo);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, tar);
+#define sloc l->paramLocs
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(2, GL_FLOAT, 0, screenRectVerts);
+	glUseProgram(d_reflQuadProgram);
+
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, screenRectVerts);
+
+	glUniformMatrix4fv(sloc[0], 1, GL_FALSE, glm::value_ptr(ip));
+
+	glUniform1i(sloc[1], 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, d_texs[0]);
+	glUniform1i(sloc[2], 1);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, d_texs[1]);
+	glUniform1i(sloc[3], 2);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, d_texs[2]);
+	glUniform1i(sloc[4], 3);
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D, d_depthTex);
+	glUniform2f(sloc[5], w, h);
+	Vec3 wp = l->object->transform.worldPosition();
+	Vec3 wf = l->object->transform.right() * l->object->transform.scale.x;
+	Vec3 wu = l->object->transform.up() * l->object->transform.scale.y;
+	Vec3 pos = wp + wf*l->origin.x + wu*l->origin.y;
+	wf *= l->size.x;
+	wu *= l->size.y;
+	glUniform3f(sloc[6], wf.x, wf.y, wf.z);
+	glUniform3f(sloc[7], wu.x, wu.y, wu.z);
+	glUniform3f(sloc[8], pos.x, pos.y, pos.z);
+	glUniform1i(sloc[9], 4);
+	glActiveTexture(GL_TEXTURE4);
+	glBindTexture(GL_TEXTURE_2D, l->texture->pointer);
+	glUniform1f(sloc[10], l->intensity);
+#undef sloc
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, screenRectIndices);
+
+	glDisableVertexAttribArray(0);
+	glUseProgram(0);
+	glDisableClientState(GL_VERTEX_ARRAY);
+}
+
 void Camera::_DrawLights(std::vector<SceneObject*>& oo, Mat4x4& ip, GLuint targetFbo) {
 	for (SceneObject* o : oo) {
 		if (!o->active)
@@ -918,6 +994,9 @@ void Camera::_DrawLights(std::vector<SceneObject*>& oo, Mat4x4& ip, GLuint targe
 					_DoDrawLight_Spot(l, ip, d_fbo, d_texs, d_depthTex, 0, 0, (float)Display::width, (float)Display::height, targetFbo);
 					break;
 				}
+			}
+			else if (c->componentType == COMP_RFQ) {
+				_DoDrawLight_ReflQuad((ReflectiveQuad*)c, ip, d_fbo, d_texs, d_depthTex, 0, 0, (float)Display::width, (float)Display::height, targetFbo);
 			}
 		}
 
@@ -1232,6 +1311,7 @@ void Light::DrawRSM(Mat4x4& ip, Mat4x4& lp, float w, float h, GLuint gtexs[], GL
 #undef sloc
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, Camera::screenRectIndices);
 }
+
 
 void ReflectionProbe::_DoUpdate() {
 	

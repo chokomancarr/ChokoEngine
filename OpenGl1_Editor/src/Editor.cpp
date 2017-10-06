@@ -989,6 +989,10 @@ void EBI_DrawAss_Tex(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 	Engine::DrawTexture(v.r + 1 + 0.5f*(v.b - sz), off + 15, sz, sz, tex, DrawTex_Fit);
 	tex->_mipmap = Engine::DrawToggle(v.r + 2, off + sz + 17, 14, editor->checkbox, tex->_mipmap, white(), ORIENT_HORIZONTAL);
 	Engine::Label(v.r + 18, off + sz + 18, 12, "Use Mipmaps", editor->font, white());
+	if (tex->_mipmap) {
+		tex->_blurmips = Engine::DrawToggle(v.r + v.b*0.5f, off + sz + 17, 14, editor->checkbox, tex->_blurmips, white(), ORIENT_HORIZONTAL);
+		Engine::Label(v.r + v.b*0.5f + 16, off + sz + 18, 12, "Blur", editor->font, white());
+	}
 	Engine::Label(v.r + 18, off + sz + 33, 12, "Filtering", editor->font, white());
 	std::vector<string> filterNames = { "Point", "Bilinear", "Trilinear" };
 	if (Engine::EButton(editor->editorLayer == 0, v.r + v.b * 0.3f, off + sz + 33, v.b * 0.6f - 1, 14, grey2(), filterNames[tex->_filter], 12, editor->font, white()) == MOUSE_PRESS) {

@@ -217,7 +217,7 @@ void EB_Viewer::_AddComMesh(EditorBlock* b) {
 	b->editor->RegisterMenu(b, "Add Mesh", std::vector<string>({ "Mesh Filter", "Mesh Renderer" }), std::vector<shortcutFunc>({ _D2AddComMft, _D2AddComMrd }), 0);
 }
 void EB_Viewer::_AddComRend(EditorBlock* b) {
-	b->editor->RegisterMenu(b, "Add Rendering", std::vector<string>({ "Camera", "Mesh Renderer", "Light", "Render Probe" }), std::vector<shortcutFunc>({ _D2AddComCam, _D2AddComMrd, _D2AddComLht, _D2AddComRdp }), 0);
+	b->editor->RegisterMenu(b, "Add Rendering", std::vector<string>({ "Camera", "Mesh Renderer", "Light", "Reflective Quad", "Render Probe" }), std::vector<shortcutFunc>({ _D2AddComCam, _D2AddComMrd, _D2AddComLht, _D2AddComRfq, _D2AddComRdp }), 0);
 }
 
 void AsCh(SceneObject* sc, const string& nm, std::vector<SceneObject*>& os, bool& found) {
@@ -389,6 +389,9 @@ void EB_Viewer::_D2AddComMrd(EditorBlock* b) {
 }
 void EB_Viewer::_D2AddComLht(EditorBlock* b) {
 	b->editor->selected->AddComponent(new Light());
+}
+void EB_Viewer::_D2AddComRfq(EditorBlock* b) {
+	b->editor->selected->AddComponent(new ReflectiveQuad());
 }
 void EB_Viewer::_D2AddComRdp(EditorBlock* b) {
 	b->editor->selected->AddComponent(new ReflectionProbe());

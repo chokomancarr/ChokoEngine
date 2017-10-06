@@ -266,6 +266,7 @@ public:
 	uint width, height;
 	GLuint pointer;
 	TEX_TYPE texType() { return _texType; }
+	
 	friend int main(int argc, char **argv);
 	friend class Editor;
 	friend class EB_Inspector;
@@ -280,7 +281,7 @@ protected:
 	byte _aniso = 0;
 	TEX_FILTERING _filter = TEX_FILTER_POINT;
 	TEX_TYPE _texType = TEX_TYPE_NORMAL;
-	bool _mipmap = true, _repeat = false;
+	bool _mipmap = true, _repeat = false, _blurmips = false;
 	static bool Parse(Editor* e, string path);
 	void _ApplyPrefs(const string& p);
 	bool DrawPreview(uint x, uint y, uint w, uint h) override;
@@ -362,7 +363,7 @@ protected:
 	RenderCubeMap();
 
 	CubeMap map;
-	std::vector<GLuint> fbos[]; //[face][mip]
+	std::vector<GLuint> fbos[6]; //[face][mip]
 };
 
 #define COMP_UNDEF 0x00
@@ -438,6 +439,8 @@ public:
 	friend class Engine;
 	friend class Editor;
 	friend class Light;
+	friend class ReflectiveQuad;
+	friend class Texture;
 	friend class RenderTexture;
 	friend class ReflectionProbe;
 	friend class CubeMap;
@@ -459,7 +462,8 @@ protected:
 	static void _DoDrawLight_Point(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs[], GLuint d_depthTex, GLuint ctar, GLuint c_tex, float w = Display::width, float h = Display::height, GLuint targetFbo = 0);
 	static void _DoDrawLight_Spot(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs[], GLuint d_depthTex, GLuint ctar, GLuint c_tex, float w = Display::width, float h = Display::height, GLuint targetFbo = 0);
 	static void _DoDrawLight_Spot_Contact(Light* l, Mat4x4& p, GLuint d_depthTex, float w, float h, GLuint src, GLuint tar);
-	
+	static void _DoDrawLight_ReflQuad(ReflectiveQuad* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs[], GLuint d_depthTex, GLuint ctar, GLuint c_tex, float w = Display::width, float h = Display::height, GLuint targetFbo = 0);
+
 	static void GenShaderFromPath(const string& pathv, const string& pathf, GLuint* program);
 	static void GenShaderFromPath(GLuint vertex_shader, const string& path, GLuint* program);
 
@@ -467,6 +471,7 @@ protected:
 	static int camVertsIds[19];
 	GLuint d_fbo, d_texs[4], d_depthTex;
 	static GLuint d_probeMaskProgram, d_probeProgram, d_blurProgram, d_blurSBProgram, d_skyProgram, d_pLightProgram, d_sLightProgram, d_sLightCSProgram, d_sLightRSMProgram, d_sLightRSMFluxProgram;
+	static GLuint d_reflQuadProgram;
 
 	static Vec2 screenRectVerts[];
 	static const int screenRectIndices[];
@@ -668,6 +673,35 @@ protected:
 	static std::vector<GLint> paramLocs_Point, paramLocs_Spot, paramLocs_SpotCS, paramLocs_SpotFluxer, paramLocs_SpotRSM; //make writing faster
 	static void ScanParams();
 	//static CubeMap* _shadowCube;
+};
+
+#define COMP_RFQ 0x22
+class ReflectiveQuad : public Component {
+public:
+	ReflectiveQuad(Texture* tex = nullptr);
+
+	Texture* texture;
+	float intensity;
+	Vec2 size, origin;
+	bool invertX, invertY, invertDirection;
+
+	friend int main(int argc, char **argv);
+	friend void Serialize(Editor* e, SceneObject* o, std::ofstream* stream);
+	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
+	friend class Camera;
+	friend class Light;
+	friend class Engine;
+protected:
+	ASSETID _texture;
+	static std::vector<GLint> paramLocs;
+	//static Vec3 _poss[4], _uvs[4];
+	//static uint _ids[6];
+	static void _SetTex(void* v);
+
+	static void ScanParams();
+	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
+	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
+	void Serialize(Editor* e, std::ofstream* stream) override;
 };
 
 #define COMP_RDP 0x25

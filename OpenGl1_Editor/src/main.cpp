@@ -103,7 +103,6 @@ int main(int argc, char **argv)
 	editor->yPoss.push_back(0);
 	editor->yPoss.push_back(1);
 	editor->yPoss.push_back(0.65f);
-	editor->yPoss.push_back(0.5f);
 	editor->yLimits.push_back(Int2(0, 1));
 	editor->yLimits.push_back(Int2(0, 1));
 	editor->yLimits.push_back(Int2(0, 2));
@@ -170,14 +169,14 @@ int main(int argc, char **argv)
 		editor->LoadDefaultAssets();
 		editor->ReloadAssets(editor->projectFolder + "Assets\\", true);
 		editor->ReadPrefs();
-		editor->blocks = std::vector<EditorBlock*>({ new EB_Inspector(editor, 2, 0, 1, 3), new EB_Inspector(editor, 2, 3, 1, 1), new EB_Browser(editor, 0, 2, 4, 1, editor->projectFolder + "Assets\\"), new EB_AnimEditor(editor, 0, 2, 4, 1), new EB_Debug(editor, 4, 2, 2, 1), new EB_Viewer(editor, 0, 0, 3, 2), new EB_Hierarchy(editor, 3, 0, 2, 2), new EB_Previewer(editor, 4, 2, 2, 1) }); //path.substr(0, path.find_last_of('\\') + 1)
+		editor->blocks = std::vector<EditorBlock*>({ new EB_Inspector(editor, 2, 0, 1, 1), new EB_Browser(editor, 0, 2, 4, 1, editor->projectFolder + "Assets\\"), new EB_AnimEditor(editor, 0, 2, 4, 1), new EB_Debug(editor, 4, 2, 2, 1), new EB_Viewer(editor, 0, 0, 3, 2), new EB_Hierarchy(editor, 3, 0, 2, 2), new EB_Previewer(editor, 4, 2, 2, 1) }); //path.substr(0, path.find_last_of('\\') + 1)
 		editor->blockCombos.push_back(new BlockCombo());
+		editor->blockCombos[0]->blocks.push_back(editor->blocks[1]);
 		editor->blockCombos[0]->blocks.push_back(editor->blocks[2]);
-		editor->blockCombos[0]->blocks.push_back(editor->blocks[3]);
 		editor->blockCombos[0]->Set();
 		editor->blockCombos.push_back(new BlockCombo());
-		editor->blockCombos[1]->blocks.push_back(editor->blocks[7]);
-		editor->blockCombos[1]->blocks.push_back(editor->blocks[4]);
+		editor->blockCombos[1]->blocks.push_back(editor->blocks[6]);
+		editor->blockCombos[1]->blocks.push_back(editor->blocks[3]);
 		editor->blockCombos[1]->Set();
 		editor->SetBackground(editor->dataPath + "res\\bg.jpg", 0.3f);
 		font = editor->font;
