@@ -1485,7 +1485,7 @@ Editor::Editor() {
 }
 
 void Editor::InitShaders() {
-	Camera::GenShaderFromPath("D://lightPassVert.txt", "D://e_popupShadowFrag.txt", &instance->popupShadeProgram);
+	Camera::GenShaderFromPath("lightPassVert.txt", "e_popupShadowFrag.txt", &instance->popupShadeProgram);
 }
 
 ASSETID Editor::GetAssetInfoH(string p) {

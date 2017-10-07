@@ -7,6 +7,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "OpenGl1_Editor", "OpenGl1_E
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "OpenGl1_Painter", "OpenGl1_Painter\OpenGl1_Painter.vcxproj", "{CB51DCB6-CF66-40C4-92FA-64EE2BA6C32B}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DefaultResources", "DefaultResources\DefaultResources.vcxproj", "{1CC6A5E7-25D6-41AF-B0F4-459CFD350AF7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -29,6 +31,14 @@ Global
 		{CB51DCB6-CF66-40C4-92FA-64EE2BA6C32B}.Release|Win32.Build.0 = Release|Win32
 		{CB51DCB6-CF66-40C4-92FA-64EE2BA6C32B}.Release|x64.ActiveCfg = Release|x64
 		{CB51DCB6-CF66-40C4-92FA-64EE2BA6C32B}.Release|x64.Build.0 = Release|x64
+		{1CC6A5E7-25D6-41AF-B0F4-459CFD350AF7}.Debug|Win32.ActiveCfg = Debug|Win32
+		{1CC6A5E7-25D6-41AF-B0F4-459CFD350AF7}.Debug|Win32.Build.0 = Debug|Win32
+		{1CC6A5E7-25D6-41AF-B0F4-459CFD350AF7}.Debug|x64.ActiveCfg = Debug|x64
+		{1CC6A5E7-25D6-41AF-B0F4-459CFD350AF7}.Debug|x64.Build.0 = Debug|x64
+		{1CC6A5E7-25D6-41AF-B0F4-459CFD350AF7}.Release|Win32.ActiveCfg = Release|Win32
+		{1CC6A5E7-25D6-41AF-B0F4-459CFD350AF7}.Release|Win32.Build.0 = Release|Win32
+		{1CC6A5E7-25D6-41AF-B0F4-459CFD350AF7}.Release|x64.ActiveCfg = Release|x64
+		{1CC6A5E7-25D6-41AF-B0F4-459CFD350AF7}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

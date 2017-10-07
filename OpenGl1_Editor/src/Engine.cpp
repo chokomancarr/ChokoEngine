@@ -439,19 +439,10 @@ void Engine::Init(string path) {
 	//string colorPickerV = "#version 330 core\nlayout(location = 0) in vec3 pos;\nlayout(location = 1) in vec2 uv;\nout vec2 UV;\nvoid main(){ \ngl_Position.xyz = pos;\ngl_Position.w = 1.0;\nUV = uv;\n}";
 	//string colorPickerF = "#version 330 core\nin vec2 UV;\nuniform vec3 col;\nout vec4 color;void main(){\ncolor = vec4(mix(mix(col, vec3(1, 1, 1), UV.x), vec3(0, 0, 0), 1-UV.y), 1);\n}";
 
-	std::ifstream strm("D:\\e_colorPickerSV.txt");
-	if (strm.fail()) { abort(); }
-	std::stringstream ss;
-	ss << strm.rdbuf();
-	std::vector<string> s2 = string_split(ss.str(), '$');
+	std::vector<string> s2 = string_split(DefaultResources::GetStr("e_colorPickerSV.txt"), '$');
 	Color::pickerProgSV = ShaderBase::FromVF(s2[0], s2[1]);
 
-	strm.close();
-	strm.open("D:\\e_colorPickerH.txt");
-	if (strm.fail()) { abort(); }
-	std::stringstream ss2;
-	ss2 << strm.rdbuf();
-	std::vector<string> s22 = string_split(ss2.str(), '$');
+	std::vector<string> s22 = string_split(DefaultResources::GetStr("e_colorPickerH.txt"), '$');
 	Color::pickerProgH = ShaderBase::FromVF(s22[0], s22[1]);
 #endif
 }
@@ -1475,10 +1466,7 @@ void Font::Init() {
 	string error;
 	GLuint vs, fs;
 	string frag = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = vec4(1, 1, 1, texture(sampler, UV).r)*col;\n}";
-	std::ifstream strm("D:\\fontVert.txt");
-	std::stringstream vert;
-	vert << strm.rdbuf();
-	if (!ShaderBase::LoadShader(GL_VERTEX_SHADER, vert.str(), vs, &error)) {
+	if (!ShaderBase::LoadShader(GL_VERTEX_SHADER, DefaultResources::GetStr("fontVert.txt"), vs, &error)) {
 		Debug::Error("Engine", "Fatal: Cannot init font shader(v)! " + error);
 		abort();
 	}
@@ -2123,4 +2111,38 @@ void* AssetManager::GenCache(ASSETTYPE t, ASSETID i) {
 		return nullptr;
 	}
 	return dataCaches[t][i];
+}
+
+std::vector<string> DefaultResources::names = std::vector<string>();
+std::vector<char*> DefaultResources::datas = std::vector<char*>();
+std::vector<uint> DefaultResources::sizes = std::vector<uint>();
+void DefaultResources::Init(string path) {
+	std::ifstream strm(path, std::ios::binary);
+	if (!strm.is_open()) {
+		Debug::Error("Default Resources", "fatal: cannot open default resources at " + path + "!");
+		abort();
+	}
+	char c[100];
+	while (!strm.eof()) {
+		strm.getline(c, 100, 0);
+		if (c[0] == 0) break;
+		names.push_back(c);
+		uint sz;
+		_Strm2Val<uint>(strm, sz);
+		sizes.push_back(sz);
+		char* cc = new char[sz+1];
+		strm.read(cc, sz);
+		cc[sz] = 0;
+		datas.push_back(cc);
+	}
+	std::cout << "Default Resources OK (" << to_string(names.size()) << " files loaded)" << std::endl;
+}
+
+string DefaultResources::GetStr(string name) {
+	for (uint a = names.size(); a > 0; a--) {
+		if (names[a-1] == name) {
+			return string(datas[a-1]);
+		}
+	}
+	Debug::Error("Default Resources", "Fatal: resource \"" + name + "\" missing!");
 }

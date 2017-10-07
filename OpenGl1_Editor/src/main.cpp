@@ -72,6 +72,8 @@ int main(int argc, char **argv)
 	editor->dataPath = path.substr(0, path.find_last_of('\\') + 1);
 	editor->lockMutex = &lockMutex;
 
+	DefaultResources::Init(editor->dataPath + "res\\defaultresources.bin");
+
 	//editor->ParseAsset("D:\\test.blend");
 	//editor->Compile();
 

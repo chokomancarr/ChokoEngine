@@ -97,14 +97,7 @@ void Camera::ApplyGL() {
 void Camera::GenShaderFromPath(const string& pathv, const string& pathf, GLuint* program) {
 	GLuint vertex_shader;
 	std::string err;
-	std::ifstream strm(pathv);
-	if (strm.fail()) {
-		Debug::Error("Cam Shader Compiler", "vs vert not found!");
-		abort();
-	}
-	std::stringstream ss;
-	ss << strm.rdbuf();
-	if (!ShaderBase::LoadShader(GL_VERTEX_SHADER, ss.str(), vertex_shader, &err)) {
+	if (!ShaderBase::LoadShader(GL_VERTEX_SHADER, DefaultResources::GetStr(pathv), vertex_shader, &err)) {
 		Debug::Error("Cam Shader Compiler", pathv + "! " + err);
 		abort();
 	}
@@ -114,6 +107,7 @@ void Camera::GenShaderFromPath(const string& pathv, const string& pathf, GLuint*
 void Camera::GenShaderFromPath(GLuint vertex_shader, const string& path, GLuint* program) {
 	GLuint fragment_shader;
 	std::string err;
+	/*
 	std::ifstream strm(path);
 	if (strm.fail()) {
 		Debug::Error("Cam Shader Compiler", "fs frag not found!");
@@ -121,7 +115,8 @@ void Camera::GenShaderFromPath(GLuint vertex_shader, const string& path, GLuint*
 	}
 	std::stringstream ss;
 	ss << strm.rdbuf();
-	if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, ss.str(), fragment_shader, &err)) {
+	*/
+	if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, DefaultResources::GetStr(path), fragment_shader, &err)) {
 		Debug::Error("Cam Shader Compiler", path + "! " + err);
 		abort();
 	}
@@ -152,25 +147,22 @@ void Camera::InitShaders() {
 	int link_result = 0;
 	GLuint vertex_shader;
 	string err = "";
-	std::ifstream strm("D:\\lightPassVert.txt");
-	std::stringstream ss;
-	ss << strm.rdbuf();
 
-	if (!ShaderBase::LoadShader(GL_VERTEX_SHADER, ss.str(), vertex_shader, &err)) {
+	if (!ShaderBase::LoadShader(GL_VERTEX_SHADER, DefaultResources::GetStr("lightPassVert.txt"), vertex_shader, &err)) {
 		Debug::Error("Cam Shader Compiler", "v! " + err);
 		abort();
 	}
 
-	GenShaderFromPath(vertex_shader, "D:\\blurPassFrag.txt", &d_blurProgram);
-	GenShaderFromPath(vertex_shader, "D:\\blurPassFrag_Skybox.txt", &d_blurSBProgram);
-	GenShaderFromPath(vertex_shader, "D:\\lightPassFrag_Sky.txt", &d_skyProgram);
-	GenShaderFromPath(vertex_shader, "D:\\lightPassFrag_Point.txt", &d_pLightProgram);
-	GenShaderFromPath(vertex_shader, "D:\\lightPassFrag_Spot.txt", &d_sLightProgram);
-	GenShaderFromPath(vertex_shader, "D:\\lightPassFrag_Spot_ContShad.txt", &d_sLightCSProgram);
-	GenShaderFromPath(vertex_shader, "D:\\lightPassFrag_Spot_GI_RSM.txt", &d_sLightRSMProgram);
-	GenShaderFromPath(vertex_shader, "D:\\lightPassFrag_Spot_GI_FluxPrep.txt", &d_sLightRSMFluxProgram);
-	GenShaderFromPath(vertex_shader, "D:\\lightPassFrag_ProbeMask.txt", &d_probeMaskProgram);
-	GenShaderFromPath(vertex_shader, "D:\\lightPassFrag_ReflQuad.txt", &d_reflQuadProgram);
+	GenShaderFromPath(vertex_shader, "blurPassFrag.txt", &d_blurProgram);
+	GenShaderFromPath(vertex_shader, "blurPassFrag_Skybox.txt", &d_blurSBProgram);
+	GenShaderFromPath(vertex_shader, "lightPassFrag_Sky.txt", &d_skyProgram);
+	GenShaderFromPath(vertex_shader, "lightPassFrag_Point.txt", &d_pLightProgram);
+	GenShaderFromPath(vertex_shader, "lightPassFrag_Spot.txt", &d_sLightProgram);
+	GenShaderFromPath(vertex_shader, "lightPassFrag_Spot_ContShad.txt", &d_sLightCSProgram);
+	GenShaderFromPath(vertex_shader, "lightPassFrag_Spot_GI_RSM.txt", &d_sLightRSMProgram);
+	GenShaderFromPath(vertex_shader, "lightPassFrag_Spot_GI_FluxPrep.txt", &d_sLightRSMFluxProgram);
+	GenShaderFromPath(vertex_shader, "lightPassFrag_ProbeMask.txt", &d_probeMaskProgram);
+	GenShaderFromPath(vertex_shader, "lightPassFrag_ReflQuad.txt", &d_reflQuadProgram);
 
 	glDeleteShader(vertex_shader);
 
