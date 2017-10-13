@@ -1249,7 +1249,7 @@ void Transform::_UpdateQuat() {
 }
 
 void Transform::_UpdateEuler() {
-	std::cout << to_string(_rotation) << std::endl;
+	//std::cout << to_string(_rotation) << std::endl;
 	_eulerRotation = QuatFunc::ToEuler(_rotation);
 }
 

@@ -509,7 +509,8 @@ enum DEFTEX : byte {
 	DEFTEX_WHITE,
 	DEFTEX_RED,
 	DEFTEX_GREEN,
-	DEFTEX_BLUE
+	DEFTEX_BLUE,
+	DEFTEX_NORMAL
 };
 
 class Material : public AssetObject {

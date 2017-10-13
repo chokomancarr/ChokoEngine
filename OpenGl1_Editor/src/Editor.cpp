@@ -642,7 +642,6 @@ void EB_Viewer::Draw() {
 	}
 
 	//draw tooltip
-	glDepthFunc(GL_ALWAYS);
 	if (editor->selected != nullptr) {
 		if (modifying == 0) {
 			Vec3 wpos = editor->selected->transform.worldPosition();
@@ -672,6 +671,7 @@ void EB_Viewer::Draw() {
 				Engine::DrawLineW(editor->selected->transform.worldPosition() + modAxisDir*-100000.0f, editor->selected->transform.worldPosition() + modAxisDir*100000.0f, white(), 2);
 		}
 	}
+	glDepthFunc(GL_ALWAYS);
 
 	//Color::DrawPicker(150, 50, editor->cc);
 	glPopMatrix();

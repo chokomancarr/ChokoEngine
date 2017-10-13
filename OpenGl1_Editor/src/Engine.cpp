@@ -1770,10 +1770,9 @@ void Serialize(Editor* e, SceneObject* o, std::ofstream* stream) {
 }
 
 void Deserialize(std::ifstream& stream, SceneObject* obj) {
-	char* cc = new char[100];
+	char cc[100];
 	stream.getline(cc, 100, 0);
 	obj->name = string(cc);
-	delete[](cc);
 	Debug::Message("Object Deserializer", "Deserializing object " + obj->name);
 	char c;
 	_Strm2Val(stream, obj->transform.position.x);
@@ -2145,4 +2144,5 @@ string DefaultResources::GetStr(string name) {
 		}
 	}
 	Debug::Error("Default Resources", "Fatal: resource \"" + name + "\" missing!");
+	return "";
 }

@@ -513,6 +513,8 @@ bool ShaderBase::Parse(std::ifstream* stream, string path) {
 								vrs[vrSize]->def.i = DEFTEX_GREEN;// Material::defTex_White;
 							else if (def == "blue")
 								vrs[vrSize]->def.i = DEFTEX_BLUE;// Material::defTex_White;
+							else if (def == "normal")
+								vrs[vrSize]->def.i = DEFTEX_NORMAL;// Material::defTex_White;
 							else {
 								Editor::instance->_Error("Shader Importer", "Default variable value (" + def + ") cannot be parsed!");
 								return false;

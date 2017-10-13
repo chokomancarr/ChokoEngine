@@ -997,7 +997,7 @@ void Material::SetVec2(GLint id, Vec2 val) {
 		vals[SHADER_VEC2][id] = new Vec2(val);
 }
 
-std::vector<GLuint> Material::defTexs = std::vector<GLuint>(6);
+std::vector<GLuint> Material::defTexs = std::vector<GLuint>(7);
 
 void Material::LoadOris() {
 	std::vector<byte> data(12, 0x00);
@@ -1029,6 +1029,11 @@ void Material::LoadOris() {
 	for (int a = 0; a < 12; a++) data[a] = ((a + 1) / 3 == 0) ? 0xFF : 0x00;
 	glGenTextures(1, &defTexs[5]);
 	glBindTexture(GL_TEXTURE_2D, defTexs[5]);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 2, 2, 0, GL_RGB, GL_UNSIGNED_BYTE, &data[0]);
+
+	for (int a = 0; a < 12; a++) data[a] = ((a + 1) / 3 == 0) ? 0xFF : 0x80;
+	glGenTextures(1, &defTexs[6]);
+	glBindTexture(GL_TEXTURE_2D, defTexs[6]);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 2, 2, 0, GL_RGB, GL_UNSIGNED_BYTE, &data[0]);
 
 	glBindTexture(GL_TEXTURE_2D, 0);
