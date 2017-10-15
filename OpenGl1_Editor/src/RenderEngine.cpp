@@ -55,20 +55,15 @@ void _InitGBuffer(GLuint* d_fbo, GLuint* d_texs, GLuint* d_depthTex, float w = D
 	glBindTexture(GL_TEXTURE_2D, *d_depthTex);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, (int)w, (int)h, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, *d_depthTex, 0);
-
-#ifdef SHOW_GBUFFERS
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-#else
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-#endif
 	glBindTexture(GL_TEXTURE_2D, 0);
 	GLenum DrawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3 };
 	glDrawBuffers(4, DrawBuffers);
 }
 
 
-RenderTexture::RenderTexture(uint w, uint h, RT_FLAGS flags, const GLvoid* pixels, GLenum pixelFormat) : Texture(), depth(!!(flags & RT_FLAG_DEPTH)), stencil(!!(flags & RT_FLAG_STENCIL)), hdr(!!(flags & RT_FLAG_HDR)) {
+RenderTexture::RenderTexture(uint w, uint h, RT_FLAGS flags, const GLvoid* pixels, GLenum pixelFormat, GLenum minFilter, GLenum magFilter, GLenum wrapS, GLenum wrapT) : Texture(), depth(!!(flags & RT_FLAG_DEPTH)), stencil(!!(flags & RT_FLAG_STENCIL)), hdr(!!(flags & RT_FLAG_HDR)) {
 	width = w;
 	height = h;
 	_texType = TEX_TYPE_RENDERTEXTURE;
@@ -81,8 +76,10 @@ RenderTexture::RenderTexture(uint w, uint h, RT_FLAGS flags, const GLvoid* pixel
 	glBindTexture(GL_TEXTURE_2D, pointer);
 	glTexImage2D(GL_TEXTURE_2D, 0, hdr? GL_RGBA32F : GL_RGBA, w, h, 0, pixelFormat, hdr? GL_FLOAT : GL_UNSIGNED_BYTE, pixels);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pointer, 0);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minFilter);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magFilter);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrapS);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrapT);
 
 	GLenum DrawBuffers[] = { GL_COLOR_ATTACHMENT0 };
 	glDrawBuffers(1, DrawBuffers);
@@ -1409,4 +1406,10 @@ RenderCubeMap::RenderCubeMap() : map(256, true) {
 
 		}
 	}
+}
+
+
+void Editor::InitMaterialPreviewer() {
+	_InitGBuffer(&matPrev_fbo, matPrev_texs, &matPrev_depthTex, 256, 256);
+	matPreviewerSphere = Procedurals::UVSphere(32, 16);
 }

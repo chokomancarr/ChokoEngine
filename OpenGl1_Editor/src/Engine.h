@@ -464,10 +464,10 @@ public:
 	ShaderBase(string path);
 	ShaderBase(std::ifstream& stream, uint offset);
 	ShaderBase(const string& vert, const string& frag);
-	ShaderBase(GLuint p) : AssetObject(ASSETTYPE_SHADER), pointer(p), loaded(!!p) {}
+	ShaderBase(GLuint p) : AssetObject(ASSETTYPE_SHADER), pointer(p), loaded(!!p), inherited(true) {}
 	//ShaderBase(string vert, string frag);
 	~ShaderBase() {
-		glDeleteProgram(pointer);
+		if (!inherited) glDeleteProgram(pointer);
 		for (ShaderVariable* v : vars)
 			delete(v);
 	}
@@ -489,6 +489,7 @@ public:
 
 protected:
 	static GLuint FromVF(const string& vert, const string& frag);
+	bool inherited = false;
 };
 
 class MatVal_Tex {
@@ -497,6 +498,7 @@ class MatVal_Tex {
 	friend void EBI_DrawAss_Mat(Vec4 v, Editor* editor, EB_Inspector* b, float &off);
 protected:
 	MatVal_Tex() : id(-1), tex(nullptr), defTex(0) {}
+	~MatVal_Tex() {}
 
 	int id;
 	Texture* tex;
@@ -588,9 +590,9 @@ class Engine {
 public:
 	static void BeginStencil(float x, float y, float w, float h);
 	static void EndStencil();
-	static void DrawTexture(float x, float y, float w, float h, Texture* texture, DrawTex_Scaling scl = DrawTex_Stretch);
-	static void DrawTexture(float x, float y, float w, float h, Texture* texture, float alpha, DrawTex_Scaling scl = DrawTex_Stretch);
-	static void DrawTexture(float x, float y, float w, float h, Texture* texture, Vec4 tint, DrawTex_Scaling scl = DrawTex_Stretch);
+	static void DrawTexture(float x, float y, float w, float h, Texture* texture, DrawTex_Scaling scl = DrawTex_Stretch, float miplevel = 0);
+	static void DrawTexture(float x, float y, float w, float h, Texture* texture, float alpha, DrawTex_Scaling scl = DrawTex_Stretch, float miplevel = 0);
+	static void DrawTexture(float x, float y, float w, float h, Texture* texture, Vec4 tint, DrawTex_Scaling scl = DrawTex_Stretch, float miplevel = 0);
 	static void DrawLine(Vec2 v1, Vec2 v2, Vec4 col, float width);
 	static void DrawLine(Vec3 v1, Vec3 v2, Vec4 col, float width);
 	static void DrawLineW(Vec3 v1, Vec3 v2, Vec4 col, float width);
@@ -639,10 +641,12 @@ public:
 	static std::unordered_map<ASSETTYPE, std::vector<void*>> dataPossCache;
 
 //private: //fk users
-	static void DrawQuad(float x, float y, float w, float h, uint texture);
+	static GLint drawQuadLocs[3], drawQuadLocsA[3], drawQuadLocsC[1];
+	static void ScanQuadParams();
+	static void DrawQuad(float x, float y, float w, float h, uint texture, float miplevel = 0);
 	static void DrawQuad(float x, float y, float w, float h, uint texture, Vec4 Vec4);
 	static void DrawQuad(float x, float y, float w, float h, Vec4 Vec4);
-	static void DrawQuad(float x, float y, float w, float h, uint texture, Vec2 uv0, Vec2 uv1, Vec2 uv2, Vec2 uv3, bool single, Vec4 Vec4);
+	static void DrawQuad(float x, float y, float w, float h, GLuint texture, Vec2 uv0, Vec2 uv1, Vec2 uv2, Vec2 uv3, bool single, Vec4 Vec4, float miplevel = 0);
 	static void DrawCube(Vec3 pos, float dx, float dy, float dz, Vec4 Vec4);
 	static void DrawIndices(const Vec3* poss, const int* is, int length, float r, float g, float b);
 	static void DrawIndicesI(const Vec3* poss, const int* is, int length, float r, float g, float b);

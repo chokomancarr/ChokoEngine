@@ -986,7 +986,13 @@ void EBI_DrawObj(Vec4 v, Editor* editor, EB_Inspector* b, SceneObject* o) {
 void EBI_DrawAss_Tex(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 	Texture* tex = (Texture*)editor->selectedFileCache;
 	float sz = min(v.b - 2.0f, clamp((float)max(tex->width, tex->height), 16.0f, editor->_maxPreviewSize));
-	Engine::DrawTexture(v.r + 1 + 0.5f*(v.b - sz), off + 15, sz, sz, tex, DrawTex_Fit);
+	Engine::DrawTexture(v.r + 1 + 0.5f*(v.b - sz), off + 15, sz, sz, tex, DrawTex_Fit, b->previewMip);
+	if (tex->_mipmap) {
+		Engine::DrawTexture(v.r + 2, off + sz + 17, 16, 16, editor->mipLow);
+		Engine::DrawTexture(v.r + v.b - 18, off + sz + 17, 16, 16, editor->mipHigh);
+		b->previewMip = Engine::DrawSliderFill(v.r + 19, off + sz + 17, v.b - 37, 16, 0, 6, b->previewMip, grey2(), white());
+		off += 17;
+	}
 	tex->_mipmap = Engine::DrawToggle(v.r + 2, off + sz + 17, 14, editor->checkbox, tex->_mipmap, white(), ORIENT_HORIZONTAL);
 	Engine::Label(v.r + 18, off + sz + 18, 12, "Use Mipmaps", editor->font, white());
 	if (tex->_mipmap) {
@@ -1046,7 +1052,10 @@ void EBI_DrawAss_Hdr(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 	float x = v.r + 1 + 0.5f*(v.b - sz);
 	float y = off + 15;
 	float w2h = ((float)tex->width) / tex->height;
-	Engine::DrawQuad(x, y, sz, sz / w2h, (tex->loaded) ? tex->pointer : Engine::fallbackTex->pointer);
+	Engine::DrawQuad(x, y, sz, sz / w2h, (tex->loaded) ? tex->pointer : Engine::fallbackTex->pointer, b->previewMip);
+	Engine::DrawTexture(v.r + 2, off + sz + 17, 16, 16, editor->mipLow);
+	Engine::DrawTexture(v.r + v.b - 18, off + sz + 17, 16, 16, editor->mipHigh);
+	b->previewMip = Engine::DrawSliderFill(v.r + 19, off + sz + 17, v.b - 37, 16, 0, 6, b->previewMip, grey2(), white());
 	off += sz + 63;
 }
 
@@ -1661,6 +1670,8 @@ void Editor::LoadDefaultAssets() {
 	collapse = GetResExt("collapse", "png");
 	object = GetRes("object");
 	browse = GetRes("browseicon");
+	mipLow = GetRes("miplow", false, true);
+	mipHigh = GetRes("miphigh", false, true);
 
 	shadingTexs.push_back(GetRes("shading_solid"));
 	shadingTexs.push_back(GetRes("shading_trans"));

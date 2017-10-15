@@ -296,7 +296,7 @@ enum RT_FLAGS : byte {
 
 class RenderTexture : public Texture {
 public:
-	RenderTexture(uint w, uint h, RT_FLAGS flags = RT_FLAG_NONE, const GLvoid* pixels = NULL, GLenum pixelFormat = GL_RGBA);
+	RenderTexture(uint w, uint h, RT_FLAGS flags = RT_FLAG_NONE, const GLvoid* pixels = NULL, GLenum pixelFormat = GL_RGBA, GLenum minFilter = GL_LINEAR, GLenum magFilter = GL_LINEAR, GLenum wrapS = GL_REPEAT, GLenum wrapT = GL_REPEAT);
 	~RenderTexture();
 
 	const bool depth, stencil, hdr;
@@ -335,7 +335,7 @@ private:
 	Background(std::ifstream& strm, uint offset);
 	static bool Parse(string path);
 	static void B_DS(Background* b, std::vector<float> data);
-	static std::vector<float> Downsample(std::vector<float>&, uint, uint, uint&, uint&);
+	//static std::vector<float> Downsample(std::vector<float>&, uint, uint, uint&, uint&);
 };
 
 class CubeMap : public AssetObject {

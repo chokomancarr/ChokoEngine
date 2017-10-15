@@ -423,17 +423,16 @@ void Engine::Init(string path) {
 	Editor::InitShaders();
 #endif
 	string vertcode = "#version 330 core\nlayout(location = 0) in vec3 pos;\nlayout(location = 1) in vec2 uv;\nout vec2 UV;\nvoid main(){ \ngl_Position.xyz = pos;\ngl_Position.w = 1.0;\nUV = uv;\n}";
-	string fragcode = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = textureLod(sampler, UV, 0)*col;\n}"; //out vec3 Vec4;\n
-	string fragcode2 = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = vec4(1, 1, 1, textureLod(sampler, UV, 0).r)*col;\n}"; //out vec3 Vec4;\n
-	string fragcode3 = "#version 330 core\nin vec2 UV;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = col;\n}"; //out vec3 Vec4;\n
-	//string fragcodeSky = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec2 dir;\nuniform float angle;\nout vec4 Vec4;\nvoid main(){\nvec4 col = texture(sampler, UV);\nVec4.rgb = col.rgb*pow(2, col.a*255-128);\nVec4.a = 1;\n}"; //(1.0f / 256.0f) * pow(2, (float)(exponent - 128));
-	//string fragcodeSky = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec2 dir;\nuniform float length;\nout vec4 Vec4;\nvoid main(){\nfloat ay = asin((dir.y + UV.y)/length);\nfloat l2 = length*cos(ay);\nfloat ax = asin((dir.x + UV.x)/l2);\nVec4 = texture(sampler, vec2(0.5, 0.5) + vec2(ax, ay));\nVec4.a = 1;\n}";
+	string fragcode = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nuniform float level;\nout vec4 color;void main(){\ncolor = textureLod(sampler, UV, level)*col;\n}"; //out vec3 Vec4;\n
+	string fragcode2 = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nuniform float level;\nout vec4 color;void main(){\ncolor = vec4(1, 1, 1, textureLod(sampler, UV, level).r)*col;\n}"; //out vec3 Vec4;\n
+	string fragcode3 = "#version 330 core\nin vec2 UV;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = col;\n}";
 	string fragcodeSky = "in vec2 UV;uniform sampler2D sampler;uniform vec2 dir;uniform float length;out vec4 color;void main(){float ay = asin((UV.y) / length);float l2 = length*cos(ay);float ax = asin((dir.x + UV.x) / l2);color = textureLod(sampler, vec2((dir.x + ax / 3.14159)*sin(dir.y + ay / 3.14159) + 0.5, (dir.y + ay / 3.14159)), 0);color.a = 1;}";
 
 	unlitProgram = ShaderBase::FromVF(vertcode, fragcode);
 	unlitProgramA = ShaderBase::FromVF(vertcode, fragcode2);
 	unlitProgramC = ShaderBase::FromVF(vertcode, fragcode3);
 	skyProgram = ShaderBase::FromVF(vertcode, fragcodeSky);
+	ScanQuadParams();
 
 #ifdef IS_EDITOR
 	//string colorPickerV = "#version 330 core\nlayout(location = 0) in vec3 pos;\nlayout(location = 1) in vec2 uv;\nout vec2 UV;\nvoid main(){ \ngl_Position.xyz = pos;\ngl_Position.w = 1.0;\nUV = uv;\n}";
@@ -495,25 +494,26 @@ void Engine::EndStencil() {
 	stencilRect = nullptr;
 }
 
-void Engine::DrawTexture(float x, float y, float w, float h, Texture* texture, DrawTex_Scaling scl) {
+void Engine::DrawTexture(float x, float y, float w, float h, Texture* texture, DrawTex_Scaling scl, float miplevel) {
+	DrawTexture(x, y, w, h, texture, white(), scl, miplevel);
+}
+void Engine::DrawTexture(float x, float y, float w, float h, Texture* texture, float alpha, DrawTex_Scaling scl, float miplevel) {
+	DrawTexture(x, y, w, h, texture, white(alpha), scl, miplevel);
+}
+void Engine::DrawTexture(float x, float y, float w, float h, Texture* texture, Vec4 tint, DrawTex_Scaling scl, float miplevel) {
+	GLuint tex = (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer;
 	if (scl == DrawTex_Stretch)
-		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer);
+		DrawQuad(x, y, w, h, tex, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint, miplevel);
 	else if (scl == DrawTex_Fit) {
 		float w2h = ((float)texture->width) / texture->height;
-		if (w/h > w2h)
-			DrawQuad(x + 0.5f*(w - h*w2h), y, h*w2h, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer);
+		if (w / h > w2h)
+			DrawQuad(x + 0.5f*(w - h*w2h), y, h*w2h, h, tex, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint, miplevel);
 		else
-			DrawQuad(x, y + 0.5f*(h - w/w2h), w, w/w2h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer);
+			DrawQuad(x, y + 0.5f*(h - w / w2h), w, w / w2h, tex, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint, miplevel);
 	}
 	else {
-		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer);
+		DrawQuad(x, y, w, h, tex, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint, miplevel);
 	}
-}
-void Engine::DrawTexture(float x, float y, float w, float h, Texture* texture, float alpha, DrawTex_Scaling scl) {
-	DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, Vec4(1, 1, 1, alpha));
-}
-void Engine::DrawTexture(float x, float y, float w, float h, Texture* texture, Vec4 tint, DrawTex_Scaling scl) {
-	DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint);
 }
 
 void Engine::Label(float x, float y, float s, string st, Font* font) {
@@ -810,8 +810,24 @@ void Engine::ResetUIMatrix() {
 	Display::uiMatrix = glm::mat3();
 }
 
-void Engine::DrawQuad(float x, float y, float w, float h, uint texture) {
-	DrawQuad(x, y, w, h, texture, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, Vec4(1, 1, 1, 1));
+GLint Engine::drawQuadLocs[] = { 0, 0, 0 };
+GLint Engine::drawQuadLocsA[] = { 0, 0, 0 };
+GLint Engine::drawQuadLocsC[] = { 0 };
+
+void Engine::ScanQuadParams() {
+	drawQuadLocs[0] = glGetUniformLocation(unlitProgram, "sampler");
+	drawQuadLocs[1] = glGetUniformLocation(unlitProgram, "col");
+	drawQuadLocs[2] = glGetUniformLocation(unlitProgram, "level");
+
+	drawQuadLocsA[0] = glGetUniformLocation(unlitProgramA, "sampler");
+	drawQuadLocsA[1] = glGetUniformLocation(unlitProgramA, "col");
+	drawQuadLocsA[2] = glGetUniformLocation(unlitProgramA, "level");
+
+	drawQuadLocsC[0] = glGetUniformLocation(unlitProgramC, "col");
+}
+
+void Engine::DrawQuad(float x, float y, float w, float h, uint texture, float miplevel) {
+	DrawQuad(x, y, w, h, texture, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, Vec4(1, 1, 1, 1), miplevel);
 }
 void Engine::DrawQuad(float x, float y, float w, float h, uint texture, Vec4 Vec4) {
 	DrawQuad(x, y, w, h, texture, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, Vec4);
@@ -837,8 +853,7 @@ void Engine::DrawQuad(float x, float y, float w, float h, Vec4 Vec4) {
 	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
 	glUseProgram(prog);
 
-	GLint baseColLoc = glGetUniformLocation(prog, "col");
-	glUniform4f(baseColLoc, Vec4.r, Vec4.g, Vec4.b, Vec4.a);
+	glUniform4f(drawQuadLocsC[0], Vec4.r, Vec4.g, Vec4.b, Vec4.a);
 
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &quadPoss[0]);
@@ -859,7 +874,7 @@ void Engine::DrawQuad(float x, float y, float w, float h, Vec4 Vec4) {
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
-void Engine::DrawQuad(float x, float y, float w, float h, GLuint texture, Vec2 uv0, Vec2 uv1, Vec2 uv2, Vec2 uv3, bool single, Vec4 Vec4) {
+void Engine::DrawQuad(float x, float y, float w, float h, GLuint texture, Vec2 uv0, Vec2 uv1, Vec2 uv2, Vec2 uv3, bool single, Vec4 Vec4, float miplevel) {
 	Vec3 quadPoss[4];
 	quadPoss[0].x = x;
 	quadPoss[0].y = y;
@@ -877,23 +892,18 @@ void Engine::DrawQuad(float x, float y, float w, float h, GLuint texture, Vec2 u
 	Vec2 quadUv[4]{uv0, uv1, uv2, uv3};
 	uint quadIndexes[4] = { 0, 1, 3, 2 };
 	uint prog = single ? unlitProgramA : unlitProgram;
-	//glLinkProgram(prog);
-	GLint baseImageLoc = glGetUniformLocation(prog, "sampler");
 	glEnableClientState(GL_VERTEX_ARRAY);
-	//glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-	//glEnable(GL_DEPTH_TEST);
-
 	
 	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
 	//glTexCoordPointer(2, GL_FLOAT, 0, &quadUv);
 	glUseProgram(prog);
 
-	glUniform1i(baseImageLoc, 0);
+	glUniform1i(single? drawQuadLocsA[0] : drawQuadLocs[0], 0);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, texture);
 
-	GLint baseColLoc = glGetUniformLocation(prog, "col");
-	glUniform4f(baseColLoc, Vec4.r, Vec4.g, Vec4.b, Vec4.a);
+	glUniform4f(single ? drawQuadLocsA[1] : drawQuadLocs[1], Vec4.r, Vec4.g, Vec4.b, Vec4.a);
+	glUniform1f(single ? drawQuadLocsA[2] : drawQuadLocs[2], miplevel);
 
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);

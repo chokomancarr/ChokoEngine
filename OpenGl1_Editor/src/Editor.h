@@ -243,6 +243,7 @@ public:
 	bool lock = false;
 	SceneObject* lockedObj;
 	byte lockGlobal;
+	float previewMip;
 
 	//void SelectAsset(EBI_Asset* e, string s);
 	void Deselect();
@@ -494,7 +495,7 @@ public:
 	ShortcutMapGlobal globalShorts;
 
 	Texture* buttonX, *buttonExt, *buttonPlus, *buttonExtArrow, *background, *placeholder, *checkers, *expand;
-	Texture* collapse, *object, *checkbox, *keylock, *assetExpand, *assetCollapse, *browse;
+	Texture* collapse, *object, *checkbox, *keylock, *assetExpand, *assetCollapse, *browse, *mipLow, *mipHigh;
 	std::vector<Texture*> tooltipTexs;
 	std::vector<Texture*> shadingTexs;
 	std::vector<Texture*> orientTexs;
@@ -517,6 +518,13 @@ public:
 	void DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASSETTYPE type, float labelSize, Font* labelFont, ASSETID* tar, callbackFunc func = nullptr, void* param = nullptr);
 	void DrawCompSelector(float x, float y, float w, float h, Vec4 col, float labelSize, Font* labelFont, CompRef* tar, callbackFunc func = nullptr, void* param = nullptr);
 	void DrawColorSelector(float x, float y, float w, float h, Vec4 col, float labelSize, Font* labelFont, Vec4* tar);
+	
+	void InitMaterialPreviewer();
+	Mesh* matPreviewerSphere;
+	Background* matPreviewerBg;
+	GLuint matPrev_fbo, matPrev_texs[4], matPrev_depthTex;
+	void DrawMaterialPreviewer(float x, float y, float w, float h, float rx, float rz, Material* mat);
+	
 	ASSETID GetAssetInfoH(string p), GetAssetInfo(string p, ASSETTYPE &type, ASSETID& i);
 	ASSETID GetAssetId(AssetObject* p), GetAssetId(AssetObject* p, ASSETTYPE& t);
 	string GetAssetName(ASSETTYPE t, ASSETID id);
