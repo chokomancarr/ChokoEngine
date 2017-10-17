@@ -60,6 +60,7 @@ void _InitGBuffer(GLuint* d_fbo, GLuint* d_texs, GLuint* d_depthTex, float w = D
 	glBindTexture(GL_TEXTURE_2D, 0);
 	GLenum DrawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3 };
 	glDrawBuffers(4, DrawBuffers);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 }
 
 
@@ -1412,4 +1413,9 @@ RenderCubeMap::RenderCubeMap() : map(256, true) {
 void Editor::InitMaterialPreviewer() {
 	_InitGBuffer(&matPrev_fbo, matPrev_texs, &matPrev_depthTex, 256, 256);
 	matPreviewerSphere = Procedurals::UVSphere(32, 16);
+}
+
+void Editor::DrawMaterialPreviewer(float x, float y, float w, float h, float& rx, float& rz, Material* mat) {
+	Engine::DrawQuad(x, y, w, h, black());
+
 }

@@ -371,6 +371,8 @@ Rect Rect::Intersection(const Rect& r2) {
 	return Rect(ox, oy, p2x - ox, p2y - oy);
 }
 
+int Random::seed = 1;
+
 float Random::Value() {
 	return ((float)rand()) / ((float)RAND_MAX);
 }
@@ -421,6 +423,7 @@ void Engine::Init(string path) {
 	Font::Init();
 #ifdef IS_EDITOR
 	Editor::InitShaders();
+	Editor::instance->InitMaterialPreviewer();
 #endif
 	string vertcode = "#version 330 core\nlayout(location = 0) in vec3 pos;\nlayout(location = 1) in vec2 uv;\nout vec2 UV;\nvoid main(){ \ngl_Position.xyz = pos;\ngl_Position.w = 1.0;\nUV = uv;\n}";
 	string fragcode = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nuniform float level;\nout vec4 color;void main(){\ncolor = textureLod(sampler, UV, level)*col;\n}"; //out vec3 Vec4;\n
@@ -1398,10 +1401,9 @@ BOOL CALLBACK EnumWindowsProcMy(HWND hwnd, LPARAM lParam) {
 }
 
 HWND WinFunc::GetHwndFromProcessID(DWORD id) {
-	HWND h;
-	auto var = std::pair<DWORD, HWND>(id, h);
+	auto var = std::pair<DWORD, HWND>(id, 0);
 	EnumWindows(EnumWindowsProcMy, (LPARAM)&var);
-	return h;
+	return var.second;
 }
 
 //-----------------time class---------------------

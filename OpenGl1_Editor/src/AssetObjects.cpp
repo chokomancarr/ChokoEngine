@@ -267,7 +267,8 @@ Texture::Texture(std::ifstream& strm, uint offset) : AssetObject(ASSETTYPE_TEXTU
 				width_2 = width_1 / 2;
 				height_2 = height_1 / 2;
 
-				mat.SetFloat("mul", 1+mips);
+				mat.SetFloat("mul", 1-mips*0.1f);
+				mat.SetFloat("mul", 1);
 				mat.SetVec2("screenSize", Vec2(width_2, height_2));
 				RenderTexture rx = RenderTexture(width_2, height_2, RT_FLAG_HDR);
 				mat.SetFloat("isY", 0);
@@ -462,7 +463,7 @@ Background::Background(const string& path) : width(0), height(0), AssetObject(AS
 		height_2 = height_1 / 2;
 
 		mat.SetVec2("screenSize", Vec2(width_2, height_2));
-		mat.SetFloat("mul", 1 + mips);
+		mat.SetFloat("mul", 1 + mips*0.1f);
 		RenderTexture rx = RenderTexture(width_2, height_2, RT_FLAG_HDR, NULL, GL_RGB, GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_MIRRORED_REPEAT);
 		mat.SetFloat("isY", 0);
 		RenderTexture::Blit(rts[mips], &rx, &mat);
@@ -532,7 +533,7 @@ Background::Background(int i, Editor* editor) : width(0), height(0), AssetObject
 		height_2 = height_1 / 2;
 
 		mat.SetVec2("screenSize", Vec2(width_2, height_2));
-		mat.SetFloat("mul", 1 + mips);
+		mat.SetFloat("mul", 1 + mips*0.1f);
 		RenderTexture rx = RenderTexture(width_2, height_2, RT_FLAG_HDR, NULL, GL_RGB, GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_MIRRORED_REPEAT);
 		mat.SetFloat("isY", 0);
 		RenderTexture::Blit(rts[mips], &rx, &mat);
@@ -598,7 +599,7 @@ Background::Background(std::ifstream& strm, uint offset) : width(0), height(0), 
 		height_2 = height_1 / 2;
 
 		mat.SetVec2("screenSize", Vec2(width_2, height_2));
-		mat.SetFloat("mul", 1 + mips);
+		mat.SetFloat("mul", 1 + mips*0.1f);
 		RenderTexture rx = RenderTexture(width_2, height_2, RT_FLAG_HDR, NULL, GL_RGB, GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_MIRRORED_REPEAT);
 		mat.SetFloat("isY", 0);
 		RenderTexture::Blit(rts[mips], &rx, &mat);

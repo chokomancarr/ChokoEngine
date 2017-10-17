@@ -27,7 +27,7 @@
 
 using namespace ChokoEngine;
 
-HWND Editor::hwnd = 0;
+HWND Editor::hwnd = 0, Editor::hwnd2 = 0;
 //#ifdef IS_EDITOR
 Editor* Editor::instance = nullptr;
 //#endif

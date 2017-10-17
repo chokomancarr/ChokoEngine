@@ -454,7 +454,7 @@ public:
 	//build settings = layer7
 
 	Font* font;
-	static HWND hwnd;
+	static HWND hwnd, hwnd2;
 	char mousePressType = -1;
 	int mouseOn = 0;
 	int mouseOnP = 0;
@@ -523,8 +523,8 @@ public:
 	Mesh* matPreviewerSphere;
 	Background* matPreviewerBg;
 	GLuint matPrev_fbo, matPrev_texs[4], matPrev_depthTex;
-	void DrawMaterialPreviewer(float x, float y, float w, float h, float rx, float rz, Material* mat);
-	
+	void DrawMaterialPreviewer(float x, float y, float w, float h, float& rx, float& rz, Material* mat);
+
 	ASSETID GetAssetInfoH(string p), GetAssetInfo(string p, ASSETTYPE &type, ASSETID& i);
 	ASSETID GetAssetId(AssetObject* p), GetAssetId(AssetObject* p, ASSETTYPE& t);
 	string GetAssetName(ASSETTYPE t, ASSETID id);

@@ -49,7 +49,6 @@ int q = 0;
 
 string path;
 Editor* editor;
-static HWND hwnd = NULL, hwnd2 = NULL;
 std::mutex lockMutex;
 
 //extern "C" void abort_func(int signum)
@@ -65,10 +64,10 @@ Vec4 _col(1.0f, 0.5f, 0.1f, 1);
 int main(int argc, char **argv)
 {
 	path = argv[0];
-	hwnd = GetForegroundWindow();
 	//signal(SIGABRT, &abort_func);
 
 	editor = new Editor();
+	editor->hwnd = GetForegroundWindow();
 	editor->dataPath = path.substr(0, path.find_last_of('\\') + 1);
 	editor->lockMutex = &lockMutex;
 
@@ -90,7 +89,6 @@ int main(int argc, char **argv)
 	//}
 	//*/
 
-	editor->hwnd = hwnd;
 	editor->xPoss.push_back(0);
 	editor->xPoss.push_back(1);
 	editor->xPoss.push_back(0.75f);
@@ -110,7 +108,7 @@ int main(int argc, char **argv)
 	editor->yLimits.push_back(Int2(0, 2));
 	editor->yLimits.push_back(Int2(2, 1));
 
-	HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+	HMONITOR monitor = MonitorFromWindow(editor->hwnd, MONITOR_DEFAULTTONEAREST);
 	MONITORINFO info;
 	info.cbSize = sizeof(MONITORINFO);
 	GetMonitorInfo(monitor, &info);
@@ -145,10 +143,10 @@ int main(int argc, char **argv)
 
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
-	glutInitWindowSize(1366, 768);
+	glutInitWindowSize(editor->scrW, editor->scrH);
 	glutCreateWindow("Engine (loading...)");
-	hwnd2 = GetActiveWindow();
-	ShowWindow(hwnd2, SW_MAXIMIZE);
+	editor->hwnd2 = GetActiveWindow();
+	ShowWindow(editor->hwnd2, SW_MAXIMIZE);
 	/*
 	SendMessage(hwnd2, WM_SETICON, ICON_SMALL, hIcon);
 	SendMessage(hwnd2, WM_SETICON, ICON_BIG, hIcon);
@@ -386,7 +384,7 @@ void TimerGL(int i)
 	GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc));
 	SIZE_T virtualMemUsedByMe = pmc.WorkingSetSize;
 	string str("Engine (about " + to_string((byte)round(virtualMemUsedByMe*0.000001f)) + "Mb used, " + to_string(fps) + "fps)");
-	SetWindowText(hwnd2, str.c_str());
+	SetWindowText(editor->hwnd2, str.c_str());
 	//glutPostRedisplay();
 }
 
