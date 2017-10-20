@@ -6,13 +6,6 @@ Quat QuatFunc::Inverse(const Quat& q) {
 	return Quat(-q.x, -q.y, -q.z, q.w);
 }
 
-Vec3 QuatFunc::Rotate(const Vec3& v, const Quat& q) {
-	Quat vv = Quat(v.x, v.y, v.z, 0);
-	Quat q2 = Quat(-q.x, -q.y, -q.z, q.w);
-	Quat d = q * vv * q2;
-	return Vec3(d.x, d.y, d.z);
-}
-
 Vec3 QuatFunc::ToEuler(const Quat& q) {
 	Vec3 out;
 	double ysqr = q.y * q.y;

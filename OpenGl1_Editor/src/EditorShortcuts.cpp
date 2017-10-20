@@ -556,6 +556,15 @@ void EB_Previewer::_ToggleLumi(EditorBlock* v) {
 		b->showLumi = !b->showLumi;
 }
 
+void EB_Console::InitFuncs() {
+	funcs.emplace("EditorPlaymodeConnect", &Cmd_editor_playmode_connect);
+	
+}
+
+void EB_Console::Cmd_editor_playmode_connect(string s) {
+	Editor::instance->playSyncer.Connect();
+}
+
 void Editor::DeleteActive(Editor* e) {
 	if (e->selected)
 		e->RegisterMenu(e->blocks[0], "Confirm?", { "Delete" }, { &DoDeleteActive }, 0);

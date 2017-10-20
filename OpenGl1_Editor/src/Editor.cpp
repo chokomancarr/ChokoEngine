@@ -187,6 +187,58 @@ void EB_Debug::OnMouseScr(bool up) {
 	scrollOffset = clamp(scrollOffset, 0, max(maxScroll - (Display::height*(editor->yPoss[y2] - editor->yPoss[y1]) - EB_HEADER_SIZE - 1), 0));
 }
 
+
+std::unordered_map<string, consoleFunc> EB_Console::funcs;
+
+EB_Console::EB_Console(Editor* e, int x1, int y1, int x2, int y2) {
+	editorType = 20;
+	editor = e;
+	this->x1 = x1;
+	this->y1 = y1;
+	this->x2 = x2;
+	this->y2 = y2;
+	if (funcs.size() == 0) InitFuncs();
+}
+
+void EB_Console::Draw() {
+	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
+	CalcV(v);
+	if (maximize) v = Vec4(0, 0, Display::width, Display::height);
+	DrawHeaders(editor, this, &v, "System Console");
+	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
+	Engine::DrawQuad(v.r, v.g, v.b, v.a - 17, black());
+	
+	for (uint c = outputCount; c > 0; c--) {
+		Engine::Label(v.r + 2, v.g + v.b - 17 * (1 + c - outputCount), 12, outputs[c - 1], editor->font, white());
+	}
+
+	if (Rect(v).Inside(Input::mousePos)) {
+		if (Input::KeyDown(Key_Enter)) {
+			auto ss = string_split(input, ' ');
+			if (ss.size() > 0) {
+				bool hasFunc = false;
+				for (auto& f : funcs) {
+					if (f.first == ss[0]) {
+						(*f.second)(ss.size() > 1 ? ss[1] : "");
+						hasFunc = true;
+					}
+				}
+			}
+			input = "";
+		}
+		else if (Input::KeyDown(Key_Escape)) {
+			input = "";
+		}
+		else if (Input::KeyDown(Key_Backspace)) {
+			input = input.substr(0, input.length()-1);
+		}
+		else input += Input::inputString;
+	}
+	Engine::DrawQuad(v.r, v.g + v.a - 16, v.b, 16, grey1());
+	Engine::Label(v.r + 2, v.g + v.a - 15, 12, input, editor->font, white());
+	Engine::EndStencil();
+}
+
 void EBH_DrawItem(SceneObject* sc, Editor* e, Vec4* v, int& i, const float& offset, int indent) {
 	int xo = indent * 20;
 	if (Engine::EButton((e->editorLayer == 0), v->r + xo, v->g + EB_HEADER_SIZE + 1 + 17 * i + offset, v->b - xo, 16, grey2()) == MOUSE_RELEASE) {
@@ -1421,6 +1473,93 @@ void PB_ProceduralGenerator::Draw() {
 	Engine::DrawQuad(x(), y(), w, h, white(0.8f, 0.1f));
 }
 
+
+void Editor_PlaySyncer::Update() {
+	switch (status) {
+	case EPS_Starting:
+		timer -= Time::delta;
+		if (timer <= 0) {
+			hwnd = WinFunc::GetHwndFromProcessID(pInfo.dwProcessId);
+			char cs[50];
+			GetWindowText(hwnd, cs, 50);
+			std::string ws(cs);
+			std::string s(ws.begin() + 1, ws.end());
+			Debug::Message("Player", "reading info struct at " + s);
+			LPCVOID p = (LPCVOID)stoi(s);
+			SIZE_T c;
+			ReadProcessMemory(pInfo.hProcess, p, &pointers, sizeof(_PipeModeObj), &c);
+			if (c != sizeof(_PipeModeObj)) {
+				status = EPS_RWFailure;
+				Disconnect();
+				return;
+			}
+			Debug::Message("Player", "writing screen size to " + std::to_string((uint)pointers.screenSizeLoc));
+			uint sz = (400 << 16) + 600;
+			WriteProcessMemory(pInfo.hProcess, (LPVOID)pointers.screenSizeLoc, &sz, sizeof(uint), &c);
+			if (c != sizeof(uint)) {
+				status = EPS_RWFailure;
+				Disconnect();
+				return;
+			}
+			bool ok = true;
+			WriteProcessMemory(pInfo.hProcess, (LPVOID)pointers.okLoc, &ok, sizeof(bool), &c);
+			if (c != sizeof(bool)) {
+				status = EPS_RWFailure;
+				Disconnect();
+				return;
+			}
+			status = EPS_Running;
+		}
+		break;
+	case EPS_Running:
+
+		break;
+	}
+}
+
+bool Editor_PlaySyncer::Connect() {
+	if (status != EPS_Offline) return 0;
+	STARTUPINFO si = {};
+	si.cb = sizeof(si);
+	si.dwFlags = STARTF_USESHOWWINDOW;
+	si.wShowWindow = SW_SHOWNOACTIVATE;
+
+	SetWindowPos(Editor::hwnd2, HWND_TOPMOST, 0, 0, 10, 10, SWP_NOMOVE | SWP_NOSIZE);
+	std::string str("D:\\TestProject2\\Release\\TestProject2.exe -piped " + std::to_string((unsigned long)Editor::hwnd2));
+	CreateProcess("D:\\TestProject2\\Release\\TestProject2.exe", &str[0], NULL, NULL, FALSE, CREATE_NEW_CONSOLE, NULL, NULL, &si, &pInfo);
+	SetForegroundWindow(Editor::hwnd2);
+	SetWindowPos(Editor::hwnd2, HWND_TOP, 0, 0, 10, 10, SWP_NOMOVE | SWP_NOSIZE);
+	timer = 1;
+	status = EPS_Starting;
+	Debug::Message("Player", "Starting...");
+	return 1;
+}
+
+bool Editor_PlaySyncer::Disconnect() {
+	Terminate();
+	hwnd = 0;
+	if (!!(status & 1)) status = EPS_Offline;
+	Debug::Message("Player", "Stopped.");
+	return 1;
+}
+
+bool Editor_PlaySyncer::Terminate() {
+	TerminateProcess(pInfo.hProcess, 0);
+	return 1;
+}
+
+bool Editor_PlaySyncer::Resize(int w, int h) {
+	return 1;
+}
+
+bool Editor_PlaySyncer::ReadPixels() {
+	if (status != EPS_Running) return false;
+	SIZE_T c;
+	ReadProcessMemory(pInfo.hProcess, (LPVOID)pointers.pboLoc, pixels, pixelCount, &c);
+	return c == pixelCount;
+}
+
+
 void Editor::DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASSETTYPE type, float labelSize, Font* labelFont, ASSETID* tar, callbackFunc func, void* param) {
 	if (*tar > -1) {
 		if (Engine::EButton(editorLayer == 0, x, y, h, h, browse, white()) == MOUSE_RELEASE) {
@@ -1691,7 +1830,8 @@ void Editor::LoadDefaultAssets() {
 	ebIconTexs.emplace(4, GetResExt("eb icon hierarchy", "png"));
 	ebIconTexs.emplace(5, GetResExt("eb icon anim", "png"));
 	ebIconTexs.emplace(6, GetResExt("eb icon previewer", "png"));
-	ebIconTexs.emplace(10, GetResExt("eb icon hierarchy", "png"));
+	ebIconTexs.emplace(10, GetResExt("eb icon debug", "png"));
+	ebIconTexs.emplace(20, GetResExt("eb icon console", "png"));
 
 	checkbox = GetResExt("checkbox", "png");
 	keylock = GetRes("keylock");

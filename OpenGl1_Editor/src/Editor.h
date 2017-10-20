@@ -117,6 +117,26 @@ public:
 	void OnMouseScr(bool up) override;
 };
 
+typedef void(*consoleFunc)(string);
+class EB_Console : public EditorBlock {
+public:
+	EB_Console(Editor* e, int x1, int y1, int x2, int y2);
+	std::vector<string> outputs;
+	uint outputCount;
+	std::streampos coutLoc;
+	string input;
+
+	void Put(string);
+	void Draw();
+	void Refresh() {}
+	//void OnMouseScr(bool up) override {}
+
+protected:
+	static void InitFuncs();
+	static std::unordered_map<string, consoleFunc> funcs;
+	static void Cmd_editor_playmode_connect(string);
+};
+
 class EB_Hierarchy: public EditorBlock {
 public:
 	EB_Hierarchy(Editor* e, int x1, int y1, int x2, int y2) {
@@ -358,12 +378,43 @@ class yPossMerger;
 #define WAITINGBUILDSTARTFLAG 1U
 #define WAITINGREFRESHFLAG 2U
 
+struct Editor_PlaySyncer {
+	enum Editor_PlaySyncerStatus { //okbit = 1
+		EPS_Offline = 0,
+		EPS_Starting = 1,
+		EPS_Running = 3,
+		EPS_Paused = 5,
+		EPS_Crashed = 2,
+		EPS_RWFailure = 4,
+		EPS_NoSignal = 6
+	} status;
+	PROCESS_INFORMATION pInfo = {};
+	HWND hwnd;
+	struct _PipeModeObj {
+		uint pboLoc, //out: pbo array buffer (byte*pboCount)
+			pboCount, //out: pbo array size (uint)
+			hasDataLoc, //inout: pbo buffer updated? (bool) (do we need this?)
+			screenSizeLoc, //in: screen size (ushort ushort)
+			okLoc; //inout: confirmation (bool)
+	} pointers;
+	int playW, playH;
+	float timer;
+
+	void Update();
+	bool Connect(), Disconnect(), Terminate();
+	bool Resize(int w, int h);
+	bool ReadPixels();
+	void* pixels;
+	ulong pixelCount;
+};
+
 class Editor {
 public:
 	Editor();
-	static void InitShaders();
 	static Editor* instance;
-	Color cc;
+
+	bool IS_PLAY_MODE = false;
+	Editor_PlaySyncer playSyncer;
 	//prefs
 	bool _showDebugInfo = true;
 	bool _showGrid = true;
@@ -513,6 +564,7 @@ public:
 	std::unordered_map<ASSETTYPE, std::vector<AssetObject*>> normalAssetCaches, internalAssetCaches, proceduralAssetCaches;
 	bool internalAssetsLoaded;
 
+	static void InitShaders();
 	void ResetAssetMap(), LoadInternalAssets();
 
 	void DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASSETTYPE type, float labelSize, Font* labelFont, ASSETID* tar, callbackFunc func = nullptr, void* param = nullptr);

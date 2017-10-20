@@ -502,6 +502,47 @@ void SkinnedMeshRenderer::ApplyAnim() {
 
 }
 
+
+float ParticleSystemValue::Eval() {
+	switch (type) {
+	case ParticleSystemValue_Constant:
+	case ParticleSystemValue_Curve:
+		return val1;
+	case ParticleSystemValue_Random:
+	case ParticleSystemValue_RandomCurve:
+		return Random::Range(val1, val2);
+	}
+}
+
+int ParticleSystem::maxParticles() {
+	return _maxParticles;
+}
+
+void ParticleSystem::maxParticles(int i) {
+	particles.resize(i);
+	_maxParticles = i;
+}
+
+void ParticleSystem::Emit(int n) {
+	for (int i = 0; i < n; i++, particleCount++) {
+		if (particleCount == maxParticles()) return;
+
+	}
+}
+
+void ParticleSystem::Update() {
+	clockOffset += Time::delta;
+	double c = floor(clockOffset * _clock);
+	for (int i = 0; i < c; i++) {
+
+		for (int p = 0; p < particleCount; p++) {
+
+		}
+
+	}
+	clockOffset -= c/_clock;
+}
+
 void Light::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 	if (ebv->editor->selected != object) return;
 	switch (_lightType) { 
@@ -1202,29 +1243,20 @@ Transform::Transform(SceneObject* sc, Vec3 pos, Quat rot, Vec3 scl) : object(sc)
 }
 
 const Vec3 Transform::worldPosition() {
-	/*
-	Vec3 w = position;
-	SceneObject* o = object;
-	while (o->parent != nullptr) {
-	o = o->parent;
-	w = w*o->transform.scale + o->transform.position;
-	}
-	return w;
-	*/
 	Vec4 v = _worldMatrix * Vec4(0, 0, 0, 1);
 	return Vec3(v.x, v.y, v.z);
 }
 
 const Vec3 Transform::forward() {
-	return rotate(Vec3(0, 0, 1), _rotation);
+	return _rotation*Vec3(0, 0, 1);
 }
 
 const Vec3 Transform::right() {
-	return rotate(Vec3(1, 0, 0), _rotation);
+	return _rotation*Vec3(1, 0, 0);
 }
 
 const Vec3 Transform::up() {
-	return rotate(Vec3(0, 1, 0), _rotation);
+	return _rotation*Vec3(0, 1, 0);
 }
 
 const Quat Transform::rotation() {

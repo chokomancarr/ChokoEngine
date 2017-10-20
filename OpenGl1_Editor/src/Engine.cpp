@@ -1166,7 +1166,7 @@ void Input::UpdateMouseNKeyboard() {
 	}
 	
 	inputString = "";
-	bool shift = KeyDown(Key_Shift);
+	bool shift = KeyHold(Key_Shift);
 	for (byte c = Key_0; c <= Key_9; c++) {
 		if (KeyDown((InputKey)c)) {
 			inputString += char(c);
@@ -1174,7 +1174,7 @@ void Input::UpdateMouseNKeyboard() {
 	}
 	for (byte b = Key_A; b <= Key_Z; b++) {
 		if (KeyDown((InputKey)b)) {
-			inputString += shift ? char(b + 32) : char(b);
+			inputString += shift ? char(b) : char(b + 32);
 		}
 	}
 
@@ -1454,15 +1454,6 @@ float repeat(float f, float a, float b) {
 	while (f < a)
 		f += (b-a);
 	return f;
-}
-
-Vec3 rotate(Vec3 v, Quat q) {
-	// Extract the vector part of the quaternion
-	Vec3 u(q.x, q.y, q.z);
-	// Extract the scalar part of the quaternion
-	float s = q.w;
-	// Do the math
-	return (2.0f * dot(u, v) * u + (s*s - dot(u, u)) * v + 2.0f * s * cross(u, v));
 }
 
 //-----------------font class---------------------

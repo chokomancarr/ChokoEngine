@@ -59,12 +59,12 @@ namespace ChokoEngine {
 	class QuatFunc {
 	public:
 		static Quat Inverse(const Quat&);
-		static Vec3 Rotate(const Vec3&, const Quat&);
+		//static Vec3 Rotate(const Vec3&, const Quat&); //just use Q*V
 		static Vec3 ToEuler(const Quat&);
 		static Mat4x4 ToMatrix(const Quat&);
 		static Quat FromAxisAngle(const Vec3&, float);
 	};
-
+	
 	struct BBox {
 		BBox() {}
 		BBox(float, float, float, float, float, float);
@@ -113,8 +113,9 @@ namespace ChokoEngine {
 
 class Rect {
 public:
-	Rect(): x(0), y(0), w(1), h(1) {}
+	Rect() : x(0), y(0), w(1), h(1) {}
 	Rect(float x, float y, float w, float h) : x(x), y(y), w(w), h(h) {}
+	Rect(Vec4 v) : x(v.r), y(v.g), w(v.b), h(v.a) {}
 	float x, y, w, h;
 
 	bool Inside(const Vec2& v);
@@ -174,7 +175,7 @@ Vec4 red(float f, float i), green(float f, float i), blue(float f, float i), cya
 Vec4 LerpVec4(Vec4 a, Vec4 b, float f);
 float clamp(float f, float a, float b);
 float repeat(float f, float a, float b);
-Vec3 rotate(Vec3 v, Quat q);
+//Vec3 rotate(Vec3 v, Quat q);
 void _StreamWrite(const void* val, std::ofstream* stream, int size);
 void _StreamWriteAsset(Editor* e, std::ofstream* stream, ASSETTYPE t, ASSETID i);
 //void _Strm2Int(std::ifstream& strm, int& i), _Strm2Float(std::ifstream& strm, float& f), _Strm2Short(std::ifstream& strm, short& i);
@@ -218,7 +219,9 @@ class Transform;
 class Camera;
 class MeshFilter;
 class MeshRenderer;
+class SkinnedMeshRenderer;
 class Light;
+class ParticleSystem;
 
 //see Assetmanager
 class AssetItem;

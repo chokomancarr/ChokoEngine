@@ -20,6 +20,7 @@
 #include "SceneObjects.h"
 #include "Compressors.h"
 #include <sstream>
+#include <type_traits>
 //#include <signal.h>
 
 using namespace ChokoEngine;
@@ -60,6 +61,8 @@ RenderTexture* rt;
 Texture* tex;
 
 Vec4 _col(1.0f, 0.5f, 0.1f, 1);
+
+void meow();
 
 int main(int argc, char **argv)
 {
@@ -140,19 +143,17 @@ int main(int argc, char **argv)
 	//SetWindowLong(hwnd, GWL_STYLE, style);
 	ShowWindow(hwnd, SW_HIDE); // hide the window so we can't see it
 	*/
-
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
 	glutInitWindowSize(editor->scrW, editor->scrH);
 	glutCreateWindow("Engine (loading...)");
 	editor->hwnd2 = GetActiveWindow();
 	ShowWindow(editor->hwnd2, SW_MAXIMIZE);
-	/*
-	SendMessage(hwnd2, WM_SETICON, ICON_SMALL, hIcon);
-	SendMessage(hwnd2, WM_SETICON, ICON_BIG, hIcon);
-	SendMessage(GetWindow(hwnd2, GW_OWNER), WM_SETICON, ICON_SMALL, hIcon);
-	SendMessage(GetWindow(hwnd2, GW_OWNER), WM_SETICON, ICON_BIG, hIcon);
-	*/
+
+	//SendMessage(hwnd2, WM_SETICON, ICON_SMALL, hIcon);
+	//SendMessage(hwnd2, WM_SETICON, ICON_BIG, hIcon);
+	//SendMessage(GetWindow(hwnd2, GW_OWNER), WM_SETICON, ICON_SMALL, hIcon);
+	//SendMessage(GetWindow(hwnd2, GW_OWNER), WM_SETICON, ICON_BIG, hIcon);
 
 	//editor->RegisterPopup(new PB_ColorPicker(editor, &_col), Vec2(200, 200));
 
@@ -169,10 +170,11 @@ int main(int argc, char **argv)
 		editor->LoadDefaultAssets();
 		editor->ReloadAssets(editor->projectFolder + "Assets\\", true);
 		editor->ReadPrefs();
-		editor->blocks = std::vector<EditorBlock*>({ new EB_Inspector(editor, 2, 0, 1, 1), new EB_Browser(editor, 0, 2, 4, 1, editor->projectFolder + "Assets\\"), new EB_AnimEditor(editor, 0, 2, 4, 1), new EB_Debug(editor, 4, 2, 2, 1), new EB_Viewer(editor, 0, 0, 3, 2), new EB_Hierarchy(editor, 3, 0, 2, 2), new EB_Previewer(editor, 4, 2, 2, 1) }); //path.substr(0, path.find_last_of('\\') + 1)
+		editor->blocks = std::vector<EditorBlock*>({ new EB_Inspector(editor, 2, 0, 1, 1), new EB_Browser(editor, 0, 2, 4, 1, editor->projectFolder + "Assets\\"), new EB_AnimEditor(editor, 0, 2, 4, 1), new EB_Debug(editor, 4, 2, 2, 1), new EB_Viewer(editor, 0, 0, 3, 2), new EB_Hierarchy(editor, 3, 0, 2, 2), new EB_Previewer(editor, 4, 2, 2, 1), new EB_Console(editor, 0, 2, 4, 1) }); //path.substr(0, path.find_last_of('\\') + 1)
 		editor->blockCombos.push_back(new BlockCombo());
 		editor->blockCombos[0]->blocks.push_back(editor->blocks[1]);
 		editor->blockCombos[0]->blocks.push_back(editor->blocks[2]);
+		editor->blockCombos[0]->blocks.push_back(editor->blocks[7]);
 		editor->blockCombos[0]->Set();
 		editor->blockCombos.push_back(new BlockCombo());
 		editor->blockCombos[1]->blocks.push_back(editor->blocks[6]);
@@ -198,6 +200,8 @@ int main(int argc, char **argv)
 		atexit(OnDie);
 
 		glutMainLoop();
+		string str;
+		std::getline(std::cin, str);
 		return 0;
 	}
 }
@@ -267,6 +271,7 @@ void DoUpdate() {
 	CheckShortcuts();
 	int i = -1, k = 0;
 	editor->mouseOn = 0;
+	editor->playSyncer.Update();
 	for (EditorBlock* e : editor->blocks) {
 		if (!e->hidden) {
 			Vec4 v = Vec4(Display::width*editor->xPoss[e->x1], Display::height*editor->yPoss[e->y1], Display::width*editor->xPoss[e->x2], Display::height*editor->yPoss[e->y2]);
@@ -331,6 +336,7 @@ void UpdateLoop() {
 void OnDie() {
 	die = true;
 	updateThread.join();
+	editor->playSyncer.Terminate();
 }
 
 bool hi;
