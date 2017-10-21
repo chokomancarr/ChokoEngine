@@ -511,6 +511,8 @@ float ParticleSystemValue::Eval() {
 	case ParticleSystemValue_Random:
 	case ParticleSystemValue_RandomCurve:
 		return Random::Range(val1, val2);
+	default:
+		return val1;
 	}
 }
 

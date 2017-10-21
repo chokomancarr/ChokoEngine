@@ -200,6 +200,11 @@ EB_Console::EB_Console(Editor* e, int x1, int y1, int x2, int y2) {
 	if (funcs.size() == 0) InitFuncs();
 }
 
+void EB_Console::Put(string s) {
+	outputs.push_back(s);
+	outputCount++;
+}
+
 void EB_Console::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	CalcV(v);
@@ -209,8 +214,9 @@ void EB_Console::Draw() {
 	Engine::DrawQuad(v.r, v.g, v.b, v.a - 17, black());
 	
 	for (uint c = outputCount; c > 0; c--) {
-		Engine::Label(v.r + 2, v.g + v.b - 17 * (1 + c - outputCount), 12, outputs[c - 1], editor->font, white());
+		Engine::Label(v.r + 2, v.g + v.a - 17 * (2 + outputCount - c), 12, outputs[c - 1], editor->font, white());
 	}
+
 
 	if (Rect(v).Inside(Input::mousePos)) {
 		if (Input::KeyDown(Key_Enter)) {
@@ -223,6 +229,7 @@ void EB_Console::Draw() {
 						hasFunc = true;
 					}
 				}
+				Put("> " + input + (hasFunc ? "" : ": invalid command!"));
 			}
 			input = "";
 		}
@@ -1407,57 +1414,78 @@ void EB_Previewer::Draw() {
 	DrawHeaders(editor, this, &v, "Previewer");
 
 	if (viewer == nullptr) FindEditor();
-	Camera* seeingCamera = viewer->seeingCamera;
-	float scale = viewer->scale;
 
-	previewWidth = v.b;
-	previewHeight = v.a;
+	if (editor->playSyncer.status == Editor_PlaySyncer::EPS_Offline) {
+		Camera* seeingCamera = viewer->seeingCamera;
+		float scale = viewer->scale;
 
-	//glViewport(v.r, Display::height - v.g - v.a, v.b, v.a - EB_HEADER_SIZE - 2);
-	Vec2 v2 = Vec2(Display::width, Display::height)*0.03f;
-	//Engine::DrawQuad(0, 0, (float)Display::width, (float)Display::height, black());
-	if (editor->sceneLoaded()) {
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		float ww1 = editor->xPoss[x1];
-		float hh1 = editor->yPoss[y1];
-		float ww = editor->xPoss[x2] - ww1;
-		float hh = editor->yPoss[y2] - hh1;
-		//if (!persp) {
-		float h40 = 40 * (hh*Display::height) / (ww*Display::width);
-		float mww = max(ww, 0.3f) * (float)pow(2, scale);
-		if (seeingCamera == nullptr) {
-			glScalef(-mww*Display::width / v.b, mww*Display::width / v.a, 1);
-			if (viewer->persp) glMultMatrixf(glm::value_ptr(glm::perspectiveFov(viewer->fov * deg2rad, (float)Display::width, (float)Display::width, 0.01f, 1000.0f)));
-			else glMultMatrixf(glm::value_ptr(glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, 0.01f, 1000.0f)));
-			glTranslatef(0, 0, -20);
+		previewWidth = v.b;
+		previewHeight = v.a;
 
-			float csz = cos(-viewer->rz*deg2rad);
-			float snz = sin(-viewer->rz*deg2rad);
-			float csw = cos(viewer->rw*deg2rad);
-			float snw = sin(viewer->rw*deg2rad);
-			Mat4x4 mMatrix = Mat4x4(1, 0, 0, 0, 0, csw, snw, 0, 0, -snw, csw, 0, 0, 0, 0, 1) * Mat4x4(csz, 0, -snz, 0, 0, 1, 0, 0, snz, 0, csz, 0, 0, 0, 0, 1);
-			glMultMatrixf(glm::value_ptr(mMatrix));
-			glTranslatef(-viewer->rotCenter.x, -viewer->rotCenter.y, -viewer->rotCenter.z);
+		//glViewport(v.r, Display::height - v.g - v.a, v.b, v.a - EB_HEADER_SIZE - 2);
+		Vec2 v2 = Vec2(Display::width, Display::height)*0.03f;
+		//Engine::DrawQuad(0, 0, (float)Display::width, (float)Display::height, black());
+		if (editor->sceneLoaded()) {
+			glMatrixMode(GL_PROJECTION);
+			glLoadIdentity();
+			float ww1 = editor->xPoss[x1];
+			float hh1 = editor->yPoss[y1];
+			float ww = editor->xPoss[x2] - ww1;
+			float hh = editor->yPoss[y2] - hh1;
+			//if (!persp) {
+			float h40 = 40 * (hh*Display::height) / (ww*Display::width);
+			float mww = max(ww, 0.3f) * (float)pow(2, scale);
+			if (seeingCamera == nullptr) {
+				glScalef(-mww*Display::width / v.b, mww*Display::width / v.a, 1);
+				if (viewer->persp) glMultMatrixf(glm::value_ptr(glm::perspectiveFov(viewer->fov * deg2rad, (float)Display::width, (float)Display::width, 0.01f, 1000.0f)));
+				else glMultMatrixf(glm::value_ptr(glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, 0.01f, 1000.0f)));
+				glTranslatef(0, 0, -20);
+
+				float csz = cos(-viewer->rz*deg2rad);
+				float snz = sin(-viewer->rz*deg2rad);
+				float csw = cos(viewer->rw*deg2rad);
+				float snw = sin(viewer->rw*deg2rad);
+				Mat4x4 mMatrix = Mat4x4(1, 0, 0, 0, 0, csw, snw, 0, 0, -snw, csw, 0, 0, 0, 0, 1) * Mat4x4(csz, 0, -snz, 0, 0, 1, 0, 0, snz, 0, csz, 0, 0, 0, 0, 1);
+				glMultMatrixf(glm::value_ptr(mMatrix));
+				glTranslatef(-viewer->rotCenter.x, -viewer->rotCenter.y, -viewer->rotCenter.z);
+			}
+			else {
+				Quat q = glm::inverse(seeingCamera->object->transform.rotation());
+				glScalef(scale, -scale, 1);
+				glMultMatrixf(glm::value_ptr(glm::perspectiveFov(seeingCamera->fov * deg2rad, (float)Display::width, (float)Display::height, seeingCamera->nearClip, seeingCamera->farClip)));
+				glScalef(1, -1, -1);
+				glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(q)));
+				Vec3 pos = -seeingCamera->object->transform.worldPosition();
+				glTranslatef(pos.x, pos.y, pos.z);
+			}
+
+			if (previewWidth != previewWidth_o || previewHeight != previewHeight_o) {
+				previewWidth_o = previewWidth;
+				previewHeight_o = previewHeight;
+				InitGBuffer();
+			}
+			DrawPreview(v);
 		}
-		else {
-			Quat q = glm::inverse(seeingCamera->object->transform.rotation());
-			glScalef(scale, -scale, 1);
-			glMultMatrixf(glm::value_ptr(glm::perspectiveFov(seeingCamera->fov * deg2rad, (float)Display::width, (float)Display::height, seeingCamera->nearClip, seeingCamera->farClip)));
-			glScalef(1, -1, -1);
-			glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(q)));
-			Vec3 pos = -seeingCamera->object->transform.worldPosition();
-			glTranslatef(pos.x, pos.y, pos.z);
-		}
-
-		if (previewWidth != previewWidth_o || previewHeight != previewHeight_o) {
-			previewWidth_o = previewWidth;
-			previewHeight_o = previewHeight;
-			InitGBuffer();
-		}
-		DrawPreview(v);
+		//glViewport(0, 0, Display::width, Display::height);
 	}
-	//glViewport(0, 0, Display::width, Display::height);
+	else {
+		Engine::DrawQuad(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a, black());
+		editor->font->Align(ALIGN_MIDCENTER);
+		switch (editor->playSyncer.status) {
+		case Editor_PlaySyncer::EPS_Running:
+			Engine::Label(v.r + v.b*0.5f, v.g + v.a*0.5f, 12, "Waiting for pixels...", editor->font, white());
+			break;
+		case Editor_PlaySyncer::EPS_Starting:
+			Engine::Label(v.r + v.b*0.5f, v.g + v.a*0.5f, 12, "Initializing...", editor->font, white());
+			break;
+		case Editor_PlaySyncer::EPS_Crashed:
+			Engine::Label(v.r + v.b*0.5f, v.g + v.a*0.5f, 12, "Crashed! Exit Code: " + to_string(editor->playSyncer.exitCode), editor->font, red());
+			if (Engine::Button(v.r + v.b*0.4f, v.g + v.a*0.5f + 12, v.b*0.2f, 18, grey2(), "Close", 12, editor->font, white(), true) == MOUSE_RELEASE) {
+				editor->playSyncer.Terminate();
+			}
+			break;
+		}
+	}
 }
 
 
@@ -1512,7 +1540,14 @@ void Editor_PlaySyncer::Update() {
 		}
 		break;
 	case EPS_Running:
-
+		DWORD code;
+		GetExitCodeProcess(pInfo.hProcess, &code);
+		if (code != 259) {
+			if (code == 0) status = EPS_Offline;
+			else status = EPS_Crashed;
+			exitCode = code;
+			hwnd = 0;
+		}
 		break;
 	}
 }
@@ -1537,14 +1572,14 @@ bool Editor_PlaySyncer::Connect() {
 
 bool Editor_PlaySyncer::Disconnect() {
 	Terminate();
-	hwnd = 0;
-	if (!!(status & 1)) status = EPS_Offline;
 	Debug::Message("Player", "Stopped.");
 	return 1;
 }
 
 bool Editor_PlaySyncer::Terminate() {
 	TerminateProcess(pInfo.hProcess, 0);
+	hwnd = 0;
+	status = EPS_Offline;
 	return 1;
 }
 
@@ -1626,9 +1661,9 @@ void Editor::DrawColorSelector(float x, float y, float w, float h, Vec4 col, flo
 }
 
 Editor::Editor() {
-#ifndef IS_EDITOR
-	throw runtime_error("Editor class usage not allowed in game!");
-#endif
+//#ifndef IS_EDITOR
+//	throw runtime_error("Editor class usage not allowed in game!");
+//#endif
 	instance = this;
 }
 
@@ -2816,7 +2851,7 @@ void Editor::AddBuildLog(Editor* e, string s, bool forceE) {
 	//glutPostRedisplay();
 }
 
-void* Editor::GetCache(ASSETTYPE type, int i) {
+AssetObject* Editor::GetCache(ASSETTYPE type, int i) {
 	if (i == -1)
 		return nullptr;
 	else if (i < 0) {
@@ -2826,7 +2861,7 @@ void* Editor::GetCache(ASSETTYPE type, int i) {
 			return internalAssetCaches[type][-i - 2];
 	}
 	else {
-		void *data = normalAssetCaches[type][i];
+		AssetObject *data = normalAssetCaches[type][i];
 		if (data != nullptr)
 			return data;
 		else {
@@ -2835,7 +2870,7 @@ void* Editor::GetCache(ASSETTYPE type, int i) {
 	}
 }
 
-void* Editor::GenCache(ASSETTYPE type, int i) {
+AssetObject* Editor::GenCache(ASSETTYPE type, int i) {
 	string pth = projectFolder + "Assets\\" + normalAssets[type][i];
 	switch (type) {
 	case ASSETTYPE_MESH:

@@ -388,6 +388,7 @@ struct Editor_PlaySyncer {
 		EPS_RWFailure = 4,
 		EPS_NoSignal = 6
 	} status;
+	DWORD exitCode;
 	PROCESS_INFORMATION pInfo = {};
 	HWND hwnd;
 	struct _PipeModeObj {
@@ -413,7 +414,7 @@ public:
 	Editor();
 	static Editor* instance;
 
-	bool IS_PLAY_MODE = false;
+	bool IS_PLAY_MODE() { return !!(playSyncer.status & 1); }
 	Editor_PlaySyncer playSyncer;
 	//prefs
 	bool _showDebugInfo = true;
@@ -607,8 +608,8 @@ public:
 
 	void ReloadAssets(string path, bool recursive);
 	bool ParseAsset(string path);
-	void* GetCache(ASSETTYPE type, int id);
-	void* GenCache(ASSETTYPE type, int id);
+	AssetObject* GetCache(ASSETTYPE type, int id);
+	AssetObject* GenCache(ASSETTYPE type, int id);
 
 	static void Compile(Editor* e);
 	static void ShowPrefs(Editor* e);

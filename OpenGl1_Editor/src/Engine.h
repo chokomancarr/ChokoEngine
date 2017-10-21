@@ -22,6 +22,10 @@
 #include FT_FREETYPE_H
 #include "Defines.h"
 
+#ifndef IS_EDITOR
+extern bool _pipemode;
+#endif
+
 const float PI = 3.1415926535f;
 const float rad2deg = 57.2958f;
 const float deg2rad = 0.0174533f;
@@ -611,10 +615,10 @@ public:
 	static void Label(float x, float y, float s, string str, Font* font, Vec4 Vec4, float maxw);
 	static byte Button(float x, float y, float w, float h);
 	static byte Button(float x, float y, float w, float h, Vec4 normalVec4);
-	static byte Button(float x, float y, float w, float h, Vec4 normalVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4);
+	static byte Button(float x, float y, float w, float h, Vec4 normalVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4, bool labelCenter = false);
 	static byte Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4);
 	static byte Button(float x, float y, float w, float h, Texture* texture, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, float uvx = 0, float uvy = 0, float uvw = 1, float uvh = 1);
-	static byte Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4);
+	static byte Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4, bool labelCenter = false);
 	static byte EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4);
 	static byte EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4);
 	static byte EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4);
@@ -718,6 +722,9 @@ public:
 	friend class AssetManager;
 protected:
 	static std::ifstream* strm;
+#ifndef IS_EDITOR
+	static std::vector<string> sceneEPaths;
+#endif
 	static std::vector<string> sceneNames;
 	static std::vector<long> scenePoss;
 	static void ReadD0();
@@ -732,17 +739,21 @@ class AssetManager {
 	friend class SceneObject;
 	friend class Material;
 	template<typename T> friend T* _GetCache(ASSETTYPE t, ASSETID i);
-	friend string _Strm2Asset(std::ifstream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int max);
+	friend string _Strm2Asset(std::istream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int max);
 protected:
 	static std::unordered_map<ASSETTYPE, std::vector<string>> names;
+#ifndef IS_EDITOR
+	static string eBasePath;
+	static std::unordered_map<ASSETTYPE, std::vector<string>> dataELocs;
+#endif
 	static std::unordered_map<ASSETTYPE, std::vector<std::pair<byte, uint>>> dataLocs;
-	static std::unordered_map<ASSETTYPE, std::vector<void*>> dataCaches;
+	static std::unordered_map<ASSETTYPE, std::vector<AssetObject*>> dataCaches;
 	static std::vector<std::ifstream*> streams;
 	static void Init(string dpath);
-	static void* CacheFromName(string nm);
+	static AssetObject* CacheFromName(string nm);
 	static ASSETID GetAssetId(string nm, ASSETTYPE &t);
-	static void* GetCache(ASSETTYPE t, ASSETID i);
-	static void* GenCache(ASSETTYPE t, ASSETID i);
+	static AssetObject* GetCache(ASSETTYPE t, ASSETID i);
+	static AssetObject* GenCache(ASSETTYPE t, ASSETID i);
 };
 
 class DefaultResources { //loads binary created by DefaultResourcesBuild.exe

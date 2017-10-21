@@ -600,8 +600,8 @@ byte Engine::Button(float x, float y, float w, float h) {
 byte Engine::Button(float x, float y, float w, float h, Vec4 normalVec4) {
 	return Button(x, y, w, h, normalVec4, LerpVec4(normalVec4, white(), 0.5f), LerpVec4(normalVec4, black(), 0.5f));
 }
-byte Engine::Button(float x, float y, float w, float h, Vec4 normalVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4) {
-	return Button(x, y, w, h, normalVec4, LerpVec4(normalVec4, white(), 0.5f), LerpVec4(normalVec4, black(), 0.5f), label, labelSize, labelFont, labelVec4);
+byte Engine::Button(float x, float y, float w, float h, Vec4 normalVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4, bool labelCenter) {
+	return Button(x, y, w, h, normalVec4, LerpVec4(normalVec4, white(), 0.5f), LerpVec4(normalVec4, black(), 0.5f), label, labelSize, labelFont, labelVec4, labelCenter);
 }
 byte Engine::Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4) {
 	if (Input::mouse0State != 0 && !Rect(x, y, w, h).Inside(Input::mouseDownPos)) {
@@ -647,11 +647,11 @@ byte Engine::Button(float x, float y, float w, float h, Texture* texture, Vec4 n
 	}
 	return inside ? (MOUSE_HOVER_FLAG | Input::mouse0State) : 0;
 }
-byte Engine::Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4) {
+byte Engine::Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4, bool labelCenter) {
 	byte b = Button(x, y, w, h, normalVec4, highlightVec4, pressVec4);
 	ALIGNMENT al = labelFont->alignment;
-	labelFont->alignment = ALIGN_MIDLEFT;
-	Label(round(x + 2), round(y + 0.4f*h), labelSize, label, labelFont, labelVec4);
+	labelFont->alignment = labelCenter? ALIGN_MIDCENTER : ALIGN_MIDLEFT;
+	Label(round(x + (labelCenter? w*0.5f : 2)), round(y + 0.4f*h), labelSize, label, labelFont, labelVec4);
 	labelFont->alignment = al;
 	return b;
 }
@@ -1292,7 +1292,8 @@ std::vector<string> IO::GetFiles(const string& folder, string ext)
 std::vector<EB_Browser_File> IO::GetFilesE (Editor* e, const string& folder)
 {
 #ifndef IS_EDITOR
-#error you cannot call GetFilesE! (Editor Functions only)
+//#error you cannot call GetFilesE! (Editor Functions only)
+	abort(); //fuck you
 #endif
 	std::vector<EB_Browser_File> names;
 	string search_path = folder + "/*.*";
@@ -1823,7 +1824,7 @@ void Deserialize(std::ifstream& stream, SceneObject* obj) {
 #ifdef IS_EDITOR
 				obj->AddComponent(new SceneScript(stream, obj));
 #else
-				obj->AddComponent(SceneScriptResolver::instance->Resolve(stream));
+				obj->AddComponent(SceneScriptResolver::instance->Resolve(stream, obj));
 #endif
 				break;
 			default:
@@ -1858,19 +1859,30 @@ void Scene::ReadD0() {
 	for (ushort a = 0; a < num; a++) {
 		uint sz;
 		char *c = new char[100];
-		_Strm2Val(*strm, sz);
-		*strm >> c[0];
-		long p1 = (long)strm->tellg();
-		scenePoss.push_back(p1);
-		*strm >> c[0] >> c[1];
-		if (c[0] != 'S' || c[1] != 'N') {
-			Debug::Error("Scene Importer", "fatal: Scene Signature wrong!");
-			return;
+#ifndef IS_EDITOR
+		if (_pipemode) {
+			strm->getline(c, 100);
+			sceneNames.push_back(c);
+			sceneEPaths.push_back(AssetManager::eBasePath + sceneNames[a]);
+			Debug::Message("AssetManager", "Registered scene " + sceneNames[a]);
+		} else {
+#else
+		{
+#endif
+			_Strm2Val(*strm, sz);
+			*strm >> c[0];
+			long p1 = (long)strm->tellg();
+			scenePoss.push_back(p1);
+			*strm >> c[0] >> c[1];
+			if (c[0] != 'S' || c[1] != 'N') {
+				Debug::Error("Scene Importer", "fatal: Scene Signature wrong!");
+				return;
+			}
+			strm->getline(c, 100, 0);
+			sceneNames.push_back(c);
+			strm->seekg(p1 + sz + 1);
+			Debug::Message("AssetManager", "Registered scene " + sceneNames[a] + " (" + to_string(sz) + " bytes)");
 		}
-		strm->getline(c, 100, 0);
-		sceneNames.push_back(c);
-		strm->seekg(p1 + sz + 1);
-		Debug::Message("AssetManager", "Registered scene " + sceneNames[a] + " (" + to_string(sz) + " bytes)");
 	}
 }
 
@@ -1938,6 +1950,9 @@ void Scene::DeleteObject(SceneObject* o) {
 
 std::shared_ptr<Scene> Scene::active = nullptr;
 std::ifstream* Scene::strm = nullptr;
+#ifndef IS_EDITOR
+std::vector<string> Scene::sceneEPaths = {};
+#endif
 std::vector<string> Scene::sceneNames = {};
 std::vector<long> Scene::scenePoss = {};
 
@@ -1951,12 +1966,21 @@ void Scene::Load(string name) {
 }
 
 void Scene::Load(uint i) {
-	if (i >= scenePoss.size()) {
+	if (i >= sceneNames.size()) {
 		Debug::Error("Scene Loader", "Scene ID (" + to_string(i) + ") out of range!");
 		return;
 	}
 	Debug::Message("Scene Loader", "Loading scene " + to_string(i) + "...");
-	active = std::make_shared<Scene>(*strm, scenePoss[i]);
+#ifndef IS_EDITOR
+	if (_pipemode) {
+		std::ifstream strm2(sceneEPaths[i], std::ios::binary);
+		active = std::make_shared<Scene>(strm2, 0);
+	} else {
+#else
+	{
+#endif
+		active = std::make_shared<Scene>(*strm, scenePoss[i]);
+	}
 	active->sceneId = i;
 	Debug::Message("Scene Loader", "Loaded scene " + to_string(i) + "(" + sceneNames[i] + ")");
 }
@@ -1987,71 +2011,107 @@ void Scene::Save(Editor* e) {
 
 std::unordered_map<ASSETTYPE, std::vector<string>> AssetManager::names = {};
 std::unordered_map<ASSETTYPE, std::vector<std::pair<byte, uint>>> AssetManager::dataLocs = {};
-std::unordered_map<ASSETTYPE, std::vector<void*>> AssetManager::dataCaches = {};
+std::unordered_map<ASSETTYPE, std::vector<AssetObject*>> AssetManager::dataCaches = {};
 std::vector<std::ifstream*> AssetManager::streams = {};
 void AssetManager::Init(string dpath) {
+#ifndef IS_EDITOR
 	names.clear();
 	dataLocs.clear();
 	std::vector<std::ifstream*>().swap(streams);
-
-	string pp = dpath + "0";
-	Scene::strm = new std::ifstream(pp.c_str(), std::ios::in | std::ios::binary);
-	std::ifstream* strm = Scene::strm;
-	if (!strm->is_open()) {
-		Debug::Error("AssetManager", "Fatal: cannot open data file 0!");
-		abort();
-	}
-
-	byte numDat = 0, id;
-	ushort num;
-	ASSETTYPE type;
-	uint pos;
-	char* c = new char[100];
-	*strm >> c[0] >> c[1];
-	if (c[0] != 'D' || c[1] != '0') {
-		Debug::Error("AssetManager", "Fatal: file 0 has wrong signature!");
-		abort();
-	}
-	_Strm2Val(*strm, num);
-	for (ushort a = 0; a < num; a++) {
-		_Strm2Val(*strm, type);
-		_Strm2Val(*strm, id);
-		_Strm2Val(*strm, pos);
-		strm->getline(c, 100, (char)0);
-		std::cout << (int)type << " " << (int)id << " " << pos << ": " << string(c) << std::endl;
-		numDat = max(numDat, id);
-		dataLocs[type].push_back(std::pair<byte, uint>(id - 1, pos));
-		dataCaches[type].push_back(nullptr);
-		names[type].push_back(c);
-	}
-
-	for (int a = 0; a < numDat; a++) {
-		string pp = dpath + to_string(a+1);
-		streams.push_back(new std::ifstream(pp.c_str(), std::ios::in | std::ios::binary));
-		if (streams[a]->is_open())
-			Debug::Message("AssetManager", "Streaming data" + to_string(a+1));
-		else {
-			Debug::Error("AssetManager", "Fatal: Failed to open data" + to_string(a + 1) + "!");
+	if (_pipemode) {
+		string pp = dpath + "0_";
+		Scene::strm = new std::ifstream(pp.c_str(), std::ios::in | std::ios::binary);
+		std::ifstream* strm = Scene::strm;
+		if (!strm->is_open()) {
+			Debug::Error("AssetManager", "Fatal: cannot open data file 0!");
 			abort();
 		}
-	}
 
-	for (auto& aa : dataLocs) {
-		ushort s = 0;
-		for (auto& bb : aa.second) {
-			streams[bb.first]->seekg(bb.second);
-			uint sz;
-			_Strm2Val(*streams[bb.first], sz);
-			Debug::Message("AssetManager", "Registered asset " + names[aa.first][s] + " (" + to_string(sz) + " bytes)");
-			streams[bb.first]->seekg(0);
-			s++;
+		byte id;
+		ushort num;
+		ASSETTYPE type;
+		char c[100];
+		*strm >> c[0] >> c[1];
+		if (c[0] != 'D' || c[1] != '0') {
+			Debug::Error("AssetManager", "Fatal: file 0 has wrong signature!");
+			abort();
+		}
+		strm->getline(c, 100);
+		string path(c);
+		_Strm2Val(*strm, num);
+		for (ushort a = 0; a < num; a++) {
+			_Strm2Val(*strm, type);
+			_Strm2Val(*strm, id);
+			strm->getline(c, 100, (char)0);
+			string nm = path + string(c);
+			strm->getline(c, 100, (char)0);
+			std::cout << (int)type << " " << (int)id << " " << ": " << nm << std::endl;
+			dataCaches[type].push_back(nullptr);
+			names[type].push_back(c);
+			dataELocs[type].push_back(nm);
 		}
 	}
-	long long ppos = strm->tellg();
+	else {
+		string pp = dpath + "0";
+		Scene::strm = new std::ifstream(pp.c_str(), std::ios::in | std::ios::binary);
+		std::ifstream* strm = Scene::strm;
+		if (!strm->is_open()) {
+			Debug::Error("AssetManager", "Fatal: cannot open data file 0!");
+			abort();
+		}
+
+		byte numDat = 0, id;
+		ushort num;
+		ASSETTYPE type;
+		uint pos;
+		char c[100];
+		*strm >> c[0] >> c[1];
+		if (c[0] != 'D' || c[1] != '0') {
+			Debug::Error("AssetManager", "Fatal: file 0 has wrong signature!");
+			abort();
+		}
+		_Strm2Val(*strm, num);
+		for (ushort a = 0; a < num; a++) {
+			_Strm2Val(*strm, type);
+			_Strm2Val(*strm, id);
+			_Strm2Val(*strm, pos);
+			strm->getline(c, 100, (char)0);
+			std::cout << (int)type << " " << (int)id << " " << pos << ": " << string(c) << std::endl;
+			numDat = max(numDat, id);
+			dataLocs[type].push_back(std::pair<byte, uint>(id - 1, pos));
+			dataCaches[type].push_back(nullptr);
+			names[type].push_back(c);
+		}
+
+		for (int a = 0; a < numDat; a++) {
+			string pp = dpath + to_string(a + 1);
+			streams.push_back(new std::ifstream(pp.c_str(), std::ios::in | std::ios::binary));
+			if (streams[a]->is_open())
+				Debug::Message("AssetManager", "Streaming data" + to_string(a + 1));
+			else {
+				Debug::Error("AssetManager", "Fatal: Failed to open data" + to_string(a + 1) + "!");
+				abort();
+			}
+		}
+
+		for (auto& aa : dataLocs) {
+			ushort s = 0;
+			for (auto& bb : aa.second) {
+				streams[bb.first]->seekg(bb.second);
+				uint sz;
+				_Strm2Val(*streams[bb.first], sz);
+				Debug::Message("AssetManager", "Registered asset " + names[aa.first][s] + " (" + to_string(sz) + " bytes)");
+				streams[bb.first]->seekg(0);
+				s++;
+			}
+		}
+		//long long ppos = strm->tellg();
+	}
 	Scene::ReadD0();
+#endif
 }
 
-void* AssetManager::CacheFromName(string nm) {
+AssetObject* AssetManager::CacheFromName(string nm) {
 	//ASSETTYPE t;
 	for (auto& t : names) {
 		for (uint a = names[t.first].size(); a > 0; a--) {
@@ -2077,7 +2137,7 @@ ASSETID AssetManager::GetAssetId(string nm, ASSETTYPE &t) {
 	return -1;
 }
 
-void* AssetManager::GetCache(ASSETTYPE t, ASSETID i) {
+AssetObject* AssetManager::GetCache(ASSETTYPE t, ASSETID i) {
 	if (i == -1)
 		return nullptr;
 	if (dataCaches[t][i] != nullptr)
@@ -2085,13 +2145,14 @@ void* AssetManager::GetCache(ASSETTYPE t, ASSETID i) {
 	else
 		return GenCache(t, i);
 }
-void* AssetManager::GenCache(ASSETTYPE t, ASSETID i) {
-	std::ifstream* strm = streams[dataLocs[t][i].first];
-	uint off = dataLocs[t][i].second;
-	strm->seekg(off);
-	uint sz;
-	_Strm2Val(*strm, sz);
-	off += 4;
+AssetObject* AssetManager::GenCache(ASSETTYPE t, ASSETID i) {
+#ifndef IS_EDITOR
+	std::ifstream* strm = _pipemode? &std::ifstream(dataELocs[t][i], std::ios::binary) : streams[dataLocs[t][i].first];
+	uint off = _pipemode ? 0 : dataLocs[t][i].second + 4;
+	//strm->seekg(off);
+	//uint sz;
+	//_Strm2Val(*strm, sz);
+	//off += 4;
 	switch (t) {
 	case ASSETTYPE_TEXTURE:
 		dataCaches[t][i] = new Texture(*strm, off);
@@ -2113,6 +2174,9 @@ void* AssetManager::GenCache(ASSETTYPE t, ASSETID i) {
 		return nullptr;
 	}
 	return dataCaches[t][i];
+#else
+	return nullptr;
+#endif
 }
 
 std::vector<string> DefaultResources::names = std::vector<string>();

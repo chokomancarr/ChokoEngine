@@ -25,7 +25,6 @@
 
 using namespace ChokoEngine;
 
-void InitGL(int i);
 void TimerGL(int i);
 void MouseGL(int button, int state, int x, int y);
 void MotionGL(int x, int y);
@@ -61,8 +60,6 @@ RenderTexture* rt;
 Texture* tex;
 
 Vec4 _col(1.0f, 0.5f, 0.1f, 1);
-
-void meow();
 
 int main(int argc, char **argv)
 {
@@ -210,10 +207,6 @@ void closeCallback()
 {
 
 	std::cout << "GLUT:\t Finished" << std::endl;
-}
-
-void InitGL(int i) {
-	
 }
 
 void CheckShortcuts() {
