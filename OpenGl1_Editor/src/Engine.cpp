@@ -1414,22 +1414,7 @@ double Time::time = 0;
 float Time::delta = 0;
 
 //-----------------Vec4s--------------------------
-Vec4 red() { return red(1, 1); }
-Vec4 green() { return green(1, 1); }
-Vec4 blue() { return blue(1, 1); }
-Vec4 cyan() { return cyan(1, 1); }
-Vec4 yellow() { return yellow(1, 1); }
-Vec4 black() { return black(1); }
-Vec4 white() { return white(1, 1); }
-
-Vec4 red(float f) { return red(f, 1); }
-Vec4 green(float f) { return green(f, 1); }
-Vec4 blue(float f) { return blue(f, 1); }
-Vec4 cyan(float f) { return cyan(f, 1); }
-Vec4 yellow(float f) { return yellow(f, 1); }
 Vec4 black(float f) { return Vec4(0, 0, 0, f); }
-Vec4 white(float f) { return white(f, 1); }
-
 Vec4 red(float f, float i) { return Vec4(i, 0, 0, f); }
 Vec4 green(float f, float i) { return Vec4(0, i, 0, f); }
 Vec4 blue(float f, float i) { return Vec4(0, 0, i, f); }

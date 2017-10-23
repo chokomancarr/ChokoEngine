@@ -1476,7 +1476,7 @@ void EB_Previewer::Draw() {
 			if (editor->playSyncer.pixelCount == 0)
 				Engine::Label(v.r + v.b*0.5f, v.g + v.a*0.5f, 12, "Waiting for pixels...", editor->font, white());
 			else {
-				Engine::DrawQuad(v.r, v.g, v.b, v.a, editor->playSyncer.texPointer);
+				Engine::DrawQuad(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a, editor->playSyncer.texPointer);
 			}
 			break;
 		case Editor_PlaySyncer::EPS_Starting:
@@ -1579,6 +1579,10 @@ void Editor_PlaySyncer::Update() {
 					GLenum e = glGetError();
 					glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, playW, playH, GL_RGB, GL_UNSIGNED_BYTE, pixels);
 					e = glGetError();
+					if (e != 0) {
+						Debug::Warning("PlayMode", "Writing pixels failed with code " + to_string(e) + "!");
+						//status = EPS_RWFailure;
+					}
 					glBindTexture(GL_TEXTURE_2D, 0);
 				}
 			}
@@ -1639,12 +1643,14 @@ bool Editor_PlaySyncer::ReloadTex() {
 	e = glGetError();
 	glBindTexture(GL_TEXTURE_2D, texPointer);
 	e = glGetError();
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, playW, playH, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	byte* dat = new byte[playW*playH*4]();
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, playW, playH, 0, GL_RGB, GL_UNSIGNED_BYTE, dat);
 	e = glGetError();
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	e = glGetError();
+	delete[](dat);
 	return 1;
 }
 

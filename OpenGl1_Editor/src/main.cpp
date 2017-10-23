@@ -163,6 +163,7 @@ int main(int argc, char **argv)
 		return 0;
 	}
 	else {
+
 		Engine::Init(path);
 		editor->LoadDefaultAssets();
 		editor->ReloadAssets(editor->projectFolder + "Assets\\", true);
@@ -264,7 +265,6 @@ void DoUpdate() {
 	CheckShortcuts();
 	int i = -1, k = 0;
 	editor->mouseOn = 0;
-	editor->playSyncer.Update();
 	for (EditorBlock* e : editor->blocks) {
 		if (!e->hidden) {
 			Vec4 v = Vec4(Display::width*editor->xPoss[e->x1], Display::height*editor->yPoss[e->y1], Display::width*editor->xPoss[e->x2], Display::height*editor->yPoss[e->y2]);
@@ -336,6 +336,7 @@ bool hi;
 void DrawOverlay() {
 	std::lock_guard<std::mutex> lock(lockMutex);
 	editor->UpdateLerpers();
+	editor->playSyncer.Update();
 	if (editor->backgroundTex != nullptr)
 		Engine::DrawTexture(0, 0, (float)Display::width, (float)Display::height, editor->backgroundTex, editor->backgroundAlpha*0.01f, DrawTex_Crop);
 	for (int i = editor->blocks.size() - 1; i >= 0; i--) {
