@@ -1473,10 +1473,20 @@ void EB_Previewer::Draw() {
 		editor->font->Align(ALIGN_MIDCENTER);
 		switch (editor->playSyncer.status) {
 		case Editor_PlaySyncer::EPS_Running:
-			Engine::Label(v.r + v.b*0.5f, v.g + v.a*0.5f, 12, "Waiting for pixels...", editor->font, white());
+			if (editor->playSyncer.pixelCount == 0)
+				Engine::Label(v.r + v.b*0.5f, v.g + v.a*0.5f, 12, "Waiting for pixels...", editor->font, white());
+			else {
+				Engine::DrawQuad(v.r, v.g, v.b, v.a, editor->playSyncer.texPointer);
+			}
 			break;
 		case Editor_PlaySyncer::EPS_Starting:
 			Engine::Label(v.r + v.b*0.5f, v.g + v.a*0.5f, 12, "Initializing...", editor->font, white());
+			break;
+		case Editor_PlaySyncer::EPS_RWFailure:
+			Engine::Label(v.r + v.b*0.5f, v.g + v.a*0.5f, 12, "Read/Write failure!", editor->font, red());
+			if (Engine::Button(v.r + v.b*0.4f, v.g + v.a*0.5f + 12, v.b*0.2f, 18, grey2(), "Close", 12, editor->font, white(), true) == MOUSE_RELEASE) {
+				editor->playSyncer.Terminate();
+			}
 			break;
 		case Editor_PlaySyncer::EPS_Crashed:
 			Engine::Label(v.r + v.b*0.5f, v.g + v.a*0.5f, 12, "Crashed! Exit Code: " + to_string(editor->playSyncer.exitCode), editor->font, red());
@@ -1501,6 +1511,22 @@ void PB_ProceduralGenerator::Draw() {
 	Engine::DrawQuad(x(), y(), w, h, white(0.8f, 0.1f));
 }
 
+template<typename T>
+bool EPS_RWMem(bool write, Editor_PlaySyncer* syncer, T* val, uint loc, ulong sz = 0) {
+	sz = max(sz, sizeof(T));
+	SIZE_T c;
+	bool ok;
+	if (write) ok = !!WriteProcessMemory(syncer->pInfo.hProcess, (LPVOID)loc, val, sz, &c);
+	else ok = !!ReadProcessMemory(syncer->pInfo.hProcess, (LPVOID)loc, val, sz, &c);
+	if (!ok || c != sz) {
+		syncer->status = Editor_PlaySyncer::EPS_RWFailure;
+		TerminateProcess(syncer->pInfo.hProcess, 0);
+		syncer->hwnd = 0;
+		Debug::Error("RWMem", "Unable to " + (string)(write? "write " : "read ") + to_string(sz) + " bytes! (" + to_string(c) + " bytes succeeded)");
+		return false;
+	}
+	else return true;
+}
 
 void Editor_PlaySyncer::Update() {
 	switch (status) {
@@ -1513,36 +1539,51 @@ void Editor_PlaySyncer::Update() {
 			std::string ws(cs);
 			std::string s(ws.begin() + 1, ws.end());
 			Debug::Message("Player", "reading info struct at " + s);
-			LPCVOID p = (LPCVOID)stoi(s);
-			SIZE_T c;
-			ReadProcessMemory(pInfo.hProcess, p, &pointers, sizeof(_PipeModeObj), &c);
-			if (c != sizeof(_PipeModeObj)) {
-				status = EPS_RWFailure;
-				Disconnect();
-				return;
-			}
+			pointerLoc = std::stoi(s);
+			if (!EPS_RWMem(false, this, &pointers, pointerLoc)) return;
 			Debug::Message("Player", "writing screen size to " + std::to_string((uint)pointers.screenSizeLoc));
-			uint sz = (400 << 16) + 600;
-			WriteProcessMemory(pInfo.hProcess, (LPVOID)pointers.screenSizeLoc, &sz, sizeof(uint), &c);
-			if (c != sizeof(uint)) {
-				status = EPS_RWFailure;
-				Disconnect();
-				return;
-			}
+			uint sz = (playH << 16) + playW;
+			SIZE_T c;
+			if (!EPS_RWMem(true, this, &sz, pointers.screenSizeLoc)) return;
 			bool ok = true;
-			WriteProcessMemory(pInfo.hProcess, (LPVOID)pointers.okLoc, &ok, sizeof(bool), &c);
-			if (c != sizeof(bool)) {
-				status = EPS_RWFailure;
-				Disconnect();
-				return;
-			}
+			if (!EPS_RWMem(true, this, &ok, pointers.okLoc)) return;
 			status = EPS_Running;
+			timer = 0.5f;
 		}
 		break;
 	case EPS_Running:
 		DWORD code;
 		GetExitCodeProcess(pInfo.hProcess, &code);
-		if (code != 259) {
+		if (code == 259) {
+			if (timer > 0) {
+				timer -= Time::delta;
+				if (timer <= 0) {
+					if (!EPS_RWMem(false, this, &pointers, pointerLoc)) return;
+					if (pointers.pixelsLoc == 0) timer = 0.5f;
+				}
+			}
+			else {
+				bool hasData;
+				if (!EPS_RWMem(false, this, &hasData, pointers.hasDataLoc)) return;
+				if (hasData) {
+					if (!EPS_RWMem(false, this, &pixelCount, pointers.pixelCountLoc)) return;
+					if (pixelCount == 0) return;
+					if (pixelCountO != pixelCount) {
+						pixelCountO = pixelCount;
+						ReloadTex();
+						delete[](pixels);
+						pixels = new byte[pixelCount];
+					}
+					if (!EPS_RWMem(false, this, pixels, pointers.pixelsLoc, pixelCount)) return;
+					glBindTexture(GL_TEXTURE_2D, texPointer);
+					GLenum e = glGetError();
+					glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, playW, playH, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+					e = glGetError();
+					glBindTexture(GL_TEXTURE_2D, 0);
+				}
+			}
+		}
+		else {
 			if (code == 0) status = EPS_Offline;
 			else status = EPS_Crashed;
 			exitCode = code;
@@ -1567,6 +1608,7 @@ bool Editor_PlaySyncer::Connect() {
 	timer = 1;
 	status = EPS_Starting;
 	Debug::Message("Player", "Starting...");
+	Resize(600, 400);
 	return 1;
 }
 
@@ -1584,14 +1626,26 @@ bool Editor_PlaySyncer::Terminate() {
 }
 
 bool Editor_PlaySyncer::Resize(int w, int h) {
+	playW = w;
+	playH = h;
+	ReloadTex();
 	return 1;
 }
 
-bool Editor_PlaySyncer::ReadPixels() {
-	if (status != EPS_Running) return false;
-	SIZE_T c;
-	ReadProcessMemory(pInfo.hProcess, (LPVOID)pointers.pboLoc, pixels, pixelCount, &c);
-	return c == pixelCount;
+bool Editor_PlaySyncer::ReloadTex() {
+	if (!!texPointer) glDeleteTextures(1, &texPointer);
+	GLenum e = glGetError();
+	glGenTextures(1, &texPointer);
+	e = glGetError();
+	glBindTexture(GL_TEXTURE_2D, texPointer);
+	e = glGetError();
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, playW, playH, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	e = glGetError();
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	e = glGetError();
+	return 1;
 }
 
 
@@ -2628,6 +2682,7 @@ void DoScanMeshesGet(Editor* e, std::vector<string>& list, string p, bool rec) {
 	}
 }
 
+bool MergeAssets_(Editor* e);
 void DoReloadAssets(Editor* e, string path, bool recursive, std::mutex* l) {
 	std::vector<string> files;
 	DoScanAssetsGet(e, files, path, recursive);
@@ -2663,6 +2718,9 @@ void DoReloadAssets(Editor* e, string path, bool recursive, std::mutex* l) {
 	for (auto b : e->blocks) {
 		b->Refresh();
 	}
+	e->progressValue = 100;
+	e->progressDesc = "Generating index...";
+	MergeAssets_(e);
 }
 
 void Editor::ClearLogs() {
@@ -2905,7 +2963,77 @@ AssetObject* Editor::GenCache(ASSETTYPE type, int i) {
 
 /*
 app.exe
-content0.data -> asset list (type, name, index) (ascii), [\n], level data (binary)
+content0_.data -> basepath, asset locs (type, name, index) (ascii), level locs
+*/
+bool MergeAssets_(Editor* e) {
+	string ss = e->projectFolder + "Release\\data0_";
+	char null = 0, etx = 3;
+	std::cout << ss << std::endl;
+	std::ofstream file(ss.c_str(), std::ios::out | std::ios::binary | std::ios::trunc);
+	if (!file.is_open())
+		return false;
+	//headers
+	file << "D0";
+	file << e->projectFolder + "Assets\\" << char0;
+
+	//asset data
+	//D0[NUM(2)]SUM([TYPE][LOC][NAME0])
+	ushort xx = 0;
+	long long poss1 = file.tellp();
+	file << "00";
+	for (auto& as : e->normalAssets) {
+		//ushort ii = 0;
+		for (auto as2 : as.second) {
+			file << (char)as.first;
+			switch (as.first) {
+			case ASSETTYPE_MESH:
+				file << as2 + ".mesh.meta" << char0;
+				break;
+			case ASSETTYPE_ANIMCLIP:
+				file << as2 + ".animclip.meta" << char0;
+				break;
+			case ASSETTYPE_MATERIAL:
+			case ASSETTYPE_ANIMATOR:
+			case ASSETTYPE_CAMEFFECT:
+				file << as2 << char0;
+				break;
+			case ASSETTYPE_SHADER:
+			case ASSETTYPE_TEXTURE:
+			case ASSETTYPE_HDRI:
+				file << as2 + ".meta" << char0;
+				break;
+			default:
+				Debug::Error("AssetMerger", "No type defined for " + to_string(as.first) + "!");
+				return false;
+			}
+			file << as2 << (char)0;
+			xx++;
+		}
+	}
+	long long poss2 = file.tellp();
+	file.seekp(poss1);
+	_StreamWrite(&xx, &file, 2);
+	file.seekp(poss2);
+
+	//scene data
+	ushort q = 0;
+	poss1 = file.tellp();
+	file << "00";
+	for (string ss : e->includedScenes) {
+		if (e->includedScenesUse[q]) {
+			file << e->projectFolder + "Assets\\" + ss << char0;
+			q++;
+		}
+	}
+	poss2 = file.tellp();
+	file.seekp(poss1);
+	_StreamWrite(&q, &file, 2);
+	return true;
+}
+
+/*
+app.exe
+content0.data -> asset list (type, name, index) (ascii), level data (binary)
 content(1+).data ->assets (index, data) (binary)
 */
 bool MergeAssets(Editor* e) {

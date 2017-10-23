@@ -124,7 +124,10 @@
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /y "$(ProjectDir)src\*.h" "$(SolutionDir)Debug\Library\include\"</Command>
+      <Command>xcopy /y "$(ProjectDir)src\*.h" "$(SolutionDir)Debug\Library\include\"
+del "$(SolutionDir)Debug\Library\include\Defines.h"
+copy "$(SolutionDir)Debug\Library\ChokoEngine.lib" "D:\TestProject2\System\"
+xcopy /y "$(SolutionDir)Debug\Library\include\*" "D:\TestProject2\System\"</Command>
     </PostBuildEvent>
     <Lib>
       <OutputFile>$(SolutionDir)Debug\Library\ChokoEngine.lib</OutputFile>

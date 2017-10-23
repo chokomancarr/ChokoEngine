@@ -557,7 +557,7 @@ void EB_Previewer::_ToggleLumi(EditorBlock* v) {
 }
 
 void EB_Console::InitFuncs() {
-	funcs.emplace("EditorPlaymodeConnect", &Cmd_editor_playmode_connect);
+	funcs.emplace("Play", &Cmd_editor_playmode_connect);
 	
 }
 

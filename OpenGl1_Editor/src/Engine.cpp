@@ -1450,11 +1450,22 @@ float clamp(float f, float a, float b) {
 
 float repeat(float f, float a, float b) {
 	assert(b > a);
-	while (f >= b)
-		f -= (b-a);
-	while (f < a)
-		f += (b-a);
-	return f;
+	float fn = f;
+	while (f >= b) {
+		fn -= (b - a);
+		if (fn == f) {
+			Debug::Warning("Repeat", "Floating-point accuracy exceeded. Returning max.");
+			return b;
+		}
+	}
+	while (f < a) {
+		fn += (b - a);
+		if (fn == f) {
+			Debug::Warning("Repeat", "Floating-point accuracy exceeded. Returning min.");
+			return a;
+		}
+	}
+	return fn;
 }
 
 //-----------------font class---------------------
@@ -1858,7 +1869,7 @@ void Scene::ReadD0() {
 	_Strm2Val(*strm, num);
 	for (ushort a = 0; a < num; a++) {
 		uint sz;
-		char *c = new char[100];
+		char c[100];
 #ifndef IS_EDITOR
 		if (_pipemode) {
 			strm->getline(c, 100);
@@ -1986,7 +1997,7 @@ void Scene::Load(uint i) {
 }
 
 void Scene::Save(Editor* e) {
-	std::ofstream sw(e->projectFolder + "Assets\\" + sceneName + ".scene", std::ios::out);
+	std::ofstream sw(e->projectFolder + "Assets\\" + sceneName + ".scene", std::ios::out | std::ios::binary);
 	sw << "SN";
 	sw << sceneName << (char)0;
 	_StreamWriteAsset(e, &sw, ASSETTYPE_HDRI, settings.skyId);
@@ -2013,6 +2024,10 @@ std::unordered_map<ASSETTYPE, std::vector<string>> AssetManager::names = {};
 std::unordered_map<ASSETTYPE, std::vector<std::pair<byte, uint>>> AssetManager::dataLocs = {};
 std::unordered_map<ASSETTYPE, std::vector<AssetObject*>> AssetManager::dataCaches = {};
 std::vector<std::ifstream*> AssetManager::streams = {};
+#ifndef IS_EDITOR
+string AssetManager::eBasePath = "";
+std::unordered_map<ASSETTYPE, std::vector<string>> AssetManager::dataELocs = {};
+#endif
 void AssetManager::Init(string dpath) {
 #ifndef IS_EDITOR
 	names.clear();
@@ -2027,7 +2042,6 @@ void AssetManager::Init(string dpath) {
 			abort();
 		}
 
-		byte id;
 		ushort num;
 		ASSETTYPE type;
 		char c[100];
@@ -2036,16 +2050,15 @@ void AssetManager::Init(string dpath) {
 			Debug::Error("AssetManager", "Fatal: file 0 has wrong signature!");
 			abort();
 		}
-		strm->getline(c, 100);
+		strm->getline(c, 100, char0);
 		string path(c);
 		_Strm2Val(*strm, num);
 		for (ushort a = 0; a < num; a++) {
 			_Strm2Val(*strm, type);
-			_Strm2Val(*strm, id);
 			strm->getline(c, 100, (char)0);
 			string nm = path + string(c);
 			strm->getline(c, 100, (char)0);
-			std::cout << (int)type << " " << (int)id << " " << ": " << nm << std::endl;
+			std::cout << (int)type << ": " << nm << std::endl;
 			dataCaches[type].push_back(nullptr);
 			names[type].push_back(c);
 			dataELocs[type].push_back(nm);
@@ -2147,7 +2160,7 @@ AssetObject* AssetManager::GetCache(ASSETTYPE t, ASSETID i) {
 }
 AssetObject* AssetManager::GenCache(ASSETTYPE t, ASSETID i) {
 #ifndef IS_EDITOR
-	std::ifstream* strm = _pipemode? &std::ifstream(dataELocs[t][i], std::ios::binary) : streams[dataLocs[t][i].first];
+	std::ifstream* strm = _pipemode? new std::ifstream(dataELocs[t][i], std::ios::in | std::ios::binary) : streams[dataLocs[t][i].first];
 	uint off = _pipemode ? 0 : dataLocs[t][i].second + 4;
 	//strm->seekg(off);
 	//uint sz;
@@ -2170,9 +2183,10 @@ AssetObject* AssetManager::GenCache(ASSETTYPE t, ASSETID i) {
 		dataCaches[t][i] = new ShaderBase(*strm, off);
 		break;
 	default:
-		Debug::Warning("AssetManager", "No operation suits asset type " + to_string(t) + "!");
+		Debug::Error("AssetManager", "No operation suits asset type " + to_string(t) + "!");
 		return nullptr;
 	}
+	if (_pipemode) delete(strm);
 	return dataCaches[t][i];
 #else
 	return nullptr;

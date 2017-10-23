@@ -1270,10 +1270,10 @@ const Quat Transform::worldRotation() {
 }
 
 void Transform::eulerRotation(Vec3 r) {
-	_eulerRotation = r;
-	_eulerRotation.x = repeat(_eulerRotation.x, 0, 360);
-	_eulerRotation.y = repeat(_eulerRotation.y, 0, 360);
-	_eulerRotation.z = repeat(_eulerRotation.z, 0, 360);
+	//_eulerRotation = r;
+	_eulerRotation.x = repeat(r.x, 0, 360);
+	_eulerRotation.y = repeat(r.y, 0, 360);
+	_eulerRotation.z = repeat(r.z, 0, 360);
 	_UpdateQuat();
 	_UpdateLMatrix();
 }

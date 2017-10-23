@@ -337,7 +337,7 @@ void DrawOverlay() {
 	std::lock_guard<std::mutex> lock(lockMutex);
 	editor->UpdateLerpers();
 	if (editor->backgroundTex != nullptr)
-		Engine::DrawTexture(0, 0, (float)Display::width, (float)Display::height, editor->backgroundTex, editor->backgroundAlpha*0.01f);
+		Engine::DrawTexture(0, 0, (float)Display::width, (float)Display::height, editor->backgroundTex, editor->backgroundAlpha*0.01f, DrawTex_Crop);
 	for (int i = editor->blocks.size() - 1; i >= 0; i--) {
 		if (!editor->blocks[i]->hidden && !(editor->hasMaximize && !editor->blocks[i]->maximize))
 			editor->blocks[i]->Draw();
