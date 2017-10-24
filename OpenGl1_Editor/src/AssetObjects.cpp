@@ -36,6 +36,12 @@ std::stringstream GetSStream(const string& p) {
 	return strm2;
 }
 
+std::stringstream StreamFromBuffer(const std::vector<char>& buf) {
+	std::stringstream strm;
+	strm.write(&buf[0], buf.size());
+	return strm;
+}
+
 bool LoadJPEG(string fileN, uint &x, uint &y, byte& channels, byte** data)
 {
 	//unsigned int texture_id;

@@ -61,6 +61,12 @@ Texture* tex;
 
 Vec4 _col(1.0f, 0.5f, 0.1f, 1);
 
+char Get(std::istream& strm) {
+	char c;
+	strm.read(&c, 1);
+	return c;
+}
+
 int main(int argc, char **argv)
 {
 	path = argv[0];

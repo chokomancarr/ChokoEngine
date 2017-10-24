@@ -122,6 +122,16 @@ void CalcV(Vec4& v) {
 	v.g = round(v.g) + 1;
 	v.r = round(v.r) + 1;
 }
+std::vector<char> StreamToBuffer(std::istream* strm) {
+	auto pos = strm->tellg();
+	strm->seekg(strm->end);
+	auto sz = strm->tellg();
+	std::vector<char> buf(sz);
+	std::ostringstream strm2;
+	strm2.rdbuf()->pubsetbuf(&buf[0], sz);
+	strm->seekg(pos);
+	return buf;
+}
 
 void EB_DrawScrollBar(const Vec4& v, const float& maxScroll, const float& scrollOffset) {
 	if (Rect(v.r, v.g, v.b, v.a).Inside(Input::mousePos) && (maxScroll - (v.a - EB_HEADER_SIZE - 1))>0) {

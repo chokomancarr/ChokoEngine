@@ -568,6 +568,7 @@ public:
 	std::unordered_map<ASSETTYPE, std::vector<string>> normalAssets, internalAssets, proceduralAssets;
 	std::unordered_map <ASSETTYPE, std::pair<ASSETTYPE, std::vector<uint>>> derivedAssets;
 	std::unordered_map<ASSETTYPE, std::vector<AssetObject*>> normalAssetCaches, internalAssetCaches, proceduralAssetCaches;
+	std::unordered_map<ASSETTYPE, std::vector<byte*>> normalAssetBuffers;
 	bool internalAssetsLoaded;
 
 	static void InitShaders();

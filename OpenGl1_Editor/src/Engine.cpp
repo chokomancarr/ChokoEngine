@@ -12,6 +12,7 @@
 #include <fstream>
 #include <sstream>
 #include <climits>
+#include <ctime>
 #include <shellapi.h>
 #include <Windows.h>
 #include <math.h>
@@ -1223,8 +1224,9 @@ ulong Engine::GetNewId() {
 void Debug::Message(string c, string s) {
 #ifndef IS_EDITOR
 	*stream << "[i]" << c << ": " << s << std::endl;
-#endif
+#else
 	std::cout << "[i]" << c << ": " << s << std::endl;
+#endif
 }
 void Debug::Warning(string c, string s) {
 #ifndef IS_EDITOR
@@ -2046,7 +2048,7 @@ void AssetManager::Init(string dpath) {
 			strm->getline(c, 100, (char)0);
 			string nm = path + string(c);
 			strm->getline(c, 100, (char)0);
-			std::cout << (int)type << ": " << nm << std::endl;
+			//std::cout << (int)type << ": " << nm << std::endl;
 			dataCaches[type].push_back(nullptr);
 			names[type].push_back(c);
 			dataELocs[type].push_back(nm);
@@ -2077,7 +2079,7 @@ void AssetManager::Init(string dpath) {
 			_Strm2Val(*strm, id);
 			_Strm2Val(*strm, pos);
 			strm->getline(c, 100, (char)0);
-			std::cout << (int)type << " " << (int)id << " " << pos << ": " << string(c) << std::endl;
+			//std::cout << (int)type << " " << (int)id << " " << pos << ": " << string(c) << std::endl;
 			numDat = max(numDat, id);
 			dataLocs[type].push_back(std::pair<byte, uint>(id - 1, pos));
 			dataCaches[type].push_back(nullptr);
@@ -2175,6 +2177,7 @@ AssetObject* AssetManager::GenCache(ASSETTYPE t, ASSETID i) {
 		return nullptr;
 	}
 	if (_pipemode) delete(strm);
+	std::cout << "Loaded " << (int)t << "." << i << "in " << (clock() - time) << "ms" << std::endl;
 	return dataCaches[t][i];
 #else
 	return nullptr;

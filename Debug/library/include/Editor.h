@@ -39,7 +39,7 @@ typedef std::unordered_map<int, funcMap[]> CommandsMap;
 int GetShortcutInt(InputKey k, InputKey m1 = Key_None, InputKey m2 = Key_None, InputKey m3 = Key_None);
 bool ShortcutTriggered(int i, bool c, bool a, bool s);
 
-Vec4 grey1(), grey2(), accent();
+Vec4 grey1(), grey2(), headerCol();
 
 class EditorBlock {
 public:
@@ -134,7 +134,7 @@ public:
 protected:
 	static void InitFuncs();
 	static std::unordered_map<string, consoleFunc> funcs;
-	static void Cmd_editor_playmode_connect(string);
+	static void Cmd_editor_playmode_connect(string), Cmd_editor_playmode_disconnect(string);
 };
 
 class EB_Hierarchy: public EditorBlock {
@@ -568,6 +568,7 @@ public:
 	std::unordered_map<ASSETTYPE, std::vector<string>> normalAssets, internalAssets, proceduralAssets;
 	std::unordered_map <ASSETTYPE, std::pair<ASSETTYPE, std::vector<uint>>> derivedAssets;
 	std::unordered_map<ASSETTYPE, std::vector<AssetObject*>> normalAssetCaches, internalAssetCaches, proceduralAssetCaches;
+	std::unordered_map<ASSETTYPE, std::vector<byte*>> normalAssetBuffers;
 	bool internalAssetsLoaded;
 
 	static void InitShaders();
