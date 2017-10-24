@@ -39,7 +39,7 @@ Vec4 grey1() {
 Vec4 grey2() {
 	return Vec4(61.0f / 255, 68.0f / 255, 73.0f / 255, 1);
 }
-Vec4 accent() {
+Vec4 headerCol() {
 	return Vec4(223.0f / 255, 119.0f / 255, 4.0f / 255, 1);
 }
 
@@ -110,7 +110,7 @@ void DrawHeaders(Editor* e, EditorBlock* b, Vec4* v, string title) {
 	e->font->Align(ALIGN_TOPLEFT);
 	//Engine::Button(v->r, v->g + EB_HEADER_SIZE + 1, v->b, v->a - EB_HEADER_SIZE - 2, black(), white(0.05f), white(0.05f));
 	Vec2 v2(v->b*0.1f, EB_HEADER_SIZE*0.1f);
-	Engine::DrawQuad(v->r + EB_HEADER_PADDING + 1, v->g, v->b - 3 - 2 * EB_HEADER_PADDING, EB_HEADER_SIZE, e->background->pointer, Vec2(), Vec2(v2.x, 0), Vec2(0, v2.y), v2, false, accent());
+	Engine::DrawQuad(v->r + EB_HEADER_PADDING + 1, v->g, v->b - 3 - 2 * EB_HEADER_PADDING, EB_HEADER_SIZE, e->background->pointer, Vec2(), Vec2(v2.x, 0), Vec2(0, v2.y), v2, false, headerCol());
 	//Engine::Label(round(v->r + 5 + EB_HEADER_PADDING), round(v->g + 2), 10, titleS, e->font, black(), Display::width);
 	Engine::Label(v->r + 5 + EB_HEADER_PADDING, v->g, 12, title, e->font, black());
 	//return Rect(v->r, v->g + EB_HEADER_SIZE + 1, v->b, v->a - EB_HEADER_SIZE - 2).Inside(Input::mousePos);
@@ -1393,7 +1393,7 @@ EB_Previewer::EB_Previewer(Editor* e, int x1, int y1, int x2, int y2) {
 	if (d_fbo == 0) {
 		InitGBuffer();
 	}
-
+	e->playSyncer.previewer = this;
 	shortcuts.emplace(GetShortcutInt(Key_Z, Key_Shift), &_ToggleBuffers);
 	shortcuts.emplace(GetShortcutInt(Key_Z), &_ToggleLumi);
 }
@@ -1411,7 +1411,7 @@ void EB_Previewer::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	CalcV(v);
 	if (maximize) v = Vec4(0, 0, Display::width, Display::height);
-	DrawHeaders(editor, this, &v, "Previewer");
+	DrawHeaders(editor, this, &v, "Previewer (" + to_string(editor->playSyncer.playW) + "x" + to_string(editor->playSyncer.playH) + ")");
 
 	if (viewer == nullptr) FindEditor();
 
@@ -1476,7 +1476,7 @@ void EB_Previewer::Draw() {
 			if (editor->playSyncer.pixelCount == 0)
 				Engine::Label(v.r + v.b*0.5f, v.g + v.a*0.5f, 12, "Waiting for pixels...", editor->font, white());
 			else {
-				Engine::DrawQuad(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a, editor->playSyncer.texPointer);
+				Engine::DrawQuad(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 1, editor->playSyncer.texPointer);
 			}
 			break;
 		case Editor_PlaySyncer::EPS_Starting:
@@ -1566,6 +1566,15 @@ void Editor_PlaySyncer::Update() {
 				bool hasData;
 				if (!EPS_RWMem(false, this, &hasData, pointers.hasDataLoc)) return;
 				if (hasData) {
+					auto e = Editor::instance;
+					input._mousePos.x = playW*(Input::mousePos.x - Display::width*e->xPoss[previewer->x1]) / (Display::width*(e->xPoss[previewer->x2] - e->xPoss[previewer->x1]));
+					input._mousePos.y = playH*(Input::mousePos.y - Display::height*e->yPoss[previewer->y1] - EB_HEADER_SIZE - 1) / (Display::height*(e->yPoss[previewer->y2] - e->yPoss[previewer->y1]) - EB_HEADER_SIZE - 1);
+					input._mouse0 = Input::mouse0;
+					input._mouse1 = Input::mouse1;
+					input._mouse2 = Input::mouse2;
+					if (!EPS_RWMem(true, this, &input._mousePos, pointers.mousePosLoc, 4*sizeof(Vec2)+3)) return;
+					if (!EPS_RWMem(true, this, Input::keyStatusNew, pointers.keyboardLoc, 256)) return;
+
 					if (!EPS_RWMem(false, this, &pixelCount, pointers.pixelCountLoc)) return;
 					if (pixelCount == 0) return;
 					if (pixelCountO != pixelCount) {
@@ -1576,11 +1585,11 @@ void Editor_PlaySyncer::Update() {
 					}
 					if (!EPS_RWMem(false, this, pixels, pointers.pixelsLoc, pixelCount)) return;
 					glBindTexture(GL_TEXTURE_2D, texPointer);
-					GLenum e = glGetError();
+					GLenum err = glGetError();
 					glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, playW, playH, GL_RGB, GL_UNSIGNED_BYTE, pixels);
-					e = glGetError();
-					if (e != 0) {
-						Debug::Warning("PlayMode", "Writing pixels failed with code " + to_string(e) + "!");
+					err = glGetError();
+					if (err != 0) {
+						Debug::Warning("PlayMode", "Writing pixels failed with code " + to_string(err) + "!");
 						//status = EPS_RWFailure;
 					}
 					glBindTexture(GL_TEXTURE_2D, 0);

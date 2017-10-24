@@ -392,21 +392,26 @@ struct Editor_PlaySyncer {
 	PROCESS_INFORMATION pInfo = {};
 	HWND hwnd;
 	struct _PipeModeObj {
-		uint pboLoc, //out: pbo array buffer (byte*pboCount)
-			pboCount, //out: pbo array size (uint)
-			hasDataLoc, //inout: pbo buffer updated? (bool) (do we need this?)
+		uint hasDataLoc, //inout: pbo buffer updated? (bool) (do we need this?)
+			pixelsLoc, //out: glreadpixels buffer (byte array, count per channel)
+			pixelCountLoc, //out: buffer size (ulong)
 			screenSizeLoc, //in: screen size (ushort ushort)
-			okLoc; //inout: confirmation (bool)
+			okLoc, //inout: confirmation (bool)
+			mousePosLoc,
+			keyboardLoc;
 	} pointers;
+	uint pointerLoc;
 	int playW, playH;
 	float timer;
+	EB_Previewer* previewer;
+	Input input;
 
 	void Update();
 	bool Connect(), Disconnect(), Terminate();
-	bool Resize(int w, int h);
-	bool ReadPixels();
-	void* pixels;
-	ulong pixelCount;
+	bool Resize(int w, int h), ReloadTex();
+	byte* pixels;
+	ulong pixelCount = 0, pixelCountO = 0;
+	GLuint texPointer;
 };
 
 class Editor {
@@ -414,7 +419,7 @@ public:
 	Editor();
 	static Editor* instance;
 
-	bool IS_PLAY_MODE() { return !!(playSyncer.status & 1); }
+	//bool IS_PLAY_MODE() { return !!(playSyncer.status & 1); }
 	Editor_PlaySyncer playSyncer;
 	//prefs
 	bool _showDebugInfo = true;
@@ -628,8 +633,9 @@ public:
 		uint pboLoc, //out: pbo array buffer (byte*pboCount)
 			pboCount, //out: pbo array size (uint)
 			hasDataLoc, //inout: pbo buffer updated? (bool)
-			screenSizeLoc, //in: screen size (ushort ushort)
-			okLoc; //inout: confirmation (bool)
+			inputLoc, //in: keyboard buffer (255*bool)
+			okLoc, //inout: confirmation (bool)
+			mouse0Loc; //in: mouses/keyboard io
 	};
 
 private:

@@ -558,11 +558,15 @@ void EB_Previewer::_ToggleLumi(EditorBlock* v) {
 
 void EB_Console::InitFuncs() {
 	funcs.emplace("Play", &Cmd_editor_playmode_connect);
+	funcs.emplace("Stop", &Cmd_editor_playmode_disconnect);
 	
 }
 
 void EB_Console::Cmd_editor_playmode_connect(string s) {
 	Editor::instance->playSyncer.Connect();
+}
+void EB_Console::Cmd_editor_playmode_disconnect(string s) {
+	Editor::instance->playSyncer.Disconnect();
 }
 
 void Editor::DeleteActive(Editor* e) {

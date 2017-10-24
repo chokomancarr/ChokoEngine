@@ -39,7 +39,7 @@ typedef std::unordered_map<int, funcMap[]> CommandsMap;
 int GetShortcutInt(InputKey k, InputKey m1 = Key_None, InputKey m2 = Key_None, InputKey m3 = Key_None);
 bool ShortcutTriggered(int i, bool c, bool a, bool s);
 
-Vec4 grey1(), grey2(), accent();
+Vec4 grey1(), grey2(), headerCol();
 
 class EditorBlock {
 public:
@@ -134,7 +134,7 @@ public:
 protected:
 	static void InitFuncs();
 	static std::unordered_map<string, consoleFunc> funcs;
-	static void Cmd_editor_playmode_connect(string);
+	static void Cmd_editor_playmode_connect(string), Cmd_editor_playmode_disconnect(string);
 };
 
 class EB_Hierarchy: public EditorBlock {
@@ -396,11 +396,15 @@ struct Editor_PlaySyncer {
 			pixelsLoc, //out: glreadpixels buffer (byte array, count per channel)
 			pixelCountLoc, //out: buffer size (ulong)
 			screenSizeLoc, //in: screen size (ushort ushort)
-			okLoc; //inout: confirmation (bool)
+			okLoc, //inout: confirmation (bool)
+			mousePosLoc,
+			keyboardLoc;
 	} pointers;
 	uint pointerLoc;
 	int playW, playH;
 	float timer;
+	EB_Previewer* previewer;
+	Input input;
 
 	void Update();
 	bool Connect(), Disconnect(), Terminate();
@@ -629,8 +633,9 @@ public:
 		uint pboLoc, //out: pbo array buffer (byte*pboCount)
 			pboCount, //out: pbo array size (uint)
 			hasDataLoc, //inout: pbo buffer updated? (bool)
-			screenSizeLoc, //in: screen size (ushort ushort)
-			okLoc; //inout: confirmation (bool)
+			inputLoc, //in: keyboard buffer (255*bool)
+			okLoc, //inout: confirmation (bool)
+			mouse0Loc; //in: mouses/keyboard io
 	};
 
 private:

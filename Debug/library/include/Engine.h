@@ -173,9 +173,8 @@ typedef unsigned char ASSETTYPE;
 typedef int ASSETID;
 
 //shorthands
-Vec4 red(), green(), blue(), cyan(), yellow(), black(), white();
-Vec4 red(float f), green(float f), blue(float f), cyan(float f), yellow(float f), black(float f), white(float f);
-Vec4 red(float f, float i), green(float f, float i), blue(float f, float i), cyan(float f, float i), yellow(float f, float i), white(float f, float i);
+Vec4 black(float f = 1);
+Vec4 red(float f = 1, float i = 1), green(float f = 1, float i = 1), blue(float f = 1, float i = 1), cyan(float f = 1, float i = 1), yellow(float f = 1, float i = 1), white(float f = 1, float i = 1);
 Vec4 LerpVec4(Vec4 a, Vec4 b, float f);
 float clamp(float f, float a, float b);
 float repeat(float f, float a, float b);
@@ -363,17 +362,20 @@ public:
 	static bool mouse0, mouse1, mouse2;
 	static byte mouse0State, mouse1State, mouse2State;
 	static string inputString;
-	static void UpdateMouseNKeyboard();
+	static void UpdateMouseNKeyboard(bool* src = nullptr);
 
 	static bool KeyDown(InputKey key), KeyHold(InputKey key), KeyUp(InputKey key);
 
+	Vec2 _mousePos, _mousePosRelative, _mouseDelta, _mouseDownPos;
+	bool _mouse0, _mouse1, _mouse2;
+	bool _keyStatuses[256];
+	friend struct Editor_PlaySyncer;
 protected:
 	static bool keyStatusOld[256], keyStatusNew[256];
 private:
 	static Vec2 mousePosOld;
-
-	Input(Input const &); //deliberately not defined
-	Input& operator= (Input const &);
+	//Input(Input const &); //deliberately not defined
+	//Input& operator= (Input const &);
 };
 
 class Display {

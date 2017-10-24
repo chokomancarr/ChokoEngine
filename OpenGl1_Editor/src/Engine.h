@@ -362,17 +362,20 @@ public:
 	static bool mouse0, mouse1, mouse2;
 	static byte mouse0State, mouse1State, mouse2State;
 	static string inputString;
-	static void UpdateMouseNKeyboard();
+	static void UpdateMouseNKeyboard(bool* src = nullptr);
 
 	static bool KeyDown(InputKey key), KeyHold(InputKey key), KeyUp(InputKey key);
 
+	Vec2 _mousePos, _mousePosRelative, _mouseDelta, _mouseDownPos;
+	bool _mouse0, _mouse1, _mouse2;
+	bool _keyStatuses[256];
+	friend struct Editor_PlaySyncer;
 protected:
 	static bool keyStatusOld[256], keyStatusNew[256];
 private:
 	static Vec2 mousePosOld;
-
-	Input(Input const &); //deliberately not defined
-	Input& operator= (Input const &);
+	//Input(Input const &); //deliberately not defined
+	//Input& operator= (Input const &);
 };
 
 class Display {

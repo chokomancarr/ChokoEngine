@@ -1156,13 +1156,16 @@ bool Input::KeyUp(InputKey k) {
 	return !keyStatusNew[k] && keyStatusOld[k];
 }
 
-void Input::UpdateMouseNKeyboard() {
+void Input::UpdateMouseNKeyboard(bool* src) {
 	std::swap(keyStatusOld, keyStatusNew);
-	for (byte a = 1; a < 112; a++) {
-		keyStatusNew[a] = ((GetAsyncKeyState(a) >> 8) == -128);
-	}
-	for (byte a = 187; a < 191; a++) {
-		keyStatusNew[a] = ((GetAsyncKeyState(a) >> 8) == -128);
+	if (src) std::swap_ranges(src, src + 255, keyStatusNew);
+	else {
+		for (byte a = 1; a < 112; a++) {
+			keyStatusNew[a] = ((GetAsyncKeyState(a) >> 8) == -128);
+		}
+		for (byte a = 187; a < 191; a++) {
+			keyStatusNew[a] = ((GetAsyncKeyState(a) >> 8) == -128);
+		}
 	}
 	
 	inputString = "";

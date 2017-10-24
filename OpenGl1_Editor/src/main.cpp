@@ -114,6 +114,8 @@ int main(int argc, char **argv)
 	GetMonitorInfo(monitor, &info);
 	editor->scrW = info.rcMonitor.right - info.rcMonitor.left;
 	editor->scrH = info.rcMonitor.bottom - info.rcMonitor.top;
+	editor->scrW = 1024;
+	editor->scrH = 600;
 
 	//EBI_Asset* e = new EBI_Asset("D:\\OpenGl1\\OpenGl1_Editor\\OpenGl1_Editor\\src\\TestScript.h", "TestScript.h");
 	//((EB_Inspector*)(editor->blocks[0]))->SelectAsset(e, "D:\\OpenGl1\\OpenGl1_Editor\\OpenGl1_Editor\\src\\TestScript.h");
@@ -145,7 +147,7 @@ int main(int argc, char **argv)
 	glutInitWindowSize(editor->scrW, editor->scrH);
 	glutCreateWindow("Engine (loading...)");
 	editor->hwnd2 = GetActiveWindow();
-	ShowWindow(editor->hwnd2, SW_MAXIMIZE);
+	//ShowWindow(editor->hwnd2, SW_MAXIMIZE);
 
 	//SendMessage(hwnd2, WM_SETICON, ICON_SMALL, hIcon);
 	//SendMessage(hwnd2, WM_SETICON, ICON_BIG, hIcon);
