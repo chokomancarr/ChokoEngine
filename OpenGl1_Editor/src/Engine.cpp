@@ -1321,7 +1321,9 @@ std::vector<EB_Browser_File> IO::GetFilesE (Editor* e, const string& folder)
 					names.push_back(EB_Browser_File(e, folder, aa, aa));
 				else if ((aa.length() > 9 && (aa.substr(aa.length() - 9) == ".material")))
 					names.push_back(EB_Browser_File(e, folder, aa, aa));
-				else if ((aa.length() > 9 && (aa.substr(aa.length() - 7) == ".effect")))
+				else if ((aa.length() > 7 && (aa.substr(aa.length() - 7) == ".effect")))
+					names.push_back(EB_Browser_File(e, folder, aa, aa));
+				else if ((aa.length() > 9 && (aa.substr(aa.length() - 9) == ".animator")))
 					names.push_back(EB_Browser_File(e, folder, aa, aa));
 			}
 		} while (::FindNextFile(hFind, &fd));
@@ -1709,15 +1711,10 @@ string _Strm2Asset(std::istream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int 
 }
 
 std::vector<float> hdr2float(byte imagergbe[], int w, int h) {
-	std::vector<float> image(w * h * 3 * sizeof(float));
+	std::vector<float> image(w * h * 3 * sizeof(float), 0);
 	for (int i = 0; i < w*h; i++) {
 		unsigned char exponent = imagergbe[i * 4 + 3];
-		if (exponent == 0) {
-			image[i * 3 + 0] = 0.0f;
-			image[i * 3 + 1] = 0.0f;
-			image[i * 3 + 2] = 0.0f;
-		}
-		else {
+		if (exponent != 0) {
 			double v = (1.0f / 256.0f) * pow(2, (float)(exponent - 128));
 			image[i * 3 + 0] = (float)((imagergbe[i * 4 + 0] + 0.5f) * v);
 			image[i * 3 + 1] = (float)((imagergbe[i * 4 + 1] + 0.5f) * v);
@@ -2011,7 +2008,7 @@ void Scene::Save(Editor* e) {
 }
 
 std::unordered_map<ASSETTYPE, std::vector<string>> AssetManager::names = {};
-std::unordered_map<ASSETTYPE, std::vector<std::pair<byte, uint>>> AssetManager::dataLocs = {};
+std::unordered_map<ASSETTYPE, std::vector<std::pair<byte, std::pair<uint, uint>>>> AssetManager::dataLocs = {};
 std::unordered_map<ASSETTYPE, std::vector<AssetObject*>> AssetManager::dataCaches = {};
 std::vector<std::ifstream*> AssetManager::streams = {};
 #ifndef IS_EDITOR
@@ -2081,7 +2078,7 @@ void AssetManager::Init(string dpath) {
 			strm->getline(c, 100, (char)0);
 			//std::cout << (int)type << " " << (int)id << " " << pos << ": " << string(c) << std::endl;
 			numDat = max(numDat, id);
-			dataLocs[type].push_back(std::pair<byte, uint>(id - 1, pos));
+			dataLocs[type].push_back(std::pair<byte, std::pair<uint, uint>>(id - 1, std::pair<uint, uint>(pos, 0)));
 			dataCaches[type].push_back(nullptr);
 			names[type].push_back(c);
 		}
@@ -2100,10 +2097,9 @@ void AssetManager::Init(string dpath) {
 		for (auto& aa : dataLocs) {
 			ushort s = 0;
 			for (auto& bb : aa.second) {
-				streams[bb.first]->seekg(bb.second);
-				uint sz;
-				_Strm2Val(*streams[bb.first], sz);
-				Debug::Message("AssetManager", "Registered asset " + names[aa.first][s] + " (" + to_string(sz) + " bytes)");
+				streams[bb.first]->seekg(bb.second.first);
+				_Strm2Val(*streams[bb.first], bb.second.second);
+				Debug::Message("AssetManager", "Registered asset " + names[aa.first][s] + " (" + to_string(bb.second.second) + " bytes)");
 				streams[bb.first]->seekg(0);
 				s++;
 			}
@@ -2150,34 +2146,48 @@ AssetObject* AssetManager::GetCache(ASSETTYPE t, ASSETID i) {
 }
 AssetObject* AssetManager::GenCache(ASSETTYPE t, ASSETID i) {
 #ifndef IS_EDITOR
-	std::ifstream* strm = _pipemode? new std::ifstream(dataELocs[t][i], std::ios::in | std::ios::binary) : streams[dataLocs[t][i].first];
-	uint off = _pipemode ? 0 : dataLocs[t][i].second + 4;
+	std::ifstream* fstrm;
+	std::stringstream sstrm;
+	uint off = 0, cnt = -1;
+	if (_pipemode) {
+		fstrm = new std::ifstream(dataELocs[t][i], std::ios::in | std::ios::binary);
+		sstrm << fstrm->rdbuf();
+	}
+	else {
+		fstrm = streams[dataLocs[t][i].first];
+		off = dataLocs[t][i].second.first + 4;
+		cnt = dataLocs[t][i].second.second;
+		char *data = new char[cnt];
+		fstrm->read(data, cnt);
+		sstrm.write(data, cnt);
+	}
+	std::istream strm(sstrm.rdbuf());
 	//strm->seekg(off);
 	//uint sz;
 	//_Strm2Val(*strm, sz);
 	//off += 4;
 	switch (t) {
 	case ASSETTYPE_TEXTURE:
-		dataCaches[t][i] = new Texture(*strm, off);
+		dataCaches[t][i] = new Texture(strm, off);
 		break;
 	case ASSETTYPE_HDRI:
-		dataCaches[t][i] = new Background(*strm, off);
+		dataCaches[t][i] = new Background(strm, off);
 		break;
 	case ASSETTYPE_MESH:
-		dataCaches[t][i] = new Mesh(*strm, off);
+		dataCaches[t][i] = new Mesh(strm, off);
 		break;
 	case ASSETTYPE_MATERIAL:
-		dataCaches[t][i] = new Material(*strm, off);
+		dataCaches[t][i] = new Material(strm, off);
 		break;
 	case ASSETTYPE_SHADER:
-		dataCaches[t][i] = new ShaderBase(*strm, off);
+		dataCaches[t][i] = new ShaderBase(strm, off);
 		break;
 	default:
 		Debug::Error("AssetManager", "No operation suits asset type " + to_string(t) + "!");
 		return nullptr;
 	}
-	if (_pipemode) delete(strm);
-	std::cout << "Loaded " << (int)t << "." << i << "in " << (clock() - time) << "ms" << std::endl;
+	if (_pipemode) delete(fstrm);
+	//std::cout << "Loaded " << (int)t << "." << i << "in " << (clock() - time) << "ms" << std::endl;
 	return dataCaches[t][i];
 #else
 	return nullptr;

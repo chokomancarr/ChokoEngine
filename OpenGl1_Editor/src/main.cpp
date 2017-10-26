@@ -69,18 +69,6 @@ char Get(std::istream& strm) {
 
 int main(int argc, char **argv)
 {
-	std::ifstream instream("D:\\TestProject2\\Release\\data1", std::ios::in | std::ios::binary);
-	instream.seekg(0, instream.end);
-	size_t sz = instream.tellg();
-	instream.seekg(0, instream.beg);
-	char* buf = new char[sz];
-	//char* buf = "hello what is in the bag why is my house on fire";
-	//sz = 49;
-	instream.read(buf, sz);
-	std::vector<byte> comp = Compressors::Compress_Huffman((byte*)buf, sz);
-	std::ofstream outstream("D:\\TestProject2\\Release\\data1_comp", std::ios::binary);
-	outstream.write((char*)&comp[0], comp.size());
-	//auto ccc = Compressors::Decompress_Huffman(&comp[0], comp.size());
 	path = argv[0];
 	//signal(SIGABRT, &abort_func);
 

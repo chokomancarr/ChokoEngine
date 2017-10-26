@@ -29,12 +29,8 @@
 
 using namespace ChokoEngine;
 
-std::stringstream GetSStream(const string& p) {
-	std::ifstream strm(p.c_str(), std::ios::in | std::ios::binary);
-	std::stringstream strm2; //15% faster
-	if (strm.is_open()) strm2 << strm.rdbuf();
-	return strm2;
-}
+#define F2ISTREAM(_varname, _pathname) std::ifstream _f2i_ifstream(_pathname.c_str(), std::ios::in | std::ios::binary); \
+std::istream _varname(_f2i_ifstream.rdbuf());
 
 std::stringstream StreamFromBuffer(const std::vector<char>& buf) {
 	std::stringstream strm;
@@ -238,8 +234,8 @@ Texture::Texture(int i, Editor* e) : AssetObject(ASSETTYPE_TEXTURE) {
 */
 Texture::Texture(int i, Editor* e) : Texture(std::ifstream(e->projectFolder + "Assets\\" + e->normalAssets[ASSETTYPE_TEXTURE][i] + ".meta", std::ios::in | std::ios::binary), 0) {}
 
-Texture::Texture(std::ifstream& strm, uint offset) : AssetObject(ASSETTYPE_TEXTURE) {
-	if (strm.is_open()) {
+Texture::Texture(std::istream& strm, uint offset) : AssetObject(ASSETTYPE_TEXTURE) {
+	if (strm.good()) {
 		strm.seekg(offset);
 		byte chn;
 		GLenum rgb = GL_RGB, rgba = GL_RGBA;
@@ -503,8 +499,7 @@ Background::Background(const string& path) : width(0), height(0), AssetObject(AS
 Background::Background(int i, Editor* editor) : width(0), height(0), AssetObject(ASSETTYPE_HDRI), loaded(false) {
 	string path = editor->projectFolder + "Assets\\" + editor->normalAssets[ASSETTYPE_HDRI][i] + ".meta";
 	//std::ifstream strm(path.c_str(), std::ios::in | std::ios::binary);
-	std::stringstream strm2 = GetSStream(path);
-	std::istream strm(strm2.rdbuf());
+	F2ISTREAM(strm, path);
 	std::vector<char> hd(6);
 	strm.read((&hd[0]), 4);
 	if (hd[0] != 'I' || hd[1] != 'M' || hd[2] != 'G' || hd[3] != (char)4) {
@@ -570,7 +565,7 @@ Background::Background(int i, Editor* editor) : width(0), height(0), AssetObject
 	loaded = true;
 }
 
-Background::Background(std::ifstream& strm, uint offset) : width(0), height(0), AssetObject(ASSETTYPE_HDRI) {
+Background::Background(std::istream& strm, uint offset) : width(0), height(0), AssetObject(ASSETTYPE_HDRI) {
 	std::vector<char> hd(6);
 	strm.read((&hd[0]), 4);
 	if (hd[0] != 'I' || hd[1] != 'M' || hd[2] != 'G' || hd[3] != (char)4) {
@@ -783,8 +778,7 @@ void Material::_ReloadParams() {
 Material::Material(string p) : AssetObject(ASSETTYPE_MATERIAL), writeMask(4, true) {
 	//string p = Editor::instance->projectFolder + "Assets\\" + path;
 	//std::ifstream stream(p.c_str());
-	std::stringstream strm2 = GetSStream(p);
-	std::istream stream(strm2.rdbuf());
+	F2ISTREAM(stream, p);
 	if (!stream.good()) {
 		std::cout << "material not found!" << std::endl;
 		return;
@@ -891,8 +885,8 @@ Material::Material(string p) : AssetObject(ASSETTYPE_MATERIAL), writeMask(4, tru
 	//stream.close();
 }
 
-Material::Material(std::ifstream& stream, uint offset) : AssetObject(ASSETTYPE_MATERIAL), writeMask(4, true) {
-	if (stream.is_open()) {
+Material::Material(std::istream& stream, uint offset) : AssetObject(ASSETTYPE_MATERIAL), writeMask(4, true) {
+	if (stream.good()) {
 		stream.seekg(offset);
 		char* c = new char[4];
 		stream.read(c, 3);
@@ -1274,8 +1268,8 @@ Mesh::Mesh(Editor* e, int i) : AssetObject(ASSETTYPE_MESH) {
 	loaded = m2->loaded;
 }
 
-Mesh::Mesh(std::ifstream& stream, uint offset) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0), triangleCount(0), materialCount(0) {
-	if (stream.is_open()) {
+Mesh::Mesh(std::istream& stream, uint offset) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0), triangleCount(0), materialCount(0) {
+	if (stream.good()) {
 		stream.seekg(offset);
 
 		char* c = new char[100];
@@ -1378,12 +1372,7 @@ Mesh::Mesh(std::ifstream& stream, uint offset) : AssetObject(ASSETTYPE_MESH), lo
 }
 
 Mesh::Mesh(string p) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0), triangleCount(0), materialCount(0) {
-	//string p = Editor::instance->projectFolder + "Assets\\" + path + ".mesh.meta";
-	//std::ifstream strm(p.c_str(), std::ios::in | std::ios::binary);
-	//std::stringstream strm2; //15% faster
-	//strm2 << strm.rdbuf();
-	std::stringstream strm2 = GetSStream(p);
-	std::istream stream(strm2.rdbuf());
+	F2ISTREAM(stream, p);
 	if (!stream.good()) {
 		std::cout << "mesh file not found!" << std::endl;
 		return;
@@ -1463,7 +1452,6 @@ Mesh::Mesh(string p) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0
 		}
 		stream.read(&cc, 1);
 	}
-
 	if (vertexCount > 0) {
 		if (normals.size() != vertexCount) {
 			Debug::Error("Mesh Importer", "mesh metadata corrupted (normals incomplete)!");
@@ -1483,8 +1471,22 @@ Mesh::Mesh(string p) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0
 		}
 		CalcTangents();
 		RecalculateBoundingBox();
+
+		//GenECache();
 		loaded = true;
 	}
+}
+
+Mesh::Mesh(byte* mem) : AssetObject(ASSETTYPE_MESH) {
+	memcpy(&vertexCount, mem, sizeof(uint));
+	memcpy(&triangleCount, mem + sizeof(uint), sizeof(uint));
+	memcpy(&materialCount, mem + sizeof(uint) * 2, sizeof(uint));
+	mem += sizeof(uint) * 3;
+	vertices = std::vector<Vec3>(mem, mem + sizeof(Vec3)*vertexCount);
+	mem += sizeof(Vec3) * vertexCount;
+	normals = std::vector<Vec3>(mem, mem + sizeof(Vec3)*vertexCount);
+	mem += sizeof(Vec3) * vertexCount;
+	tangents = std::vector<Vec3>(mem, mem + sizeof(Vec3)*vertexCount);
 }
 
 void Mesh::RecalculateBoundingBox() {
@@ -1552,6 +1554,26 @@ void Mesh::CalcTangents() {
 	for (uint a = 0; a < vertexCount; a++) {
 		if (tC[a] > 0) tangents[a] = Normalize(tangents[a] / ((float)tC[a]));
 	}
+}
+
+void Mesh::GenECache() {
+	_eCache.second = sizeof(uint) * 3 + sizeof(Vec3)*vertexCount * 3 + sizeof(Vec2)*vertexCount * 2 + sizeof(int)*triangleCount * 3;
+	_eCache.first = (byte*)malloc(_eCache.second);
+	memcpy(_eCache.first, &vertexCount, sizeof(uint));
+	memcpy(_eCache.first + sizeof(uint), &triangleCount, sizeof(uint));
+	memcpy(_eCache.first + sizeof(uint) * 2, &materialCount, sizeof(uint));
+	uint off = 3 * sizeof(uint);
+	memcpy(_eCache.first + off, &vertices[0], sizeof(Vec3)*vertexCount);
+	off += sizeof(Vec3)*vertexCount;
+	memcpy(_eCache.first + off, &normals[0], sizeof(Vec3)*vertexCount);
+	off += sizeof(Vec3)*vertexCount;
+	memcpy(_eCache.first + off, &tangents[0], sizeof(Vec3)*vertexCount);
+	off += sizeof(Vec3)*vertexCount;
+	memcpy(_eCache.first + off, &triangles[0], sizeof(int)*triangleCount * 3);
+	off += sizeof(Vec2)*vertexCount;
+	memcpy(_eCache.first + off, &uv0[0], sizeof(Vec2)*vertexCount);
+	off += sizeof(Vec2)*vertexCount;
+	memcpy(_eCache.first + off, &uv1[0], sizeof(Vec2)*vertexCount);
 }
 
 bool Mesh::ParseBlend(Editor* e, string s) {
@@ -1671,8 +1693,7 @@ bool Mesh::ParseBlend(Editor* e, string s) {
 AnimClip::AnimClip(string p) : AssetObject(ASSETTYPE_ANIMCLIP) {
 	//string p = Editor::instance->projectFolder + "Assets\\" + path + ".animclip.meta";
 	//std::ifstream stream(p.c_str(), std::ios::in | std::ios::binary);
-	std::stringstream strm2 = GetSStream(p);
-	std::istream stream(strm2.rdbuf());
+	F2ISTREAM(stream, p);
 	if (!stream.good()) {
 		std::cout << "animclip file not found!" << std::endl;
 		return;
@@ -1717,10 +1738,7 @@ Animator::Animator() : AssetObject(ASSETTYPE_ANIMATOR), activeState(0), nextStat
 }
 
 Animator::Animator(string p) : Animator() {
-	//string p = Editor::instance->projectFolder + "Assets\\" + path;
-	//std::ifstream stream(p.c_str());
-	std::stringstream strm2 = GetSStream(p);
-	std::istream stream(strm2.rdbuf());
+	F2ISTREAM(stream, p);
 	if (!stream.good()) {
 		std::cout << "animator not found!" << std::endl;
 		return;

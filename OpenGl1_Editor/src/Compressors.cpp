@@ -243,6 +243,7 @@ std::vector<byte> Compressors::Compress_Huffman(byte* input, uint inSize) {
 		}
 	}
 	if (off != 7) res.push_back(bt);
+	for (byte i = 0; i < 256; i++) delete(nodes[i]);
 	return res;
 }
 

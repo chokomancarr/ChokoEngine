@@ -163,9 +163,8 @@ ShaderBase::ShaderBase(string p) : AssetObject(ASSETTYPE_SHADER) {
 	loaded = true;
 }
 
-ShaderBase::ShaderBase(std::ifstream& stream, uint offset) : AssetObject(ASSETTYPE_SHADER) {
-	if (!stream.is_open())
-		return;
+ShaderBase::ShaderBase(std::istream& stream, uint offset) : AssetObject(ASSETTYPE_SHADER) {
+	if (stream.good()) return;
 	stream.seekg(offset);
 	string vertex_shader_code = "";
 	string fragment_shader_code = "";

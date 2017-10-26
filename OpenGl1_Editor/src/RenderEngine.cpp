@@ -172,7 +172,7 @@ std::vector<float> RenderTexture::pixels() {
 void RenderTexture::Load(string path) {
 	throw std::runtime_error("RT Load (s) not implemented");
 }
-void RenderTexture::Load(std::ifstream& strm) {
+void RenderTexture::Load(std::istream& strm) {
 	throw std::runtime_error("RT Load (i) not implemented");
 }
 

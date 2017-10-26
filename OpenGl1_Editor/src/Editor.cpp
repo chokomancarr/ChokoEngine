@@ -2993,7 +2993,7 @@ content0_.data -> basepath, asset locs (type, name, index) (ascii), level locs
 bool MergeAssets_(Editor* e) {
 	string ss = e->projectFolder + "Release\\data0_";
 	char null = 0, etx = 3;
-	std::cout << ss << std::endl;
+	//std::cout << ss << std::endl;
 	std::ofstream file(ss.c_str(), std::ios::out | std::ios::binary | std::ios::trunc);
 	if (!file.is_open())
 		return false;

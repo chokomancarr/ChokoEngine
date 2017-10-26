@@ -472,7 +472,7 @@ public:
 class ShaderBase : public AssetObject {
 public:
 	ShaderBase(string path);
-	ShaderBase(std::ifstream& stream, uint offset);
+	ShaderBase(std::istream& stream, uint offset);
 	ShaderBase(const string& vert, const string& frag);
 	ShaderBase(GLuint p) : AssetObject(ASSETTYPE_SHADER), pointer(p), loaded(!!p), inherited(true) {}
 	//ShaderBase(string vert, string frag);
@@ -560,7 +560,7 @@ public:
 	friend void EBI_DrawAss_Mat(Vec4 v, Editor* editor, EB_Inspector* b, float &off);
 protected:
 	Material(string s);
-	Material(std::ifstream& stream, uint offset);
+	Material(std::istream& stream, uint offset = 0);
 	void _ReloadParams();
 
 	ShaderBase* shader;
@@ -748,7 +748,7 @@ protected:
 	static string eBasePath;
 	static std::unordered_map<ASSETTYPE, std::vector<string>> dataELocs;
 #endif
-	static std::unordered_map<ASSETTYPE, std::vector<std::pair<byte, uint>>> dataLocs;
+	static std::unordered_map<ASSETTYPE, std::vector<std::pair<byte, std::pair<uint, uint>>>> dataLocs;
 	static std::unordered_map<ASSETTYPE, std::vector<AssetObject*>> dataCaches;
 	static std::vector<std::ifstream*> streams;
 	static void Init(string dpath);

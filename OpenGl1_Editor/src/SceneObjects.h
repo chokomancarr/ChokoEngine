@@ -109,10 +109,11 @@ public:
 	friend class AssetManager;
 protected:
 	Mesh(Editor* e, int i);
-	Mesh(std::ifstream& strm, uint offset);
+	Mesh(std::istream& strm, uint offset = 0);
 	Mesh(string path);
+	Mesh(byte* mem);
 
-	void CalcTangents();
+	void CalcTangents(), GenECache();
 
 	static bool ParseBlend(Editor* e, string s);
 	std::vector<std::vector<int>> _matTriangles;
@@ -276,7 +277,7 @@ public:
 protected:
 	Texture() : AssetObject(ASSETTYPE_TEXTURE) {}
 	Texture(int i, Editor* e); //for caches
-	Texture(std::ifstream& strm, uint offset);
+	Texture(std::istream& strm, uint offset = 0);
 	static TEX_TYPE _ReadStrm(Texture* tex, std::istream& strm, byte& chn, GLenum& rgb, GLenum& rgba);
 	byte _aniso = 0;
 	TEX_FILTERING _filter = TEX_FILTER_POINT;
@@ -315,7 +316,7 @@ public:
 protected:
 	GLuint d_fbo;
 	void Load(string path);
-	void Load(std::ifstream& strm);
+	void Load(std::istream& strm);
 	static bool Parse(string path); //just tell Texture to load as rendtex
 };
 
@@ -332,10 +333,8 @@ public:
 	friend class AssetManager;
 private:
 	Background(int i, Editor* editor);
-	Background(std::ifstream& strm, uint offset);
+	Background(std::istream& strm, uint offset);
 	static bool Parse(string path);
-	static void B_DS(Background* b, std::vector<float> data);
-	//static std::vector<float> Downsample(std::vector<float>&, uint, uint, uint&, uint&);
 };
 
 class CubeMap : public AssetObject {
