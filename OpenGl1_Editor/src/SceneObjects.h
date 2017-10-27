@@ -268,6 +268,8 @@ public:
 	GLuint pointer;
 	TEX_TYPE texType() { return _texType; }
 	
+	static byte* LoadPixels(const string& path, byte& chn, uint& w, uint& h);
+
 	friend int main(int argc, char **argv);
 	friend class Editor;
 	friend class EB_Inspector;

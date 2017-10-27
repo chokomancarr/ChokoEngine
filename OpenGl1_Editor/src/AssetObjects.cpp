@@ -147,6 +147,41 @@ bool LoadBMP(string fileN, uint &x, uint &y, byte& channels, byte** data) {
 	return true;
 }
 
+byte* Texture::LoadPixels(const string& path, byte& chn, uint& w, uint& h) {
+	string sss = path.substr(path.find_last_of('.'), string::npos);
+	byte *data;
+	std::vector<byte> dataV;
+	//std::cout << "opening image at " << path << std::endl;
+	//GLenum rgb = GL_RGB, rgba = GL_RGBA;
+	if (sss == ".bmp") {
+		if (!LoadBMP(path, w, h, chn, &data)) {
+			std::cout << "load bmp failed! " << path << std::endl;
+			return nullptr;
+		}
+		//rgb = GL_BGR;
+		//rgba = GL_BGRA;
+	}
+	else if (sss == ".jpg") {
+		if (!LoadJPEG(path, w, h, chn, &data)) {
+			std::cout << "load jpg failed! " << path << std::endl;
+			return nullptr;
+		}
+	}
+	else if (sss == ".png") {
+		if (!LoadPNG(path, w, h, chn, dataV)) {
+			std::cout << "load png failed! " << path << std::endl;
+			return nullptr;
+		}
+		data = new byte[w*h*chn];
+		memcpy(data, &dataV[0], w*h*chn);
+	}
+	else {
+		std::cout << "Image extension invalid! " << path << std::endl;
+		return nullptr;
+	}
+	return data;
+}
+
 Texture::Texture(const string& path, bool mipmap, TEX_FILTERING filter, byte aniso, TEX_WARPING warp) : AssetObject(ASSETTYPE_TEXTURE), _mipmap(mipmap), _filter(filter), _aniso(aniso) {
 	string sss = path.substr(path.find_last_of('.'), string::npos);
 	byte *data;

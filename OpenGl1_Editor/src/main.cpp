@@ -77,6 +77,10 @@ int main(int argc, char **argv)
 	MONITORINFO info;
 	info.cbSize = sizeof(MONITORINFO);
 	GetMonitorInfo(monitor, &info);
+	
+	ShowSplash(editor->dataPath + "res\\splash.png", (info.rcMonitor.right - info.rcMonitor.left) / 2, (info.rcMonitor.bottom - info.rcMonitor.top) / 2, 800, 300);
+	SetForegroundWindow(editor->hwnd);
+
 	editor->scrW = info.rcMonitor.right - info.rcMonitor.left;
 	editor->scrH = info.rcMonitor.bottom - info.rcMonitor.top;
 	editor->scrW = 1024;
@@ -99,8 +103,7 @@ int main(int argc, char **argv)
 	//	std::getline(std::cin, editor->projectFolder);
 	//}
 	//*/
-	ShowSplash(editor->dataPath + "res\\splash.bmp", info.rcMonitor.right - info.rcMonitor.left/2, info.rcMonitor.bottom - info.rcMonitor.top/2, 800, 300);
-
+	
 	editor->xPoss.push_back(0);
 	editor->xPoss.push_back(1);
 	editor->xPoss.push_back(0.75f);
@@ -442,7 +445,52 @@ void MotionGL(int x, int y) {
 }
 
 void ShowSplash(string bitmap, uint cx, uint cy, uint sw, uint sh) {
+	auto inst = GetModuleHandle(NULL);
+	//register window
+	WNDCLASS wc = {};
+	wc.lpfnWndProc = DefWindowProc;
+	wc.hInstance = inst;
+	//wc.hIcon = LoadIcon(inst, MAKEINTRESOURCE(IDI_SPLASHICON));
+	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+	wc.lpszClassName = TEXT("ChokoEngineSplash");
+	RegisterClass(&wc);
+
+	auto hw = CreateWindowEx(WS_EX_LAYERED, TEXT("ChokoEngineSplash"), NULL, WS_POPUP | WS_VISIBLE, 0, 0, 0, 0, NULL, NULL, inst, NULL);
+	//cx - sw / 2, cy - sh / 2, sw, sh
 	
+	HDC dcScr = GetDC(NULL);
+	HDC dcMem = CreateCompatibleDC(dcScr);
+
+	byte chn;
+	uint pw, ph;
+	byte* px = Texture::LoadPixels(bitmap, chn, pw, ph);
+	BITMAPINFO binfo = {};
+	binfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+	binfo.bmiHeader.biWidth = pw;
+	binfo.bmiHeader.biHeight = -(LONG)ph;
+	binfo.bmiHeader.biPlanes = 1;
+	binfo.bmiHeader.biBitCount = 32;
+	binfo.bmiHeader.biCompression = BI_RGB;
+
+	byte* pvb;
+	HBITMAP hbmp = CreateDIBSection(dcScr, &binfo, DIB_RGB_COLORS, (void**)&pvb, NULL, 0);
+	memcpy(pvb, px, chn*pw*ph);
+
+	HBITMAP bmpo = (HBITMAP)SelectObject(dcMem, hbmp);
+
+	POINT pt, pt0 = {};
+	pt.x = cx - pw/2;
+	pt.y = cy - ph/2;
+	SIZE sz = { pw, ph };
+	BLENDFUNCTION func = {};
+	func.BlendOp = AC_SRC_OVER;
+	func.SourceConstantAlpha = 255;
+	func.AlphaFormat = AC_SRC_ALPHA;
+	UpdateLayeredWindow(hw, dcScr, &pt, &sz, dcMem, &pt0, RGB(0, 0, 0), &func, ULW_ALPHA);
+	
+	SelectObject(dcMem, bmpo);
+	DeleteDC(dcMem);
+	ReleaseDC(NULL, dcScr);
 }
 
 void KillSplash() {
