@@ -78,7 +78,7 @@ int main(int argc, char **argv)
 	info.cbSize = sizeof(MONITORINFO);
 	GetMonitorInfo(monitor, &info);
 	
-	ShowSplash(editor->dataPath + "res\\splash.png", (info.rcMonitor.right - info.rcMonitor.left) / 2, (info.rcMonitor.bottom - info.rcMonitor.top) / 2, 800, 300);
+	ShowSplash(editor->dataPath + "res\\splash.png", (info.rcMonitor.right - info.rcMonitor.left) / 2, (info.rcMonitor.bottom - info.rcMonitor.top) / 2, 600, 300);
 	SetForegroundWindow(editor->hwnd);
 
 	editor->scrW = info.rcMonitor.right - info.rcMonitor.left;
@@ -86,7 +86,6 @@ int main(int argc, char **argv)
 	editor->scrW = 1024;
 	editor->scrH = 600;
 
-	DefaultResources::Init(editor->dataPath + "res\\defaultresources.bin");
 
 	//editor->ParseAsset("D:\\test.blend");
 	//editor->Compile();
@@ -94,16 +93,12 @@ int main(int argc, char **argv)
 	//*
 
 	std::cout << "Enter project folder path" << std::endl;
-
 	std::getline(std::cin, editor->projectFolder);
-	//if (editor->projectFolder == "")
 	editor->projectFolder = "D:\\TestProject2\\";
-	//else while (!IO::HasDirectory(editor->projectFolder.c_str())) {
-	//	std::cout << "Invalid project folder path: " << editor->projectFolder << std::endl;
-	//	std::getline(std::cin, editor->projectFolder);
-	//}
-	//*/
-	
+
+	ShowWindow(editor->hwnd, SW_HIDE);
+
+	DefaultResources::Init(editor->dataPath + "res\\defaultresources.bin");
 	editor->xPoss.push_back(0);
 	editor->xPoss.push_back(1);
 	editor->xPoss.push_back(0.75f);
@@ -455,7 +450,7 @@ void ShowSplash(string bitmap, uint cx, uint cy, uint sw, uint sh) {
 	wc.lpszClassName = TEXT("ChokoEngineSplash");
 	RegisterClass(&wc);
 
-	auto hw = CreateWindowEx(WS_EX_LAYERED, TEXT("ChokoEngineSplash"), NULL, WS_POPUP | WS_VISIBLE, 0, 0, 0, 0, NULL, NULL, inst, NULL);
+	splashHwnd = CreateWindowEx(WS_EX_LAYERED | WS_EX_TRANSPARENT, TEXT("ChokoEngineSplash"), NULL, WS_POPUP | WS_VISIBLE, 0, 0, 0, 0, NULL, NULL, inst, NULL);
 	//cx - sw / 2, cy - sh / 2, sw, sh
 	
 	HDC dcScr = GetDC(NULL);
@@ -464,10 +459,20 @@ void ShowSplash(string bitmap, uint cx, uint cy, uint sw, uint sh) {
 	byte chn;
 	uint pw, ph;
 	byte* px = Texture::LoadPixels(bitmap, chn, pw, ph);
+	byte tmp = 0;
+	for (uint a = 0; a < pw*ph; a++) {
+		px[a * 4] *= px[a * 4 + 3] * 1.0f/255;
+		px[a * 4 + 1] *= px[a * 4 + 3] * 1.0f / 255;
+		px[a * 4 + 2] *= px[a * 4 + 3] * 1.0f / 255;
+		tmp = px[a * 4];
+		px[a * 4] = px[a * 4 + 2];
+		px[a * 4 + 2] = tmp;
+	}
+	
 	BITMAPINFO binfo = {};
 	binfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
 	binfo.bmiHeader.biWidth = pw;
-	binfo.bmiHeader.biHeight = -(LONG)ph;
+	binfo.bmiHeader.biHeight = (LONG)ph;
 	binfo.bmiHeader.biPlanes = 1;
 	binfo.bmiHeader.biBitCount = 32;
 	binfo.bmiHeader.biCompression = BI_RGB;
@@ -486,7 +491,7 @@ void ShowSplash(string bitmap, uint cx, uint cy, uint sw, uint sh) {
 	func.BlendOp = AC_SRC_OVER;
 	func.SourceConstantAlpha = 255;
 	func.AlphaFormat = AC_SRC_ALPHA;
-	UpdateLayeredWindow(hw, dcScr, &pt, &sz, dcMem, &pt0, RGB(0, 0, 0), &func, ULW_ALPHA);
+	UpdateLayeredWindow(splashHwnd, dcScr, &pt, &sz, dcMem, &pt0, RGB(0, 0, 0), &func, ULW_ALPHA);
 	
 	SelectObject(dcMem, bmpo);
 	DeleteDC(dcMem);
@@ -494,5 +499,5 @@ void ShowSplash(string bitmap, uint cx, uint cy, uint sw, uint sh) {
 }
 
 void KillSplash() {
-
+	DestroyWindow(splashHwnd);
 }
