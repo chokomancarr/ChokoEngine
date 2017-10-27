@@ -40,26 +40,22 @@ void closeCallback();
 Font *font;
 
 std::thread updateThread;
-uint t;
 uint fps;
 bool redrawn = false;
 bool die = false;
-
-int q = 0;
 
 string path;
 Editor* editor;
 std::mutex lockMutex;
 
+HWND splashHwnd;
+void ShowSplash(string bitmap, uint cx, uint cy, uint sw, uint sh);
+void KillSplash();
+
 //extern "C" void abort_func(int signum)
 //{
 //	MessageBox(hwnd, "aaa", "title", MB_OK);
 //}
-
-RenderTexture* rt;
-Texture* tex;
-
-Vec4 _col(1.0f, 0.5f, 0.1f, 1);
 
 char Get(std::istream& strm) {
 	char c;
@@ -77,6 +73,15 @@ int main(int argc, char **argv)
 	editor->dataPath = path.substr(0, path.find_last_of('\\') + 1);
 	editor->lockMutex = &lockMutex;
 
+	HMONITOR monitor = MonitorFromWindow(editor->hwnd, MONITOR_DEFAULTTONEAREST);
+	MONITORINFO info;
+	info.cbSize = sizeof(MONITORINFO);
+	GetMonitorInfo(monitor, &info);
+	editor->scrW = info.rcMonitor.right - info.rcMonitor.left;
+	editor->scrH = info.rcMonitor.bottom - info.rcMonitor.top;
+	editor->scrW = 1024;
+	editor->scrH = 600;
+
 	DefaultResources::Init(editor->dataPath + "res\\defaultresources.bin");
 
 	//editor->ParseAsset("D:\\test.blend");
@@ -88,12 +93,13 @@ int main(int argc, char **argv)
 
 	std::getline(std::cin, editor->projectFolder);
 	//if (editor->projectFolder == "")
-		editor->projectFolder = "D:\\TestProject2\\";
+	editor->projectFolder = "D:\\TestProject2\\";
 	//else while (!IO::HasDirectory(editor->projectFolder.c_str())) {
 	//	std::cout << "Invalid project folder path: " << editor->projectFolder << std::endl;
 	//	std::getline(std::cin, editor->projectFolder);
 	//}
 	//*/
+	ShowSplash(editor->dataPath + "res\\splash.bmp", info.rcMonitor.right - info.rcMonitor.left/2, info.rcMonitor.bottom - info.rcMonitor.top/2, 800, 300);
 
 	editor->xPoss.push_back(0);
 	editor->xPoss.push_back(1);
@@ -113,15 +119,6 @@ int main(int argc, char **argv)
 	editor->yLimits.push_back(Int2(0, 1));
 	editor->yLimits.push_back(Int2(0, 2));
 	editor->yLimits.push_back(Int2(2, 1));
-
-	HMONITOR monitor = MonitorFromWindow(editor->hwnd, MONITOR_DEFAULTTONEAREST);
-	MONITORINFO info;
-	info.cbSize = sizeof(MONITORINFO);
-	GetMonitorInfo(monitor, &info);
-	editor->scrW = info.rcMonitor.right - info.rcMonitor.left;
-	editor->scrH = info.rcMonitor.bottom - info.rcMonitor.top;
-	editor->scrW = 1024;
-	editor->scrH = 600;
 
 	//EBI_Asset* e = new EBI_Asset("D:\\OpenGl1\\OpenGl1_Editor\\OpenGl1_Editor\\src\\TestScript.h", "TestScript.h");
 	//((EB_Inspector*)(editor->blocks[0]))->SelectAsset(e, "D:\\OpenGl1\\OpenGl1_Editor\\OpenGl1_Editor\\src\\TestScript.h");
@@ -151,8 +148,10 @@ int main(int argc, char **argv)
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
 	glutInitWindowSize(editor->scrW, editor->scrH);
-	glutCreateWindow("Engine (loading...)");
+	glutInitWindowPosition(0, GetSystemMetrics(SM_CYVIRTUALSCREEN));
+	glutCreateWindow("ChokoEngine");
 	editor->hwnd2 = GetActiveWindow();
+	glutHideWindow();
 	//ShowWindow(editor->hwnd2, SW_MAXIMIZE);
 
 	//SendMessage(hwnd2, WM_SETICON, ICON_SMALL, hIcon);
@@ -170,46 +169,51 @@ int main(int argc, char **argv)
 		std::getline(std::cin, p);
 		return 0;
 	}
-	else {
 
-		Engine::Init(path);
-		editor->LoadDefaultAssets();
-		editor->ReloadAssets(editor->projectFolder + "Assets\\", true);
-		editor->ReadPrefs();
-		editor->blocks = std::vector<EditorBlock*>({ new EB_Inspector(editor, 2, 0, 1, 1), new EB_Browser(editor, 0, 2, 4, 1, editor->projectFolder + "Assets\\"), new EB_AnimEditor(editor, 0, 2, 4, 1), new EB_Debug(editor, 4, 2, 2, 1), new EB_Viewer(editor, 0, 0, 3, 2), new EB_Hierarchy(editor, 3, 0, 2, 2), new EB_Previewer(editor, 4, 2, 2, 1), new EB_Console(editor, 0, 2, 4, 1) }); //path.substr(0, path.find_last_of('\\') + 1)
-		editor->blockCombos.push_back(new BlockCombo());
-		editor->blockCombos[0]->blocks.push_back(editor->blocks[1]);
-		editor->blockCombos[0]->blocks.push_back(editor->blocks[2]);
-		editor->blockCombos[0]->blocks.push_back(editor->blocks[7]);
-		editor->blockCombos[0]->Set();
-		editor->blockCombos.push_back(new BlockCombo());
-		editor->blockCombos[1]->blocks.push_back(editor->blocks[6]);
-		editor->blockCombos[1]->blocks.push_back(editor->blocks[3]);
-		editor->blockCombos[1]->Set();
-		editor->SetBackground(editor->dataPath + "res\\bg.jpg", 0.3f);
-		font = editor->font;
+	Engine::Init(path);
+	editor->LoadDefaultAssets();
+	editor->ReloadAssets(editor->projectFolder + "Assets\\", true);
+	editor->ReadPrefs();
+	editor->blocks = std::vector<EditorBlock*>({ new EB_Inspector(editor, 2, 0, 1, 1), new EB_Browser(editor, 0, 2, 4, 1, editor->projectFolder + "Assets\\"), new EB_AnimEditor(editor, 0, 2, 4, 1), new EB_Debug(editor, 4, 2, 2, 1), new EB_Viewer(editor, 0, 0, 3, 2), new EB_Hierarchy(editor, 3, 0, 2, 2), new EB_Previewer(editor, 4, 2, 2, 1), new EB_Console(editor, 0, 2, 4, 1) }); //path.substr(0, path.find_last_of('\\') + 1)
+	editor->blockCombos.push_back(new BlockCombo());
+	editor->blockCombos[0]->blocks.push_back(editor->blocks[1]);
+	editor->blockCombos[0]->blocks.push_back(editor->blocks[2]);
+	editor->blockCombos[0]->blocks.push_back(editor->blocks[7]);
+	editor->blockCombos[0]->Set();
+	editor->blockCombos.push_back(new BlockCombo());
+	editor->blockCombos[1]->blocks.push_back(editor->blocks[6]);
+	editor->blockCombos[1]->blocks.push_back(editor->blocks[3]);
+	editor->blockCombos[1]->Set();
+	editor->SetBackground(editor->dataPath + "res\\bg.jpg", 0.3f);
+	font = editor->font;
 
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glFrontFace(GL_CW);
-		glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
-		glutDisplayFunc(renderScene);
-		glutTimerFunc(1000, TimerGL, 0);
-		glutMouseFunc(MouseGL);
-		glutReshapeFunc(ReshapeGL);
-		glutMotionFunc(MotionGL);
-		glutPassiveMotionFunc(MotionGLP);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glFrontFace(GL_CW);
+	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+	glutDisplayFunc(renderScene);
+	glutTimerFunc(1000, TimerGL, 0);
+	glutMouseFunc(MouseGL);
+	glutReshapeFunc(ReshapeGL);
+	glutMotionFunc(MotionGL);
+	glutPassiveMotionFunc(MotionGLP);
 
-		Time::startMillis = milliseconds();
+	Time::startMillis = milliseconds();
 
-		updateThread = std::thread(UpdateLoop);
-		atexit(OnDie);
+	updateThread = std::thread(UpdateLoop);
+	atexit(OnDie);
 
-		glutMainLoop();
-		string str;
-		std::getline(std::cin, str);
-		return 0;
-	}
+	KillSplash();
+	glutPositionWindow(info.rcMonitor.left, info.rcMonitor.top);
+	glutReshapeWindow(editor->scrW, editor->scrH);
+	glutShowWindow();
+	//SetWindowText(editor->hwnd2, TEXT("ChokoEngine"));
+	//AnimateWindow(editor->hwnd2, 300, AW_ACTIVATE | AW_BLEND);
+
+	glutMainLoop();
+	string str;
+	std::getline(std::cin, str);
+	return 0;
 }
 
 void closeCallback()
@@ -360,7 +364,7 @@ void DrawOverlay() {
 void renderScene()
 {
 	if (!redrawn || editor->editorLayer == 6) {
-		t++;
+		fps++;
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glClearColor(0, 0, 0, 1.0f);
 		glDisable(GL_DEPTH_TEST);
@@ -385,14 +389,13 @@ void renderScene()
 
 void TimerGL(int i)
 {
-	fps = t;
-	t = 0;
 	glutTimerFunc(1000, TimerGL, 1);
 	PROCESS_MEMORY_COUNTERS pmc;
 	GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc));
 	SIZE_T virtualMemUsedByMe = pmc.WorkingSetSize;
-	string str("Engine (about " + to_string((byte)round(virtualMemUsedByMe*0.000001f)) + "Mb used, " + to_string(fps) + "fps)");
+	string str("ChokoEngine (about " + to_string((byte)round(virtualMemUsedByMe*0.000001f)) + "Mb used, " + to_string(fps) + "fps)");
 	SetWindowText(editor->hwnd2, str.c_str());
+	fps = 0;
 	//glutPostRedisplay();
 }
 
@@ -436,4 +439,12 @@ void MotionGL(int x, int y) {
 		editor->blocks[editor->mouseOn]->OnMouseM(Vec2(x, y) - Input::mousePos);
 	Input::mousePos = Vec2(x, y);
 	Input::mousePosRelative = Vec2(x*1.0f / Display::width, y*1.0f / Display::height);
+}
+
+void ShowSplash(string bitmap, uint cx, uint cy, uint sw, uint sh) {
+	
+}
+
+void KillSplash() {
+
 }

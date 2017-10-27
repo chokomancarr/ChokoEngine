@@ -2014,6 +2014,10 @@ std::vector<std::ifstream*> AssetManager::streams = {};
 #ifndef IS_EDITOR
 string AssetManager::eBasePath = "";
 std::unordered_map<ASSETTYPE, std::vector<string>> AssetManager::dataELocs = {};
+std::unordered_map<ASSETTYPE, std::vector<std::pair<byte*, uint>>> AssetManager::dataECaches = {};
+std::vector<uint> AssetManager::dataECacheLocs = {};
+#else
+std::vector<std::pair<ASSETTYPE, ASSETID>> AssetManager::dataECacheIds = {};
 #endif
 void AssetManager::Init(string dpath) {
 #ifndef IS_EDITOR

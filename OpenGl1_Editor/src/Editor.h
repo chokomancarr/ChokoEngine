@@ -398,7 +398,8 @@ struct Editor_PlaySyncer {
 			screenSizeLoc, //in: screen size (ushort ushort)
 			okLoc, //inout: confirmation (bool)
 			mousePosLoc,
-			keyboardLoc;
+			keyboardLoc,
+			assetCacheLoc;
 	} pointers;
 	uint pointerLoc;
 	int playW, playH;
@@ -499,6 +500,7 @@ public:
 
 	std::mutex* lockMutex;
 	//building - layer6: custom progress to look cool
+	bool MergeAssets_(Editor* e), MergeAssets(Editor* e);
 	std::vector<string> buildLog;
 	void AddBuildLog(Editor* e, string s, bool forceE = false);
 	std::vector<bool> buildLogErrors, buildLogWarnings;

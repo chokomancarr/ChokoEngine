@@ -2707,7 +2707,6 @@ void DoScanMeshesGet(Editor* e, std::vector<string>& list, string p, bool rec) {
 	}
 }
 
-bool MergeAssets_(Editor* e);
 void DoReloadAssets(Editor* e, string path, bool recursive, std::mutex* l) {
 	std::vector<string> files;
 	DoScanAssetsGet(e, files, path, recursive);
@@ -2745,7 +2744,7 @@ void DoReloadAssets(Editor* e, string path, bool recursive, std::mutex* l) {
 	}
 	e->progressValue = 100;
 	e->progressDesc = "Generating index...";
-	MergeAssets_(e);
+	e->MergeAssets_(e);
 }
 
 void Editor::ClearLogs() {
@@ -2990,9 +2989,9 @@ AssetObject* Editor::GenCache(ASSETTYPE type, int i) {
 app.exe
 content0_.data -> basepath, asset locs (type, name, index) (ascii), level locs
 */
-bool MergeAssets_(Editor* e) {
+bool Editor::MergeAssets_(Editor* e) {
 	string ss = e->projectFolder + "Release\\data0_";
-	char null = 0, etx = 3;
+	AssetManager::dataECacheIds.clear();
 	//std::cout << ss << std::endl;
 	std::ofstream file(ss.c_str(), std::ios::out | std::ios::binary | std::ios::trunc);
 	if (!file.is_open())
@@ -3007,8 +3006,9 @@ bool MergeAssets_(Editor* e) {
 	long long poss1 = file.tellp();
 	file << "00";
 	for (auto& as : e->normalAssets) {
-		//ushort ii = 0;
+		ushort ii = 0;
 		for (auto as2 : as.second) {
+			AssetManager::dataECacheIds.push_back(std::pair<ASSETTYPE, ASSETID>(as.first, ii++));
 			file << (char)as.first;
 			switch (as.first) {
 			case ASSETTYPE_MESH:
@@ -3061,7 +3061,7 @@ app.exe
 content0.data -> asset list (type, name, index) (ascii), level data (binary)
 content(1+).data ->assets (index, data) (binary)
 */
-bool MergeAssets(Editor* e) {
+bool Editor::MergeAssets(Editor* e) {
 	string ss = e->projectFolder + "Release\\data0";
 	std::ofstream file;
 	char null = 0, etx = 3;

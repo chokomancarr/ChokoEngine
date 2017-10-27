@@ -155,7 +155,8 @@ void ch_bittree(std::vector<bool>& bits, ch_node* node) {
 		for (int i = 0; i < 8; i++) bits.push_back(b[i]);
 	}
 }
-void ch_bitval(std::vector<bool>& bits, ch_node* node, std::vector<ch_node*> tree) {
+byte ch_bitval(byte& bits, ch_node* node, std::vector<ch_node*> tree) {
+	bits = 0;
 	int x = 0;
 	while (node->parent) {
 		tree.push_back(node);
@@ -163,11 +164,11 @@ void ch_bitval(std::vector<bool>& bits, ch_node* node, std::vector<ch_node*> tre
 		x++;
 	}
 	tree.push_back(node);
-	while (x > 0) {
-		bits.push_back(tree[x - 1] == tree[x]->node_r);
-		x--;
+	byte i = 0;
+	for (; x > 0; i++, x--) {
+		bits |= ushort(tree[x - 1] == tree[x]->node_r) << (7 - i);
 	}
-	int i = 0;
+	return i;
 }
 
 std::vector<byte> Compressors::Compress_Huffman(byte* input, uint inSize) {
@@ -197,11 +198,10 @@ std::vector<byte> Compressors::Compress_Huffman(byte* input, uint inSize) {
 		nodes2[x] = new ch_node(a, b);
 	}
 
-	std::vector<bool> bitmaps[256];
+	byte bitmaps[256];
 	byte bitmapSz[256];
 	for (uint i = 0; i < 256; i++) {
-		ch_bitval(bitmaps[i], nodes[i], std::vector<ch_node*>());
-		bitmapSz[i] = bitmaps[i].size();
+		bitmapSz[i] = ch_bitval(bitmaps[i], nodes[i], std::vector<ch_node*>());
 	}
 
 	std::vector<bool> bits;
@@ -209,9 +209,6 @@ std::vector<byte> Compressors::Compress_Huffman(byte* input, uint inSize) {
 	ch_bittree(bits, nodes2[0]); //recursive tree generation
 	auto b = std::bitset<32>(inSize);
 	for (int i = 0; i < 32; i++) bits.push_back(b[i]);
-	for (uint i = 0; i < inSize; i++) { //characters
-		//bits.insert(bits.end(), bitmaps[input[i]].begin(), bitmaps[input[i]].end());
-	}
 	
 	uint sz = bits.size();
 	/*
@@ -233,6 +230,18 @@ std::vector<byte> Compressors::Compress_Huffman(byte* input, uint inSize) {
 		}
 	}
 	for (uint i = 0; i < inSize; i++) { //characters
+		byte n = bitmapSz[input[i]];
+		bt |= (bitmaps[input[i]] >> (8 - off));
+		off -= n;
+		if (off > 7) {
+			res.push_back(bt);
+			off += 8;
+			bt = (bitmaps[input[i]] << (off - (8-n)));
+		}
+	}
+	if (off != 7) res.push_back(bt);
+	/*
+	for (uint i = 0; i < inSize; i++) { //characters
 		for (byte j = 0; j < bitmapSz[input[i]]; j++) {
 			bt |= (((byte)bitmaps[input[i]][j]) << off--);
 			if (off == 255) {
@@ -242,8 +251,7 @@ std::vector<byte> Compressors::Compress_Huffman(byte* input, uint inSize) {
 			}
 		}
 	}
-	if (off != 7) res.push_back(bt);
-	for (byte i = 0; i < 256; i++) delete(nodes[i]);
+	*/
 	return res;
 }
 

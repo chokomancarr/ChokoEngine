@@ -738,6 +738,7 @@ protected:
 class AssetManager {
 	friend int main(int argc, char **argv);
 	friend class Engine;
+	friend class Editor;
 	friend class Scene;
 	friend class SceneObject;
 	friend class Material;
@@ -748,6 +749,10 @@ protected:
 #ifndef IS_EDITOR
 	static string eBasePath;
 	static std::unordered_map<ASSETTYPE, std::vector<string>> dataELocs;
+	static std::unordered_map<ASSETTYPE, std::vector<std::pair<byte*, uint>>> dataECaches;
+	static std::vector<uint> dataECacheLocs;
+#else
+	static std::vector <std::pair<ASSETTYPE, ASSETID>> dataECacheIds;
 #endif
 	static std::unordered_map<ASSETTYPE, std::vector<std::pair<byte, std::pair<uint, uint>>>> dataLocs;
 	static std::unordered_map<ASSETTYPE, std::vector<AssetObject*>> dataCaches;

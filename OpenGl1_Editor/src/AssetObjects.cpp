@@ -1472,7 +1472,7 @@ Mesh::Mesh(string p) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0
 		CalcTangents();
 		RecalculateBoundingBox();
 
-		//GenECache();
+		GenECache();
 		loaded = true;
 	}
 }
@@ -1557,7 +1557,8 @@ void Mesh::CalcTangents() {
 }
 
 void Mesh::GenECache() {
-	_eCache.second = sizeof(uint) * 3 + sizeof(Vec3)*vertexCount * 3 + sizeof(Vec2)*vertexCount * 2 + sizeof(int)*triangleCount * 3;
+	if (_eCache.first) return;
+	_eCache.second = sizeof(uint) * 3 + sizeof(Vec3)*vertexCount * 3 + sizeof(Vec2)*vertexCount * 2 + sizeof(uint)*triangleCount * 3;
 	_eCache.first = (byte*)malloc(_eCache.second);
 	memcpy(_eCache.first, &vertexCount, sizeof(uint));
 	memcpy(_eCache.first + sizeof(uint), &triangleCount, sizeof(uint));
@@ -1569,8 +1570,8 @@ void Mesh::GenECache() {
 	off += sizeof(Vec3)*vertexCount;
 	memcpy(_eCache.first + off, &tangents[0], sizeof(Vec3)*vertexCount);
 	off += sizeof(Vec3)*vertexCount;
-	memcpy(_eCache.first + off, &triangles[0], sizeof(int)*triangleCount * 3);
-	off += sizeof(Vec2)*vertexCount;
+	memcpy(_eCache.first + off, &triangles[0], sizeof(uint)*triangleCount * 3);
+	off += sizeof(uint)*triangleCount * 3;
 	memcpy(_eCache.first + off, &uv0[0], sizeof(Vec2)*vertexCount);
 	off += sizeof(Vec2)*vertexCount;
 	memcpy(_eCache.first + off, &uv1[0], sizeof(Vec2)*vertexCount);
