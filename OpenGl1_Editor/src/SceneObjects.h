@@ -87,7 +87,6 @@ private:
 	void _UpdateWMatrix(const Mat4x4& mat);
 };
 
-#define ECACHESZ_MESH sizeof(uint) * 3 + sizeof(Vec3)*vertexCount * 3 + sizeof(Vec2)*vertexCount * 2 + sizeof(uint)*triangleCount * 3
 class Mesh : public AssetObject {
 public:
 	//Mesh(); //until i figure out normal recalc algorithm

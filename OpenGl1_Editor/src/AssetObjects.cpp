@@ -48,9 +48,8 @@ std::unordered_map<ASSETTYPE, std::vector<string>> AssetManager::dataELocs = {};
 std::unordered_map<ASSETTYPE, std::vector<std::pair<byte*, uint>>> AssetManager::dataECaches = {};
 std::vector<uint> AssetManager::dataECacheLocs = {};
 std::vector<uint> AssetManager::dataECacheSzLocs = {};
-#else
-std::vector<std::pair<ASSETTYPE, ASSETID>> AssetManager::dataECacheIds = {};
 #endif
+std::vector<std::pair<ASSETTYPE, ASSETID>> AssetManager::dataECacheIds = {};
 void AssetManager::Init(string dpath) {
 #ifndef IS_EDITOR
 	names.clear();
@@ -99,9 +98,10 @@ void AssetManager::Init(string dpath) {
 			names[type].push_back(c);
 			dataELocs[type].push_back(nm);
 
+			dataECacheIds.push_back(std::pair<ASSETTYPE, ASSETID>(type, id));
 			dataECaches[type].push_back(std::pair<byte*, uint>(nullptr, 0));
-			dataECacheLocs.push_back((uint)&dataECaches[type].back().first);
-			dataECacheSzLocs.push_back((uint)&dataECaches[type].back().second);
+			dataECacheLocs.push_back(0);
+			dataECacheSzLocs.push_back((uint)(new uint(0)));
 		}
 	}
 	else {
@@ -165,11 +165,18 @@ void AssetManager::Init(string dpath) {
 
 #ifndef IS_EDITOR
 void AssetManager::AllocECache() {
-	for (auto& a : dataECaches) {
-		for (auto&b : a.second) {
-			b.first = (byte*)malloc(b.second + 1);
-			*b.first = 0;
-		}
+	uint c = 0;
+	for (auto& a : dataECacheIds) {
+		auto& b = dataECaches[a.first][a.second];
+		b.second = *(uint*)dataECacheSzLocs[c];
+		std::cout << "Allocating " << (int)a.first << "." << a.second << ": " << b.second;
+		std::cout << " (" << (uint)&b.second << ")";
+		b.first = (byte*)malloc(b.second + 1);
+		*b.first = 0;
+		//if (!!b.second) std::cout << "Allocating: " << b.second << "B" << std::endl;
+		dataECacheLocs[c] = (uint)b.first;
+		std::cout << " -> " << (uint)b.first << std::endl;
+		c++;
 	}
 }
 #endif
@@ -213,11 +220,10 @@ AssetObject* AssetManager::GenCache(ASSETTYPE t, ASSETID i) {
 	std::ifstream* fstrm = nullptr;
 	std::stringstream sstrm;
 	uint off = 0, cnt = -1;
-	bool usecache = false;
+	byte* cache = 0;
 	if (_pipemode) {
 		if (!!(*dataECaches[t][i].first)) {
-			sstrm.write((char*)(dataECaches[t][i].first + 1), dataECaches[t][i].second);
-			usecache = true;
+			cache = dataECaches[t][i].first + 1;
 		}
 		else {
 			fstrm = new std::ifstream(dataELocs[t][i], std::ios::in | std::ios::binary);
@@ -245,7 +251,7 @@ AssetObject* AssetManager::GenCache(ASSETTYPE t, ASSETID i) {
 		dataCaches[t][i] = new Background(strm, off);
 		break;
 	case ASSETTYPE_MESH:
-		dataCaches[t][i] = new Mesh(strm, off);
+		dataCaches[t][i] = cache? new Mesh(cache) : new Mesh(strm, off);
 		break;
 	case ASSETTYPE_MATERIAL:
 		dataCaches[t][i] = new Material(strm, off);
@@ -257,7 +263,8 @@ AssetObject* AssetManager::GenCache(ASSETTYPE t, ASSETID i) {
 		Debug::Error("AssetManager", "No operation suits asset type " + to_string(t) + "!");
 		return nullptr;
 	}
-	if (_pipemode && !usecache) delete(fstrm);
+	if (_pipemode && !cache) delete(fstrm);
+	if (cache) std::cout << "Using cache for " << (int)t << "." << i << std::endl;
 	//std::cout << "Loaded " << (int)t << "." << i << "in " << (clock() - time) << "ms" << std::endl;
 	return dataCaches[t][i];
 #else
@@ -1739,18 +1746,6 @@ Mesh::Mesh(string p) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0
 	}
 }
 
-Mesh::Mesh(byte* mem) : AssetObject(ASSETTYPE_MESH) {
-	memcpy(&vertexCount, mem, sizeof(uint));
-	memcpy(&triangleCount, mem + sizeof(uint), sizeof(uint));
-	memcpy(&materialCount, mem + sizeof(uint) * 2, sizeof(uint));
-	mem += sizeof(uint) * 3;
-	vertices = std::vector<Vec3>(mem, mem + sizeof(Vec3)*vertexCount);
-	mem += sizeof(Vec3) * vertexCount;
-	normals = std::vector<Vec3>(mem, mem + sizeof(Vec3)*vertexCount);
-	mem += sizeof(Vec3) * vertexCount;
-	tangents = std::vector<Vec3>(mem, mem + sizeof(Vec3)*vertexCount);
-}
-
 void Mesh::RecalculateBoundingBox() {
 	uint sz = vertices.size();
 	if (sz == 0) {
@@ -1818,28 +1813,66 @@ void Mesh::CalcTangents() {
 	}
 }
 
+Mesh::Mesh(byte* mem) : AssetObject(ASSETTYPE_MESH), triangleCount(0), materialCount(0) {
+#ifndef IS_EDITOR
+#define RD(tar, sz) memcpy(tar, mem, sz); mem += sz;
+#define VCT(typ, sz) std::vector<typ>((typ*)mem, (typ*)(mem + sizeof(typ)*sz)); mem += sizeof(typ)*sz;
+	RD(&vertexCount, sizeof(uint));
+	RD(&materialCount, sizeof(byte));
+	vertices = VCT(Vec3, vertexCount);
+	normals = VCT(Vec3, vertexCount);
+	tangents = VCT(Vec3, vertexCount);
+	uv0 = VCT(Vec2, vertexCount);
+	uv1 = VCT(Vec2, vertexCount);
+	for (byte mt = 0; mt < materialCount; mt++) {
+		uint ct = 0;
+		RD(&ct, sizeof(uint));
+		triangleCount += ct;
+		_matTriangles.push_back(std::vector<int>((int*)mem, (int*)(mem + sizeof(int)*3*ct)));
+		mem += sizeof(int) * 3 * ct;
+	}
+#undef RD
+#undef VCT
+	RecalculateBoundingBox();
+	loaded = true;
+#endif
+}
+
 void Mesh::GenECache() {
+	/*
+	vertexcount (uint)
+	materialcount (byte)
+	vertices[] (vec3)
+	normals[] (vec3)
+	tangents[] (vec3)
+	uv0[] (vec2)
+	uv1[] (vec2)
+	for each material[
+	trianglecount (uint)
+	triangles[] (uint*3)
+	]
+	*/
 #ifdef IS_EDITOR
 	if (_eCache) return;
-	_eCacheSz = ECACHESZ_PADDING + ECACHESZ_MESH;
-	uint off = ECACHESZ_PADDING;
-	_eCache = (byte*)malloc(_eCacheSz);
+	_eCacheSz = sizeof(uint) + sizeof(byte) + sizeof(Vec3)*vertexCount * 3 + sizeof(Vec2)*vertexCount * 2 + sizeof(uint)*materialCount + sizeof(uint)*triangleCount * 3;
+	uint off = 1;
+	_eCache = (byte*)malloc(_eCacheSz + 1);
 	*_eCache = 255;
-	memcpy(_eCache + off, &vertexCount, sizeof(uint));
-	memcpy(_eCache + off + sizeof(uint), &triangleCount, sizeof(uint));
-	memcpy(_eCache + off + sizeof(uint) * 2, &materialCount, sizeof(uint));
-	off = ECACHESZ_PADDING + 3 * sizeof(uint);
-	memcpy(_eCache + off, &vertices[0], sizeof(Vec3)*vertexCount);
-	off += sizeof(Vec3)*vertexCount;
-	memcpy(_eCache + off, &normals[0], sizeof(Vec3)*vertexCount);
-	off += sizeof(Vec3)*vertexCount;
-	memcpy(_eCache + off, &tangents[0], sizeof(Vec3)*vertexCount);
-	off += sizeof(Vec3)*vertexCount;
-	memcpy(_eCache + off, &triangles[0], sizeof(uint)*triangleCount * 3);
-	off += sizeof(uint)*triangleCount * 3;
-	memcpy(_eCache + off, &uv0[0], sizeof(Vec2)*vertexCount);
-	off += sizeof(Vec2)*vertexCount;
-	memcpy(_eCache + off, &uv1[0], sizeof(Vec2)*vertexCount);
+#define CPY(pt, sz) memcpy(_eCache + off, pt, sz); off += sz;
+	CPY(&vertexCount, sizeof(uint));
+	CPY(&materialCount, sizeof(byte));
+	CPY(&vertices[0], sizeof(Vec3)*vertexCount);
+	CPY(&normals[0], sizeof(Vec3)*vertexCount);
+	CPY(&tangents[0], sizeof(Vec3)*vertexCount);
+	CPY(&uv0[0], sizeof(Vec2)*vertexCount);
+	CPY(&uv1[0], sizeof(Vec2)*vertexCount);
+	for (auto& aa : _matTriangles) {
+		uint ct = aa.size()/3;
+		CPY(&ct, sizeof(uint));
+		CPY(&aa[0], sizeof(int) * 3 * ct);
+	}
+	assert(off == _eCacheSz+1);
+#undef CPY
 #endif
 }
 

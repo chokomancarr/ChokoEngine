@@ -761,9 +761,8 @@ protected:
 	static std::vector<uint> dataECacheLocs;
 	static std::vector<uint> dataECacheSzLocs;
 	static void AllocECache();
-#else
-	static std::vector <std::pair<ASSETTYPE, ASSETID>> dataECacheIds;
 #endif
+	static std::vector <std::pair<ASSETTYPE, ASSETID>> dataECacheIds;
 	static std::unordered_map<ASSETTYPE, std::vector<std::pair<byte, std::pair<uint, uint>>>> dataLocs;
 	static std::unordered_map<ASSETTYPE, std::vector<AssetObject*>> dataCaches;
 	static std::vector<std::ifstream*> streams;

@@ -1523,6 +1523,7 @@ void PB_ProceduralGenerator::Draw() {
 
 template<typename T>
 bool EPS_RWMem(bool write, Editor_PlaySyncer* syncer, T* val, uint loc, ulong sz = 0) {
+	assert(syncer && val && !!loc);
 	sz = max(sz, sizeof(T));
 	SIZE_T c;
 	bool ok;
@@ -1530,9 +1531,9 @@ bool EPS_RWMem(bool write, Editor_PlaySyncer* syncer, T* val, uint loc, ulong sz
 	else ok = !!ReadProcessMemory(syncer->pInfo.hProcess, (LPVOID)loc, val, sz, &c);
 	if (!ok || c != sz) {
 		syncer->status = Editor_PlaySyncer::EPS_RWFailure;
-		TerminateProcess(syncer->pInfo.hProcess, 0);
+		//TerminateProcess(syncer->pInfo.hProcess, 0);
 		syncer->hwnd = 0;
-		Debug::Error("RWMem", "Unable to " + (string)(write? "write " : "read ") + to_string(sz) + " bytes! (" + to_string(c) + " bytes succeeded)");
+		Debug::Error("RWMem", "Unable to " + (string)(write? "write " : "read ") + to_string(sz) + " bytes to " + to_string(loc) + "! (" + to_string(c) + " bytes succeeded)");
 		return false;
 	}
 	else return true;
@@ -1546,9 +1547,17 @@ void Editor_PlaySyncer::Update() {
 		if (timer <= 0) {
 			if (syncStatus == 0) {
 				hwnd = WinFunc::GetHwndFromProcessID(pInfo.dwProcessId);
+				if (!hwnd) {
+					timer = 0.1f;
+					return;
+				}
 				char cs[50];
 				GetWindowText(hwnd, cs, 50);
 				std::string ws(cs);
+				if (ws == "") {
+					timer = 0.1f;
+					return;
+				}
 				std::string s(ws.begin() + 1, ws.end());
 				Debug::Message("Player", "reading info struct at " + s);
 				pointerLoc = std::stoi(s);
@@ -1563,17 +1572,26 @@ void Editor_PlaySyncer::Update() {
 				ushort an = 0;
 				for (auto& ids : AssetManager::dataECacheIds) {
 					auto as = Editor::instance->normalAssetCaches[ids.first][ids.second];
-					if (as->_eCache) {
+					if (as && as->_eCache) {
 						if (!EPS_RWMem(true, this, &as->_eCacheSz, eCacheSzLocs[an])) return;
+						std::cout << "(sz)wrote " << (int)ids.first << "." << ids.second << ": " << as->_eCacheSz << "B to " << to_string(eCacheSzLocs[an]) << std::endl;
 					}
+					an++;
 				}
-				an++;
 
 				syncStatus = 1;
 				if (!EPS_RWMem(true, this, &syncStatus, pointers.statusLoc)) return;
 				timer = 0.1f;
 			}
-			else if (syncStatus = 1) {
+			else if (syncStatus == 1) {
+				timer -= Time::delta;
+				if (timer <= 0) {
+					if (!EPS_RWMem(false, this, &syncStatus, pointers.statusLoc)) return;
+					if (syncStatus != 2)
+						timer = 0.1f;
+				}
+			}
+			else if (syncStatus == 2) {
 				eCacheLocs = std::vector<uint>(AssetManager::dataECacheIds.size());
 				if (!EPS_RWMem(false, this, &eCacheLocs[0], pointers.assetCacheLoc, sizeof(uint)*AssetManager::dataECacheIds.size())) return;
 				ushort an = 0;
@@ -1581,10 +1599,11 @@ void Editor_PlaySyncer::Update() {
 					//auto as = Editor::instance->GetCache(ids.first, ids.second);
 					auto as = Editor::instance->normalAssetCaches[ids.first][ids.second];
 					if (as && as->_eCache) {
-						if (!EPS_RWMem(true, this, as->_eCache, eCacheLocs[an], as->_eCacheSz)) return;
+						if (!EPS_RWMem(true, this, as->_eCache, eCacheLocs[an], as->_eCacheSz+1)) return;
+						std::cout << "wrote " << (int)ids.first << "." << ids.second << ": " << as->_eCacheSz << "B" << std::endl;
 					}
+					an++;
 				}
-				an++;
 				syncStatus = 255;
 				if (!EPS_RWMem(true, this, &syncStatus, pointers.statusLoc)) return;
 				status = EPS_Running;
@@ -1660,8 +1679,9 @@ bool Editor_PlaySyncer::Connect() {
 	CreateProcess("D:\\TestProject2\\Release\\TestProject2.exe", &str[0], NULL, NULL, FALSE, CREATE_NEW_CONSOLE, NULL, NULL, &si, &pInfo);
 	SetForegroundWindow(Editor::hwnd2);
 	SetWindowPos(Editor::hwnd2, HWND_TOP, 0, 0, 10, 10, SWP_NOMOVE | SWP_NOSIZE);
-	timer = 1;
+	timer = 0.5f;
 	status = EPS_Starting;
+	syncStatus = 0;
 	Debug::Message("Player", "Starting...");
 	Resize(600, 400);
 	return 1;

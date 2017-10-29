@@ -1223,10 +1223,9 @@ ulong Engine::GetNewId() {
 //-----------------debug class-----------------------
 void Debug::Message(string c, string s) {
 #ifndef IS_EDITOR
-	*stream << "[i]" << c << ": " << s << std::endl;
-#else
-	std::cout << "[i]" << c << ": " << s << std::endl;
+	*stream << "[i " + to_string(clock()) + "]" << c << ": " << s << std::endl;
 #endif
+	std::cout << "[i]" << c << ": " << s << std::endl;
 }
 void Debug::Warning(string c, string s) {
 #ifndef IS_EDITOR

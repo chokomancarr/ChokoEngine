@@ -96,7 +96,7 @@ int main(int argc, char **argv)
 	std::getline(std::cin, editor->projectFolder);
 	editor->projectFolder = "D:\\TestProject2\\";
 
-	ShowWindow(editor->hwnd, SW_HIDE);
+	//ShowWindow(editor->hwnd, SW_HIDE);
 
 	DefaultResources::Init(editor->dataPath + "res\\defaultresources.bin");
 	editor->xPoss.push_back(0);
