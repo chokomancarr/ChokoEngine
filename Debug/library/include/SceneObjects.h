@@ -10,6 +10,7 @@ typedef unsigned char DRAWORDER;
 #define DRAWORDER_TRANSPARENT 0x02
 #define DRAWORDER_OVERLAY 0x04
 #define DRAWORDER_LIGHT 0x08
+#define ECACHESZ_PADDING 1
 class Component : public Object {
 public:
 	Component(string name, COMPONENT_TYPE t, DRAWORDER drawOrder = 0x00, SceneObject* o = nullptr, std::vector<COMPONENT_TYPE> dep = {});
@@ -86,6 +87,7 @@ private:
 	void _UpdateWMatrix(const Mat4x4& mat);
 };
 
+#define ECACHESZ_MESH sizeof(uint) * 3 + sizeof(Vec3)*vertexCount * 3 + sizeof(Vec2)*vertexCount * 2 + sizeof(uint)*triangleCount * 3
 class Mesh : public AssetObject {
 public:
 	//Mesh(); //until i figure out normal recalc algorithm
@@ -111,8 +113,10 @@ protected:
 	Mesh(Editor* e, int i);
 	Mesh(std::istream& strm, uint offset = 0);
 	Mesh(string path);
+	Mesh(byte* mem);
 
 	void CalcTangents();
+	void GenECache() override;
 
 	static bool ParseBlend(Editor* e, string s);
 	std::vector<std::vector<int>> _matTriangles;
@@ -267,6 +271,8 @@ public:
 	GLuint pointer;
 	TEX_TYPE texType() { return _texType; }
 	
+	static byte* LoadPixels(const string& path, byte& chn, uint& w, uint& h);
+
 	friend int main(int argc, char **argv);
 	friend class Editor;
 	friend class EB_Inspector;

@@ -126,7 +126,7 @@ std::vector<char> StreamToBuffer(std::istream* strm) {
 	auto pos = strm->tellg();
 	strm->seekg(strm->end);
 	auto sz = strm->tellg();
-	std::vector<char> buf(sz);
+	std::vector<char> buf((uint)sz);
 	std::ostringstream strm2;
 	strm2.rdbuf()->pubsetbuf(&buf[0], sz);
 	strm->seekg(pos);
@@ -188,7 +188,7 @@ void EB_Debug::Refresh() {
 			drawIds.push_back(q);
 		q++;
 	}
-	maxScroll = q*17;
+	maxScroll = q*17.0f;
 	scrollOffset = 0;
 }
 
@@ -1539,26 +1539,57 @@ bool EPS_RWMem(bool write, Editor_PlaySyncer* syncer, T* val, uint loc, ulong sz
 }
 
 void Editor_PlaySyncer::Update() {
+#ifdef IS_EDITOR
 	switch (status) {
 	case EPS_Starting:
 		timer -= Time::delta;
 		if (timer <= 0) {
-			hwnd = WinFunc::GetHwndFromProcessID(pInfo.dwProcessId);
-			char cs[50];
-			GetWindowText(hwnd, cs, 50);
-			std::string ws(cs);
-			std::string s(ws.begin() + 1, ws.end());
-			Debug::Message("Player", "reading info struct at " + s);
-			pointerLoc = std::stoi(s);
-			if (!EPS_RWMem(false, this, &pointers, pointerLoc)) return;
-			Debug::Message("Player", "writing screen size to " + std::to_string((uint)pointers.screenSizeLoc));
-			uint sz = (playH << 16) + playW;
-			SIZE_T c;
-			if (!EPS_RWMem(true, this, &sz, pointers.screenSizeLoc)) return;
-			bool ok = true;
-			if (!EPS_RWMem(true, this, &ok, pointers.okLoc)) return;
-			status = EPS_Running;
-			timer = 0.5f;
+			if (syncStatus == 0) {
+				hwnd = WinFunc::GetHwndFromProcessID(pInfo.dwProcessId);
+				char cs[50];
+				GetWindowText(hwnd, cs, 50);
+				std::string ws(cs);
+				std::string s(ws.begin() + 1, ws.end());
+				Debug::Message("Player", "reading info struct at " + s);
+				pointerLoc = std::stoi(s);
+				if (!EPS_RWMem(false, this, &pointers, pointerLoc)) return;
+				Debug::Message("Player", "writing screen size to " + std::to_string((uint)pointers.screenSizeLoc));
+				uint sz = (playH << 16) + playW;
+				SIZE_T c;
+				if (!EPS_RWMem(true, this, &sz, pointers.screenSizeLoc)) return;
+				
+				eCacheSzLocs = std::vector<uint>(AssetManager::dataECacheIds.size());
+				if (!EPS_RWMem(false, this, &eCacheSzLocs[0], pointers.assetCacheSzLoc, sizeof(uint)*AssetManager::dataECacheIds.size())) return;
+				ushort an = 0;
+				for (auto& ids : AssetManager::dataECacheIds) {
+					auto as = Editor::instance->normalAssetCaches[ids.first][ids.second];
+					if (as->_eCache) {
+						if (!EPS_RWMem(true, this, &as->_eCacheSz, eCacheSzLocs[an])) return;
+					}
+				}
+				an++;
+
+				syncStatus = 1;
+				if (!EPS_RWMem(true, this, &syncStatus, pointers.statusLoc)) return;
+				timer = 0.1f;
+			}
+			else if (syncStatus = 1) {
+				eCacheLocs = std::vector<uint>(AssetManager::dataECacheIds.size());
+				if (!EPS_RWMem(false, this, &eCacheLocs[0], pointers.assetCacheLoc, sizeof(uint)*AssetManager::dataECacheIds.size())) return;
+				ushort an = 0;
+				for (auto& ids : AssetManager::dataECacheIds) {
+					//auto as = Editor::instance->GetCache(ids.first, ids.second);
+					auto as = Editor::instance->normalAssetCaches[ids.first][ids.second];
+					if (as && as->_eCache) {
+						if (!EPS_RWMem(true, this, as->_eCache, eCacheLocs[an], as->_eCacheSz)) return;
+					}
+				}
+				an++;
+				syncStatus = 255;
+				if (!EPS_RWMem(true, this, &syncStatus, pointers.statusLoc)) return;
+				status = EPS_Running;
+				timer = 0.5f;
+			}
 		}
 		break;
 	case EPS_Running:
@@ -1614,6 +1645,7 @@ void Editor_PlaySyncer::Update() {
 		}
 		break;
 	}
+#endif
 }
 
 bool Editor_PlaySyncer::Connect() {
@@ -2990,6 +3022,7 @@ app.exe
 content0_.data -> basepath, asset locs (type, name, index) (ascii), level locs
 */
 bool Editor::MergeAssets_(Editor* e) {
+#ifdef IS_EDITOR
 	string ss = e->projectFolder + "Release\\data0_";
 	AssetManager::dataECacheIds.clear();
 	//std::cout << ss << std::endl;
@@ -3008,8 +3041,10 @@ bool Editor::MergeAssets_(Editor* e) {
 	for (auto& as : e->normalAssets) {
 		ushort ii = 0;
 		for (auto as2 : as.second) {
-			AssetManager::dataECacheIds.push_back(std::pair<ASSETTYPE, ASSETID>(as.first, ii++));
-			file << (char)as.first;
+			AssetManager::dataECacheIds.push_back(std::pair<ASSETTYPE, ASSETID>(as.first, ii));
+			//file << (char)as.first;
+			_StreamWrite(&as.first, &file, 1);
+			_StreamWrite(&ii, &file, 2);
 			switch (as.first) {
 			case ASSETTYPE_MESH:
 				file << as2 + ".mesh.meta" << char0;
@@ -3032,8 +3067,9 @@ bool Editor::MergeAssets_(Editor* e) {
 				return false;
 			}
 			file << as2 << (char)0;
-			xx++;
+			ii++;
 		}
+		xx += ii;
 	}
 	long long poss2 = file.tellp();
 	file.seekp(poss1);
@@ -3053,6 +3089,7 @@ bool Editor::MergeAssets_(Editor* e) {
 	poss2 = file.tellp();
 	file.seekp(poss1);
 	_StreamWrite(&q, &file, 2);
+#endif
 	return true;
 }
 
@@ -3062,6 +3099,7 @@ content0.data -> asset list (type, name, index) (ascii), level data (binary)
 content(1+).data ->assets (index, data) (binary)
 */
 bool Editor::MergeAssets(Editor* e) {
+#ifdef IS_EDITOR
 	string ss = e->projectFolder + "Release\\data0";
 	std::ofstream file;
 	char null = 0, etx = 3;
@@ -3186,6 +3224,7 @@ bool Editor::MergeAssets(Editor* e) {
 	}
 	file2.close();
 	file.close();
+#endif
 	return true;
 }
 

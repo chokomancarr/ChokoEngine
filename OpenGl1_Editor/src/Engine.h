@@ -398,15 +398,22 @@ public:
 
 class AssetObject : public Object {
 	friend class Editor;
+	friend struct Editor_PlaySyncer;
 protected:
-	AssetObject(ASSETTYPE t) : type(t), Object(), _changed(false), _eCache(nullptr, 0) {}
+	AssetObject(ASSETTYPE t) : type(t), Object(), _changed(false)
+#ifdef IS_EDITOR
+		, _eCache(nullptr), _eCacheSz(0)
+#endif
+	{}
 	virtual  ~AssetObject() {}
 
 	const ASSETTYPE type = 0;
 #ifdef IS_EDITOR
-	std::pair<byte*, uint> _eCache;
+	byte* _eCache = nullptr; //first byte is always 255
+	uint _eCacheSz = 0;
 #endif
 	bool _changed;
+	virtual void GenECache() {}
 
 	virtual bool DrawPreview(uint x, uint y, uint w, uint h) { return false; }
 
@@ -742,6 +749,7 @@ class AssetManager {
 	friend class Scene;
 	friend class SceneObject;
 	friend class Material;
+	friend struct Editor_PlaySyncer;
 	template<typename T> friend T* _GetCache(ASSETTYPE t, ASSETID i);
 	friend string _Strm2Asset(std::istream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int max);
 protected:
@@ -751,6 +759,8 @@ protected:
 	static std::unordered_map<ASSETTYPE, std::vector<string>> dataELocs;
 	static std::unordered_map<ASSETTYPE, std::vector<std::pair<byte*, uint>>> dataECaches;
 	static std::vector<uint> dataECacheLocs;
+	static std::vector<uint> dataECacheSzLocs;
+	static void AllocECache();
 #else
 	static std::vector <std::pair<ASSETTYPE, ASSETID>> dataECacheIds;
 #endif

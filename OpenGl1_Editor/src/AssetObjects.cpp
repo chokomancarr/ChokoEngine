@@ -38,6 +38,233 @@ std::stringstream StreamFromBuffer(const std::vector<char>& buf) {
 	return strm;
 }
 
+std::unordered_map<ASSETTYPE, std::vector<string>> AssetManager::names = {};
+std::unordered_map<ASSETTYPE, std::vector<std::pair<byte, std::pair<uint, uint>>>> AssetManager::dataLocs = {};
+std::unordered_map<ASSETTYPE, std::vector<AssetObject*>> AssetManager::dataCaches = {};
+std::vector<std::ifstream*> AssetManager::streams = {};
+#ifndef IS_EDITOR
+string AssetManager::eBasePath = "";
+std::unordered_map<ASSETTYPE, std::vector<string>> AssetManager::dataELocs = {};
+std::unordered_map<ASSETTYPE, std::vector<std::pair<byte*, uint>>> AssetManager::dataECaches = {};
+std::vector<uint> AssetManager::dataECacheLocs = {};
+std::vector<uint> AssetManager::dataECacheSzLocs = {};
+#else
+std::vector<std::pair<ASSETTYPE, ASSETID>> AssetManager::dataECacheIds = {};
+#endif
+void AssetManager::Init(string dpath) {
+#ifndef IS_EDITOR
+	names.clear();
+	dataLocs.clear();
+	std::vector<std::ifstream*>().swap(streams);
+	if (_pipemode) {
+		dataECaches.emplace(ASSETTYPE_TEXTURE, std::vector<std::pair<byte*, uint>>());
+		dataECaches.emplace(ASSETTYPE_HDRI, std::vector<std::pair<byte*, uint>>());
+		dataECaches.emplace(ASSETTYPE_MESH, std::vector<std::pair<byte*, uint>>());
+		dataECaches.emplace(ASSETTYPE_MATERIAL, std::vector<std::pair<byte*, uint>>());
+		dataECaches.emplace(ASSETTYPE_SHADER, std::vector<std::pair<byte*, uint>>());
+
+		string pp = dpath + "0_";
+		Scene::strm = new std::ifstream(pp.c_str(), std::ios::in | std::ios::binary);
+		std::ifstream* strm = Scene::strm;
+		if (!strm->is_open()) {
+			Debug::Error("AssetManager", "Fatal: cannot open data file 0!");
+			abort();
+		}
+
+		ushort num;
+		ASSETTYPE type;
+		ushort id;
+		char c[100];
+		*strm >> c[0] >> c[1];
+		if (c[0] != 'D' || c[1] != '0') {
+			Debug::Error("AssetManager", "Fatal: file 0 has wrong signature!");
+			abort();
+		}
+		strm->getline(c, 100, char0);
+		string path(c);
+		_Strm2Val(*strm, num);
+		for (ushort a = 0; a < num; a++) {
+			_Strm2Val(*strm, type);
+			_Strm2Val(*strm, id);
+			strm->getline(c, 100, (char)0);
+			string nm = path + string(c);
+			strm->getline(c, 100, (char)0);
+			//std::cout << (int)type << ": " << nm << std::endl;
+			while (dataCaches[type].size() < id) {
+				dataCaches[type].push_back(nullptr);
+				names[type].push_back("");
+				dataELocs[type].push_back("");
+			}
+			dataCaches[type].push_back(nullptr);
+			names[type].push_back(c);
+			dataELocs[type].push_back(nm);
+
+			dataECaches[type].push_back(std::pair<byte*, uint>(nullptr, 0));
+			dataECacheLocs.push_back((uint)&dataECaches[type].back().first);
+			dataECacheSzLocs.push_back((uint)&dataECaches[type].back().second);
+		}
+	}
+	else {
+		string pp = dpath + "0";
+		Scene::strm = new std::ifstream(pp.c_str(), std::ios::in | std::ios::binary);
+		std::ifstream* strm = Scene::strm;
+		if (!strm->is_open()) {
+			Debug::Error("AssetManager", "Fatal: cannot open data file 0!");
+			abort();
+		}
+
+		byte numDat = 0, id;
+		ushort num;
+		ASSETTYPE type;
+		uint pos;
+		char c[100];
+		*strm >> c[0] >> c[1];
+		if (c[0] != 'D' || c[1] != '0') {
+			Debug::Error("AssetManager", "Fatal: file 0 has wrong signature!");
+			abort();
+		}
+		_Strm2Val(*strm, num);
+		for (ushort a = 0; a < num; a++) {
+			_Strm2Val(*strm, type);
+			_Strm2Val(*strm, id);
+			_Strm2Val(*strm, pos);
+			strm->getline(c, 100, (char)0);
+			//std::cout << (int)type << " " << (int)id << " " << pos << ": " << string(c) << std::endl;
+			numDat = max(numDat, id);
+			dataLocs[type].push_back(std::pair<byte, std::pair<uint, uint>>(id - 1, std::pair<uint, uint>(pos, 0)));
+			dataCaches[type].push_back(nullptr);
+			names[type].push_back(c);
+		}
+
+		for (int a = 0; a < numDat; a++) {
+			string pp = dpath + to_string(a + 1);
+			streams.push_back(new std::ifstream(pp.c_str(), std::ios::in | std::ios::binary));
+			if (streams[a]->is_open())
+				Debug::Message("AssetManager", "Streaming data" + to_string(a + 1));
+			else {
+				Debug::Error("AssetManager", "Fatal: Failed to open data" + to_string(a + 1) + "!");
+				abort();
+			}
+		}
+
+		for (auto& aa : dataLocs) {
+			ushort s = 0;
+			for (auto& bb : aa.second) {
+				streams[bb.first]->seekg(bb.second.first);
+				_Strm2Val(*streams[bb.first], bb.second.second);
+				Debug::Message("AssetManager", "Registered asset " + names[aa.first][s] + " (" + to_string(bb.second.second) + " bytes)");
+				streams[bb.first]->seekg(0);
+				s++;
+			}
+		}
+		//long long ppos = strm->tellg();
+	}
+	Scene::ReadD0();
+#endif
+}
+
+#ifndef IS_EDITOR
+void AssetManager::AllocECache() {
+	for (auto& a : dataECaches) {
+		for (auto&b : a.second) {
+			b.first = (byte*)malloc(b.second + 1);
+			*b.first = 0;
+		}
+	}
+}
+#endif
+
+AssetObject* AssetManager::CacheFromName(string nm) {
+	//ASSETTYPE t;
+	for (auto& t : names) {
+		for (uint a = names[t.first].size(); a > 0; a--) {
+			if (names[t.first][a - 1] == nm) {
+				return GetCache(t.first, a - 1);
+			}
+		}
+	}
+	Debug::Warning("Asset Finder", "Asset not found for " + nm + "!");
+	return nullptr;
+}
+
+ASSETID AssetManager::GetAssetId(string nm, ASSETTYPE &t) {
+	for (auto& q : names) {
+		for (uint a = q.second.size(); a > 0; a--) {
+			if (q.second[a - 1] == nm) {
+				t = q.first;
+				return a - 1;
+			}
+		}
+	}
+	t = ASSETTYPE_UNDEF;
+	return -1;
+}
+
+AssetObject* AssetManager::GetCache(ASSETTYPE t, ASSETID i) {
+	if (i == -1)
+		return nullptr;
+	if (dataCaches[t][i] != nullptr)
+		return dataCaches[t][i];
+	else
+		return GenCache(t, i);
+}
+AssetObject* AssetManager::GenCache(ASSETTYPE t, ASSETID i) {
+#ifndef IS_EDITOR
+	std::ifstream* fstrm = nullptr;
+	std::stringstream sstrm;
+	uint off = 0, cnt = -1;
+	bool usecache = false;
+	if (_pipemode) {
+		if (!!(*dataECaches[t][i].first)) {
+			sstrm.write((char*)(dataECaches[t][i].first + 1), dataECaches[t][i].second);
+			usecache = true;
+		}
+		else {
+			fstrm = new std::ifstream(dataELocs[t][i], std::ios::in | std::ios::binary);
+			sstrm << fstrm->rdbuf();
+		}
+	}
+	else {
+		fstrm = streams[dataLocs[t][i].first];
+		off = dataLocs[t][i].second.first + 4;
+		cnt = dataLocs[t][i].second.second;
+		char *data = new char[cnt];
+		fstrm->read(data, cnt);
+		sstrm.write(data, cnt);
+	}
+	std::istream strm(sstrm.rdbuf());
+	//strm->seekg(off);
+	//uint sz;
+	//_Strm2Val(*strm, sz);
+	//off += 4;
+	switch (t) {
+	case ASSETTYPE_TEXTURE:
+		dataCaches[t][i] = new Texture(strm, off);
+		break;
+	case ASSETTYPE_HDRI:
+		dataCaches[t][i] = new Background(strm, off);
+		break;
+	case ASSETTYPE_MESH:
+		dataCaches[t][i] = new Mesh(strm, off);
+		break;
+	case ASSETTYPE_MATERIAL:
+		dataCaches[t][i] = new Material(strm, off);
+		break;
+	case ASSETTYPE_SHADER:
+		dataCaches[t][i] = new ShaderBase(strm, off);
+		break;
+	default:
+		Debug::Error("AssetManager", "No operation suits asset type " + to_string(t) + "!");
+		return nullptr;
+	}
+	if (_pipemode && !usecache) delete(fstrm);
+	//std::cout << "Loaded " << (int)t << "." << i << "in " << (clock() - time) << "ms" << std::endl;
+	return dataCaches[t][i];
+#else
+	return nullptr;
+#endif
+}
+
 bool LoadJPEG(string fileN, uint &x, uint &y, byte& channels, byte** data)
 {
 	//unsigned int texture_id;
@@ -357,18 +584,18 @@ TEX_TYPE Texture::_ReadStrm(Texture* tex, std::istream& strm, byte& chn, GLenum&
 		return TEX_TYPE_UNDEF;
 	}
 	byte bb;
-	_Strm2Val<byte>(strm, chn);
-	_Strm2Val<uint>(strm, tex->width);
-	_Strm2Val<uint>(strm, tex->height);
-	_Strm2Val<byte>(strm, bb);
+	_Strm2Val(strm, chn);
+	_Strm2Val(strm, tex->width);
+	_Strm2Val(strm, tex->height);
+	_Strm2Val(strm, bb);
 	if (bb == 1) {
 		rgb = GL_BGR;
 		rgba = GL_BGRA;
 	}
-	_Strm2Val<byte>(strm, tex->_aniso);
-	_Strm2Val<byte>(strm, bb);
+	_Strm2Val(strm, tex->_aniso);
+	_Strm2Val(strm, bb);
 	tex->_filter = (TEX_FILTERING)bb;
-	_Strm2Val<byte>(strm, bb);
+	_Strm2Val(strm, bb);
 	tex->_mipmap = !!(bb & 0x80);
 	tex->_repeat = !!(bb & 0x01);
 	tex->_blurmips = !(bb & 0x10);
@@ -541,8 +768,8 @@ Background::Background(int i, Editor* editor) : width(0), height(0), AssetObject
 		Debug::Error("HDR Cacher", "HDR cache header wrong!");
 		return;
 	}
-	_Strm2Val<uint>(strm, width);
-	_Strm2Val<uint>(strm, height);
+	_Strm2Val(strm, width);
+	_Strm2Val(strm, height);
 	strm.read((&hd[0]), 5);
 	if (hd[0] != (char)0 || hd[1] != 'D' || hd[2] != 'A' || hd[3] != 'T' || hd[4] != 'A') {
 		Debug::Error("HDR Cacher", "Data tag missing!");
@@ -607,8 +834,8 @@ Background::Background(std::istream& strm, uint offset) : width(0), height(0), A
 		Debug::Error("HDR Cacher", "HDR cache header wrong!");
 		return;
 	}
-	_Strm2Val<uint>(strm, width);
-	_Strm2Val<uint>(strm, height);
+	_Strm2Val(strm, width);
+	_Strm2Val(strm, height);
 	strm.read((&hd[0]), 5);
 	if (hd[0] != (char)0 || hd[1] != 'D' || hd[2] != 'A' || hd[3] != 'T' || hd[4] != 'A') {
 		Debug::Error("HDR Cacher", "Data tag missing!");
@@ -1592,24 +1819,28 @@ void Mesh::CalcTangents() {
 }
 
 void Mesh::GenECache() {
-	if (_eCache.first) return;
-	_eCache.second = sizeof(uint) * 3 + sizeof(Vec3)*vertexCount * 3 + sizeof(Vec2)*vertexCount * 2 + sizeof(uint)*triangleCount * 3;
-	_eCache.first = (byte*)malloc(_eCache.second);
-	memcpy(_eCache.first, &vertexCount, sizeof(uint));
-	memcpy(_eCache.first + sizeof(uint), &triangleCount, sizeof(uint));
-	memcpy(_eCache.first + sizeof(uint) * 2, &materialCount, sizeof(uint));
-	uint off = 3 * sizeof(uint);
-	memcpy(_eCache.first + off, &vertices[0], sizeof(Vec3)*vertexCount);
+#ifdef IS_EDITOR
+	if (_eCache) return;
+	_eCacheSz = ECACHESZ_PADDING + ECACHESZ_MESH;
+	uint off = ECACHESZ_PADDING;
+	_eCache = (byte*)malloc(_eCacheSz);
+	*_eCache = 255;
+	memcpy(_eCache + off, &vertexCount, sizeof(uint));
+	memcpy(_eCache + off + sizeof(uint), &triangleCount, sizeof(uint));
+	memcpy(_eCache + off + sizeof(uint) * 2, &materialCount, sizeof(uint));
+	off = ECACHESZ_PADDING + 3 * sizeof(uint);
+	memcpy(_eCache + off, &vertices[0], sizeof(Vec3)*vertexCount);
 	off += sizeof(Vec3)*vertexCount;
-	memcpy(_eCache.first + off, &normals[0], sizeof(Vec3)*vertexCount);
+	memcpy(_eCache + off, &normals[0], sizeof(Vec3)*vertexCount);
 	off += sizeof(Vec3)*vertexCount;
-	memcpy(_eCache.first + off, &tangents[0], sizeof(Vec3)*vertexCount);
+	memcpy(_eCache + off, &tangents[0], sizeof(Vec3)*vertexCount);
 	off += sizeof(Vec3)*vertexCount;
-	memcpy(_eCache.first + off, &triangles[0], sizeof(uint)*triangleCount * 3);
+	memcpy(_eCache + off, &triangles[0], sizeof(uint)*triangleCount * 3);
 	off += sizeof(uint)*triangleCount * 3;
-	memcpy(_eCache.first + off, &uv0[0], sizeof(Vec2)*vertexCount);
+	memcpy(_eCache + off, &uv0[0], sizeof(Vec2)*vertexCount);
 	off += sizeof(Vec2)*vertexCount;
-	memcpy(_eCache.first + off, &uv1[0], sizeof(Vec2)*vertexCount);
+	memcpy(_eCache + off, &uv1[0], sizeof(Vec2)*vertexCount);
+#endif
 }
 
 bool Mesh::ParseBlend(Editor* e, string s) {

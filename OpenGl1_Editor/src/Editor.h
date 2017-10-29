@@ -396,16 +396,19 @@ struct Editor_PlaySyncer {
 			pixelsLoc, //out: glreadpixels buffer (byte array, count per channel)
 			pixelCountLoc, //out: buffer size (ulong)
 			screenSizeLoc, //in: screen size (ushort ushort)
-			okLoc, //inout: confirmation (bool)
+			statusLoc,
 			mousePosLoc,
 			keyboardLoc,
-			assetCacheLoc;
+			assetCacheLoc, //std::vector<uint>
+			assetCacheSzLoc;
 	} pointers;
 	uint pointerLoc;
 	int playW, playH;
 	float timer;
 	EB_Previewer* previewer;
 	Input input;
+	byte syncStatus;
+	std::vector<uint> eCacheLocs, eCacheSzLocs;
 
 	void Update();
 	bool Connect(), Disconnect(), Terminate();
@@ -630,16 +633,6 @@ public:
 	static void Maximize(Editor* e);
 
 	void DoCompile();
-
-	struct PipeModeObj {
-	public:
-		uint pboLoc, //out: pbo array buffer (byte*pboCount)
-			pboCount, //out: pbo array size (uint)
-			hasDataLoc, //inout: pbo buffer updated? (bool)
-			inputLoc, //in: keyboard buffer (255*bool)
-			okLoc, //inout: confirmation (bool)
-			mouse0Loc; //in: mouses/keyboard io
-	};
 
 private:
 	Editor(Editor const &);
