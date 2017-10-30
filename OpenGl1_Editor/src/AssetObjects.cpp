@@ -38,6 +38,8 @@ std::stringstream StreamFromBuffer(const std::vector<char>& buf) {
 	return strm;
 }
 
+#pragma region AssetManager
+
 std::unordered_map<ASSETTYPE, std::vector<string>> AssetManager::names = {};
 std::unordered_map<ASSETTYPE, std::vector<std::pair<byte, std::pair<uint, uint>>>> AssetManager::dataLocs = {};
 std::unordered_map<ASSETTYPE, std::vector<AssetObject*>> AssetManager::dataCaches = {};
@@ -169,13 +171,15 @@ void AssetManager::AllocECache() {
 	for (auto& a : dataECacheIds) {
 		auto& b = dataECaches[a.first][a.second];
 		b.second = *(uint*)dataECacheSzLocs[c];
-		std::cout << "Allocating " << (int)a.first << "." << a.second << ": " << b.second;
-		std::cout << " (" << (uint)&b.second << ")";
 		b.first = (byte*)malloc(b.second + 1);
 		*b.first = 0;
 		//if (!!b.second) std::cout << "Allocating: " << b.second << "B" << std::endl;
 		dataECacheLocs[c] = (uint)b.first;
+#ifdef VERBOSE
+		std::cout << "Allocated " << (int)a.first << "." << a.second << ": " << b.second;
+		std::cout << " (" << (uint)&b.second << ")";
 		std::cout << " -> " << (uint)b.first << std::endl;
+#endif
 		c++;
 	}
 }
@@ -248,7 +252,7 @@ AssetObject* AssetManager::GenCache(ASSETTYPE t, ASSETID i) {
 		dataCaches[t][i] = new Texture(strm, off);
 		break;
 	case ASSETTYPE_HDRI:
-		dataCaches[t][i] = new Background(strm, off);
+		dataCaches[t][i] = cache? new Background(cache) : new Background(strm, off);
 		break;
 	case ASSETTYPE_MESH:
 		dataCaches[t][i] = cache? new Mesh(cache) : new Mesh(strm, off);
@@ -271,6 +275,10 @@ AssetObject* AssetManager::GenCache(ASSETTYPE t, ASSETID i) {
 	return nullptr;
 #endif
 }
+
+#pragma endregion
+
+#pragma region Texture
 
 bool LoadJPEG(string fileN, uint &x, uint &y, byte& channels, byte** data)
 {
@@ -706,6 +714,10 @@ bool Texture::DrawPreview(uint x, uint y, uint w, uint h) {
 	return true;
 }
 
+#pragma endregion
+
+#pragma region Background
+
 Background::Background(const string& path) : width(0), height(0), AssetObject(ASSETTYPE_HDRI) {
 	if (path.size() < 5 || path.substr(path.size() - 4, string::npos) != ".hdr") {
 		printf("HDRI path invalid!");
@@ -817,6 +829,8 @@ Background::Background(int i, Editor* editor) : width(0), height(0), AssetObject
 		mips++;
 	}
 
+	GenECache(szs, rts);
+
 	glGenTextures(1, &pointer);
 	glBindTexture(GL_TEXTURE_2D, pointer);
 	for (uint a = 0; a <= mips; a++) {
@@ -883,6 +897,8 @@ Background::Background(std::istream& strm, uint offset) : width(0), height(0), A
 		mips++;
 	}
 
+	//GenECache(szs, rts);
+
 	glGenTextures(1, &pointer);
 	glBindTexture(GL_TEXTURE_2D, pointer);
 	for (uint a = 0; a <= mips; a++) {
@@ -900,82 +916,65 @@ Background::Background(std::istream& strm, uint offset) : width(0), height(0), A
 	loaded = true;
 }
 
-/*
-std::vector<float> Background::Downsample(std::vector<float>& data, uint w, uint h, uint& w2, uint& h2) {
-w2 = floor(w / 2);
-h2 = floor(h / 2);
-RenderTexture rt = RenderTexture(w2, h2, false);
-GLuint pointer;
-glGenTextures(1, &pointer);
-glBindTexture(GL_TEXTURE_2D, pointer);
-glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w2, h2, 0, GL_RGB, GL_FLOAT, &data[0]);
-glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-glBindTexture(GL_TEXTURE_2D, 0);
-glUseProgram(Engine::blurProgram);
-GLint loc = glGetUniformLocation(Engine::blurProgram, "screenSize");
-GLint loc2 = glGetUniformLocation(Engine::blurProgram, "isY");
-glUniform2f(loc, w2, h2);
-glUniform1f(loc2, 0);
-RenderTexture::Blit(pointer, &rt, Engine::blurProgram, "tex");
-glDeleteTextures(1, &pointer);
-glViewport(0, 0, Display::width, Display::height);
-return rt.pixels();
+Background::Background(byte* mem) : AssetObject(ASSETTYPE_HDRI) {
+#define RD(tar, sz) memcpy(tar, mem, sz); mem += sz;
+
+	byte mips = 0;
+	RD(&mips, 1);
+	RD(&width, 4);
+	RD(&height, 4);
+	mips--;
+
+	glGenTextures(1, &pointer);
+	glBindTexture(GL_TEXTURE_2D, pointer);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, width, height, 0, GL_RGB, GL_FLOAT, mem);
+	mem += 4 * width*height * 3;
+	for (uint a = 1; a <= mips; a++) {
+		uint w2, h2;
+		RD(&w2, 4);
+		RD(&h2, 4);
+		//glTexSubImage2D(GL_TEXTURE_2D, a, 0, 0, (GLsizei)w2, (GLsizei)h2, GL_RGB, GL_FLOAT, mem);
+		glTexImage2D(GL_TEXTURE_2D, a, GL_RGB32F, w2, h2, 0, GL_RGB, GL_FLOAT, mem);
+		mem += 4 * w2*h2 * 3;
+	}
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, mips);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	loaded = true;
 }
-*/
-/*
-std::vector<float> Background::Downsample(std::vector<float>& data, uint w, uint h, uint& w2, uint& h2) {
-	if (w % 2 != 0) w--;
-	if (h % 2 != 0) h--;
-	w2 = w / 2;
-	h2 = h / 2;
 
-	//half the size
-	std::vector<float> hImg(w2*h2 * 3);
-	for (uint x = 0; x < w2; x++) {
-		for (uint y = 0; y < h2; y++) {
-			hImg[x * 3 + y * 3 * w2] = 0.25f*(data[x * 6 + y * 6 * w] + data[(x * 6 + 3) + y * 6 * w] + data[x * 6 + (y * 6 + 3) * w] + data[x * 6 + 3 + (y * 6 + 3) * w]);
-			hImg[x * 3 + y * 3 * w2 + 1] = 0.25f*(data[x * 6 + y * 6 * w + 1] + data[(x * 6 + 3) + y * 6 * w + 1] + data[x * 6 + (y * 6 + 3) * w + 1] + data[x * 6 + 3 + (y * 6 + 3) * w + 1]);
-			hImg[x * 3 + y * 3 * w2 + 2] = 0.25f*(data[x * 6 + y * 6 * w + 2] + data[(x * 6 + 3) + y * 6 * w + 2] + data[x * 6 + (y * 6 + 3) * w + 2] + data[x * 6 + 3 + (y * 6 + 3) * w + 2]);
-		}
+void Background::GenECache(const std::vector<Vec2>& szs, const std::vector<RenderTexture*>& rts) {
+	/*
+	mips (byte)
+	for each mip [
+	  width (uint)
+	  height (uint)
+	  data (w*h*3*float)
+	]
+	*/
+#ifdef IS_EDITOR
+#define CPY(pt, sz) memcpy(_eCache + off, pt, sz); off += sz;
+	if (_eCache) return;
+	byte mipn = rts.size();
+	_eCacheSz = sizeof(byte) + sizeof(uint)*2*mipn;
+	for (auto& a : rts) _eCacheSz += sizeof(float)*a->width*a->height * 3;
+	_eCache = (byte*)malloc(_eCacheSz+1);
+	*_eCache = 255;
+	uint off = 1;
+	CPY(&mipn, 1);
+	for (auto& a : rts) {
+		auto px = a->pixels();
+		CPY(&a->width, 4);
+		CPY(&a->height, 4);
+		CPY(&px[0], 4 * a->width*a->height * 3);
 	}
-
-	//sigma 5
-	float kernal[21] = { 0.011f, 0.0164f, 0.023f, 0.031f, 0.04f, 0.05f, 0.06f, 0.07f, 0.076f, 0.08f, 0.0852f, 0.08f, 0.076f, 0.07f, 0.06f, 0.05f, 0.04f, 0.031f, 0.023f, 0.0164f, 0.011f };
-	//blur 20 pixels x
-	std::vector<float> xImg(w2*h2 * 3);
-	for (uint x = 0; x < w2; x++) {
-		for (uint y = 0; y < h2; y++) {
-			for (uint a = 0; a < 21; a++) {
-				int xx = x + (a - 10);
-				if (xx < 0) xx = w2 + xx;
-				else if ((uint)xx >= w2) xx -= w2;
-				xImg[x * 3 + y * 3 * w2] += (hImg[xx * 3 + y * 3 * w2] * kernal[a]);
-				xImg[x * 3 + y * 3 * w2 + 1] += (hImg[xx * 3 + y * 3 * w2 + 1] * kernal[a]);
-				xImg[x * 3 + y * 3 * w2 + 2] += (hImg[xx * 3 + y * 3 * w2 + 2] * kernal[a]);
-			}
-		}
-	}
-
-	//blur 20 pixels y
-	std::vector<float> oImg(w2*h2 * 3);
-	for (uint x = 0; x < w2; x++) {
-		for (uint y = 0; y < h2; y++) {
-			for (uint a = 0; a < 21; a++) {
-				int yy = y + (a - 10);
-				int xx = w2 - x - 1;
-				if (yy < 0) yy = -yy;
-				else if ((uint)yy >= h2) yy = h2 - (yy - h2 + 1) - 1;
-				else xx = x;
-				oImg[x * 3 + y * 3 * w2] += (xImg[xx * 3 + yy * 3 * w2] * kernal[a]);
-				oImg[x * 3 + y * 3 * w2 + 1] += (xImg[xx * 3 + yy * 3 * w2 + 1] * kernal[a]);
-				oImg[x * 3 + y * 3 * w2 + 2] += (xImg[xx * 3 + yy * 3 * w2 + 2] * kernal[a]);
-			}
-		}
-	}
-
-	return oImg;
+	assert(off == _eCacheSz+1);
+#undef CPY
+#endif
 }
-*/
 
 bool Background::Parse(string path) {
 	uint width, height;
@@ -996,8 +995,10 @@ bool Background::Parse(string path) {
 	return true;
 }
 
+#pragma endregion
 
-//-------------------Material class--------------
+#pragma region Material
+
 Material::Material() : _shader(-1), AssetObject(ASSETTYPE_MATERIAL), writeMask(4, true) {
 	shader = nullptr;// Engine::unlitProgram;
 }
@@ -1460,6 +1461,9 @@ void Material::ApplyGL(Mat4x4& _mv, Mat4x4& _p) {
 	}
 }
 
+#pragma endregion
+
+#pragma region CamEffect
 
 CameraEffect::CameraEffect(Material* mat) : AssetObject(ASSETTYPE_CAMEFFECT) {
 	material = mat;
@@ -1508,8 +1512,10 @@ void CameraEffect::Save(string path) {
 	strm.close();
 }
 
+#pragma endregion
 
-//-----------------mesh class------------------------
+#pragma region Mesh
+
 Mesh::Mesh(const std::vector<Vec3>& verts, const std::vector<Vec3>& norms, const std::vector<int>& tris, std::vector<Vec2> uvs) : AssetObject(ASSETTYPE_MESH) {
 	vertices = std::vector<Vec3>(verts);
 	vertexCount = verts.size();
@@ -1989,6 +1995,7 @@ bool Mesh::ParseBlend(Editor* e, string s) {
 	return true;
 }
 
+#pragma endregion
 
 AnimClip::AnimClip(string p) : AssetObject(ASSETTYPE_ANIMCLIP) {
 	//string p = Editor::instance->projectFolder + "Assets\\" + path + ".animclip.meta";

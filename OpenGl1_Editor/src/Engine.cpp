@@ -1710,7 +1710,7 @@ string _Strm2Asset(std::istream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int 
 }
 
 std::vector<float> hdr2float(byte imagergbe[], int w, int h) {
-	std::vector<float> image(w * h * 3 * sizeof(float), 0);
+	std::vector<float> image(w * h * 3, 0);
 	for (int i = 0; i < w*h; i++) {
 		unsigned char exponent = imagergbe[i * 4 + 3];
 		if (exponent != 0) {

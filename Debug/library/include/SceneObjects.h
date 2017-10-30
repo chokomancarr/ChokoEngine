@@ -338,7 +338,10 @@ public:
 private:
 	Background(int i, Editor* editor);
 	Background(std::istream& strm, uint offset);
+	Background(byte*);
 	static bool Parse(string path);
+
+	void GenECache(const std::vector<Vec2>& szs, const std::vector<RenderTexture*>& rts);
 };
 
 class CubeMap : public AssetObject {

@@ -1554,11 +1554,11 @@ void Editor_PlaySyncer::Update() {
 				char cs[50];
 				GetWindowText(hwnd, cs, 50);
 				std::string ws(cs);
-				if (ws == "") {
+				if (ws == "" || ws.substr(0, 2) != "i_") {
 					timer = 0.1f;
 					return;
 				}
-				std::string s(ws.begin() + 1, ws.end());
+				std::string s(ws.begin() + 2, ws.end());
 				Debug::Message("Player", "reading info struct at " + s);
 				pointerLoc = std::stoi(s);
 				if (!EPS_RWMem(false, this, &pointers, pointerLoc)) return;
@@ -1679,7 +1679,7 @@ bool Editor_PlaySyncer::Connect() {
 	CreateProcess("D:\\TestProject2\\Release\\TestProject2.exe", &str[0], NULL, NULL, FALSE, CREATE_NEW_CONSOLE, NULL, NULL, &si, &pInfo);
 	SetForegroundWindow(Editor::hwnd2);
 	SetWindowPos(Editor::hwnd2, HWND_TOP, 0, 0, 10, 10, SWP_NOMOVE | SWP_NOSIZE);
-	timer = 0.5f;
+	timer = 0.2f;
 	status = EPS_Starting;
 	syncStatus = 0;
 	Debug::Message("Player", "Starting...");
