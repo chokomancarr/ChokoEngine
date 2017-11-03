@@ -282,6 +282,7 @@ protected:
 	Texture() : AssetObject(ASSETTYPE_TEXTURE) {}
 	Texture(int i, Editor* e); //for caches
 	Texture(std::istream& strm, uint offset = 0);
+	Texture(byte* b);
 	static TEX_TYPE _ReadStrm(Texture* tex, std::istream& strm, byte& chn, GLenum& rgb, GLenum& rgba);
 	byte _aniso = 0;
 	TEX_FILTERING _filter = TEX_FILTER_POINT;
@@ -290,6 +291,8 @@ protected:
 	static bool Parse(Editor* e, string path);
 	void _ApplyPrefs(const string& p);
 	bool DrawPreview(uint x, uint y, uint w, uint h) override;
+	
+	void GenECache(byte* dat, byte chn, bool isrgb, std::vector<RenderTexture*>* rts);
 };
 
 enum RT_FLAGS : byte {
@@ -310,7 +313,15 @@ public:
 	static void Blit(Texture* src, RenderTexture* dst, Material* mat, string texName = "mainTex");
 	static void Blit(GLuint src, RenderTexture* dst, GLuint shd, string texName = "mainTex");
 
-	std::vector<float> pixels();
+	template <typename T>
+	std::vector<T> pixels(bool alpha) {
+		assert((typeid(byte).hash_code() == typeid(T).hash_code()) || (typeid(float).hash_code() == typeid(T).hash_code()));
+		std::vector<T> v = std::vector<T>(width*height * (alpha? 4 : 3));
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, d_fbo);
+		glReadPixels(0, 0, width, height, (alpha? GL_RGBA : GL_RGB), (typeid(byte).hash_code() == typeid(T).hash_code())? GL_UNSIGNED_BYTE : GL_FLOAT, &v[0]);
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+		return v;
+	}
 
 	//void Resize(uint w, uint h);
 	friend class Texture;

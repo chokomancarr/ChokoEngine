@@ -594,6 +594,12 @@ void Editor::Maximize(Editor* e) {
 	}
 }
 
+void Editor::TogglePlay(Editor* e) {
+	//if (e->playSyncer.status == Editor_PlaySyncer::EPS_Offline) e->playSyncer.Connect();
+	//else if (e->playSyncer.status == Editor_PlaySyncer::EPS_Running) e->playSyncer.Disconnect();
+	e->flags |= WAITINGPLAYFLAG;
+}
+
 void GetSceneFiles(string path, string sub, std::vector<string>& list) {
 	for (string s : IO::GetFiles(path + sub, ".scene")) {
 		string ss(s.substr(path.size(), string::npos));

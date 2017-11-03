@@ -2069,6 +2069,7 @@ void Editor::LoadDefaultAssets() {
 	globalShorts.emplace(GetShortcutInt(Key_O, Key_Control), &OpenScene);
 	globalShorts.emplace(GetShortcutInt(Key_X, Key_Control), &DeleteActive);
 	//globalShorts.emplace(GetShortcutInt(Key_Space, Key_Shift), &Maximize);
+	globalShorts.emplace(GetShortcutInt(Key_P, Key_Control), &TogglePlay);
 
 	assetTypes.emplace("scene", ASSETTYPE_SCENE);
 	assetTypes.emplace("mesh", ASSETTYPE_MESH);

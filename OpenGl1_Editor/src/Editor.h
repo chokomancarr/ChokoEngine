@@ -377,6 +377,7 @@ class yPossMerger;
 
 #define WAITINGBUILDSTARTFLAG 1U
 #define WAITINGREFRESHFLAG 2U
+#define WAITINGPLAYFLAG 4U
 
 struct Editor_PlaySyncer {
 	enum Editor_PlaySyncerStatus { //okbit = 1
@@ -631,6 +632,7 @@ public:
 	static void DeleteActive(Editor* e);
 	static void DoDeleteActive(EditorBlock* b);
 	static void Maximize(Editor* e);
+	static void TogglePlay(Editor* e);
 
 	void DoCompile();
 

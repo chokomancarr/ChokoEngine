@@ -164,16 +164,20 @@ ShaderBase::ShaderBase(string p) : AssetObject(ASSETTYPE_SHADER) {
 }
 
 ShaderBase::ShaderBase(std::istream& stream, uint offset) : AssetObject(ASSETTYPE_SHADER) {
-	if (stream.good()) return;
-	stream.seekg(offset);
 	string vertex_shader_code = "";
 	string fragment_shader_code = "";
+	//std::ifstream stream(p.c_str());
+	stream.seekg(offset);
+	if (!stream.good()) {
+		std::cout << "shader not found!" << std::endl;
+		return;
+	}
 	char* c = new char[4];
 	stream.read(c, 3);
 	c[3] = char0;
 	string ss(c);
 	if (string(c) != "KTS") {
-		Debug::Error("ShaderLoader", "Wrong data header!");
+		std::cerr << "file not supported" << std::endl;
 		return;
 	}
 
@@ -192,22 +196,21 @@ ShaderBase::ShaderBase(std::istream& stream, uint offset) : AssetObject(ASSETTYP
 			_Strm2Val(stream, vars[r]->min);
 			_Strm2Val(stream, vars[r]->max);
 			_Strm2Val(stream, vars[r]->val.i);
-			stream.getline(nmm, 100, char0);
-			vars[r]->name += string(nmm);
 			break;
 		case SHADER_FLOAT:
 			_Strm2Val(stream, vars[r]->min);
 			_Strm2Val(stream, vars[r]->max);
 			_Strm2Val(stream, vars[r]->val.x);
-			stream.getline(nmm, 100, char0);
-			vars[r]->name += string(nmm);
 			break;
 		case SHADER_SAMPLER:
+			byte bbb;
+			_Strm2Val(stream, bbb);
+			vars[r]->def.i = bbb;
 			vars[r]->val.i = -1;
-			stream.getline(nmm, 100, char0);
-			vars[r]->name += string(nmm);
 			break;
 		}
+		stream.getline(nmm, 100, char0);
+		vars[r]->name += string(nmm);
 	}
 	stream.get(type);
 	if ((byte)type != 0xff)
@@ -231,13 +234,14 @@ ShaderBase::ShaderBase(std::istream& stream, uint offset) : AssetObject(ASSETTYP
 	cc[i] = char0;
 	fragment_shader_code = string(cc);
 	delete[](cc);
+	//stream.close();
 
 	GLuint vertex_shader, fragment_shader;
 	string err = "";
 	if (vertex_shader_code != "") {
 		//std::cout << "Vertex Shader: " << std::endl << vertex_shader_code;
 		if (!LoadShader(GL_VERTEX_SHADER, vertex_shader_code, vertex_shader, &err)) {
-			Debug::Error("Shader Compiler", "Vert error: " + err);
+			Editor::instance->_Error("Shader Compiler V", err);
 			return;
 		}
 	}
@@ -245,7 +249,7 @@ ShaderBase::ShaderBase(std::istream& stream, uint offset) : AssetObject(ASSETTYP
 	if (fragment_shader_code != "") {
 		//std::cout << "Fragment Shader: " << std::endl << fragment_shader_code;
 		if (!LoadShader(GL_FRAGMENT_SHADER, fragment_shader_code, fragment_shader, &err)) {
-			Debug::Error("Shader Compiler", "Frag error: " + err);
+			Editor::instance->_Error("Shader Compiler F", err);
 			return;
 		}
 	}
@@ -276,7 +280,7 @@ ShaderBase::ShaderBase(std::istream& stream, uint offset) : AssetObject(ASSETTYP
 	glDeleteShader(vertex_shader);
 	glDetachShader(pointer, fragment_shader);
 	glDeleteShader(fragment_shader);
-	loaded = pointer != 0;
+	loaded = true;
 }
 
 ShaderBase::ShaderBase(const string& vert, const string& frag) : AssetObject(ASSETTYPE_SHADER) {

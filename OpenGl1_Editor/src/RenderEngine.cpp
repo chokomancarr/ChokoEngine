@@ -25,8 +25,10 @@ void Camera::DrawSceneObjectsOpaque(std::vector<SceneObject*> oo, GLuint shader)
 		glPushMatrix();
 		glMultMatrixf(glm::value_ptr(sc->transform.localMatrix()));
 		MeshRenderer* mrd = sc->GetComponent<MeshRenderer>();
-		if (mrd != nullptr)
+		if (mrd != nullptr) {
+			//Debug::Message("Cam", "Drawing " + sc->name);
 			mrd->DrawDeferred(shader);
+		}
 		Camera::DrawSceneObjectsOpaque(sc->children, shader);
 		glPopMatrix();
 	}
@@ -161,6 +163,7 @@ void RenderTexture::Blit(Texture* src, RenderTexture* dst, Material* mat, string
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 }
 
+/*
 std::vector<float> RenderTexture::pixels() {
 	std::vector<float> v = std::vector<float>(width*height * 3);
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, d_fbo);
@@ -168,6 +171,7 @@ std::vector<float> RenderTexture::pixels() {
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 	return v;
 }
+*/
 
 void RenderTexture::Load(string path) {
 	throw std::runtime_error("RT Load (s) not implemented");
@@ -476,10 +480,15 @@ GLuint Camera::DoFetchTexture(string s) {
 }
 
 void Camera::Render(RenderTexture* target) {
-	//enable deferred
+	float zero[] = { 0,0,0,0 };
+	float one = 1;
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, d_fbo);
-	//clear
+	glClearBufferfv(GL_COLOR, 0, zero);
+	glClearBufferfv(GL_DEPTH, 0, &one);
+	glClearBufferfv(GL_COLOR, 1, zero);
+	glClearBufferfv(GL_COLOR, 2, zero);
+	glClearBufferfv(GL_COLOR, 3, zero);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
 	glDepthMask(true);
@@ -487,18 +496,17 @@ void Camera::Render(RenderTexture* target) {
 	ApplyGL();
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	//render opaque
-	Camera::DrawSceneObjectsOpaque(Scene::active->objects);
+	DrawSceneObjectsOpaque(Scene::active->objects);
 
 	glDisable(GL_DEPTH_TEST);
 	glDepthMask(false);
 
-#ifdef SHOW_GBUFFERS
-	DumpBuffers();
-#else
+//#ifdef SHOW_GBUFFERS
+	//DumpBuffers();
+//#else
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 	RenderLights();
-#endif
+//#endif
 }
 
 void Camera::_DoRenderProbeMask(ReflectionProbe* p, Mat4x4& ip) {
@@ -1003,6 +1011,7 @@ void Camera::_DrawLights(std::vector<SceneObject*>& oo, Mat4x4& ip, GLuint targe
 }
 
 void Camera::RenderLights(GLuint targetFbo) {
+	/*
 	glEnable(GL_BLEND);
 	glBlendEquation(GL_FUNC_ADD);
 	glBlendFunc(GL_ONE, GL_ONE);
@@ -1014,14 +1023,33 @@ void Camera::RenderLights(GLuint targetFbo) {
 	Mat4x4 mat = glm::inverse(Mat4x4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]));
 
 	//clear alpha here
-	std::vector<ReflectionProbe*> probes;
-	_RenderProbesMask(Scene::active->objects, mat, probes);
-	_RenderProbes(probes, mat);
+	//std::vector<ReflectionProbe*> probes;
+	//_RenderProbesMask(Scene::active->objects, mat, probes);
+	//_RenderProbes(probes, mat);
 	_RenderSky(mat, d_texs, d_depthTex);
 	_DrawLights(Scene::active->objects, mat, targetFbo);
+	/*/
+	glDisable(GL_DEPTH_TEST);
+	glDepthMask(false);
+	glEnable(GL_BLEND);
+	glBlendEquation(GL_FUNC_ADD);
+	glBlendFunc(GL_ONE, GL_ONE);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, targetFbo);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, targetFbo);
+
+	_ApplyEmission(d_fbo, d_texs, Display::width, Display::height, targetFbo);
+	Mat4x4 mat = glm::inverse(GetMatrix(GL_PROJECTION_MATRIX));
+	_RenderSky(mat, d_texs, d_depthTex); //wont work well on ortho, will it?
+	//glViewport(v.r, Display::height - v.g - v.a, v.b, v.a - EB_HEADER_SIZE - 2);
+	//_DrawLights(Scene::active->objects, mat);
+	//glViewport(0, 0, Display::width, Display::height);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	//*/
 }
 
 void Camera::DumpBuffers() {
+	glViewport(0, 0, Display::width, Display::height);
+
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, d_fbo);
 	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
@@ -1038,6 +1066,9 @@ void Camera::DumpBuffers() {
 
 	glReadBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_SPEC_GLOSS);
 	glBlitFramebuffer(0, 0, Display::width, Display::height, 0, 0, HalfWidth, HalfHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+	
+	glReadBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_EMISSION_AO);
+	glBlitFramebuffer(0, 0, Display::width, Display::height, HalfWidth, 0, Display::width, HalfHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 }
 
 GLuint Light::_shadowFbo = 0;

@@ -356,6 +356,12 @@ void DrawOverlay() {
 	if (editor->dialogBlock) {
 		editor->dialogBlock->Draw();
 	}
+	if (!!(editor->flags & WAITINGPLAYFLAG)) {
+		if (editor->playSyncer.status == Editor_PlaySyncer::EPS_Offline) editor->playSyncer.Connect();
+		else if (editor->playSyncer.status == Editor_PlaySyncer::EPS_Running) editor->playSyncer.Disconnect();
+
+		editor->flags &= ~WAITINGPLAYFLAG;
+	}
 	editor->DrawHandles();
 }
 
@@ -391,7 +397,7 @@ void TimerGL(int i)
 	PROCESS_MEMORY_COUNTERS pmc;
 	GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc));
 	SIZE_T virtualMemUsedByMe = pmc.WorkingSetSize;
-	string str("ChokoEngine (about " + to_string((byte)round(virtualMemUsedByMe*0.000001f)) + "Mb used, " + to_string(fps) + "fps)");
+	string str("ChokoEngine (about " + to_string((uint)round(virtualMemUsedByMe/1024/1024)) + "Mb used, " + to_string(fps) + "fps)");
 	SetWindowText(editor->hwnd2, str.c_str());
 	fps = 0;
 	//glutPostRedisplay();
