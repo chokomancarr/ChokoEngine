@@ -951,6 +951,8 @@ public:
 protected:
 	SceneObject(byte* data);
 
+	static SceneObject* _FromId(const std::vector<SceneObject*>& objs, ulong id);
+
 	static struct _offset_map {
 		uint name = offsetof(SceneObject, name),
 			transform = offsetof(SceneObject, transform),

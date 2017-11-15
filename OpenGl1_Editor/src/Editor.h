@@ -562,8 +562,8 @@ public:
 
 	ShortcutMapGlobal globalShorts;
 
-	Texture* buttonX, *buttonExt, *buttonPlus, *buttonExtArrow, *background, *placeholder, *checkers, *expand;
-	Texture* collapse, *object, *checkbox, *keylock, *assetExpand, *assetCollapse, *browse, *mipLow, *mipHigh;
+	Texture* tex_buttonX, *tex_buttonExt, *tex_buttonPlus, *tex_buttonExtArrow, *tex_background, *tex_placeholder, *tex_checkers, *tex_expand;
+	Texture* tex_collapse, *tex_object, *tex_checkbox, *tex_keylock, *tex_assetExpand, *tex_assetCollapse, *tex_browse, *tex_mipLow, *tex_mipHigh, *tex_waiting;
 	std::vector<Texture*> tooltipTexs;
 	std::vector<Texture*> shadingTexs;
 	std::vector<Texture*> orientTexs;

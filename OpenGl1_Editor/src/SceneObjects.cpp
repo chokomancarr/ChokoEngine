@@ -6,15 +6,16 @@
 using namespace ChokoEngine;
 
 Object::Object(string nm) : id(Engine::GetNewId()), name(nm) {}
+Object::Object(ulong id, string nm) : id(id), name(nm) {}
 
 bool DrawComponentHeader(Editor* e, Vec4 v, uint pos, Component* c) {
 	Engine::DrawQuad(v.r, v.g + pos, v.b - 17, 16, grey2());
 	//bool hi = expand;
-	if (Engine::EButton((e->editorLayer == 0), v.r, v.g + pos, 16, 16, c->_expanded ? e->collapse : e->expand, white()) == MOUSE_RELEASE) {
+	if (Engine::EButton((e->editorLayer == 0), v.r, v.g + pos, 16, 16, c->_expanded ? e->tex_collapse : e->tex_expand, white()) == MOUSE_RELEASE) {
 		c->_expanded = !c->_expanded;//hi = !expand;
 	}
 	//UI::Texture(v.r, v.g + pos, 16, 16, c->_expanded ? e->collapse : e->expand);
-	if (Engine::EButton(e->editorLayer == 0, v.r + v.b - 16, v.g + pos, 16, 16, e->buttonX, white(1, 0.7f)) == MOUSE_RELEASE) {
+	if (Engine::EButton(e->editorLayer == 0, v.r + v.b - 16, v.g + pos, 16, 16, e->tex_buttonX, white(1, 0.7f)) == MOUSE_RELEASE) {
 		//delete
 		c->object->RemoveComponent(c);
 		if (c == nullptr)
@@ -227,14 +228,14 @@ void Camera::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 		Engine::DrawQuad(v.r + 2, v.g + pos, v.b - 4, 17 * ess + 2.0f, grey1()*0.5f);
 		int pendingDel = -1;
 		for (uint es = 0; es < ess; es++) {
-			if (Engine::EButton(e->editorLayer == 0, v.r + 4, v.g + pos + 1, 16, 16, e->buttonX, white()) == MOUSE_RELEASE) {
+			if (Engine::EButton(e->editorLayer == 0, v.r + 4, v.g + pos + 1, 16, 16, e->tex_buttonX, white()) == MOUSE_RELEASE) {
 				pendingDel = es;
 			}
 			e->DrawAssetSelector(v.r + 21, v.g + pos + 1, v.b - 24, 16, grey1(), ASSETTYPE_CAMEFFECT, 12, e->font, &_effects[es], nullptr, this);
 			pos += 17;
 		}
 		pos += 3;
-		if (Engine::EButton(e->editorLayer == 0, v.r + 2, v.g + pos, 14, 14, e->buttonPlus, white()) == MOUSE_RELEASE) {
+		if (Engine::EButton(e->editorLayer == 0, v.r + 2, v.g + pos, 14, 14, e->tex_buttonPlus, white()) == MOUSE_RELEASE) {
 			effects.push_back(nullptr);
 			_effects.push_back(-1);
 		}
@@ -278,7 +279,7 @@ void MeshFilter::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 17, v.b*0.7f, 16, grey1(), ASSETTYPE_MESH, 12, e->font, &_mesh, &_UpdateMesh, this);
 		pos += 34;
 		Engine::Label(v.r + 2, v.g + pos, 12, "Show Bounding Box", e->font, white());
-		showBoundingBox = Engine::Toggle(v.r + v.b*0.3f, v.g + pos, 12, e->checkbox, showBoundingBox, white(), ORIENT_HORIZONTAL);
+		showBoundingBox = Engine::Toggle(v.r + v.b*0.3f, v.g + pos, 12, e->tex_checkbox, showBoundingBox, white(), ORIENT_HORIZONTAL);
 		pos += 17;
 	}
 	else pos += 17;
@@ -403,14 +404,14 @@ void MeshRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 				pos += 17;
 				if (materials[a] == nullptr)
 					continue;
-				if (Engine::EButton(e->editorLayer == 0, v.r, v.g + pos, 16, 16, e->expand, white()) == MOUSE_RELEASE) {
+				if (Engine::EButton(e->editorLayer == 0, v.r, v.g + pos, 16, 16, e->tex_expand, white()) == MOUSE_RELEASE) {
 					materials[a]->_maskExpanded = !materials[a]->_maskExpanded;
 				}
 				Engine::Label(v.r + 17, v.g + pos, 12, "Write Mask", e->font, white());
 				pos += 17;
 				if (materials[a]->_maskExpanded) {
 					for (uint ea = 0; ea < GBUFFER_NUM_TEXTURES - 1; ea++) {
-						materials[a]->writeMask[ea] = Engine::Toggle(v.r + 17, v.g + pos, 16, e->checkbox, materials[a]->writeMask[ea], white(), ORIENT_HORIZONTAL);
+						materials[a]->writeMask[ea] = Engine::Toggle(v.r + 17, v.g + pos, 16, e->tex_checkbox, materials[a]->writeMask[ea], white(), ORIENT_HORIZONTAL);
 						Engine::Label(v.r + 38, v.g + pos, 12, Camera::_gbufferNames[ea], e->font, white());
 						pos += 17;
 					}
@@ -659,7 +660,7 @@ void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 		cookieStrength = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 1, cookieStrength, grey1(), white());
 		pos += 17;
 		Engine::Label(v.r + 2, v.g + pos, 12, "square shape", e->font, white());
-		square = Engine::Toggle(v.r + v.b * 0.3f, v.g + pos, 12, e->checkbox, square, white(), ORIENT_HORIZONTAL);
+		square = Engine::Toggle(v.r + v.b * 0.3f, v.g + pos, 12, e->tex_checkbox, square, white(), ORIENT_HORIZONTAL);
 		pos += 17;
 		if (_lightType != LIGHTTYPE_DIRECTIONAL) {
 			if (Engine::EButton(e->editorLayer == 0, v.r, v.g + pos, v.b * 0.5f - 1, 16, (!drawShadow) ? white(1, 0.5f) : grey1(), "No Shadow", 12, e->font, white()) == MOUSE_RELEASE)
@@ -680,7 +681,7 @@ void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 				pos += 17;
 
 				Engine::Label(v.r + 2, v.g + pos, 12, "Contact Shadows", e->font, white());
-				contactShadows = Engine::Toggle(v.r + v.b * 0.3f, v.g + pos, 16, e->checkbox, contactShadows, white(), ORIENT_HORIZONTAL);
+				contactShadows = Engine::Toggle(v.r + v.b * 0.3f, v.g + pos, 16, e->tex_checkbox, contactShadows, white(), ORIENT_HORIZONTAL);
 				pos += 17;
 				if (contactShadows) {
 					Engine::Label(v.r + 2, v.g + pos, 12, "  samples", e->font, white());
@@ -1357,17 +1358,35 @@ SceneObject::SceneObject(Vec3 pos, Quat rot, Vec3 scale) : SceneObject("New Obje
 SceneObject::SceneObject(string s, Vec3 pos, Quat rot, Vec3 scale) : transform(this, pos, rot, scale), _expanded(true), Object(s) {
 	id = Engine::GetNewId();
 }
-SceneObject::SceneObject(byte* data) : transform(this, data + SceneObject::_offsets.transform), _expanded(true), Object(string((char*)data + SceneObject::_offsets.name)) {}
+SceneObject::SceneObject(byte* data) : transform(this, data + SceneObject::_offsets.transform), _expanded(true), Object(*((uint*)data + 1), string((char*)data + SceneObject::_offsets.name)) {}
 
 SceneObject::~SceneObject() {
-	for (Component* c : _components)
-		delete(c);
-	_components.clear();
+	for (Component* c : _components) delete(c);
+	for (auto a : children) delete(a);
 }
 
 void SceneObject::SetActive(bool a, bool enableAll) {
 	active = a;
 }
+
+bool SO_DoFromId(const std::vector<SceneObject*>& objs, uint id, SceneObject*& res) {
+	for (auto a : objs) {
+		if (a->id == id) {
+			res = a;
+			return true;
+		}
+		if (SO_DoFromId(a->children, id, res)) return true;
+	}
+	return false;
+}
+
+SceneObject* SceneObject::_FromId(const std::vector<SceneObject*>& objs, ulong id) {
+	if (!id) return nullptr;
+	SceneObject* res = 0;
+	SO_DoFromId(objs, id, res);
+	return res;
+}
+
 
 Component* ComponentFromType (COMPONENT_TYPE t){
 	switch (t) {

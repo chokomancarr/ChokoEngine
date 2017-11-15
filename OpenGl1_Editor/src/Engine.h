@@ -425,6 +425,7 @@ public:
 class Object {
 public:
 	Object(string nm = "");
+	Object(ulong id, string nm);
 	ulong id;
 	string name;
 	bool dirty = false; //triggers a reload of internal variables
