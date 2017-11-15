@@ -1,10 +1,4 @@
-#ifndef ENGINE_H
-#define ENGINE_H
-
-
-/*
- Engine functions used by actual game code
-*/
+#pragma once
 
 #include <gl/glew.h>
 #include <string>
@@ -26,6 +20,47 @@
 extern bool _pipemode;
 #endif
 
+#define STRINGIFY(x) #x
+#define TOSTRING(x) STRINGIFY(x)
+
+#define STRINGMRGDO(a,b) a ## b
+#define STRINGMRG(a,b) STRINGMRGDO(a,b)
+
+#pragma region asm_related_functions
+
+#ifdef __MSVC_RUNTIME_CHECKS
+#define __asmloc_offset 7 //this is wrong
+#else
+#define __asmloc_offset 0
+#endif
+
+#define __asmloc_label STRINGMRG(asmlocregion, __COUNTER__)
+
+#define __asmloc(nm) __asmloc_do(nm, __asmloc_label)
+
+#define __asmloc_do(nm,lbl) int nm; \
+{__asm lbl: __asm mov eax, lbl __asm mov nm, eax}
+
+
+//get the location after calling instruction : https://en.wikibooks.org/wiki/X86_Disassembly/Functions_and_Stack_Frames
+#define __trace(nm) int nm; \
+__asm mov ebx, [ebp + 4] __asm mov nm, ebx
+
+//traces up cnt times. cnt must be more than 1.
+#define __tracen(nm,cnt) int nm; {\
+unsigned short num = cnt-1; \
+assert(num); \
+__asm mov ebx, ebp \
+__asm mov cx, num \
+__asm tracenregion: \
+__asm mov ebx, [ebx] \
+__asm dec cx \
+__asm jnz tracenregion \
+__asm mov ebx, [ebx + 4] \
+__asm mov nm, ebx }
+
+#pragma endregion
+
 const float PI = 3.1415926535f;
 const float rad2deg = 57.2958f;
 const float deg2rad = 0.0174533f;
@@ -46,13 +81,13 @@ typedef glm::vec4 Vec4;
 typedef glm::quat Quat;
 typedef glm::mat4 Mat4x4;
 
-string to_string(float f);
-string to_string(double f);
-string to_string(ulong f);
-string to_string(long f);
-string to_string(uint f);
-string to_string(int f);
-string to_string(Vec2 v), to_string(Vec3 v), to_string(Vec4 v), to_string(Quat v);
+inline string to_string(float f);
+inline string to_string(double f);
+inline string to_string(ulong f);
+inline string to_string(long f);
+inline string to_string(uint f);
+inline string to_string(int f);
+inline string to_string(Vec2 v), to_string(Vec3 v), to_string(Vec4 v), to_string(Quat v);
 std::vector<string> string_split(string s, char c);
 
 Vec3 to_vec3(Vec4 v);
@@ -392,6 +427,7 @@ public:
 	Object(string nm = "");
 	ulong id;
 	string name;
+	bool dirty = false; //triggers a reload of internal variables
 
 	virtual bool ReferencingObject(Object* o) { return false; }
 };
@@ -604,13 +640,26 @@ enum DrawTex_Scaling {
 	DrawTex_Stretch
 };
 
+//#define EditText(x,y,w,h,s,str,font) _EditText(__COUNTER__, x,y,w,h,s,str,font)
+
+class UI {
+public:
+	static void Texture(float x, float y, float w, float h, ::Texture* texture, DrawTex_Scaling scl = DrawTex_Stretch, float miplevel = 0);
+	static void Texture(float x, float y, float w, float h, ::Texture* texture, float alpha, DrawTex_Scaling scl = DrawTex_Stretch, float miplevel = 0);
+	static void Texture(float x, float y, float w, float h, ::Texture* texture, Vec4 tint, DrawTex_Scaling scl = DrawTex_Stretch, float miplevel = 0);
+	
+	static string EditText(float x, float y, float w, float h, float s, string str, Font* font, Vec4 col, int id = 0);
+
+	static bool CanDraw();
+protected:
+	static bool _isDrawingLoop;
+	static int _activeEditText;
+};
+
 class Engine {
 public:
 	static void BeginStencil(float x, float y, float w, float h);
 	static void EndStencil();
-	static void DrawTexture(float x, float y, float w, float h, Texture* texture, DrawTex_Scaling scl = DrawTex_Stretch, float miplevel = 0);
-	static void DrawTexture(float x, float y, float w, float h, Texture* texture, float alpha, DrawTex_Scaling scl = DrawTex_Stretch, float miplevel = 0);
-	static void DrawTexture(float x, float y, float w, float h, Texture* texture, Vec4 tint, DrawTex_Scaling scl = DrawTex_Stretch, float miplevel = 0);
 	static void DrawLine(Vec2 v1, Vec2 v2, Vec4 col, float width);
 	static void DrawLine(Vec3 v1, Vec3 v2, Vec4 col, float width);
 	static void DrawLineW(Vec3 v1, Vec3 v2, Vec4 col, float width);
@@ -621,8 +670,8 @@ public:
 	static void DrawCircleW(Vec3 c, Vec3 x, Vec3 y, float r, uint n, Vec4 col, float width, bool dotted = false);
 	static void DrawCubeLinesW(float x0, float x1, float y0, float y1, float z0, float z1, float width, Vec4 col);
 	static void Label(float x, float y, float s, string str, Font* font);
-	static void Label(float x, float y, float s, string str, Font* font, Vec4 Vec4);
-	static void Label(float x, float y, float s, string str, Font* font, Vec4 Vec4, float maxw);
+	static void Label(float x, float y, float s, string str, Font* font, Vec4 col);
+	static void Label(float x, float y, float s, string str, Font* font, Vec4 col, float maxw);
 	static byte Button(float x, float y, float w, float h);
 	static byte Button(float x, float y, float w, float h, Vec4 normalVec4);
 	static byte Button(float x, float y, float w, float h, Vec4 normalVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4, bool labelCenter = false);
@@ -632,11 +681,11 @@ public:
 	static byte EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4);
 	static byte EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4);
 	static byte EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4);
-	static byte EButton(bool a, float x, float y, float w, float h, Texture* texture, Vec4 Vec4);
+	static byte EButton(bool a, float x, float y, float w, float h, Texture* texture, Vec4 col);
 	static byte EButton(bool a, float x, float y, float w, float h, Texture* texture, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4);
 	static byte EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4);
-	static bool DrawToggle(float x, float y, float s, Vec4 col, bool t);
-	static bool DrawToggle(float x, float y, float s, Texture* texture, bool t, Vec4 col=white(), ORIENTATION o = ORIENT_NONE);
+	static bool Toggle(float x, float y, float s, Vec4 col, bool t);
+	static bool Toggle(float x, float y, float s, Texture* texture, bool t, Vec4 col=white(), ORIENTATION o = ORIENT_NONE);
 	static float DrawSliderFill(float x, float y, float w, float h, float min, float max, float val, Vec4 background, Vec4 foreground);
 	static float DrawSliderFillY(float x, float y, float w, float h, float min, float max, float val, Vec4 background, Vec4 foreground);
 	static Vec2 DrawSliderFill2D(float x, float y, float w, float h, Vec2 min, Vec2 max, Vec2 val, Vec4 background, Vec4 foreground);
@@ -662,10 +711,10 @@ public:
 	static GLint drawQuadLocs[3], drawQuadLocsA[3], drawQuadLocsC[1];
 	static void ScanQuadParams();
 	static void DrawQuad(float x, float y, float w, float h, uint texture, float miplevel = 0);
-	static void DrawQuad(float x, float y, float w, float h, uint texture, Vec4 Vec4);
-	static void DrawQuad(float x, float y, float w, float h, Vec4 Vec4);
-	static void DrawQuad(float x, float y, float w, float h, GLuint texture, Vec2 uv0, Vec2 uv1, Vec2 uv2, Vec2 uv3, bool single, Vec4 Vec4, float miplevel = 0);
-	static void DrawCube(Vec3 pos, float dx, float dy, float dz, Vec4 Vec4);
+	static void DrawQuad(float x, float y, float w, float h, uint texture, Vec4 col);
+	static void DrawQuad(float x, float y, float w, float h, Vec4 col);
+	static void DrawQuad(float x, float y, float w, float h, GLuint texture, Vec2 uv0, Vec2 uv1, Vec2 uv2, Vec2 uv3, bool single, Vec4 col, float miplevel = 0);
+	static void DrawCube(Vec3 pos, float dx, float dy, float dz, Vec4 col);
 	static void DrawIndices(const Vec3* poss, const int* is, int length, float r, float g, float b);
 	static void DrawIndicesI(const Vec3* poss, const int* is, int length, float r, float g, float b);
 	static ulong idCounter;
@@ -673,6 +722,8 @@ public:
 	
 	static std::vector<std::ifstream*> assetStreams;
 	static std::unordered_map<byte, std::vector<string>> assetData;
+
+	static size_t _mainThreadId;
 	//static std::unordered_map<string, byte[]> assetDataLoaded;
 	//byte GetAsset(string name);
 	friend int main(int argc, char **argv);
@@ -720,26 +771,33 @@ public:
 	}
 	string sceneName;
 	int sceneId;
-	static void AddObject(SceneObject* object, SceneObject* parent = nullptr);
-	static void DeleteObject(SceneObject* object);
+	uint objectCount = 0;
 	std::vector<SceneObject*> objects;
 	SceneSettings settings;
 
 	static void Load(uint i), Load(string name);
+	static void AddObject(SceneObject* object, SceneObject* parent = nullptr);
+	static void DeleteObject(SceneObject* object);
 
 	friend int main(int argc, char **argv);
 	friend class Editor;
+	friend struct Editor_PlaySyncer;
 	friend class AssetManager;
 protected:
 	static std::ifstream* strm;
-#ifndef IS_EDITOR
+//#ifndef IS_EDITOR
 	static std::vector<string> sceneEPaths;
-#endif
+//#endif
 	static std::vector<string> sceneNames;
 	static std::vector<long> scenePoss;
 	static void ReadD0();
 	static void Unload();
 	void Save(Editor* e);
+
+	static struct _offset_map {
+		uint objCount = offsetof(Scene, objectCount),
+			objs = offsetof(Scene, objects);
+	} _offsets;
 };
 
 class AssetManager {
@@ -787,4 +845,4 @@ private:
 
 #include "SceneObjects.h"
 
-#endif
+//#endif

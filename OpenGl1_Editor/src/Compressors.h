@@ -1,5 +1,4 @@
-#ifndef COMPRESS_H
-#define COMPRESS_H
+#pragma once
 
 #include <vector>
 #include <iostream>
@@ -13,5 +12,3 @@ public:
 	static std::vector<byte> Compress_Huffman(byte* input, uint inSize);
 	static std::vector<byte> Decompress_Huffman(byte* input, uint inSize);
 };
-
-#endif

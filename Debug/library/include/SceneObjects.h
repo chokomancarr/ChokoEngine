@@ -1,5 +1,4 @@
-#ifndef SCENE_H
-#define SCENE_H
+#pragma once
 
 #include "Engine.h"
 
@@ -53,7 +52,6 @@ protected:
 
 class Transform : public Object {
 public:
-
 	SceneObject* object;
 	Vec3 position;
 	const Vec3 worldPosition(), forward(), right(), up();
@@ -72,14 +70,22 @@ public:
 
 	friend class SceneObject;
 	friend class EB_Viewer;
+	friend struct Editor_PlaySyncer;
 	friend void DrawSceneObjectsOpaque(EB_Viewer*, const std::vector<SceneObject*>&);
 	friend void DrawSceneObjectsGizmos(EB_Viewer*, const std::vector<SceneObject*>&);
 private:
 	//never call Transform constructor directly. Call SceneObject().transform instead.
 	Transform(SceneObject* sc, Vec3 pos, Quat rot, Vec3 scl);
+	Transform(SceneObject* sc, byte* data);
 	Quat _rotation;
 	Vec3 _eulerRotation;
 	Mat4x4 _localMatrix, _worldMatrix;
+
+	static const struct _offset_map {
+		uint position = offsetof(Transform, position),
+			rotation = offsetof(Transform, _rotation),
+			scale = offsetof(Transform, scale);
+	} _offsets;
 
 	void _UpdateQuat();
 	void _UpdateEuler();
@@ -282,6 +288,7 @@ protected:
 	Texture() : AssetObject(ASSETTYPE_TEXTURE) {}
 	Texture(int i, Editor* e); //for caches
 	Texture(std::istream& strm, uint offset = 0);
+	Texture(byte* b);
 	static TEX_TYPE _ReadStrm(Texture* tex, std::istream& strm, byte& chn, GLenum& rgb, GLenum& rgba);
 	byte _aniso = 0;
 	TEX_FILTERING _filter = TEX_FILTER_POINT;
@@ -290,6 +297,20 @@ protected:
 	static bool Parse(Editor* e, string path);
 	void _ApplyPrefs(const string& p);
 	bool DrawPreview(uint x, uint y, uint w, uint h) override;
+	
+	void GenECache(byte* dat, byte chn, bool isrgb, std::vector<RenderTexture*>* rts);
+};
+
+class VideoTexture : public Texture {
+public:
+	VideoTexture(const string& path);
+
+	void Play(), Pause(), Stop();
+//protected:
+	GLuint d_fbo;
+	byte* buffer = 0;
+
+	void GetFrame();
 };
 
 enum RT_FLAGS : byte {
@@ -310,7 +331,15 @@ public:
 	static void Blit(Texture* src, RenderTexture* dst, Material* mat, string texName = "mainTex");
 	static void Blit(GLuint src, RenderTexture* dst, GLuint shd, string texName = "mainTex");
 
-	std::vector<float> pixels();
+	template <typename T>
+	std::vector<T> pixels(bool alpha) {
+		assert((typeid(byte).hash_code() == typeid(T).hash_code()) || (typeid(float).hash_code() == typeid(T).hash_code()));
+		std::vector<T> v = std::vector<T>(width*height * (alpha? 4 : 3));
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, d_fbo);
+		glReadPixels(0, 0, width, height, (alpha? GL_RGBA : GL_RGB), (typeid(byte).hash_code() == typeid(T).hash_code())? GL_UNSIGNED_BYTE : GL_FLOAT, &v[0]);
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+		return v;
+	}
 
 	//void Resize(uint w, uint h);
 	friend class Texture;
@@ -882,13 +911,13 @@ public:
 	SceneObject(Vec3 pos, Quat rot, Vec3 scale);
 	SceneObject(string s, Vec3 pos, Quat rot, Vec3 scale);
 	~SceneObject();
-	bool active;
-	uint childCount;
+	bool active = true;
 	Transform transform;
 
 	void SetActive(bool active, bool enableAll = false);
 
 	SceneObject* parent;
+	uint childCount = 0;
 	std::vector<SceneObject*> children;
 
 	SceneObject* AddChild(SceneObject* child);
@@ -917,10 +946,19 @@ public:
 
 	friend class MeshFilter;
 	friend class Scene;
+	friend class Editor;
+	friend struct Editor_PlaySyncer;
 protected:
+	SceneObject(byte* data);
+
+	static const struct _offset_map {
+		uint name = offsetof(SceneObject, name),
+			transform = offsetof(SceneObject, transform),
+			components = offsetof(SceneObject, _components),
+			children = offsetof(SceneObject, children);
+	} _offsets;
+
 	void Refresh();
 
 	bool _pendingDelete;
 };
-
-#endif

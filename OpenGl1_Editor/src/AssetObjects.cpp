@@ -29,7 +29,7 @@
 
 using namespace ChokoEngine;
 
-#define F2ISTREAM(_varname, _pathname) std::ifstream _f2i_ifstream(_pathname.c_str(), std::ios::in | std::ios::binary); \
+#define F2ISTREAM(_varname, _pathname) std::ifstream _f2i_ifstream((_pathname).c_str(), std::ios::in | std::ios::binary); \
 std::istream _varname(_f2i_ifstream.rdbuf());
 
 std::stringstream StreamFromBuffer(const std::vector<char>& buf) {
@@ -475,11 +475,10 @@ Texture::Texture(const string& path, bool mipmap, TEX_FILTERING filter, byte ani
 	//std::cout << "image loaded: " << width << "x" << height << std::endl;
 }
 
-/*
 Texture::Texture(int i, Editor* e) : AssetObject(ASSETTYPE_TEXTURE) {
-	string p = e->projectFolder + "Assets\\" + e->normalAssets[ASSETTYPE_TEXTURE][i] + ".meta";
-	std::ifstream strm(p, std::ios::in | std::ios::binary);
-	//if (strm.is_open()) {
+	string path = e->projectFolder + "Assets\\" + e->normalAssets[ASSETTYPE_TEXTURE][i] + ".meta";
+	F2ISTREAM(strm, path);
+	if (strm.good()) {
 		byte chn;
 		GLenum rgb = GL_RGB, rgba = GL_RGBA;
 		byte* data;
@@ -489,27 +488,71 @@ Texture::Texture(int i, Editor* e) : AssetObject(ASSETTYPE_TEXTURE) {
 			return;
 		}
 		if (t == TEX_TYPE_RENDERTEXTURE) {
-			((RenderTexture*)this)->Load(e->projectFolder + "Assets\\" + e->normalAssets[ASSETTYPE_TEXTURE][i]);
+			((RenderTexture*)this)->Load(strm);
 			return;
 		}
 		data = new byte[chn*width*height];
 		strm.read((char*)data, chn*width*height);
-		strm.close();
+
+		uint mips = 0;
+		std::vector<RenderTexture*> rts = std::vector<RenderTexture*>();
+		std::vector<Vec2> szs = std::vector<Vec2>();
+		if (_mipmap && _blurmips) {
+			uint width_1 = width, height_1 = height, width_2, height_2;
+
+			ShaderBase shd = ShaderBase(Camera::d_blurProgram);
+			Material mat = Material(&shd);
+
+			rts.push_back(new RenderTexture(width, height, RT_FLAG_NONE, data, (chn==3) ? GL_RGB : GL_RGBA));
+			szs.push_back(Vec2(width, height));
+
+			while (mips < 6 && height_1 > 16) {
+				width_2 = width_1 / 2;
+				height_2 = height_1 / 2;
+
+				mat.SetFloat("mul", 1-mips*0.1f);
+				mat.SetFloat("mul", 1);
+				mat.SetVec2("screenSize", Vec2(width_2, height_2));
+				RenderTexture rx = RenderTexture(width_2, height_2, RT_FLAG_HDR);
+				mat.SetFloat("isY", 0);
+				RenderTexture::Blit(rts[mips], &rx, &mat);
+				rts.push_back(new RenderTexture(width_2, height_2, RT_FLAG_HDR));
+				mat.SetFloat("isY", 1);
+				RenderTexture::Blit(&rx, rts[mips + 1], &mat);
+
+				szs.push_back(Vec2(width_2, height_2));
+				width_1 = width_2 + 0;
+				height_1 = height_2 + 0;
+				mips++;
+			}
+		}
+		
+		//GenECache(data, chn, rgb == GL_RGB, &rts);
 
 		glGenTextures(1, &pointer);
 		glBindTexture(GL_TEXTURE_2D, pointer);
 		if (chn == 3) glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, rgb, GL_UNSIGNED_BYTE, data);
 		else glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, rgba, GL_UNSIGNED_BYTE, data);
-		if (_mipmap) glGenerateMipmap(GL_TEXTURE_2D);
+		if (_mipmap) {
+			if (_blurmips) {
+				for (uint a = 1; a <= mips; a++) {
+					glBindFramebuffer(GL_READ_FRAMEBUFFER, rts[a]->d_fbo);
+					glCopyTexImage2D(GL_TEXTURE_2D, a, GL_RGBA, 0, 0, (GLsizei)szs[a].x, (GLsizei)szs[a].y, 0);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, mips);
+					delete(rts[a]);
+				}
+				
+			}
+			else glGenerateMipmap(GL_TEXTURE_2D);
+		}
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (_mipmap && (_filter == TEX_FILTER_TRILINEAR)) ? GL_LINEAR_MIPMAP_LINEAR : (_filter == TEX_FILTER_POINT) ? GL_NEAREST : GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (_filter == TEX_FILTER_POINT) ? GL_NEAREST : GL_LINEAR);
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, _aniso);
 		glBindTexture(GL_TEXTURE_2D, 0);
 		delete[](data);
 		loaded = true;
-	//}
+	}
 }
-*/
-Texture::Texture(int i, Editor* e) : Texture(std::ifstream(e->projectFolder + "Assets\\" + e->normalAssets[ASSETTYPE_TEXTURE][i] + ".meta", std::ios::in | std::ios::binary), 0) {}
 
 Texture::Texture(std::istream& strm, uint offset) : AssetObject(ASSETTYPE_TEXTURE) {
 	if (strm.good()) {
@@ -539,7 +582,7 @@ Texture::Texture(std::istream& strm, uint offset) : AssetObject(ASSETTYPE_TEXTUR
 			ShaderBase shd = ShaderBase(Camera::d_blurProgram);
 			Material mat = Material(&shd);
 
-			rts.push_back(new RenderTexture(width, height, RT_FLAG_NONE, data, GL_RGBA));
+			rts.push_back(new RenderTexture(width, height, RT_FLAG_NONE, data, (chn==3) ? GL_RGB : GL_RGBA));
 			szs.push_back(Vec2(width, height));
 
 			while (mips < 6 && height_1 > 16) {
@@ -569,7 +612,7 @@ Texture::Texture(std::istream& strm, uint offset) : AssetObject(ASSETTYPE_TEXTUR
 		else glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, rgba, GL_UNSIGNED_BYTE, data);
 		if (_mipmap) {
 			if (_blurmips) {
-				for (uint a = 0; a <= mips; a++) {
+				for (uint a = 1; a <= mips; a++) {
 					glBindFramebuffer(GL_READ_FRAMEBUFFER, rts[a]->d_fbo);
 					glCopyTexImage2D(GL_TEXTURE_2D, a, GL_RGBA, 0, 0, (GLsizei)szs[a].x, (GLsizei)szs[a].y, 0);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, mips);
@@ -586,6 +629,105 @@ Texture::Texture(std::istream& strm, uint offset) : AssetObject(ASSETTYPE_TEXTUR
 		delete[](data);
 		loaded = true;
 	}
+}
+
+Texture::Texture(byte* mem) : AssetObject(ASSETTYPE_TEXTURE) {
+#ifndef IS_EDITOR
+#define RD(tar, sz) memcpy(tar, mem, sz); mem += sz;
+	byte b, mips, chn;
+	GLenum rgb, rgba;
+	RD(&width, 4);
+	RD(&height, 4);
+	RD(&_filter, 1);
+	RD(&_aniso, 1);
+	RD(&b, 1);
+#define SR(n) (!!((b & (1 << n)) >> n))
+	mips = SR(7);
+	_repeat = SR(6);
+	_blurmips = SR(5);
+	chn = 3 + SR(4);
+	rgb = SR(3) ? GL_RGB : GL_BGR;
+	rgba = SR(3) ? GL_RGBA : GL_BGRA;
+
+	glGenTextures(1, &pointer);
+	glBindTexture(GL_TEXTURE_2D, pointer);
+	if (chn == 3) glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, rgb, GL_UNSIGNED_BYTE, mem);
+	else glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, rgba, GL_UNSIGNED_BYTE, mem);
+	mem += width*height*chn;
+	if (_mipmap) {
+		if (_blurmips) {
+			uint w2, h2;
+			for (uint a = 1; a <= mips; a++) {
+				RD(&w2, 4);
+				RD(&h2, 4);
+				if (chn == 3) glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w2, h2, 0, rgb, GL_UNSIGNED_BYTE, mem);
+				else glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w2, h2, 0, rgba, GL_UNSIGNED_BYTE, mem);
+				mem += w2*h2*chn;
+			}
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, mips);
+		}
+		else glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (_mipmap && (_filter == TEX_FILTER_TRILINEAR)) ? GL_LINEAR_MIPMAP_LINEAR : (_filter == TEX_FILTER_POINT) ? GL_NEAREST : GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (_filter == TEX_FILTER_POINT) ? GL_NEAREST : GL_LINEAR);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, _aniso);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	loaded = true;
+#undef SR
+#undef RD
+#endif
+}
+
+void Texture::GenECache(byte* b, byte chn, bool isrgb, std::vector<RenderTexture*>* rts) {
+	/*
+	  width (uint)
+	  height (uint)
+	  filter (byte)
+	  aniso (byte)
+	  [mip repeat blurmip hasA isrgb, 000] (byte)
+	  pixels (byte*w*h)
+	  if blurmip:
+  	    mipcount (byte)
+	    for mips [
+	      width (uint)
+		  height (uint)
+		  pixels (byte*w*h)
+	    ]
+	*/
+#ifdef IS_EDITOR
+#define CPY(mem, sz) memcpy(_eCache + off, mem, sz); off += sz;
+	_eCacheSz = 3;
+	uint off = 1;
+	if (_blurmips) {
+		for (auto& a : *rts) _eCacheSz += 8 + a->width*a->height*4;
+		_eCacheSz++;
+	}
+	else {
+		_eCacheSz += 8 + width*height*chn;
+	}
+	_eCache = (byte*)malloc(_eCacheSz);
+	*_eCache = 255;
+	CPY(&width, 4);
+	CPY(&height, 4);
+	CPY(&_filter, 1);
+	CPY(&_aniso, 1);
+	byte bb = (_mipmap << 7) | (_repeat << 6) | (_blurmips << 5) | (!(chn & 1) << 4) | (isrgb << 3);
+	CPY(&bb, 1);
+	CPY(b, width*height*chn);
+	if (_blurmips) {
+		byte s = rts->size();
+		CPY(&s, 1);
+		for (byte m = 1; m < s; m++) {
+			auto r = (*rts)[m];
+			auto px = r->pixels<byte>(chn == 4);
+			CPY(&r->width, 4);
+			CPY(&r->height, 4);
+			CPY(&px[0], r->width*r->height*chn);
+		}
+	}
+	assert(off == _eCacheSz+1);
+#undef CPY
+#endif
 }
 
 TEX_TYPE Texture::_ReadStrm(Texture* tex, std::istream& strm, byte& chn, GLenum& rgb, GLenum& rgba) {
@@ -710,11 +852,34 @@ void Texture::_ApplyPrefs(const string& p) {
 }
 
 bool Texture::DrawPreview(uint x, uint y, uint w, uint h) {
-	Engine::DrawTexture((float)x, (float)y, (float)w, (float)h, this, DrawTex_Fit);
+	UI::Texture((float)x, (float)y, (float)w, (float)h, this, DrawTex_Fit);
 	return true;
 }
 
 #pragma endregion
+
+#pragma region VideoTexture
+
+string _vt_errtext(int i) {
+	char c[5];
+	*(int*)c = -i;
+	c[4] = 0;
+	return string(c);
+}
+
+VideoTexture::VideoTexture(const string& path) {
+#define fail(msg) {Debug::Warning("VideoTexture", msg); formatContext = nullptr; return;}
+	
+#undef fail
+}
+
+void VideoTexture::GetFrame() {
+	
+	Debug::Warning("VT", "get frame failed!");
+}
+
+#pragma endregion
+
 
 #pragma region Background
 
@@ -966,7 +1131,7 @@ void Background::GenECache(const std::vector<Vec2>& szs, const std::vector<Rende
 	uint off = 1;
 	CPY(&mipn, 1);
 	for (auto& a : rts) {
-		auto px = a->pixels();
+		auto px = a->pixels<float>(false);
 		CPY(&a->width, 4);
 		CPY(&a->height, 4);
 		CPY(&px[0], 4 * a->width*a->height * 3);
@@ -1418,6 +1583,7 @@ void Material::Save(string path) {
 
 void Material::ApplyGL(Mat4x4& _mv, Mat4x4& _p) {
 	if (shader == nullptr || !shader->loaded) {
+		//Debug::Warning("mat", "no shader " + string((shader) ? "()" : ""));
 		glUseProgram(0);
 		return;
 	}

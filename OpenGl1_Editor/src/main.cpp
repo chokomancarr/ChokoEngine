@@ -207,7 +207,6 @@ int main(int argc, char **argv)
 	glutShowWindow();
 	//SetWindowText(editor->hwnd2, TEXT("ChokoEngine"));
 	//AnimateWindow(editor->hwnd2, 300, AW_ACTIVATE | AW_BLEND);
-
 	glutMainLoop();
 	string str;
 	std::getline(std::cin, str);
@@ -348,13 +347,20 @@ void DrawOverlay() {
 	editor->UpdateLerpers();
 	editor->playSyncer.Update();
 	if (editor->backgroundTex != nullptr)
-		Engine::DrawTexture(0, 0, (float)Display::width, (float)Display::height, editor->backgroundTex, editor->backgroundAlpha*0.01f, DrawTex_Crop);
+		UI::Texture(0, 0, (float)Display::width, (float)Display::height, editor->backgroundTex, editor->backgroundAlpha*0.01f, DrawTex_Crop);
 	for (int i = editor->blocks.size() - 1; i >= 0; i--) {
-		if (!editor->blocks[i]->hidden && !(editor->hasMaximize && !editor->blocks[i]->maximize))
+		if (!editor->blocks[i]->hidden && !(editor->hasMaximize && !editor->blocks[i]->maximize)) {
 			editor->blocks[i]->Draw();
+		}
 	}
 	if (editor->dialogBlock) {
 		editor->dialogBlock->Draw();
+	}
+	if (!!(editor->flags & WAITINGPLAYFLAG)) {
+		if (editor->playSyncer.status == Editor_PlaySyncer::EPS_Offline) editor->playSyncer.Connect();
+		else if (editor->playSyncer.status == Editor_PlaySyncer::EPS_Running) editor->playSyncer.Disconnect();
+
+		editor->flags &= ~WAITINGPLAYFLAG;
 	}
 	editor->DrawHandles();
 }
@@ -391,7 +397,7 @@ void TimerGL(int i)
 	PROCESS_MEMORY_COUNTERS pmc;
 	GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc));
 	SIZE_T virtualMemUsedByMe = pmc.WorkingSetSize;
-	string str("ChokoEngine (about " + to_string((byte)round(virtualMemUsedByMe*0.000001f)) + "Mb used, " + to_string(fps) + "fps)");
+	string str("ChokoEngine (about " + to_string((uint)round(virtualMemUsedByMe/1024/1024)) + "Mb used, " + to_string(fps) + "fps)");
 	SetWindowText(editor->hwnd2, str.c_str());
 	fps = 0;
 	//glutPostRedisplay();

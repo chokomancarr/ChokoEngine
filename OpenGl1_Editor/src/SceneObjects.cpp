@@ -13,7 +13,7 @@ bool DrawComponentHeader(Editor* e, Vec4 v, uint pos, Component* c) {
 	if (Engine::EButton((e->editorLayer == 0), v.r, v.g + pos, 16, 16, c->_expanded ? e->collapse : e->expand, white()) == MOUSE_RELEASE) {
 		c->_expanded = !c->_expanded;//hi = !expand;
 	}
-	//Engine::DrawTexture(v.r, v.g + pos, 16, 16, c->_expanded ? e->collapse : e->expand);
+	//UI::Texture(v.r, v.g + pos, 16, 16, c->_expanded ? e->collapse : e->expand);
 	if (Engine::EButton(e->editorLayer == 0, v.r + v.b - 16, v.g + pos, 16, 16, e->buttonX, white(1, 0.7f)) == MOUSE_RELEASE) {
 		//delete
 		c->object->RemoveComponent(c);
@@ -278,7 +278,7 @@ void MeshFilter::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 17, v.b*0.7f, 16, grey1(), ASSETTYPE_MESH, 12, e->font, &_mesh, &_UpdateMesh, this);
 		pos += 34;
 		Engine::Label(v.r + 2, v.g + pos, 12, "Show Bounding Box", e->font, white());
-		showBoundingBox = Engine::DrawToggle(v.r + v.b*0.3f, v.g + pos, 12, e->checkbox, showBoundingBox, white(), ORIENT_HORIZONTAL);
+		showBoundingBox = Engine::Toggle(v.r + v.b*0.3f, v.g + pos, 12, e->checkbox, showBoundingBox, white(), ORIENT_HORIZONTAL);
 		pos += 17;
 	}
 	else pos += 17;
@@ -410,14 +410,14 @@ void MeshRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 				pos += 17;
 				if (materials[a]->_maskExpanded) {
 					for (uint ea = 0; ea < GBUFFER_NUM_TEXTURES - 1; ea++) {
-						materials[a]->writeMask[ea] = Engine::DrawToggle(v.r + 17, v.g + pos, 16, e->checkbox, materials[a]->writeMask[ea], white(), ORIENT_HORIZONTAL);
+						materials[a]->writeMask[ea] = Engine::Toggle(v.r + 17, v.g + pos, 16, e->checkbox, materials[a]->writeMask[ea], white(), ORIENT_HORIZONTAL);
 						Engine::Label(v.r + 38, v.g + pos, 12, Camera::_gbufferNames[ea], e->font, white());
 						pos += 17;
 					}
 				}
 				for (uint q = 0, qq = materials[a]->valOrders.size(); q < qq; q++) {
 					Engine::Label(v.r + 20, v.g + pos, 12, materials[a]->valNames[materials[a]->valOrders[q]][materials[a]->valOrderIds[q]], e->font, white());
-					Engine::DrawTexture(v.r + 3, v.g + pos, 16, 16, e->matVarTexs[materials[a]->valOrders[q]]);
+					UI::Texture(v.r + 3, v.g + pos, 16, 16, e->matVarTexs[materials[a]->valOrders[q]]);
 					void* bbs = materials[a]->vals[materials[a]->valOrders[q]][materials[a]->valOrderGLIds[q]];
 					switch (materials[a]->valOrders[q]) {
 					case SHADER_INT:
@@ -659,7 +659,7 @@ void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 		cookieStrength = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 1, cookieStrength, grey1(), white());
 		pos += 17;
 		Engine::Label(v.r + 2, v.g + pos, 12, "square shape", e->font, white());
-		square = Engine::DrawToggle(v.r + v.b * 0.3f, v.g + pos, 12, e->checkbox, square, white(), ORIENT_HORIZONTAL);
+		square = Engine::Toggle(v.r + v.b * 0.3f, v.g + pos, 12, e->checkbox, square, white(), ORIENT_HORIZONTAL);
 		pos += 17;
 		if (_lightType != LIGHTTYPE_DIRECTIONAL) {
 			if (Engine::EButton(e->editorLayer == 0, v.r, v.g + pos, v.b * 0.5f - 1, 16, (!drawShadow) ? white(1, 0.5f) : grey1(), "No Shadow", 12, e->font, white()) == MOUSE_RELEASE)
@@ -680,7 +680,7 @@ void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 				pos += 17;
 
 				Engine::Label(v.r + 2, v.g + pos, 12, "Contact Shadows", e->font, white());
-				contactShadows = Engine::DrawToggle(v.r + v.b * 0.3f, v.g + pos, 16, e->checkbox, contactShadows, white(), ORIENT_HORIZONTAL);
+				contactShadows = Engine::Toggle(v.r + v.b * 0.3f, v.g + pos, 16, e->checkbox, contactShadows, white(), ORIENT_HORIZONTAL);
 				pos += 17;
 				if (contactShadows) {
 					Engine::Label(v.r + 2, v.g + pos, 12, "  samples", e->font, white());
@@ -1238,11 +1238,18 @@ void SceneScript::Parse(string s, Editor* e) {
 
 
 //-----------------transform class-------------------
+Transform::_offset_map Transform::_offsets = {};
+
 Transform::Transform(SceneObject* sc, Vec3 pos, Quat rot, Vec3 scl) : object(sc), _rotation(rot) {
 	Translate(pos)->Scale(scl);
 	_UpdateEuler();
 	_UpdateLMatrix();
 }
+
+Transform::Transform(SceneObject* sc, byte* data) :
+	Transform(sc, *((Vec3*)(data + Transform::_offsets.position)), 
+		*((Quat*)(data + Transform::_offsets.rotation)), 
+		*((Vec3*)(data + Transform::_offsets.scale))) {}
 
 const Vec3 Transform::worldPosition() {
 	Vec4 v = _worldMatrix * Vec4(0, 0, 0, 1);
@@ -1342,13 +1349,15 @@ Transform* Transform::Scale(Vec3 v) {
 }
 
 
+SceneObject::_offset_map SceneObject::_offsets = {};
+
 SceneObject::SceneObject() : SceneObject(Vec3(), Quat(), Vec3(1, 1, 1)) {}
 SceneObject::SceneObject(string s) : SceneObject(s, Vec3(), Quat(), Vec3(1, 1, 1)) {}
-SceneObject::SceneObject(Vec3 pos, Quat rot, Vec3 scale) : SceneObject("New Object", Vec3(), Quat(), Vec3(1, 1, 1)) {}
-SceneObject::SceneObject(string s, Vec3 pos, Quat rot, Vec3 scale) : active(true), transform(this, pos, rot, scale), childCount(0), _expanded(true), Object(s) {
+SceneObject::SceneObject(Vec3 pos, Quat rot, Vec3 scale) : SceneObject("New Object", pos, rot, scale) {}
+SceneObject::SceneObject(string s, Vec3 pos, Quat rot, Vec3 scale) : transform(this, pos, rot, scale), _expanded(true), Object(s) {
 	id = Engine::GetNewId();
-	
 }
+SceneObject::SceneObject(byte* data) : transform(this, data + SceneObject::_offsets.transform), _expanded(true), Object(string((char*)data + SceneObject::_offsets.name)) {}
 
 SceneObject::~SceneObject() {
 	for (Component* c : _components)

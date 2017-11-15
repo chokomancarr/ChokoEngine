@@ -394,7 +394,7 @@ bool DrawFileRect(float w, float h, float size, EB_Browser_File* file, EditorBlo
 	}
 	else {
 		if (file->thumbnail >= 0)
-			Engine::DrawTexture(w + 1, h + 1, size - 2, size - 2, e->editor->assetIcons[file->thumbnail]);
+			UI::Texture(w + 1, h + 1, size - 2, size - 2, e->editor->assetIcons[file->thumbnail]);
 		else
 			Engine::DrawQuad(w + 1, h + 1, size - 2, size - 2, grey2());
 	}
@@ -1033,7 +1033,7 @@ loaded = true;
 */
 
 void EBI_DrawObj(Vec4 v, Editor* editor, EB_Inspector* b, SceneObject* o) {
-	Engine::DrawTexture(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 18, 18, editor->object);
+	UI::Texture(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 18, 18, editor->object);
 	Engine::EButton((editor->editorLayer == 0), v.r + 20, v.g + 2 + EB_HEADER_SIZE, v.b - 21, 18, grey2());
 	Engine::Label(v.r + 22, v.g + 3 + EB_HEADER_SIZE, 12, o->name, editor->font, white());
 
@@ -1055,17 +1055,17 @@ void EBI_DrawObj(Vec4 v, Editor* editor, EB_Inspector* b, SceneObject* o) {
 void EBI_DrawAss_Tex(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 	Texture* tex = (Texture*)editor->selectedFileCache;
 	float sz = min(v.b - 2.0f, clamp((float)max(tex->width, tex->height), 16.0f, editor->_maxPreviewSize));
-	Engine::DrawTexture(v.r + 1 + 0.5f*(v.b - sz), off + 15, sz, sz, tex, DrawTex_Fit, b->previewMip);
+	UI::Texture(v.r + 1 + 0.5f*(v.b - sz), off + 15, sz, sz, tex, DrawTex_Fit, b->previewMip);
 	if (tex->_mipmap) {
-		Engine::DrawTexture(v.r + 2, off + sz + 17, 16, 16, editor->mipLow);
-		Engine::DrawTexture(v.r + v.b - 18, off + sz + 17, 16, 16, editor->mipHigh);
+		UI::Texture(v.r + 2, off + sz + 17, 16, 16, editor->mipLow);
+		UI::Texture(v.r + v.b - 18, off + sz + 17, 16, 16, editor->mipHigh);
 		b->previewMip = Engine::DrawSliderFill(v.r + 19, off + sz + 17, v.b - 37, 16, 0, 6, b->previewMip, grey2(), white());
 		off += 17;
 	}
-	tex->_mipmap = Engine::DrawToggle(v.r + 2, off + sz + 17, 14, editor->checkbox, tex->_mipmap, white(), ORIENT_HORIZONTAL);
+	tex->_mipmap = Engine::Toggle(v.r + 2, off + sz + 17, 14, editor->checkbox, tex->_mipmap, white(), ORIENT_HORIZONTAL);
 	Engine::Label(v.r + 18, off + sz + 18, 12, "Use Mipmaps", editor->font, white());
 	if (tex->_mipmap) {
-		tex->_blurmips = Engine::DrawToggle(v.r + v.b*0.5f, off + sz + 17, 14, editor->checkbox, tex->_blurmips, white(), ORIENT_HORIZONTAL);
+		tex->_blurmips = Engine::Toggle(v.r + v.b*0.5f, off + sz + 17, 14, editor->checkbox, tex->_blurmips, white(), ORIENT_HORIZONTAL);
 		Engine::Label(v.r + v.b*0.5f + 16, off + sz + 18, 12, "Blur", editor->font, white());
 	}
 	Engine::Label(v.r + 18, off + sz + 33, 12, "Filtering", editor->font, white());
@@ -1087,7 +1087,7 @@ void EBI_DrawAss_Mat(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 	off += 34;
 	for (uint q = 0, qq = mat->valOrders.size(); q < qq; q++) {
 		int r = 0;
-		Engine::DrawTexture(v.r + 2, off, 16, 16, editor->matVarTexs[mat->valOrders[q]]);
+		UI::Texture(v.r + 2, off, 16, 16, editor->matVarTexs[mat->valOrders[q]]);
 		Engine::Label(v.r + 19, off + 2, 12, mat->valNames[mat->valOrders[q]][mat->valOrderIds[q]], editor->font, white());
 		void* bbs = mat->vals[mat->valOrders[q]][mat->valOrderGLIds[q]];
 		assert(bbs != nullptr);
@@ -1103,7 +1103,7 @@ void EBI_DrawAss_Mat(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 			float ti = 32;// max(min(ceil(v.b*0.3f - 12), 64), 32);
 			editor->DrawAssetSelector(v.r + 19, off + 16, v.b - ti - 21, 16, grey1(), ASSETTYPE_TEXTURE, 12, editor->font, id, &Material::_UpdateTexCache, mat);
 			if (*id > -1)
-				Engine::DrawTexture(v.r + v.b - ti - 1, off, ti, ti, _GetCache<Texture>(ASSETTYPE_TEXTURE, *id));
+				UI::Texture(v.r + v.b - ti - 1, off, ti, ti, _GetCache<Texture>(ASSETTYPE_TEXTURE, *id));
 			else
 				Engine::DrawQuad(v.r + v.b - ti - 1, off, ti, ti, grey1());
 			off += ti - 16;
@@ -1122,8 +1122,8 @@ void EBI_DrawAss_Hdr(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 	float y = off + 15;
 	float w2h = ((float)tex->width) / tex->height;
 	Engine::DrawQuad(x, y, sz, sz / w2h, (tex->loaded) ? tex->pointer : Engine::fallbackTex->pointer, b->previewMip);
-	Engine::DrawTexture(v.r + 2, off + sz + 17, 16, 16, editor->mipLow);
-	Engine::DrawTexture(v.r + v.b - 18, off + sz + 17, 16, 16, editor->mipHigh);
+	UI::Texture(v.r + 2, off + sz + 17, 16, 16, editor->mipLow);
+	UI::Texture(v.r + v.b - 18, off + sz + 17, 16, 16, editor->mipHigh);
 	b->previewMip = Engine::DrawSliderFill(v.r + 19, off + sz + 17, v.b - 37, 16, 0, 6, b->previewMip, grey2(), white());
 	off += sz + 63;
 }
@@ -1153,7 +1153,7 @@ void EB_Inspector::Draw() {
 		nm = (lockGlobal == 1) ? lockedObj->name : (lockGlobal == 2) ? "Scene settings" : "No object selected";
 	else
 		nm = (editor->selected != nullptr) ? editor->selected->name : editor->selectGlobal ? "Scene settings" : "No object selected";
-	lock = Engine::DrawToggle(v.r + v.b - EB_HEADER_PADDING - EB_HEADER_SIZE - 2, v.g, EB_HEADER_SIZE, editor->keylock, lock, lock ? Vec4(1, 1, 0, 1) : white(0.5f), ORIENT_HORIZONTAL);
+	lock = Engine::Toggle(v.r + v.b - EB_HEADER_PADDING - EB_HEADER_SIZE - 2, v.g, EB_HEADER_SIZE, editor->keylock, lock, lock ? Vec4(1, 1, 0, 1) : white(0.5f), ORIENT_HORIZONTAL);
 	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
 	if (!lock) {
 		lockGlobal = 0;
@@ -1353,7 +1353,7 @@ void EB_AnimEditor::Draw() {
 			Engine::EButton(editor->editorLayer == 0, poss.x + scl * 34, poss.y + scl * 2, scl * 284, scl * 28, grey1(), state->name, scl * 24, editor->font, white());
 			if (state->editorExpand) {
 				Engine::DrawQuad(poss.x, poss.y + scl * 32, scl * 320, (state->isBlend && state->editorShowGraph)? scl*320 : scl * 256, grey1());
-				state->isBlend = Engine::DrawToggle(poss.x + scl * 6, poss.y + scl * 34, scl * 28, editor->checkbox, state->isBlend, white(), ORIENT_HORIZONTAL);
+				state->isBlend = Engine::Toggle(poss.x + scl * 6, poss.y + scl * 34, scl * 28, editor->checkbox, state->isBlend, white(), ORIENT_HORIZONTAL);
 				Engine::Label(poss.x + scl * 36, poss.y + scl * 36, scl * 24, "Blending", editor->font, white());
 				float off = poss.y + scl * 64;
 				if (state->isBlend) {
@@ -1538,6 +1538,28 @@ bool EPS_RWMem(bool write, Editor_PlaySyncer* syncer, T* val, uint loc, ulong sz
 	}
 	else return true;
 }
+/*
+uint vecsize;
+vector<T> vec; vec->[iterator??][pointer to first element]
+*/
+template <typename T>
+bool EPS_ReadVec(std::vector<T>& vec, uint& sz, Editor_PlaySyncer* syncer, uint loc) {
+	assert(!!loc);
+	uint loc2 = 0;
+	if (!EPS_RWMem(false, syncer, &sz, loc - 4)) return false;
+	vec.resize(sz);
+	if (!sz) return true;
+	if (!EPS_RWMem(false, syncer, &loc2, loc)) return false;
+	return (EPS_RWMem(false, syncer, &vec[0], loc2, sizeof(T) * sz));
+}
+
+bool EPS_ReadStr(std::string* str, Editor_PlaySyncer* syncer, uint loc, ushort maxSz = 100) {
+	char *cc = new char[maxSz];
+	if (!EPS_RWMem(false, syncer, cc, loc, maxSz)) return false;
+	str = new string(cc);
+	delete[](cc);
+	return true;
+}
 
 void Editor_PlaySyncer::Update() {
 #ifdef IS_EDITOR
@@ -1564,7 +1586,6 @@ void Editor_PlaySyncer::Update() {
 				if (!EPS_RWMem(false, this, &pointers, pointerLoc)) return;
 				Debug::Message("Player", "writing screen size to " + std::to_string((uint)pointers.screenSizeLoc));
 				uint sz = (playH << 16) + playW;
-				SIZE_T c;
 				if (!EPS_RWMem(true, this, &sz, pointers.screenSizeLoc)) return;
 				
 				eCacheSzLocs = std::vector<uint>(AssetManager::dataECacheIds.size());
@@ -1581,6 +1602,13 @@ void Editor_PlaySyncer::Update() {
 
 				syncStatus = 1;
 				if (!EPS_RWMem(true, this, &syncStatus, pointers.statusLoc)) return;
+
+				//update all offsets
+				if (!EPS_RWMem(false, this, &offsets, pointers.offsetsLoc)) return;
+				if (!EPS_RWMem(false, this, &Scene::_offsets, offsets.scene)) return;
+				if (!EPS_RWMem(false, this, &Transform::_offsets, offsets.transform)) return;
+				if (!EPS_RWMem(false, this, &SceneObject::_offsets, offsets.sceneobject)) return;
+
 				timer = 0.1f;
 			}
 			else if (syncStatus == 1) {
@@ -1627,6 +1655,10 @@ void Editor_PlaySyncer::Update() {
 				if (!EPS_RWMem(false, this, &hasData, pointers.hasDataLoc)) return;
 				if (hasData) {
 					auto e = Editor::instance;
+					//scene data
+					SyncScene();
+
+					//screen output
 					input._mousePos.x = playW*(Input::mousePos.x - Display::width*e->xPoss[previewer->x1]) / (Display::width*(e->xPoss[previewer->x2] - e->xPoss[previewer->x1]));
 					input._mousePos.y = playH*(Input::mousePos.y - Display::height*e->yPoss[previewer->y1] - EB_HEADER_SIZE - 1) / (Display::height*(e->yPoss[previewer->y2] - e->yPoss[previewer->y1]) - EB_HEADER_SIZE - 1);
 					input._mouse0 = Input::mouse0;
@@ -1665,6 +1697,36 @@ void Editor_PlaySyncer::Update() {
 		break;
 	}
 #endif
+}
+
+bool Editor_PlaySyncer::DoSyncObj(const std::vector<uint>& locs, const uint sz, std::vector<SceneObject*>& objs) {
+	objs.reserve(sz);
+	objs.clear();
+	for (uint i = 0; i < sz; i++) {
+		byte dat[sizeof(SceneObject)];
+		if (!EPS_RWMem(false, this, dat, locs[i], sizeof(SceneObject))) return false;
+		SceneObject* obj = new SceneObject(dat);
+		objs.push_back(obj);
+		//obj->_componentCount = *((int*)(dat + SceneObject::_offsets.components) - 1);
+
+		obj->childCount = *((uint*)(dat + SceneObject::_offsets.children) - 1);
+		if (!obj->childCount) continue;
+		std::vector<uint> locs2(obj->childCount);
+		if (!EPS_RWMem(false, this, &locs2[0], *((uint*)(dat + SceneObject::_offsets.children)), 4*obj->childCount)) return false;
+		DoSyncObj(locs2, obj->childCount, obj->children);
+	}
+	return true;
+}
+
+bool Editor_PlaySyncer::SyncScene() {
+	if (!EPS_RWMem(false, this, &pointers.sceneLoc, pointerLoc + offsetof(_PipeModeObj, sceneLoc))) return false;
+	for (auto a : syncedScene) delete(a);
+	syncedScene.clear();
+	std::vector<uint> locs; //SceneObject*
+	if (!EPS_ReadVec(locs, syncedSceneSz, this, pointers.sceneLoc + Scene::_offsets.objs)) return false;
+	if (!DoSyncObj(locs, syncedSceneSz, syncedScene)) return false;
+	bool a = true;
+	return true;
 }
 
 bool Editor_PlaySyncer::Connect() {
@@ -2069,6 +2131,7 @@ void Editor::LoadDefaultAssets() {
 	globalShorts.emplace(GetShortcutInt(Key_O, Key_Control), &OpenScene);
 	globalShorts.emplace(GetShortcutInt(Key_X, Key_Control), &DeleteActive);
 	//globalShorts.emplace(GetShortcutInt(Key_Space, Key_Shift), &Maximize);
+	globalShorts.emplace(GetShortcutInt(Key_P, Key_Control), &TogglePlay);
 
 	assetTypes.emplace("scene", ASSETTYPE_SCENE);
 	assetTypes.emplace("mesh", ASSETTYPE_MESH);
@@ -2539,9 +2602,9 @@ dh = 1.0f / Display::height;
 			int offy = 18;
 
 			Engine::Label(Display::width*0.1f + 10, Display::height*0.1f + offy, 21, "Viewer settings", font, white());
-			_showGrid = Engine::DrawToggle(Display::width*0.1f + 12, Display::height*0.1f + offy + 26, 14, checkbox, _showGrid, white(), ORIENT_HORIZONTAL);
+			_showGrid = Engine::Toggle(Display::width*0.1f + 12, Display::height*0.1f + offy + 26, 14, checkbox, _showGrid, white(), ORIENT_HORIZONTAL);
 			Engine::Label(Display::width*0.1f + 30, Display::height*0.1f + offy + 28, 12, "Show grid", font, white());
-			_mouseJump = Engine::DrawToggle(Display::width*0.1f + 12, Display::height*0.1f + offy + 46, 14, checkbox, _mouseJump, white(), ORIENT_HORIZONTAL);
+			_mouseJump = Engine::Toggle(Display::width*0.1f + 12, Display::height*0.1f + offy + 46, 14, checkbox, _mouseJump, white(), ORIENT_HORIZONTAL);
 			Engine::Label(Display::width*0.1f + 30, Display::height*0.1f + offy + 48, 12, "Mouse stay inside window", font, white());
 
 			offy = 100;
@@ -2560,7 +2623,7 @@ dh = 1.0f / Display::height;
 			Engine::Label(Display::width*0.1f + 10, Display::height*0.1f + offy, 21, "Build settings", font, white());
 			Engine::Label(Display::width*0.1f + 10, Display::height*0.1f + offy + 28, 12, "Data bundle size (x100Mb)", font, white());
 			Engine::Button(Display::width*0.1f + 200, Display::height*0.1f + offy + 25, 70, 16, grey2(), to_string(_assetDataSize), 12, font, white());
-			_cleanOnBuild = Engine::DrawToggle(Display::width*0.1f + 12, Display::height*0.1f + offy + 46, 14, checkbox, _cleanOnBuild, white(), ORIENT_HORIZONTAL);
+			_cleanOnBuild = Engine::Toggle(Display::width*0.1f + 12, Display::height*0.1f + offy + 46, 14, checkbox, _cleanOnBuild, white(), ORIENT_HORIZONTAL);
 			Engine::Label(Display::width*0.1f + 30, Display::height*0.1f + offy + 48, 12, "Remove visual studio files on build", font, white());
 		}
 		else if (editorLayer == 6) {
@@ -2582,7 +2645,7 @@ dh = 1.0f / Display::height;
 			Engine::Label(Display::width*0.2f + 15, Display::height*0.2f + 35, 12, "Included scenes: " + to_string(sz), font, white());
 			Engine::DrawQuad(Display::width*0.2f + 12, Display::height*0.2f + 50, Display::width*0.3f, 306, white(0.05f));
 			for (uint a = 0; a < sz; a++) {
-				includedScenesUse[a] = Engine::DrawToggle(Display::width*0.2f + 14, Display::height*0.2f + 51 + a*15, 14, checkbox, includedScenesUse[a], white(), ORIENT_HORIZONTAL);
+				includedScenesUse[a] = Engine::Toggle(Display::width*0.2f + 14, Display::height*0.2f + 51 + a*15, 14, checkbox, includedScenesUse[a], white(), ORIENT_HORIZONTAL);
 				Engine::Label(Display::width*0.2f + 30, Display::height*0.2f + 52 + a*15, 12, includedScenes[a], font, white());
 			}
 

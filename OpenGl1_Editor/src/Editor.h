@@ -1,11 +1,6 @@
+#pragma once
+
 #include "Defines.h"
-
-//#ifndef IS_EDITOR
-//#error Editor inclusion is not allowed in game
-//#endif
-
-#ifndef EDITOR_H
-#define EDITOR_H
 #include "Engine.h"
 
 using namespace ChokoEngine;
@@ -377,6 +372,7 @@ class yPossMerger;
 
 #define WAITINGBUILDSTARTFLAG 1U
 #define WAITINGREFRESHFLAG 2U
+#define WAITINGPLAYFLAG 4U
 
 struct Editor_PlaySyncer {
 	enum Editor_PlaySyncerStatus { //okbit = 1
@@ -400,8 +396,17 @@ struct Editor_PlaySyncer {
 			mousePosLoc,
 			keyboardLoc,
 			assetCacheLoc, //std::vector<uint>
-			assetCacheSzLoc;
+			assetCacheSzLoc,
+			sceneLoc,
+			offsetsLoc;
 	} pointers;
+	struct _PipeModeOffsets { //pointer to _offsets struct
+		uint scene = offsetof(Scene, _offsets),
+			transform = offsetof(Transform, _offsets),
+			sceneobject = offsetof(SceneObject, _offsets);
+	} offsets;
+	std::vector<SceneObject*> syncedScene;
+	uint syncedSceneSz;
 	uint pointerLoc;
 	int playW, playH;
 	float timer;
@@ -411,6 +416,7 @@ struct Editor_PlaySyncer {
 	std::vector<uint> eCacheLocs, eCacheSzLocs;
 
 	void Update();
+	bool SyncScene(), DoSyncObj(const std::vector<uint>& locs, const uint sz, std::vector<SceneObject*>& objs);
 	bool Connect(), Disconnect(), Terminate();
 	bool Resize(int w, int h), ReloadTex();
 	byte* pixels;
@@ -631,6 +637,7 @@ public:
 	static void DeleteActive(Editor* e);
 	static void DoDeleteActive(EditorBlock* b);
 	static void Maximize(Editor* e);
+	static void TogglePlay(Editor* e);
 
 	void DoCompile();
 
@@ -705,5 +712,3 @@ public:
 		}
 	}
 };
-
-#endif

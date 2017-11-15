@@ -454,6 +454,8 @@ std::vector<std::ifstream*> Engine::assetStreams = std::vector<std::ifstream*>()
 std::unordered_map<byte, std::vector<string>> Engine::assetData = std::unordered_map<byte, std::vector<string>>();
 //std::unordered_map<string, byte[]> Engine::assetDataLoaded = std::unordered_map<string, byte[]>();
 
+size_t Engine::_mainThreadId = 0;
+
 bool Engine::LoadDatas(string path) {
 	std::ifstream* d0 = new std::ifstream(path + "\\data0");
 	assetStreams.push_back(d0);
@@ -498,25 +500,33 @@ void Engine::EndStencil() {
 	stencilRect = nullptr;
 }
 
-void Engine::DrawTexture(float x, float y, float w, float h, Texture* texture, DrawTex_Scaling scl, float miplevel) {
-	DrawTexture(x, y, w, h, texture, white(), scl, miplevel);
+
+bool UI::_isDrawingLoop = false;
+int UI::_activeEditText = 0;
+
+bool UI::CanDraw() {
+	return (std::this_thread::get_id().hash() == Engine::_mainThreadId) && _isDrawingLoop;
 }
-void Engine::DrawTexture(float x, float y, float w, float h, Texture* texture, float alpha, DrawTex_Scaling scl, float miplevel) {
-	DrawTexture(x, y, w, h, texture, white(alpha), scl, miplevel);
+
+void UI::Texture(float x, float y, float w, float h, ::Texture* texture, DrawTex_Scaling scl, float miplevel) {
+	UI::Texture(x, y, w, h, texture, white(), scl, miplevel);
 }
-void Engine::DrawTexture(float x, float y, float w, float h, Texture* texture, Vec4 tint, DrawTex_Scaling scl, float miplevel) {
+void UI::Texture(float x, float y, float w, float h, ::Texture* texture, float alpha, DrawTex_Scaling scl, float miplevel) {
+	UI::Texture(x, y, w, h, texture, white(alpha), scl, miplevel);
+}
+void UI::Texture(float x, float y, float w, float h, ::Texture* texture, Vec4 tint, DrawTex_Scaling scl, float miplevel) {
 	GLuint tex = (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer;
 	if (scl == DrawTex_Stretch)
-		DrawQuad(x, y, w, h, tex, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint, miplevel);
+		Engine::DrawQuad(x, y, w, h, tex, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint, miplevel);
 	else if (scl == DrawTex_Fit) {
 		float w2h = ((float)texture->width) / texture->height;
 		if (w / h > w2h)
-			DrawQuad(x + 0.5f*(w - h*w2h), y, h*w2h, h, tex, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint, miplevel);
+			Engine::DrawQuad(x + 0.5f*(w - h*w2h), y, h*w2h, h, tex, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint, miplevel);
 		else
-			DrawQuad(x, y + 0.5f*(h - w / w2h), w, w / w2h, tex, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint, miplevel);
+			Engine::DrawQuad(x, y + 0.5f*(h - w / w2h), w, w / w2h, tex, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint, miplevel);
 	}
 	else {
-		DrawQuad(x, y, w, h, tex, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint, miplevel);
+		Engine::DrawQuad(x, y, w, h, tex, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint, miplevel);
 	}
 }
 
@@ -731,13 +741,13 @@ byte Engine::EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4
 	return b;
 }
 
-bool Engine::DrawToggle(float x, float y, float s, Vec4 col, bool t) {
+bool Engine::Toggle(float x, float y, float s, Vec4 col, bool t) {
 	byte b = Button(x, y, s, s, col);
 	if (b == MOUSE_RELEASE)
 		t = !t;
 	return t;
 }
-bool Engine::DrawToggle(float x, float y, float s, Texture* texture, bool t, Vec4 col, ORIENTATION o) {
+bool Engine::Toggle(float x, float y, float s, Texture* texture, bool t, Vec4 col, ORIENTATION o) {
 	byte b;
 	if (o == 0)
 		b = Button(x, y, s, s, texture, col, LerpVec4(col, white(), 0.5f), LerpVec4(col, black(), 0.5f));
@@ -1885,6 +1895,8 @@ void Scene::Unload() {
 	
 }
 
+Scene::_offset_map Scene::_offsets = {};
+
 Scene::Scene(std::ifstream& stream, long pos) : sceneName("") {
 	Debug::Message("SceneLoader", "Begin Loading Scene...");
 	std::vector<SceneObject*>().swap(objects);
@@ -1910,6 +1922,7 @@ Scene::Scene(std::ifstream& stream, long pos) : sceneName("") {
 	while (!stream.eof() && o == 'O') {
 		SceneObject* sc = new SceneObject();
 		objects.push_back(sc);
+		objectCount++;
 		Deserialize(stream, sc);
 		sc->Refresh();
 		stream >> o;
@@ -1931,8 +1944,10 @@ Scene::~Scene() {
 void Scene::AddObject(SceneObject* object, SceneObject* parent) {
 	if (active == nullptr)
 		return;
-	if (parent == nullptr)
+	if (parent == nullptr) {
 		active->objects.push_back(object);
+		active->objectCount++;
+	}
 	else
 		parent->AddChild(object);
 }
