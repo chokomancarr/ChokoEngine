@@ -1041,7 +1041,11 @@ void Camera::RenderLights(GLuint targetFbo) {
 	Mat4x4 mat = glm::inverse(GetMatrix(GL_PROJECTION_MATRIX));
 	_RenderSky(mat, d_texs, d_depthTex); //wont work well on ortho, will it?
 	//glViewport(v.r, Display::height - v.g - v.a, v.b, v.a - EB_HEADER_SIZE - 2);
+<<<<<<< HEAD
 	_DrawLights(Scene::active->objects, mat);
+=======
+	//_DrawLights(Scene::active->objects, mat);
+>>>>>>> 88dac509b89225746d145509ec888b001c1204f3
 	//glViewport(0, 0, Display::width, Display::height);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	//*/

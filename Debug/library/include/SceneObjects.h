@@ -299,6 +299,7 @@ protected:
 	bool DrawPreview(uint x, uint y, uint w, uint h) override;
 	
 	void GenECache(byte* dat, byte chn, bool isrgb, std::vector<RenderTexture*>* rts);
+<<<<<<< HEAD
 };
 
 class VideoTexture : public Texture {
@@ -311,6 +312,8 @@ public:
 	byte* buffer = 0;
 
 	void GetFrame();
+=======
+>>>>>>> 88dac509b89225746d145509ec888b001c1204f3
 };
 
 enum RT_FLAGS : byte {
