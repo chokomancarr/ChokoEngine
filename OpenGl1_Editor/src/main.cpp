@@ -68,6 +68,8 @@ int main(int argc, char **argv)
 	path = argv[0];
 	//signal(SIGABRT, &abort_func);
 
+	UI::EditText(0, 0, 0, 0, 0, "", 0, Vec4());
+
 	editor = new Editor();
 	editor->hwnd = GetForegroundWindow();
 	editor->dataPath = path.substr(0, path.find_last_of('\\') + 1);

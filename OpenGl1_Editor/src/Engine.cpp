@@ -502,7 +502,64 @@ void Engine::EndStencil() {
 
 
 bool UI::_isDrawingLoop = false;
-int UI::_activeEditText = 0;
+uint UI::_activeEditText[UI_MAX_EDIT_TEXT_FRAMES] = {};
+uint UI::_lastEditText[UI_MAX_EDIT_TEXT_FRAMES] = {};
+uint UI::_editingEditText[UI_MAX_EDIT_TEXT_FRAMES] = {};
+ushort UI::_activeEditTextId = 0;
+ushort UI::_editingEditTextId = 0;
+uint UI::drawFuncLoc = 0;
+
+void UI_Trace(uint fpar, uint numb, uint* tar) {
+	byte p = 0;
+	uint oldebx = 0;
+	uint par;
+	__asm {
+		mov oldebx, ebp
+	}
+	for (uint a = 0; a < numb; a++) { //skip numb frames
+		__asm {
+			//go up 1 ebx
+			mov ebx, oldebx
+			mov ebx, [ebx]
+			mov oldebx, ebx
+		}
+	}
+	while (p < UI_MAX_EDIT_TEXT_FRAMES) {
+		__asm {
+			mov ebx, oldebx
+			mov ebx, [ebx + 4]
+			mov par, ebx
+		}
+		tar[p] = par;
+		if (par == fpar) return;
+		__asm {
+			mov ebx, oldebx
+			mov ebx, [ebx]
+			mov oldebx, ebx
+		}
+		p++;
+	}
+}
+
+bool UI_Same_Id(uint* left, uint* right) {
+	for (byte a = 0; a < UI_MAX_EDIT_TEXT_FRAMES; a++) {
+		if (left[a] != right[a]) return false;
+	}
+	return true;
+}
+
+void UI::GetEditTextId() {
+	SecureZeroMemory(_activeEditText, UI_MAX_EDIT_TEXT_FRAMES * 4);
+	UI_Trace(drawFuncLoc, 2, _activeEditText);
+	if (UI_Same_Id(_activeEditText, _lastEditText)) _activeEditTextId++;
+	else _activeEditTextId = 0;
+
+	memcpy(_lastEditText, _activeEditText, UI_MAX_EDIT_TEXT_FRAMES * 4);
+}
+
+bool UI::IsActiveEditText() {
+	return false;
+}
 
 bool UI::CanDraw() {
 	return (std::this_thread::get_id().hash() == Engine::_mainThreadId) && _isDrawingLoop;
@@ -529,6 +586,15 @@ void UI::Texture(float x, float y, float w, float h, ::Texture* texture, Vec4 ti
 		Engine::DrawQuad(x, y, w, h, tex, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint, miplevel);
 	}
 }
+
+string UI::EditText(float x, float y, float w, float h, float s, string str, Font* font, Vec4 col) {
+	GetEditTextId();
+
+
+	// (ry
+	return str;
+}
+
 
 void Engine::Label(float x, float y, float s, string st, Font* font) {
 	Label(x, y, s, st, font, Vec4(0, 0, 0, 1));

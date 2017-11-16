@@ -29,7 +29,7 @@ extern bool _pipemode;
 #pragma region asm_related_functions
 
 #ifdef __MSVC_RUNTIME_CHECKS
-#define __asmloc_offset 7 //this is wrong
+#error don't do runtime checks, it will ruin the stack-tracer (for now)
 #else
 #define __asmloc_offset 0
 #endif
@@ -204,7 +204,26 @@ class Editor;
 class EditorBlock;
 class EB_Inspector;
 
-typedef unsigned char ASSETTYPE;
+//typedef unsigned char ASSETTYPE;
+enum ASSETTYPE : byte {
+	ASSETTYPE_UNDEF = 0x00,
+
+	ASSETTYPE_SCENE = 0x90,
+	ASSETTYPE_TEXTURE = 0x01,
+	ASSETTYPE_HDRI = 0x02,
+	ASSETTYPE_TEXCUBE = 0x03,
+	ASSETTYPE_SHADER = 0x05,
+	ASSETTYPE_MATERIAL = 0x10,
+	ASSETTYPE_BLEND = 0x20,
+	ASSETTYPE_MESH = 0x21,
+	ASSETTYPE_ANIMCLIP = 0x30,
+	ASSETTYPE_ANIMATOR = 0x31,
+	ASSETTYPE_CAMEFFECT = 0x40,
+	ASSETTYPE_SCRIPT_H = 0x9e,
+	ASSETTYPE_SCRIPT_CPP = 0x9f,
+	//derived types
+	ASSETTYPE_TEXTURE_REND = 0xa0
+};
 typedef int ASSETID;
 
 //shorthands
@@ -264,24 +283,6 @@ class ParticleSystem;
 //see Assetmanager
 class AssetItem;
 class AssetManager;
-
-#define ASSETTYPE_UNDEF 0x00
-
-#define ASSETTYPE_SCENE 0x90
-#define ASSETTYPE_TEXTURE 0x01
-#define ASSETTYPE_HDRI 0x02
-#define ASSETTYPE_TEXCUBE 0x03
-#define ASSETTYPE_SHADER 0x05
-#define ASSETTYPE_MATERIAL 0x10
-#define ASSETTYPE_BLEND 0x20
-#define ASSETTYPE_MESH 0x21
-#define ASSETTYPE_ANIMCLIP 0x30
-#define ASSETTYPE_ANIMATOR 0x31
-#define ASSETTYPE_CAMEFFECT 0x40
-#define ASSETTYPE_SCRIPT_H 0x9e
-#define ASSETTYPE_SCRIPT_CPP 0x9f
-//derived types
-#define ASSETTYPE_TEXTURE_REND 0xa0
 class AssetObject;
 class Mesh;
 class Texture;
@@ -444,7 +445,7 @@ protected:
 	{}
 	virtual  ~AssetObject() {}
 
-	const ASSETTYPE type = 0;
+	const ASSETTYPE type = ASSETTYPE_UNDEF;
 #ifdef IS_EDITOR
 	byte* _eCache = nullptr; //first byte is always 255
 	uint _eCacheSz = 0;
@@ -643,18 +644,26 @@ enum DrawTex_Scaling {
 
 //#define EditText(x,y,w,h,s,str,font) _EditText(__COUNTER__, x,y,w,h,s,str,font)
 
+#define UI_MAX_EDIT_TEXT_FRAMES 8
+
 class UI {
 public:
 	static void Texture(float x, float y, float w, float h, ::Texture* texture, DrawTex_Scaling scl = DrawTex_Stretch, float miplevel = 0);
 	static void Texture(float x, float y, float w, float h, ::Texture* texture, float alpha, DrawTex_Scaling scl = DrawTex_Stretch, float miplevel = 0);
 	static void Texture(float x, float y, float w, float h, ::Texture* texture, Vec4 tint, DrawTex_Scaling scl = DrawTex_Stretch, float miplevel = 0);
 	
-	static string EditText(float x, float y, float w, float h, float s, string str, Font* font, Vec4 col, int id = 0);
+	//Draws an editable text box. EditText does not work on recursive functions.
+	static string EditText(float x, float y, float w, float h, float s, string str, Font* font, Vec4 col);
 
 	static bool CanDraw();
-protected:
+//protected:
 	static bool _isDrawingLoop;
-	static int _activeEditText;
+	static uint _activeEditText[UI_MAX_EDIT_TEXT_FRAMES], _lastEditText[UI_MAX_EDIT_TEXT_FRAMES], _editingEditText[UI_MAX_EDIT_TEXT_FRAMES];
+	static ushort _activeEditTextId, _editingEditTextId;
+	static uint drawFuncLoc;
+
+	static void GetEditTextId();
+	static bool IsActiveEditText();
 };
 
 class Engine {

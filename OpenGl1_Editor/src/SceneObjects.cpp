@@ -1400,8 +1400,8 @@ Component* ComponentFromType (COMPONENT_TYPE t){
 }
 
 SceneObject* SceneObject::AddChild(SceneObject* child) { 
-	childCount++; 
-	children.push_back(child); 
+	children.push_back(child);
+	childCount++;
 	child->parent = this;
 	child->transform._UpdateWMatrix(transform._worldMatrix);
 	return this;
@@ -1426,6 +1426,7 @@ Component* SceneObject::AddComponent(Component* c) {
 		}
 	}
 	_components.push_back(c);
+	_componentCount++;
 	return c;
 }
 

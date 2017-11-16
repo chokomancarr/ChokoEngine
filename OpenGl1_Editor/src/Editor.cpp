@@ -83,7 +83,7 @@ bool ShortcutTriggered(int i, bool c, bool a, bool s) {
 	}
 }
 
-int GetFormatEnum(string ext) {
+ASSETTYPE GetFormatEnum(string ext) {
 	if (ext == ".mesh")
 		return ASSETTYPE_MESH;
 	else if (ext == ".blend")
@@ -309,7 +309,7 @@ void EB_Hierarchy::Draw() {
 			}
 		}
 	}
-	else if (!!editor->playSyncer.syncedScene.size()) {
+	else if (!!editor->playSyncer.syncedSceneSz) {
 		if (Engine::EButton((editor->editorLayer == 0), v.r, v.g + EB_HEADER_SIZE + 1 - scrollOffset, v.b, 16, Vec4(0.2f, 0.2f, 0.4f, 1)) == MOUSE_RELEASE) {
 			editor->selected = nullptr;
 			//editor->selectGlobal = true;
@@ -699,22 +699,27 @@ void EB_Viewer::Draw() {
 	Mat4x4 tmpMat = (Mat4x4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]));
 	invMatrix = glm::inverse(projMatrix * tmpMat);
 
-	if (editor->sceneLoaded()) {
-		//draw scene
-		glDepthFunc(GL_LEQUAL);
-		glDepthMask(true);
-		DrawSceneObjectsOpaque(this, editor->activeScene->objects);
-		glDepthMask(false);
-		DrawSceneObjectsGizmos(this, editor->activeScene->objects);
-		DrawSceneObjectsTrans(this, editor->activeScene->objects);
+	if (editor->playSyncer.status == Editor_PlaySyncer::EPS_Offline) {
+		if (editor->sceneLoaded()) {
+			//draw scene
+			glDepthFunc(GL_LEQUAL);
+			glDepthMask(true);
+			DrawSceneObjectsOpaque(this, editor->activeScene->objects);
+			glDepthMask(false);
+			DrawSceneObjectsGizmos(this, editor->activeScene->objects);
+			DrawSceneObjectsTrans(this, editor->activeScene->objects);
 
-		/*draw background
-		glDepthFunc(GL_EQUAL);
-		if (editor->activeScene->settings.sky != nullptr) {
-			
+			/*draw background
+			glDepthFunc(GL_EQUAL);
+			if (editor->activeScene->settings.sky != nullptr) {
+
+			}
+			glDepthFunc(GL_LEQUAL);
+			*/
 		}
-		glDepthFunc(GL_LEQUAL);
-		*/
+	}
+	else if (!!editor->playSyncer.syncedSceneSz) {
+
 	}
 
 	//draw grid
@@ -791,6 +796,10 @@ void EB_Viewer::Draw() {
 
 	//Engine::EndStencil();
 	glViewport(0, 0, Display::width, Display::height);
+	
+	if (!editor->playSyncer.syncedSceneSz && (editor->playSyncer.status != Editor_PlaySyncer::EPS_Offline)) {
+		UI::Texture(v.r + v.b / 2 - 16, v.g + v.a / 2 - 16, 32, 32, editor->tex_waiting);
+	}
 
 	Vec3 origin(30 + v.r, v.a + v.g - 30, 10);
 	Vec2 axesLabelPos;
@@ -1245,6 +1254,9 @@ void EB_Inspector::Draw() {
 	}
 	else
 		Engine::Label(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 12, "Select object to inspect.", editor->font, white());
+	if (!editor->playSyncer.syncedSceneSz && (editor->playSyncer.status != Editor_PlaySyncer::EPS_Offline)) {
+		UI::Texture(v.r + v.b / 2 - 16, v.g + v.a / 2 - 16, 32, 32, editor->tex_waiting);
+	}
 	Engine::EndStencil();
 }
 
@@ -1731,8 +1743,15 @@ bool Editor_PlaySyncer::DoSyncObj(const std::vector<uint>& locs, const uint sz, 
 		if (!EPS_RWMem(false, this, dat, locs[i], sizeof(SceneObject))) return false;
 		SceneObject* obj = new SceneObject(dat);
 		objs.push_back(obj);
-		//obj->_componentCount = *((int*)(dat + SceneObject::_offsets.components) - 1);
-
+		obj->_componentCount = *((int*)(dat + SceneObject::_offsets.components) - 1);
+		if (!!obj->_componentCount) {
+			std::vector<uint> clocs(obj->_componentCount);
+			if (!EPS_RWMem(false, this, &clocs[0], *((uint*)(dat + SceneObject::_offsets.components)), 4 * obj->_componentCount)) return false;
+			for (int c = 0; c < obj->_componentCount; c++) {
+				COMPONENT_TYPE ct;
+				if (!EPS_RWMem(false, this, &ct, clocs[c] + offsetof(Component, componentType))) return false;
+			}
+		}
 		obj->childCount = *((uint*)(dat + SceneObject::_offsets.children) - 1);
 		if (!obj->childCount) continue;
 		std::vector<uint> locs2(obj->childCount);
@@ -1772,6 +1791,7 @@ bool Editor_PlaySyncer::Connect() {
 	syncStatus = 0;
 	for (auto a : syncedScene) delete(a);
 	syncedScene.clear();
+	syncedSceneSz = 0;
 	Editor::instance->selected = nullptr;
 	Debug::Message("Player", "Starting...");
 	Resize(600, 400);
@@ -1790,6 +1810,7 @@ bool Editor_PlaySyncer::Terminate() {
 	status = EPS_Offline;
 	for (auto a : syncedScene) delete(a);
 	syncedScene.clear();
+	syncedSceneSz = 0;
 	Editor::instance->selected = nullptr;
 	return 1;
 }
