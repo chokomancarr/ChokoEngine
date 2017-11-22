@@ -32,6 +32,7 @@ HWND Editor::hwnd = 0, Editor::hwnd2 = 0;
 Editor* Editor::instance = nullptr;
 //#endif
 string Editor::dataPath = "";
+bool Editor::onFocus;
 
 Vec4 grey1() {
 	return Vec4(33.0f / 255, 37.0f / 255, 40.0f / 255, 1);
@@ -41,6 +42,9 @@ Vec4 grey2() {
 }
 Vec4 headerCol() {
 	return Vec4(223.0f / 255, 119.0f / 255, 4.0f / 255, 1);
+}
+Vec4 hlCol() {
+	return Vec4(0, 120.0f / 255, 215.0f / 255, 1);
 }
 
 float Dw2(float f) {
@@ -111,8 +115,8 @@ void DrawHeaders(Editor* e, EditorBlock* b, Vec4* v, string title) {
 	//Engine::Button(v->r, v->g + EB_HEADER_SIZE + 1, v->b, v->a - EB_HEADER_SIZE - 2, black(), white(0.05f), white(0.05f));
 	Vec2 v2(v->b*0.1f, EB_HEADER_SIZE*0.1f);
 	Engine::DrawQuad(v->r + EB_HEADER_PADDING + 1, v->g, v->b - 3 - 2 * EB_HEADER_PADDING, EB_HEADER_SIZE, e->tex_background->pointer, Vec2(), Vec2(v2.x, 0), Vec2(0, v2.y), v2, false, headerCol());
-	//Engine::Label(round(v->r + 5 + EB_HEADER_PADDING), round(v->g + 2), 10, titleS, e->font, black(), Display::width);
-	Engine::Label(v->r + 5 + EB_HEADER_PADDING, v->g, 12, title, e->font, black());
+	//UI::Label(round(v->r + 5 + EB_HEADER_PADDING), round(v->g + 2), 10, titleS, e->font, black(), Display::width);
+	UI::Label(v->r + 5 + EB_HEADER_PADDING, v->g, 12, title, e->font, black());
 	//return Rect(v->r, v->g + EB_HEADER_SIZE + 1, v->b, v->a - EB_HEADER_SIZE - 2).Inside(Input::mousePos);
 }
 
@@ -160,7 +164,7 @@ void EB_Debug::Draw() {
 		byte t = editor->messageTypes[drawIds[x]];
 		Vec4 col = (t == 0) ? white() : ((t==1)? yellow() : red());
 		Engine::DrawQuad(v.r + 1, v.g + v.a - 36 - y * 15 + scrollOffset, v.b - 2, 14, Vec4(1, 1, 1, ((x&1)==1)? 0.2f : 0.1f));
-		Engine::Label(v.r + 3, v.g + v.a - 36 - y * 15 + scrollOffset, 12, editor->messages[drawIds[x]].first + " says: " + editor->messages[drawIds[x]].second, editor->font, col);
+		UI::Label(v.r + 3, v.g + v.a - 36 - y * 15 + scrollOffset, 12, editor->messages[drawIds[x]].first + " says: " + editor->messages[drawIds[x]].second, editor->font, col);
 	}
 	if (Engine::EButton((editor->editorLayer == 0), v.r + 1, v.g + v.a - 21, 80, 20, grey1(), "Messages", 12, editor->font, drawM ? white() : grey2()) == MOUSE_RELEASE) {
 		drawM = !drawM;
@@ -224,7 +228,7 @@ void EB_Console::Draw() {
 	Engine::DrawQuad(v.r, v.g, v.b, v.a - 17, black());
 	
 	for (uint c = outputCount; c > 0; c--) {
-		Engine::Label(v.r + 2, v.g + v.a - 17 * (2 + outputCount - c), 12, outputs[c - 1], editor->font, white());
+		UI::Label(v.r + 2, v.g + v.a - 17 * (2 + outputCount - c), 12, outputs[c - 1], editor->font, white());
 	}
 
 
@@ -252,7 +256,7 @@ void EB_Console::Draw() {
 		else input += Input::inputString;
 	}
 	Engine::DrawQuad(v.r, v.g + v.a - 16, v.b, 16, grey1());
-	Engine::Label(v.r + 2, v.g + v.a - 15, 12, input, editor->font, white());
+	UI::Label(v.r + 2, v.g + v.a - 15, 12, input, editor->font, white());
 	Engine::EndStencil();
 }
 
@@ -263,7 +267,7 @@ void EBH_DrawItem(SceneObject* sc, Editor* e, Vec4* v, int& i, const float& offs
 		e->selectGlobal = false;
 		e->DeselectFile();
 	}
-	Engine::Label(v->r + 19 + xo, v->g + EB_HEADER_SIZE + 1 + 17 * i + offset, 12, sc->name, e->font, white());
+	UI::Label(v->r + 19 + xo, v->g + EB_HEADER_SIZE + 1 + 17 * i + offset, 12, sc->name, e->font, white());
 	i++;
 	if (sc->childCount > 0) {
 		if (Engine::EButton((e->editorLayer == 0), v->r + xo, v->g + EB_HEADER_SIZE + 1 + 17 * (i - 1) + offset, 16, 16, sc->_expanded ? e->tex_collapse : e->tex_expand, white(), white(), white(1, 0.6f)) == MOUSE_RELEASE) {
@@ -296,7 +300,7 @@ void EB_Hierarchy::Draw() {
 				editor->selectGlobal = true;
 				editor->selectedFileType = ASSETTYPE_UNDEF;
 			}
-			Engine::Label(v.r + 19, v.g + EB_HEADER_SIZE + 1 - scrollOffset, 12, "Global", editor->font, white());
+			UI::Label(v.r + 19, v.g + EB_HEADER_SIZE + 1 - scrollOffset, 12, "Global", editor->font, white());
 			int i = 1;
 			for (SceneObject* sc : editor->activeScene->objects)
 			{
@@ -315,7 +319,7 @@ void EB_Hierarchy::Draw() {
 			//editor->selectGlobal = true;
 			editor->selectedFileType = ASSETTYPE_UNDEF;
 		}
-		Engine::Label(v.r + 19, v.g + EB_HEADER_SIZE + 1 - scrollOffset, 12, "Global", editor->font, white());
+		UI::Label(v.r + 19, v.g + EB_HEADER_SIZE + 1 - scrollOffset, 12, "Global", editor->font, white());
 		int i = 1;
 		for (SceneObject* sc : editor->playSyncer.syncedScene)
 		{
@@ -422,7 +426,7 @@ bool DrawFileRect(float w, float h, float size, EB_Browser_File* file, EditorBlo
 			Engine::DrawQuad(w + 1, h + 1, size - 2, size - 2, grey2());
 	}
 	Engine::DrawQuad(w + 1, h + 1 + size - 25, size - 2, 23, grey2()*0.7f);
-	Engine::Label(w + 2, h + 1 + size - 20, 12, file->name, e->editor->font, white(), size);
+	UI::Label(w + 2, h + 1 + size - 20, 12, file->name, e->editor->font, white(), size);
 	return b;
 }
 
@@ -476,7 +480,7 @@ void EB_Browser::Draw() {
 				return;
 			}
 		}
-		Engine::Label(v.r + 2, v.g + EB_HEADER_SIZE + (16 * y), 12, dirs.at(y), editor->font, white(), 150);
+		UI::Label(v.r + 2, v.g + EB_HEADER_SIZE + (16 * y), 12, dirs.at(y), editor->font, white(), 150);
 	}
 	float ww = 0;
 	int hh = 0;
@@ -806,13 +810,13 @@ void EB_Viewer::Draw() {
 
 	Engine::DrawLine(origin, origin + xyz(arrowX*20.0f), red(), 2); //v->r, v->g + EB_HEADER_SIZE + 1, v->b, v->a - EB_HEADER_SIZE - 2, black(), white(0.05f), white(0.05f));
 	axesLabelPos = xy(origin + xyz(arrowX*20.0f)) + Vec2((arrowX.x > 0) ? 5 : -8, -5);
-	Engine::Label(axesLabelPos.x, axesLabelPos.y, 10, "X", editor->font, red());
+	UI::Label(axesLabelPos.x, axesLabelPos.y, 10, "X", editor->font, red());
 	Engine::DrawLine(origin, origin + xyz(arrowY*20.0f), green(), 2);
 	axesLabelPos = xy(origin + xyz(arrowY*20.0f)) + Vec2((arrowY.x > 0) ? 5 : -8, -5);
-	Engine::Label(axesLabelPos.x, axesLabelPos.y, 10, "Y", editor->font, green());
+	UI::Label(axesLabelPos.x, axesLabelPos.y, 10, "Y", editor->font, green());
 	Engine::DrawLine(origin, origin + xyz(arrowZ*20.0f), blue(), 2);
 	axesLabelPos = xy(origin + xyz(arrowZ*20.0f)) + Vec2((arrowZ.x > 0) ? 5 : -8, -5);
-	Engine::Label(axesLabelPos.x, axesLabelPos.y, 10, "Z", editor->font, blue());
+	UI::Label(axesLabelPos.x, axesLabelPos.y, 10, "Z", editor->font, blue());
 
 	byte drawDescLT;
 	string descLabelLT;
@@ -860,14 +864,14 @@ void EB_Viewer::Draw() {
 
 	if (drawDescLT > 0) {
 		Engine::DrawQuad(v.x + 28, v.y + EB_HEADER_SIZE + 10 + 22 * (drawDescLT - 1), 282, 20, white(1, 0.6f));
-		Engine::Label(v.x + 30, v.y + EB_HEADER_SIZE + 15 + 22 * (drawDescLT - 1), 12, descLabelLT, editor->font, black());
+		UI::Label(v.x + 30, v.y + EB_HEADER_SIZE + 15 + 22 * (drawDescLT - 1), 12, descLabelLT, editor->font, black());
 	}
 
 	if (editor->_showDebugInfo) {
-		Engine::Label(v.x + 50, v.y + 30, 12, "z=" + to_string(rz) + " w = " + to_string(rw), editor->font, white());
-		Engine::Label(v.x + 50, v.y + 55, 12, "fov=" + to_string(fov) + " scale=" + to_string(scale), editor->font, white());
+		UI::Label(v.x + 50, v.y + 30, 12, "z=" + to_string(rz) + " w = " + to_string(rw), editor->font, white());
+		UI::Label(v.x + 50, v.y + 55, 12, "fov=" + to_string(fov) + " scale=" + to_string(scale), editor->font, white());
 		//Vec4 r = invMatrix * Vec4(1, 0, 0, 0);
-		Engine::Label(v.x + 50, v.y + 80, 12, "center=" + to_string(rotCenter), editor->font, white());
+		UI::Label(v.x + 50, v.y + 80, 12, "center=" + to_string(rotCenter), editor->font, white());
 	}
 }
 
@@ -1096,32 +1100,32 @@ void EBI_DrawAss_Tex(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 		off += 17;
 	}
 	tex->_mipmap = Engine::Toggle(v.r + 2, off + sz + 17, 14, editor->tex_checkbox, tex->_mipmap, white(), ORIENT_HORIZONTAL);
-	Engine::Label(v.r + 18, off + sz + 18, 12, "Use Mipmaps", editor->font, white());
+	UI::Label(v.r + 18, off + sz + 18, 12, "Use Mipmaps", editor->font, white());
 	if (tex->_mipmap) {
 		tex->_blurmips = Engine::Toggle(v.r + v.b*0.5f, off + sz + 17, 14, editor->tex_checkbox, tex->_blurmips, white(), ORIENT_HORIZONTAL);
-		Engine::Label(v.r + v.b*0.5f + 16, off + sz + 18, 12, "Blur", editor->font, white());
+		UI::Label(v.r + v.b*0.5f + 16, off + sz + 18, 12, "Blur", editor->font, white());
 	}
-	Engine::Label(v.r + 18, off + sz + 33, 12, "Filtering", editor->font, white());
+	UI::Label(v.r + 18, off + sz + 33, 12, "Filtering", editor->font, white());
 	std::vector<string> filterNames = { "Point", "Bilinear", "Trilinear" };
 	if (Engine::EButton(editor->editorLayer == 0, v.r + v.b * 0.3f, off + sz + 33, v.b * 0.6f - 1, 14, grey2(), filterNames[tex->_filter], 12, editor->font, white()) == MOUSE_PRESS) {
 		editor->RegisterMenu(b, "", filterNames, { &b->_ApplyTexFilter0, &b->_ApplyTexFilter1, &b->_ApplyTexFilter2 }, 0, Vec2(v.r + v.b * 0.3f, off + sz + 33));
 	}
-	Engine::Label(v.r + 18, off + sz + 49, 12, "Aniso Level", editor->font, white());
+	UI::Label(v.r + 18, off + sz + 49, 12, "Aniso Level", editor->font, white());
 	Engine::DrawQuad(v.r + v.b * 0.3f, off + sz + 48, v.b * 0.1f - 1, 14, grey2());
-	Engine::Label(v.r + v.b * 0.3f + 2, off + sz + 49, 12, to_string(tex->_aniso), editor->font, white());
+	UI::Label(v.r + v.b * 0.3f + 2, off + sz + 49, 12, to_string(tex->_aniso), editor->font, white());
 	tex->_aniso = (byte)round(Engine::DrawSliderFill(v.r + v.b * 0.4f, off + sz + 48, v.b*0.7f - 1, 14, 0, 10, (float)tex->_aniso, grey2(), white()));
 	off += sz + 63;
 }
 
 void EBI_DrawAss_Mat(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 	Material* mat = (Material*)editor->selectedFileCache;
-	Engine::Label(v.r + 18, off + 17, 12, "Shader", editor->font, white());
+	UI::Label(v.r + 18, off + 17, 12, "Shader", editor->font, white());
 	editor->DrawAssetSelector(v.r + v.b*0.25f, off + 15, v.b*0.75f - 1, 16, grey1(), ASSETTYPE_SHADER, 12, editor->font, &mat->_shader, &EB_Inspector::_ApplyMatShader, mat);
 	off += 34;
 	for (uint q = 0, qq = mat->valOrders.size(); q < qq; q++) {
 		int r = 0;
 		UI::Texture(v.r + 2, off, 16, 16, editor->matVarTexs[mat->valOrders[q]]);
-		Engine::Label(v.r + 19, off + 2, 12, mat->valNames[mat->valOrders[q]][mat->valOrderIds[q]], editor->font, white());
+		UI::Label(v.r + 19, off + 2, 12, mat->valNames[mat->valOrders[q]][mat->valOrderIds[q]], editor->font, white());
 		void* bbs = mat->vals[mat->valOrders[q]][mat->valOrderGLIds[q]];
 		assert(bbs != nullptr);
 		switch (mat->valOrders[q]) {
@@ -1163,7 +1167,7 @@ void EBI_DrawAss_Hdr(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 
 void EBI_DrawAss_Eff(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 	CameraEffect* eff = (CameraEffect*)editor->selectedFileCache;
-	Engine::Label(v.r + 18, off + 17, 12, "Material", editor->font, white());
+	UI::Label(v.r + 18, off + 17, 12, "Material", editor->font, white());
 	editor->DrawAssetSelector(v.r + v.b*0.25f, off + 15, v.b*0.75f - 1, 16, grey2(), ASSETTYPE_MATERIAL, 12, editor->font, &eff->_material, &EB_Inspector::_ApplyEffMat, eff);
 	off += 34;
 }
@@ -1172,7 +1176,7 @@ void EBI_DrawAss_Txt(Vec4 v, Editor* editor, EB_Inspector* b, float off) {
 	uint sz = editor->selectedFileTexts.size();
 	Engine::DrawQuad(v.r + 2, off, v.b - 4, 14*sz + 4, black(0.8f));
 	for (uint a = 0; a < sz; a++) {
-		Engine::Label(v.r + 4, off + a*14 + 2, 12, editor->selectedFileTexts[a], editor->font, white());
+		UI::Label(v.r + 4, off + a*14 + 2, 12, editor->selectedFileTexts[a], editor->font, white());
 	}
 }
 
@@ -1200,7 +1204,7 @@ void EB_Inspector::Draw() {
 				lockGlobal = 1;
 				lockedObj = editor->selected;
 			}
-			else Engine::Label(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 12, "Select object to inspect.", editor->font, white());
+			else UI::Label(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 12, "Select object to inspect.", editor->font, white());
 		}
 		if (lockGlobal == 2) { //no else to prevent 1 frame blank
 			DrawGlobal(v);
@@ -1210,7 +1214,7 @@ void EB_Inspector::Draw() {
 		}
 	}
 	else if (editor->selectedFileType != ASSETTYPE_UNDEF) {
-		Engine::Label(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 12, editor->selectedFileName, editor->font, white());
+		UI::Label(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 12, editor->selectedFileName, editor->font, white());
 		float off = v.g + EB_HEADER_SIZE;
 		bool canApply = false;
 		switch (editor->selectedFileType) {
@@ -1250,11 +1254,11 @@ void EB_Inspector::Draw() {
 		DrawObj(v, editor, this, editor->selected);
 	}
 	else if (editor->selectedFileTexts.size() > 0) {
-		Engine::Label(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 12, editor->selectedFileName, editor->font, white());
+		UI::Label(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 12, editor->selectedFileName, editor->font, white());
 		EBI_DrawAss_Txt(v, editor, this, v.g + EB_HEADER_SIZE + 18);
 	}
 	else
-		Engine::Label(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 12, "Select object to inspect.", editor->font, white());
+		UI::Label(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 12, "Select object to inspect.", editor->font, white());
 	if (!editor->playSyncer.syncedSceneSz && (editor->playSyncer.status != Editor_PlaySyncer::EPS_Offline)) {
 		UI::Texture(v.r + v.b / 2 - 16, v.g + v.a / 2 - 16, 32, 32, editor->tex_waiting);
 	}
@@ -1269,29 +1273,29 @@ void EB_Inspector::OnMouseScr(bool up) {
 void EB_Inspector::DrawGlobal(Vec4 v) {
 	int off = 0;
 	Engine::DrawQuad(v.r + 20, v.g + 2 + EB_HEADER_SIZE, v.b - 21, 18, grey1());
-	Engine::Label(v.r + 22, v.g + 6 + EB_HEADER_SIZE, 12, "Scene Settings", editor->font, white());
+	UI::Label(v.r + 22, v.g + 6 + EB_HEADER_SIZE, 12, "Scene Settings", editor->font, white());
 
-	Engine::Label(v.r, v.g + 23 + EB_HEADER_SIZE, 12, "Sky", editor->font, white());
+	UI::Label(v.r, v.g + 23 + EB_HEADER_SIZE, 12, "Sky", editor->font, white());
 	editor->DrawAssetSelector(v.r + v.b*0.3f, v.g + 21 + EB_HEADER_SIZE, v.b*0.7f - 1, 14, grey2(), ASSETTYPE_HDRI, 12, editor->font, &editor->activeScene->settings.skyId, &_ApplySky, &*editor->activeScene);
 	off = 40 + EB_HEADER_SIZE;
 	if (editor->activeScene->settings.skyId > -1) {
-		Engine::Label(v.r, v.g + off, 12, "Sky Strength", editor->font, white());
+		UI::Label(v.r, v.g + off, 12, "Sky Strength", editor->font, white());
 		Engine::DrawQuad(v.r + v.b*0.3f, v.g + off, v.b*0.3f-1, 16, grey2());
-		Engine::Label(v.r + v.b*0.3f, v.g + off, 12, to_string(editor->activeScene->settings.skyStrength), editor->font, white());
+		UI::Label(v.r + v.b*0.3f, v.g + off, 12, to_string(editor->activeScene->settings.skyStrength), editor->font, white());
 		editor->activeScene->settings.skyStrength = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + off, v.b*0.4f - 1, 16, 0, 3, editor->activeScene->settings.skyStrength, grey2(), white());
 	}
 	off += 17;
-	Engine::Label(v.r, v.g + off, 12, "RSM Radius", editor->font, white());
+	UI::Label(v.r, v.g + off, 12, "RSM Radius", editor->font, white());
 	Engine::DrawQuad(v.r + v.b*0.3f, v.g + off, v.b*0.3f - 1, 16, grey2());
-	Engine::Label(v.r + v.b*0.3f, v.g + off, 12, to_string(editor->activeScene->settings.rsmRadius), editor->font, white());
+	UI::Label(v.r + v.b*0.3f, v.g + off, 12, to_string(editor->activeScene->settings.rsmRadius), editor->font, white());
 	editor->activeScene->settings.rsmRadius = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + off, v.b*0.4f - 1, 16, 0, 3, editor->activeScene->settings.rsmRadius, grey2(), white());
 }
 
 bool EB_Inspector::DrawVector3(Editor* e, Vec4 v, float dh, string label, Vec3& value) {
 	bool changed = false, chg = false;
-	Engine::Label(v.r, v.g + dh + EB_HEADER_SIZE, 12, label, e->font, white());
+	UI::Label(v.r, v.g + dh + EB_HEADER_SIZE, 12, label, e->font, white());
 	//Engine::EButton((e->editorLayer == 0), v.r + v.b*0.19f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Vec4(0.4f, 0.2f, 0.2f, 1));
-	//Engine::Label(v.r + v.b*0.19f + 2, v.g + dh + EB_HEADER_SIZE, 12, to_string(value.x), e->font, white());
+	//UI::Label(v.r + v.b*0.19f + 2, v.g + dh + EB_HEADER_SIZE, 12, to_string(value.x), e->font, white());
 	auto res = UI::EditText(v.r + v.b*0.19f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, 12, Vec4(0.4f, 0.2f, 0.2f, 1), to_string(value.x), e->font, true, &chg, white());
 	value.x = TryParse(res, value.x);
 	changed |= chg;
@@ -1305,14 +1309,14 @@ bool EB_Inspector::DrawVector3(Editor* e, Vec4 v, float dh, string label, Vec3& 
 }
 
 void EB_Inspector::DrawAsset(Editor* e, Vec4 v, float dh, string label, ASSETTYPE type) {
-	Engine::Label(v.r, v.g + dh + 2 + EB_HEADER_SIZE, 12, label, e->font, white());
+	UI::Label(v.r, v.g + dh + 2 + EB_HEADER_SIZE, 12, label, e->font, white());
 	if (Engine::EButton((e->editorLayer == 0), v.r + v.b*0.19f, v.g + dh + EB_HEADER_SIZE, v.b*0.71f - 1, 16, Vec4(0.4f, 0.2f, 0.2f, 1)) == MOUSE_RELEASE) {
 		e->editorLayer = 3;
 		e->browseType = type;
 		e->browseOffset = 0;
 		e->browseSize = e->allAssets[type].size();
 	}
-	Engine::Label(v.r + v.b*0.19f + 2, v.g + dh + 2 + EB_HEADER_SIZE, 12, label, e->font, white());
+	UI::Label(v.r + v.b*0.19f + 2, v.g + dh + 2 + EB_HEADER_SIZE, 12, label, e->font, white());
 }
 
 void EB_Inspector::_ApplyTexFilter0(EditorBlock* b) {
@@ -1397,7 +1401,7 @@ void EB_AnimEditor::Draw() {
 			if (state->editorExpand) {
 				Engine::DrawQuad(poss.x, poss.y + scl * 32, scl * 320, (state->isBlend && state->editorShowGraph)? scl*320 : scl * 256, grey1());
 				state->isBlend = Engine::Toggle(poss.x + scl * 6, poss.y + scl * 34, scl * 28, editor->tex_checkbox, state->isBlend, white(), ORIENT_HORIZONTAL);
-				Engine::Label(poss.x + scl * 36, poss.y + scl * 36, scl * 24, "Blending", editor->font, white());
+				UI::Label(poss.x + scl * 36, poss.y + scl * 36, scl * 24, "Blending", editor->font, white());
 				float off = poss.y + scl * 64;
 				if (state->isBlend) {
 					if (Engine::EButton(editor->editorLayer == 0, poss.x + scl * 290, poss.y + scl * 34, scl * 28, scl * 28, white(1, state->editorShowGraph ? 0.5f : 0.2f)) == MOUSE_RELEASE) {
@@ -1416,7 +1420,7 @@ void EB_AnimEditor::Draw() {
 		}
 	}
 
-	Engine::Label(v.r + 5, v.g + v.a - 16, 12, to_string(scl), editor->font);
+	UI::Label(v.r + 5, v.g + v.a - 16, 12, to_string(scl), editor->font);
 	Engine::EndStencil();
 }
 
@@ -1527,22 +1531,22 @@ void EB_Previewer::Draw() {
 		switch (editor->playSyncer.status) {
 		case Editor_PlaySyncer::EPS_Running:
 			if (editor->playSyncer.pixelCount == 0)
-				Engine::Label(v.r + v.b*0.5f, v.g + v.a*0.5f, 12, "Waiting for pixels...", editor->font, white());
+				UI::Label(v.r + v.b*0.5f, v.g + v.a*0.5f, 12, "Waiting for pixels...", editor->font, white());
 			else {
 				Engine::DrawQuad(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 1, editor->playSyncer.texPointer);
 			}
 			break;
 		case Editor_PlaySyncer::EPS_Starting:
-			Engine::Label(v.r + v.b*0.5f, v.g + v.a*0.5f, 12, "Initializing...", editor->font, white());
+			UI::Label(v.r + v.b*0.5f, v.g + v.a*0.5f, 12, "Initializing...", editor->font, white());
 			break;
 		case Editor_PlaySyncer::EPS_RWFailure:
-			Engine::Label(v.r + v.b*0.5f, v.g + v.a*0.5f, 12, "Read/Write failure!", editor->font, red());
+			UI::Label(v.r + v.b*0.5f, v.g + v.a*0.5f, 12, "Read/Write failure!", editor->font, red());
 			if (Engine::Button(v.r + v.b*0.4f, v.g + v.a*0.5f + 12, v.b*0.2f, 18, grey2(), "Close", 12, editor->font, white(), true) == MOUSE_RELEASE) {
 				editor->playSyncer.Terminate();
 			}
 			break;
 		case Editor_PlaySyncer::EPS_Crashed:
-			Engine::Label(v.r + v.b*0.5f, v.g + v.a*0.5f, 12, "Crashed! Exit Code: " + to_string(editor->playSyncer.exitCode), editor->font, red());
+			UI::Label(v.r + v.b*0.5f, v.g + v.a*0.5f, 12, "Crashed! Exit Code: " + to_string(editor->playSyncer.exitCode), editor->font, red());
 			if (Engine::Button(v.r + v.b*0.4f, v.g + v.a*0.5f + 12, v.b*0.2f, 18, grey2(), "Close", 12, editor->font, white(), true) == MOUSE_RELEASE) {
 				editor->playSyncer.Terminate();
 			}
@@ -1880,7 +1884,7 @@ void Editor::DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASS
 	}
 	ALIGNMENT al = labelFont->alignment;
 	labelFont->alignment = ALIGN_MIDLEFT;
-	Engine::Label(round((*tar == -1) ? x + 2 : x + h + 3), round(y + 0.4f*h), labelSize, GetAssetName(type, *tar), labelFont, (*tar == -1) ? Vec4(0.7f, 0.4f, 0.4f, 1) : Vec4(0.4f, 0.4f, 0.7f, 1));
+	UI::Label(round((*tar == -1) ? x + 2 : x + h + 3), round(y + 0.4f*h), labelSize, GetAssetName(type, *tar), labelFont, (*tar == -1) ? Vec4(0.7f, 0.4f, 0.4f, 1) : Vec4(0.4f, 0.4f, 0.7f, 1));
 	labelFont->alignment = al;
 }
 
@@ -1899,13 +1903,13 @@ void Editor::DrawCompSelector(float x, float y, float w, float h, Vec4 col, floa
 		Engine::DrawQuad(x, y, w, h, col);
 	ALIGNMENT al = labelFont->alignment;
 	labelFont->alignment = ALIGN_MIDLEFT;
-	Engine::Label(round(x + 2), round(y + 0.5f*h), labelSize, (tar->comp == nullptr) ? "undefined" : tar->path + " (" + tar->comp->name + ")", labelFont, (tar->comp == nullptr) ? Vec4(0.7f, 0.4f, 0.4f, 1) : Vec4(0.4f, 0.4f, 0.7f, 1));
+	UI::Label(round(x + 2), round(y + 0.5f*h), labelSize, (tar->comp == nullptr) ? "undefined" : tar->path + " (" + tar->comp->name + ")", labelFont, (tar->comp == nullptr) ? Vec4(0.7f, 0.4f, 0.4f, 1) : Vec4(0.4f, 0.4f, 0.7f, 1));
 	labelFont->alignment = al;
 }
 
 void Editor::DrawColorSelector(float x, float y, float w, float h, Vec4 col, float labelSize, Font* labelFont, Vec4* tar) {
 	Engine::DrawQuad(x, y, w * 0.7f - 1, h, col);
-	Engine::Label(x + 2, y + 2, labelSize, Color::Col2Hex(*tar), labelFont, white());
+	UI::Label(x + 2, y + 2, labelSize, Color::Col2Hex(*tar), labelFont, white());
 	//Engine::DrawQuad(x + w*0.7f, y, w*0.3f, h*0.8f, Vec4(tar->r, tar->g, tar->b, 1));
 	if (Engine::EButton(editorLayer == 0, x + w*0.7f, y, w*0.3f, h, Vec4(tar->r, tar->g, tar->b, 1)) == MOUSE_RELEASE) {
 		RegisterPopup(new PB_ColorPicker(this, tar), Vec2(Display::width*0.5f, Display::height*0.5f));
@@ -2396,7 +2400,8 @@ void Editor::GenerateScriptValuesReader(string& s) {
 }
 
 void Editor::NewScene() {
-	activeScene = std::make_shared<Scene>();
+	if (activeScene) delete(activeScene);
+	activeScene = new Scene();
 }
 
 void Editor::UpdateLerpers() {
@@ -2550,7 +2555,7 @@ dh = 1.0f / Display::height;
 	if (editorLayer > 0) {
 		if (editorLayer == 1) {
 			Engine::DrawQuad(0.0f, 0.0f, (float)Display::width, (float)Display::height, black(0.3f));
-			Engine::Label(popupPos.x + 2, popupPos.y, 12, menuTitle, font, white());
+			UI::Label(popupPos.x + 2, popupPos.y, 12, menuTitle, font, white());
 			int off = 14;
 			for (int r = 0, q = menuNames.size(); r < q; r++) {
 				bool canPress = false;
@@ -2578,7 +2583,7 @@ dh = 1.0f / Display::height;
 
 			}
 			if (off == 14) {
-				Engine::Label(popupPos.x + 2, popupPos.y + off, 12, "Nothing here!", font, white(0.7f));
+				UI::Label(popupPos.x + 2, popupPos.y + off, 12, "Nothing here!", font, white(0.7f));
 			}
 			if (Input::mouse0State == MOUSE_UP)
 				editorLayer = 0;
@@ -2586,11 +2591,11 @@ dh = 1.0f / Display::height;
 		else if (editorLayer == 2) {
 			Engine::DrawQuad(0, 0, (float)Display::width, (float)Display::height, black(0.4f));
 			Engine::DrawQuad(editingArea.x, editingArea.y, editingArea.w, editingArea.h, grey2());
-			Engine::Label(editingArea.x + 2, editingArea.y, 12, editingVal, font, editingCol);
+			UI::Label(editingArea.x + 2, editingArea.y, 12, editingVal, font, editingCol);
 		}
 		else if (editorLayer == 3) {
 			Engine::DrawQuad(0, 0, (float)Display::width, (float)Display::height, black(0.8f));
-			Engine::Label(Display::width*0.2f + 6, Display::height*0.2f, 22, browseIsComp ? "Select Component" : "Select Asset", font, white());
+			UI::Label(Display::width*0.2f + 6, Display::height*0.2f, 22, browseIsComp ? "Select Component" : "Select Asset", font, white());
 			if (Engine::Button(Display::width*0.2f + 6, Display::height*0.2f + 26, Display::width*0.3f - 7, 14, Vec4(0.4f, 0.2f, 0.2f, 1), "undefined", 12, font, white()) == MOUSE_RELEASE) {
 				if (browseIsComp) {
 					browseTargetComp->comp = nullptr;
@@ -2655,45 +2660,45 @@ dh = 1.0f / Display::height;
 		else if (editorLayer == 4) {
 			Engine::DrawQuad(0, 0, (float)Display::width, (float)Display::height, black(0.8f));
 			Engine::DrawProgressBar(Display::width*0.5f - 300, Display::height*0.5f - 10.0f, 600.0f, 20.0f, progressValue, white(1, 0.2f), tex_background, Vec4(0.43f, 0.57f, 0.14f, 1), 1, 2);
-			Engine::Label(Display::width*0.5f - 298, Display::height*0.5f - 25.0f, 12, progressName, font, white());
-			Engine::Label(Display::width*0.5f - 296, Display::height*0.5f - 6.0f, 12, progressDesc, font, white(0.7f));
+			UI::Label(Display::width*0.5f - 298, Display::height*0.5f - 25.0f, 12, progressName, font, white());
+			UI::Label(Display::width*0.5f - 296, Display::height*0.5f - 6.0f, 12, progressDesc, font, white(0.7f));
 		}
 		else if (editorLayer == 5) {
 			Engine::DrawQuad(0, 0, (float)Display::width, (float)Display::height, black(0.6f));
 			Engine::DrawQuad(Display::width*0.1f, Display::height*0.1f, Display::width*0.8f, Display::height*0.8f, black(0.8f));
 			int offy = 18;
 
-			Engine::Label(Display::width*0.1f + 10, Display::height*0.1f + offy, 21, "Viewer settings", font, white());
+			UI::Label(Display::width*0.1f + 10, Display::height*0.1f + offy, 21, "Viewer settings", font, white());
 			_showGrid = Engine::Toggle(Display::width*0.1f + 12, Display::height*0.1f + offy + 26, 14, tex_checkbox, _showGrid, white(), ORIENT_HORIZONTAL);
-			Engine::Label(Display::width*0.1f + 30, Display::height*0.1f + offy + 28, 12, "Show grid", font, white());
+			UI::Label(Display::width*0.1f + 30, Display::height*0.1f + offy + 28, 12, "Show grid", font, white());
 			_mouseJump = Engine::Toggle(Display::width*0.1f + 12, Display::height*0.1f + offy + 46, 14, tex_checkbox, _mouseJump, white(), ORIENT_HORIZONTAL);
-			Engine::Label(Display::width*0.1f + 30, Display::height*0.1f + offy + 48, 12, "Mouse stay inside window", font, white());
+			UI::Label(Display::width*0.1f + 30, Display::height*0.1f + offy + 48, 12, "Mouse stay inside window", font, white());
 
 			offy = 100;
-			Engine::Label(Display::width*0.1f + 10, Display::height*0.1f + offy, 21, "Editor settings", font, white());
-			Engine::Label(Display::width*0.1f + 10, Display::height*0.1f + offy + 28, 12, "Background Image", font, white());
+			UI::Label(Display::width*0.1f + 10, Display::height*0.1f + offy, 21, "Editor settings", font, white());
+			UI::Label(Display::width*0.1f + 10, Display::height*0.1f + offy + 28, 12, "Background Image", font, white());
 			Engine::Button(Display::width*0.1f + 200, Display::height*0.1f + offy + 25, 500, 16, grey2(), backgroundPath, 12, font, white());
 			if (backgroundTex != nullptr) {
 				Engine::Button(Display::width*0.1f + 702, Display::height*0.1f + offy + 25, 16, 16, tex_buttonX, white(0.8f), white(), white(0.4f));
 
-				Engine::Label(Display::width*0.1f + 10, Display::height*0.1f + offy + 48, 12, "Background Brightness", font, white());
+				UI::Label(Display::width*0.1f + 10, Display::height*0.1f + offy + 48, 12, "Background Brightness", font, white());
 				Engine::Button(Display::width*0.1f + 200, Display::height*0.1f + offy + 46, 70, 16, grey2(), to_string(backgroundAlpha), 12, font, white());
 				backgroundAlpha = (byte)Engine::DrawSliderFill(Display::width*0.1f + 271, Display::height*0.1f + offy + 46, 200, 16, 0, 100, backgroundAlpha, grey2(), white());
 			}
 
 			offy = 190;
-			Engine::Label(Display::width*0.1f + 10, Display::height*0.1f + offy, 21, "Build settings", font, white());
-			Engine::Label(Display::width*0.1f + 10, Display::height*0.1f + offy + 28, 12, "Data bundle size (x100Mb)", font, white());
+			UI::Label(Display::width*0.1f + 10, Display::height*0.1f + offy, 21, "Build settings", font, white());
+			UI::Label(Display::width*0.1f + 10, Display::height*0.1f + offy + 28, 12, "Data bundle size (x100Mb)", font, white());
 			Engine::Button(Display::width*0.1f + 200, Display::height*0.1f + offy + 25, 70, 16, grey2(), to_string(_assetDataSize), 12, font, white());
 			_cleanOnBuild = Engine::Toggle(Display::width*0.1f + 12, Display::height*0.1f + offy + 46, 14, tex_checkbox, _cleanOnBuild, white(), ORIENT_HORIZONTAL);
-			Engine::Label(Display::width*0.1f + 30, Display::height*0.1f + offy + 48, 12, "Remove visual studio files on build", font, white());
+			UI::Label(Display::width*0.1f + 30, Display::height*0.1f + offy + 48, 12, "Remove visual studio files on build", font, white());
 		}
 		else if (editorLayer == 6) {
 			Engine::DrawQuad(0, 0, (float)Display::width, (float)Display::height, black(0.8f));
 			Engine::DrawProgressBar(50.0f, Display::height - 30.0f, Display::width - 100.0f, 20.0f, buildProgressValue, white(1, 0.2f), tex_background, buildProgressVec4, 1, 2);
-			Engine::Label(55.0f, Display::height - 26.0f, 12, buildLabel, font, white());
+			UI::Label(55.0f, Display::height - 26.0f, 12, buildLabel, font, white());
 			for (int i = buildLog.size() - 1, dy = 0; i >= 0; i--) {
-				Engine::Label(30.0f, Display::height - 50.0f - 15.0f*dy, 12.0f, buildLog[i], font, buildLogErrors[i] ? red() : (buildLogWarnings[i] ? yellow() : white(0.7f)), Display::width - 50.0f);
+				UI::Label(30.0f, Display::height - 50.0f - 15.0f*dy, 12.0f, buildLog[i], font, buildLogErrors[i] ? red() : (buildLogWarnings[i] ? yellow() : white(0.7f)), Display::width - 50.0f);
 				dy++;
 			}
 		}
@@ -2701,14 +2706,14 @@ dh = 1.0f / Display::height;
 			Engine::DrawQuad(0, 0, (float)Display::width, (float)Display::height, black(0.6f));
 			Engine::DrawQuad(Display::width*0.2f, Display::height*0.2f, Display::width*0.6f, Display::height*0.6f, black(0.8f));
 
-			Engine::Label(Display::width*0.2f + 10, Display::height*0.2f + 10, 21, "Build settings", font, white());
+			UI::Label(Display::width*0.2f + 10, Display::height*0.2f + 10, 21, "Build settings", font, white());
 
 			uint sz = includedScenes.size();
-			Engine::Label(Display::width*0.2f + 15, Display::height*0.2f + 35, 12, "Included scenes: " + to_string(sz), font, white());
+			UI::Label(Display::width*0.2f + 15, Display::height*0.2f + 35, 12, "Included scenes: " + to_string(sz), font, white());
 			Engine::DrawQuad(Display::width*0.2f + 12, Display::height*0.2f + 50, Display::width*0.3f, 306, white(0.05f));
 			for (uint a = 0; a < sz; a++) {
 				includedScenesUse[a] = Engine::Toggle(Display::width*0.2f + 14, Display::height*0.2f + 51 + a*15, 14, tex_checkbox, includedScenesUse[a], white(), ORIENT_HORIZONTAL);
-				Engine::Label(Display::width*0.2f + 30, Display::height*0.2f + 52 + a*15, 12, includedScenes[a], font, white());
+				UI::Label(Display::width*0.2f + 30, Display::height*0.2f + 52 + a*15, 12, includedScenes[a], font, white());
 			}
 
 			if (Engine::Button(Display::width*0.8f - 80, Display::height*0.2f + 2, 78, 18, grey2(), "Save", 18, font, white()) == MOUSE_RELEASE) {
@@ -2738,7 +2743,7 @@ dh = 1.0f / Display::height;
 				Engine::DrawLine(Vec3(px + 20, py + 20, 0), Vec3(px + 276, py + 276, 0), grey1(), 1.5f);
 				Engine::DrawLine(Vec3(px + 20, py + 276, 0), Vec3(px + 276, py + 20, 0), grey1(), 1.5f);
 				font->Align(ALIGN_MIDCENTER);
-				Engine::Label(px + 148, py + 148, 12, "No preview", font, white());
+				UI::Label(px + 148, py + 148, 12, "No preview", font, white());
 				font->Align(ALIGN_BOTLEFT);
 			}
 		}

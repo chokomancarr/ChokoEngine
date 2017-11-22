@@ -188,29 +188,29 @@ void Color::DrawPicker(float x, float y, Color& c) {
 
 	y += 242;
 
-	Engine::Label(x + 10, y, 12, "HEX", Editor::instance->font, white());
-	Engine::Label(x + 10, y + 18, 12, "R", Editor::instance->font, white());
-	Engine::Label(x + 10, y + 35, 12, "G", Editor::instance->font, white());
-	Engine::Label(x + 10, y + 52, 12, "B", Editor::instance->font, white());
+	UI::Label(x + 10, y, 12, "HEX", Editor::instance->font, white());
+	UI::Label(x + 10, y + 18, 12, "R", Editor::instance->font, white());
+	UI::Label(x + 10, y + 35, 12, "G", Editor::instance->font, white());
+	UI::Label(x + 10, y + 52, 12, "B", Editor::instance->font, white());
 
 	Engine::DrawQuad(x + 40, y - 2, 170, 16, grey2());
-	Engine::Label(x + 42, y, 12, c.hex(), Editor::instance->font, white());
+	UI::Label(x + 42, y, 12, c.hex(), Editor::instance->font, white());
 	c.r = (byte)round(Engine::DrawSliderFill(x + 40, y + 16, 170, 16, 0, 255, c.r, grey2(), red()));
 	c.g = (byte)round(Engine::DrawSliderFill(x + 40, y + 33, 170, 16, 0, 255, c.g, grey2(), green()));
 	c.b = (byte)round(Engine::DrawSliderFill(x + 40, y + 50, 170, 16, 0, 255, c.b, grey2(), blue()));
 
 	Engine::DrawQuad(x + 212, y + 16, 47, 16, grey2());
-	Engine::Label(x + 214, y + 18, 12, to_string(c.r), Editor::instance->font, white());
+	UI::Label(x + 214, y + 18, 12, to_string(c.r), Editor::instance->font, white());
 	Engine::DrawQuad(x + 212, y + 33, 47, 16, grey2());
-	Engine::Label(x + 214, y + 35, 12, to_string(c.g), Editor::instance->font, white());
+	UI::Label(x + 214, y + 35, 12, to_string(c.g), Editor::instance->font, white());
 	Engine::DrawQuad(x + 212, y + 50, 47, 16, grey2());
-	Engine::Label(x + 214, y + 52, 12, to_string(c.b), Editor::instance->font, white());
+	UI::Label(x + 214, y + 52, 12, to_string(c.b), Editor::instance->font, white());
 
 	if (c.useA) {
-		Engine::Label(x + 10, y + 69, 12, "A", Editor::instance->font, white());
+		UI::Label(x + 10, y + 69, 12, "A", Editor::instance->font, white());
 		c.a = (byte)Engine::DrawSliderFill(x + 40, y + 67, 170, 16, 0, 255, c.a, grey2(), white());
 		Engine::DrawQuad(x + 212, y + 67, 47, 16, grey2());
-		Engine::Label(x + 214, y + 69, 12, to_string(c.a), Editor::instance->font, white());
+		UI::Label(x + 214, y + 69, 12, to_string(c.a), Editor::instance->font, white());
 	}
 
 	c.RecalcHSV();
@@ -643,66 +643,68 @@ string UI::EditText(float x, float y, float w, float h, float s, Vec4 bcol, stri
 	if (changed) *changed = false;
 
 	if (isActive) {
-		if ((Input::mouse0State == MOUSE_UP && !Rect(x, y, w, h).Inside(Input::mousePos)) || Input::KeyDown(Key_Enter)) {
-			SecureZeroMemory(_editingEditText, UI_MAX_EDIT_TEXT_FRAMES * 4);
-			_activeEditTextId = 0;
-			if (changed && delayed) *changed = true;
-			return delayed ? _editTextString : str;
-		}
-		if (Input::KeyDown(Key_Escape)) {
-			SecureZeroMemory(_editingEditText, UI_MAX_EDIT_TEXT_FRAMES * 4);
-			_activeEditTextId = 0;
-			return str;
-		}
-		if (!delayed) _editTextString = str;
 		auto al = font->alignment;
 		font->Align(ALIGN_MIDLEFT);
-		Engine::DrawQuad(x, y, w, h, black());
-		Engine::DrawQuad(x+1, y+1, w-2, h-2, white());
-		_editTextCursorPos -= Input::KeyDown(Key_LeftArrow);
-		_editTextCursorPos += Input::KeyDown(Key_RightArrow);
-		_editTextCursorPos = clamp(_editTextCursorPos, 0, _editTextString.size());
-		if (!Input::KeyHold(Key_Shift) && (Input::KeyDown(Key_LeftArrow) || Input::KeyDown(Key_RightArrow))) {
-			_editTextCursorPos2 = _editTextCursorPos;
-			_editTextBlinkTime = 0;
-		}
-		auto ssz = Input::inputString.size();
-		if (ssz) {
-			if (_editTextCursorPos == _editTextCursorPos2) {
-				_editTextString = _editTextString.substr(0, _editTextCursorPos) + Input::inputString + _editTextString.substr(_editTextCursorPos);
-				_editTextCursorPos += ssz;
-				_editTextCursorPos2 += ssz;
+		if (Editor::onFocus) {
+			if ((Input::mouse0State == MOUSE_UP && !Rect(x, y, w, h).Inside(Input::mousePos)) || Input::KeyDown(Key_Enter)) {
+				SecureZeroMemory(_editingEditText, UI_MAX_EDIT_TEXT_FRAMES * 4);
+				_activeEditTextId = 0;
+				if (changed && delayed) *changed = true;
+				return delayed ? _editTextString : str;
 			}
-			else {
-				_editTextString = _editTextString.substr(0, min(_editTextCursorPos, _editTextCursorPos2)) + Input::inputString + _editTextString.substr(max(_editTextCursorPos, _editTextCursorPos2));
-				_editTextCursorPos = min(_editTextCursorPos, _editTextCursorPos2) + ssz;
+			if (Input::KeyDown(Key_Escape)) {
+				SecureZeroMemory(_editingEditText, UI_MAX_EDIT_TEXT_FRAMES * 4);
+				_activeEditTextId = 0;
+				return str;
+			}
+			if (!delayed) _editTextString = str;
+			_editTextCursorPos -= Input::KeyDown(Key_LeftArrow);
+			_editTextCursorPos += Input::KeyDown(Key_RightArrow);
+			_editTextCursorPos = clamp(_editTextCursorPos, 0, _editTextString.size());
+			if (!Input::KeyHold(Key_Shift) && (Input::KeyDown(Key_LeftArrow) || Input::KeyDown(Key_RightArrow))) {
 				_editTextCursorPos2 = _editTextCursorPos;
+				_editTextBlinkTime = 0;
 			}
-			if (changed) *changed = true;
-			_editTextBlinkTime = 0;
-		}
-		if (Input::KeyDown(Key_Backspace)) {
-			if (_editTextCursorPos == _editTextCursorPos2) {
-				_editTextString = _editTextString.substr(0, _editTextCursorPos - 1) + _editTextString.substr(_editTextCursorPos);
-				if (!!_editTextCursorPos) {
-					_editTextCursorPos--;
-					_editTextCursorPos2--;
+			auto ssz = Input::inputString.size();
+			if (ssz) {
+				if (_editTextCursorPos == _editTextCursorPos2) {
+					_editTextString = _editTextString.substr(0, _editTextCursorPos) + Input::inputString + _editTextString.substr(_editTextCursorPos);
+					_editTextCursorPos += ssz;
+					_editTextCursorPos2 += ssz;
 				}
+				else {
+					_editTextString = _editTextString.substr(0, min(_editTextCursorPos, _editTextCursorPos2)) + Input::inputString + _editTextString.substr(max(_editTextCursorPos, _editTextCursorPos2));
+					_editTextCursorPos = min(_editTextCursorPos, _editTextCursorPos2) + ssz;
+					_editTextCursorPos2 = _editTextCursorPos;
+				}
+				if (changed) *changed = true;
+				_editTextBlinkTime = 0;
 			}
-			else {
-				_editTextString = _editTextString.substr(0, min(_editTextCursorPos, _editTextCursorPos2)) + _editTextString.substr(max(_editTextCursorPos, _editTextCursorPos2));
-				_editTextCursorPos = min(_editTextCursorPos, _editTextCursorPos2);
-				_editTextCursorPos2 = _editTextCursorPos;
+			if (Input::KeyDown(Key_Backspace)) {
+				if (_editTextCursorPos == _editTextCursorPos2) {
+					_editTextString = _editTextString.substr(0, _editTextCursorPos - 1) + _editTextString.substr(_editTextCursorPos);
+					if (!!_editTextCursorPos) {
+						_editTextCursorPos--;
+						_editTextCursorPos2--;
+					}
+				}
+				else {
+					_editTextString = _editTextString.substr(0, min(_editTextCursorPos, _editTextCursorPos2)) + _editTextString.substr(max(_editTextCursorPos, _editTextCursorPos2));
+					_editTextCursorPos = min(_editTextCursorPos, _editTextCursorPos2);
+					_editTextCursorPos2 = _editTextCursorPos;
+				}
+				if (changed) *changed = true;
+				_editTextBlinkTime = 0;
 			}
-			if (changed) *changed = true;
-			_editTextBlinkTime = 0;
+			if (Input::KeyDown(Key_Delete) && _editTextCursorPos < _editTextString.size()) {
+				_editTextString = _editTextString.substr(0, _editTextCursorPos) + _editTextString.substr(_editTextCursorPos + 1);
+				if (changed) *changed = true;
+				_editTextBlinkTime = 0;
+			}
 		}
-		if (Input::KeyDown(Key_Delete) && _editTextCursorPos < _editTextString.size()) {
-			_editTextString = _editTextString.substr(0, _editTextCursorPos) + _editTextString.substr(_editTextCursorPos + 1);
-			if (changed) *changed = true;
-			_editTextBlinkTime = 0;
-		}
-		Engine::Label(x + 2, y + 0.4f*h, s, _editTextString, font);
+		Engine::DrawQuad(x, y, w, h, black());
+		Engine::DrawQuad(x + 1, y + 1, w - 2, h - 2, white());
+		UI::Label(x + 2, y + 0.4f*h, s, _editTextString, font);
 		float xp;
 		if (!_editTextCursorPos) xp = x + 2;
 		else xp = font->poss[_editTextCursorPos * 4].x*Display::width;
@@ -711,7 +713,7 @@ string UI::EditText(float x, float y, float w, float h, float s, Vec4 bcol, stri
 		else xp2 = font->poss[_editTextCursorPos2 * 4].x*Display::width;
 		if (_editTextCursorPos != _editTextCursorPos2) {
 			Engine::DrawQuad(xp, y + 2, xp2 - xp, h - 4, hcol);
-			Engine::Label(min(xp, xp2), y + 0.4f*h, s, _editTextString.substr(min(_editTextCursorPos, _editTextCursorPos2), abs(_editTextCursorPos - _editTextCursorPos2)), font, acol);
+			UI::Label(min(xp, xp2), y + 0.4f*h, s, _editTextString.substr(min(_editTextCursorPos, _editTextCursorPos2), abs(_editTextCursorPos - _editTextCursorPos2)), font, acol);
 		}
 		_editTextBlinkTime += Time::delta;
 		if (fmod(_editTextBlinkTime, 1) < 0.5f) Engine::DrawLine(Vec2(xp, y + 2), Vec2(xp, y + h - 2), (_editTextCursorPos == _editTextCursorPos2)? black() : white(), 1);
@@ -729,7 +731,7 @@ string UI::EditText(float x, float y, float w, float h, float s, Vec4 bcol, stri
 	return str;
 }
 
-void Engine::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4, float maxw) {
+void UI::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4, float maxw) {
 	if (s <= 0) return;
 	uint sz = st.size();
 	GLuint tex = font->glyph((uint)round(s));
@@ -796,22 +798,22 @@ void Engine::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4, 
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
-byte Engine::Button(float x, float y, float w, float h) {
+MOUSE_STATUS Engine::Button(float x, float y, float w, float h) {
 	if (stencilRect) {
-		if (!stencilRect->Intersection(Rect(x, y, w, h)).Inside(Input::mousePos)) return 0;
+		if (!stencilRect->Intersection(Rect(x, y, w, h)).Inside(Input::mousePos)) return MOUSE_NONE;
 	}
-	return Rect(x, y, w, h).Inside(Input::mousePos) ? (MOUSE_HOVER_FLAG | Input::mouse0State) : 0;
+	return Rect(x, y, w, h).Inside(Input::mousePos) ? MOUSE_STATUS(MOUSE_HOVER_FLAG | Input::mouse0State) : MOUSE_NONE;
 }
-byte Engine::Button(float x, float y, float w, float h, Vec4 normalVec4) {
+MOUSE_STATUS Engine::Button(float x, float y, float w, float h, Vec4 normalVec4) {
 	return Button(x, y, w, h, normalVec4, LerpVec4(normalVec4, white(), 0.5f), LerpVec4(normalVec4, black(), 0.5f));
 }
-byte Engine::Button(float x, float y, float w, float h, Vec4 normalVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4, bool labelCenter) {
+MOUSE_STATUS Engine::Button(float x, float y, float w, float h, Vec4 normalVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4, bool labelCenter) {
 	return Button(x, y, w, h, normalVec4, LerpVec4(normalVec4, white(), 0.5f), LerpVec4(normalVec4, black(), 0.5f), label, labelSize, labelFont, labelVec4, labelCenter);
 }
-byte Engine::Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4) {
+MOUSE_STATUS Engine::Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4) {
 	if (Input::mouse0State != 0 && !Rect(x, y, w, h).Inside(Input::mouseDownPos)) {
 		DrawQuad(x, y, w, h, normalVec4);
-		return 0;
+		return MOUSE_NONE;
 	}
 	bool inside = Rect(x, y, w, h).Inside(Input::mousePos);
 	if (stencilRect) {
@@ -828,12 +830,12 @@ byte Engine::Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 hi
 		DrawQuad(x, y, w, h, inside ? pressVec4 : normalVec4);
 		break;
 	}
-	return inside ? (MOUSE_HOVER_FLAG | Input::mouse0State) : 0;
+	return inside ? MOUSE_STATUS(MOUSE_HOVER_FLAG | Input::mouse0State) : MOUSE_NONE;
 }
-byte Engine::Button(float x, float y, float w, float h, Texture* texture, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, float uvx, float uvy, float uvw, float uvh) {
+MOUSE_STATUS Engine::Button(float x, float y, float w, float h, Texture* texture, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, float uvx, float uvy, float uvw, float uvh) {
 	if (Input::mouse0State != 0 && !Rect(x, y, w, h).Inside(Input::mouseDownPos)) {
 		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(uvx, 1 - uvy), Vec2(uvx + uvw, 1 - uvy), Vec2(uvx, 1 - uvy - uvh), Vec2(uvx + uvw, 1 - uvy - uvh), false, normalVec4);
-		return 0;
+		return MOUSE_NONE;
 	}
 	bool inside = Rect(x, y, w, h).Inside(Input::mousePos);
 	if (stencilRect) {
@@ -850,24 +852,24 @@ byte Engine::Button(float x, float y, float w, float h, Texture* texture, Vec4 n
 		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(uvx, 1 - uvy), Vec2(uvx + uvw, 1 - uvy), Vec2(uvx, 1 - uvy - uvh), Vec2(uvx + uvw, 1 - uvy - uvh), false, inside ? pressVec4 : normalVec4);
 		break;
 	}
-	return inside ? (MOUSE_HOVER_FLAG | Input::mouse0State) : 0;
+	return inside ? MOUSE_STATUS(MOUSE_HOVER_FLAG | Input::mouse0State) : MOUSE_NONE;
 }
-byte Engine::Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4, bool labelCenter) {
-	byte b = Button(x, y, w, h, normalVec4, highlightVec4, pressVec4);
+MOUSE_STATUS Engine::Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4, bool labelCenter) {
+	MOUSE_STATUS b = Button(x, y, w, h, normalVec4, highlightVec4, pressVec4);
 	ALIGNMENT al = labelFont->alignment;
 	labelFont->alignment = labelCenter? ALIGN_MIDCENTER : ALIGN_MIDLEFT;
-	Label(round(x + (labelCenter? w*0.5f : 2)), round(y + 0.4f*h), labelSize, label, labelFont, labelVec4);
+	UI::Label(round(x + (labelCenter? w*0.5f : 2)), round(y + 0.4f*h), labelSize, label, labelFont, labelVec4);
 	labelFont->alignment = al;
 	return b;
 }
 
-byte Engine::EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4) {
+MOUSE_STATUS Engine::EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4) {
 	return EButton(a, x, y, w, h, normalVec4, LerpVec4(normalVec4, white(), 0.5f), LerpVec4(normalVec4, black(), 0.5f));
 }
-byte Engine::EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4) {
+MOUSE_STATUS Engine::EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4) {
 	if (Input::mouse0State != 0 && !Rect(x, y, w, h).Inside(Input::mouseDownPos)) {
 		DrawQuad(x, y, w, h, normalVec4);
-		return 0;
+		return MOUSE_NONE;
 	}
 	if (a) {
 		bool inside = Rect(x, y, w, h).Inside(Input::mousePos);
@@ -885,23 +887,23 @@ byte Engine::EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4
 			DrawQuad(x, y, w, h, inside ? pressVec4 : normalVec4);
 			break;
 		}
-		return inside ? (MOUSE_HOVER_FLAG | Input::mouse0State) : 0;
+		return inside ? MOUSE_STATUS(MOUSE_HOVER_FLAG | Input::mouse0State) : MOUSE_NONE;
 	}
 	else {
 		DrawQuad(x, y, w, h, normalVec4);
-		return false;
+		return MOUSE_NONE;
 	}
 }
-byte Engine::EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4) {
+MOUSE_STATUS Engine::EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4) {
 	return EButton(a, x, y, w, h, normalVec4, LerpVec4(normalVec4, white(), 0.5f), LerpVec4(normalVec4, black(), 0.5f), label, labelSize, labelFont, labelVec4);
 }
-byte Engine::EButton(bool a, float x, float y, float w, float h, Texture* texture, Vec4 Vec4) {
+MOUSE_STATUS Engine::EButton(bool a, float x, float y, float w, float h, Texture* texture, Vec4 Vec4) {
 	return EButton(a, x, y, w, h, texture, Vec4, LerpVec4(Vec4, white(), 0.5f), LerpVec4(Vec4, black(), 0.5f));
 }
-byte Engine::EButton(bool a, float x, float y, float w, float h, Texture* texture, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4) {
+MOUSE_STATUS Engine::EButton(bool a, float x, float y, float w, float h, Texture* texture, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4) {
 	if (Input::mouse0State != 0 && !Rect(x, y, w, h).Inside(Input::mouseDownPos)) {
 		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, normalVec4);
-		return 0;
+		return MOUSE_NONE;
 	}
 	if (a) {
 	bool inside = Rect(x, y, w, h).Inside(Input::mousePos);
@@ -919,18 +921,18 @@ byte Engine::EButton(bool a, float x, float y, float w, float h, Texture* textur
 		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, inside ? pressVec4 : normalVec4);
 		break;
 	}
-	return inside ? (MOUSE_HOVER_FLAG | Input::mouse0State) : 0;
+	return inside ? MOUSE_STATUS(MOUSE_HOVER_FLAG | Input::mouse0State) : MOUSE_NONE;
 	}
 	else {
 		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, normalVec4);
-		return false;
+		return MOUSE_NONE;
 	}
 }
-byte Engine::EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4) {
-	byte b = EButton(a, x, y, w, h, normalVec4, LerpVec4(normalVec4, white(), 0.5f), LerpVec4(normalVec4, black(), 0.5f));
+MOUSE_STATUS Engine::EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4) {
+	MOUSE_STATUS b = EButton(a, x, y, w, h, normalVec4, LerpVec4(normalVec4, white(), 0.5f), LerpVec4(normalVec4, black(), 0.5f));
 	ALIGNMENT al = labelFont->alignment;
 	labelFont->alignment = ALIGN_MIDLEFT;
-	Label(round(x + 2), round(y + 0.4f*h), labelSize, label, labelFont, labelVec4);
+	UI::Label(round(x + 2), round(y + 0.4f*h), labelSize, label, labelFont, labelVec4);
 	labelFont->alignment = al;
 	return b;
 }
@@ -2164,7 +2166,7 @@ void Scene::DeleteObject(SceneObject* o) {
 	o->_pendingDelete = true;
 }
 
-std::shared_ptr<Scene> Scene::active = nullptr;
+Scene* Scene::active = nullptr;
 std::ifstream* Scene::strm = nullptr;
 #ifndef IS_EDITOR
 std::vector<string> Scene::sceneEPaths = {};
@@ -2195,7 +2197,8 @@ void Scene::Load(uint i) {
 #else
 	{
 #endif
-		active = std::make_shared<Scene>(*strm, scenePoss[i]);
+		if (active) delete(active);
+		active = new Scene(*strm, scenePoss[i]);
 	}
 	active->sceneId = i;
 	Debug::Message("Scene Loader", "Loaded scene " + to_string(i) + "(" + sceneNames[i] + ")");

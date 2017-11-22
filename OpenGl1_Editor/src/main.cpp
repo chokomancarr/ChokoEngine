@@ -331,6 +331,7 @@ void UpdateLoop() {
 			Time::time = (millis - Time::startMillis)*0.001;
 			Time::millis = millis;
 			Input::UpdateMouseNKeyboard();
+			Editor::onFocus = GetForegroundWindow() == Editor::hwnd2;
 			DoUpdate();
 		}
 	}

@@ -175,13 +175,16 @@ public:
 	static float Value(), Range(float min, float max);
 };
 
-#define MOUSE_DOWN 0x01
-#define MOUSE_HOLD 0x02
-#define MOUSE_UP 0x03
-#define MOUSE_HOVER_FLAG 0x10
-#define MOUSE_CLICK 0x11 //use for buttons
-#define MOUSE_PRESS 0x12 //use for buttons
-#define MOUSE_RELEASE 0x13 //use for buttons
+enum MOUSE_STATUS : byte {
+	MOUSE_NONE = 0x00,
+	MOUSE_DOWN,
+	MOUSE_HOLD,
+	MOUSE_UP,
+	MOUSE_HOVER_FLAG = 0x10,
+	MOUSE_CLICK, //use for buttons
+	MOUSE_PRESS, //use for buttons
+	MOUSE_RELEASE  //use for buttons
+};
 
 enum ALIGNMENT : byte {
 	ALIGN_BOTLEFT = 0x00,
@@ -660,9 +663,10 @@ public:
 	static void Texture(float x, float y, float w, float h, ::Texture* texture, DrawTex_Scaling scl = DrawTex_Stretch, float miplevel = 0);
 	static void Texture(float x, float y, float w, float h, ::Texture* texture, float alpha, DrawTex_Scaling scl = DrawTex_Stretch, float miplevel = 0);
 	static void Texture(float x, float y, float w, float h, ::Texture* texture, Vec4 tint, DrawTex_Scaling scl = DrawTex_Stretch, float miplevel = 0);
-	
+	static void Label(float x, float y, float s, string str, Font* font, Vec4 col = black(), float maxw = -1);
+
 	//Draws an editable text box. EditText does not work on recursive functions.
-	static string EditText(float x, float y, float w, float h, float s, Vec4 bcol, string str, Font* font, bool delayed = false, bool* changed = nullptr, Vec4 fcol = black(), Vec4 hcol = blue(), Vec4 acol = white());
+	static string EditText(float x, float y, float w, float h, float s, Vec4 bcol, string str, Font* font, bool delayed = false, bool* changed = nullptr, Vec4 fcol = black(), Vec4 hcol = Vec4(0, 120.0f / 255, 215.0f / 255, 1), Vec4 acol = white());
 
 	static bool CanDraw();
 //protected:
@@ -713,19 +717,18 @@ public:
 	static void DrawCircle(Vec2 c, float r, uint n, Vec4 col, float width);
 	static void DrawCircleW(Vec3 c, Vec3 x, Vec3 y, float r, uint n, Vec4 col, float width, bool dotted = false);
 	static void DrawCubeLinesW(float x0, float x1, float y0, float y1, float z0, float z1, float width, Vec4 col);
-	static void Label(float x, float y, float s, string str, Font* font, Vec4 col = black(), float maxw = -1);
-	static byte Button(float x, float y, float w, float h);
-	static byte Button(float x, float y, float w, float h, Vec4 normalVec4);
-	static byte Button(float x, float y, float w, float h, Vec4 normalVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4, bool labelCenter = false);
-	static byte Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4);
-	static byte Button(float x, float y, float w, float h, Texture* texture, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, float uvx = 0, float uvy = 0, float uvw = 1, float uvh = 1);
-	static byte Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4, bool labelCenter = false);
-	static byte EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4);
-	static byte EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4);
-	static byte EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4);
-	static byte EButton(bool a, float x, float y, float w, float h, Texture* texture, Vec4 col);
-	static byte EButton(bool a, float x, float y, float w, float h, Texture* texture, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4);
-	static byte EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4);
+	static MOUSE_STATUS Button(float x, float y, float w, float h);
+	static MOUSE_STATUS Button(float x, float y, float w, float h, Vec4 normalVec4);
+	static MOUSE_STATUS Button(float x, float y, float w, float h, Vec4 normalVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4, bool labelCenter = false);
+	static MOUSE_STATUS Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4);
+	static MOUSE_STATUS Button(float x, float y, float w, float h, Texture* texture, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, float uvx = 0, float uvy = 0, float uvw = 1, float uvh = 1);
+	static MOUSE_STATUS Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4, bool labelCenter = false);
+	static MOUSE_STATUS EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4);
+	static MOUSE_STATUS EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4);
+	static MOUSE_STATUS EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4);
+	static MOUSE_STATUS EButton(bool a, float x, float y, float w, float h, Texture* texture, Vec4 col);
+	static MOUSE_STATUS EButton(bool a, float x, float y, float w, float h, Texture* texture, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4);
+	static MOUSE_STATUS EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4);
 	static bool Toggle(float x, float y, float s, Vec4 col, bool t);
 	static bool Toggle(float x, float y, float s, Texture* texture, bool t, Vec4 col=white(), ORIENTATION o = ORIENT_NONE);
 	static float DrawSliderFill(float x, float y, float w, float h, float min, float max, float val, Vec4 background, Vec4 foreground);
@@ -807,7 +810,7 @@ public:
 	Scene() : sceneName("newScene") {}
 	Scene(std::ifstream& stream, long pos);
 	~Scene() {}
-	static std::shared_ptr<Scene> active;
+	static Scene* active;
 	static bool loaded() {
 		return active != nullptr;
 	}

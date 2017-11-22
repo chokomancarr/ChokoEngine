@@ -17,10 +17,6 @@ Editor functions
 #define EB_HEADER_SIZE 16
 #define EB_HEADER_PADDING 16
 
-
-//class Editor;
-//class EditorBlock;
-
 typedef void(*dataFunc)(EditorBlock*, void*);
 typedef void(*shortcutFunc)(EditorBlock*);
 typedef void(*shortcutFuncGlobal)(Editor*);
@@ -34,7 +30,7 @@ typedef std::unordered_map<int, funcMap[]> CommandsMap;
 int GetShortcutInt(InputKey k, InputKey m1 = Key_None, InputKey m2 = Key_None, InputKey m3 = Key_None);
 bool ShortcutTriggered(int i, bool c, bool a, bool s);
 
-Vec4 grey1(), grey2(), headerCol();
+Vec4 grey1(), grey2(), headerCol(), hlCol();
 
 class EditorBlock {
 public:
@@ -525,6 +521,7 @@ public:
 
 	Font* font;
 	static HWND hwnd, hwnd2;
+	static bool onFocus;
 	char mousePressType = -1;
 	int mouseOn = 0;
 	int mouseOnP = 0;
@@ -541,7 +538,7 @@ public:
 	int gridId[68];
 	Vec3 grid[64];
 
-	std::shared_ptr<Scene> activeScene = nullptr;
+	Scene* activeScene = nullptr;
 	bool sceneLoaded() { return activeScene != nullptr; }
 	SceneObject* selected;
 	Mat4x4 selectedMvMatrix;

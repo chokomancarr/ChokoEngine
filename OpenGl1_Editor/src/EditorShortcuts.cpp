@@ -629,6 +629,7 @@ void Editor::DoOpenScene(EditorBlock* b, void* v) {
 	if (Scene::active != nullptr) Scene::active->Unload();
 	string nm = Editor::instance->projectFolder + "Assets\\" + *(string*)v;
 	std::ifstream s(nm.c_str(), std::ios::binary | std::ios::in);
-	Editor::instance->activeScene = std::make_shared<Scene>(s, 0);
+	if (Editor::instance->activeScene) delete(Editor::instance->activeScene);
+	Editor::instance->activeScene = new Scene(s, 0);
 	Scene::active = Editor::instance->activeScene;
 }
