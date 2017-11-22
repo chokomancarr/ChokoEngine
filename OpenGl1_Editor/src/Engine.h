@@ -14,6 +14,10 @@
 #include <Windows.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
+extern "C" {
+#include "libavcodec\avcodec.h"
+#include "libavutil\avutil.h"
+}
 #include "Defines.h"
 
 #ifndef IS_EDITOR
@@ -91,6 +95,10 @@ inline string to_string(Vec2 v), to_string(Vec3 v), to_string(Vec4 v), to_string
 std::vector<string> string_split(string s, char c);
 
 Vec3 to_vec3(Vec4 v);
+
+int TryParse(string str, int defVal);
+uint TryParse(string str, uint defVal);
+float TryParse(string str, float defVal);
 
 class Mesh;
 
@@ -351,6 +359,7 @@ public:
 	Font* Align(ALIGNMENT a);
 
 	friend class Engine;
+	friend class UI;
 protected:
 	static FT_Library _ftlib;
 	static void Init();
@@ -372,7 +381,7 @@ protected:
 	GLuint CreateGlyph (uint size, bool recalcW2h = false);
 };
 
-enum InputKey {
+enum InputKey : byte {
 	Key_None = 0x00,
 	Key_Backspace = 0x08,
 	Key_Tab = 0x09,
@@ -653,17 +662,42 @@ public:
 	static void Texture(float x, float y, float w, float h, ::Texture* texture, Vec4 tint, DrawTex_Scaling scl = DrawTex_Stretch, float miplevel = 0);
 	
 	//Draws an editable text box. EditText does not work on recursive functions.
-	static string EditText(float x, float y, float w, float h, float s, string str, Font* font, Vec4 col);
+	static string EditText(float x, float y, float w, float h, float s, Vec4 bcol, string str, Font* font, bool delayed = false, bool* changed = nullptr, Vec4 fcol = black(), Vec4 hcol = blue(), Vec4 acol = white());
 
 	static bool CanDraw();
 //protected:
 	static bool _isDrawingLoop;
+	static void PreLoop();
 	static uint _activeEditText[UI_MAX_EDIT_TEXT_FRAMES], _lastEditText[UI_MAX_EDIT_TEXT_FRAMES], _editingEditText[UI_MAX_EDIT_TEXT_FRAMES];
 	static ushort _activeEditTextId, _editingEditTextId;
 	static uint drawFuncLoc;
 
 	static void GetEditTextId();
 	static bool IsActiveEditText();
+
+	struct StyleColor {
+		Vec4 backColor, fontColor;
+		//Texture* backTex;
+
+		void Set(const Vec4 vb, const Vec4 vf) {
+			backColor = vb;
+			fontColor = vf;
+		}
+	};
+	struct Style {
+		StyleColor normal, mouseover, highlight, press;
+		int fontSize;
+	};
+
+	friend class Engine;
+protected:
+	static int _editTextCursorPos, _editTextCursorPos2;
+	static string _editTextString;
+	static float _editTextBlinkTime;
+
+	static Style _defaultStyle;
+	
+	static void Init();
 };
 
 class Engine {
@@ -679,9 +713,7 @@ public:
 	static void DrawCircle(Vec2 c, float r, uint n, Vec4 col, float width);
 	static void DrawCircleW(Vec3 c, Vec3 x, Vec3 y, float r, uint n, Vec4 col, float width, bool dotted = false);
 	static void DrawCubeLinesW(float x0, float x1, float y0, float y1, float z0, float z1, float width, Vec4 col);
-	static void Label(float x, float y, float s, string str, Font* font);
-	static void Label(float x, float y, float s, string str, Font* font, Vec4 col);
-	static void Label(float x, float y, float s, string str, Font* font, Vec4 col, float maxw);
+	static void Label(float x, float y, float s, string str, Font* font, Vec4 col = black(), float maxw = -1);
 	static byte Button(float x, float y, float w, float h);
 	static byte Button(float x, float y, float w, float h, Vec4 normalVec4);
 	static byte Button(float x, float y, float w, float h, Vec4 normalVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4, bool labelCenter = false);

@@ -26,7 +26,6 @@
 #include <glm/gtc/type_ptr.hpp>
 #include "Defines.h"
 #include "SceneScriptResolver.h"
-
 using namespace ChokoEngine;
 
 #define F2ISTREAM(_varname, _pathname) std::ifstream _f2i_ifstream((_pathname).c_str(), std::ios::in | std::ios::binary); \
@@ -867,14 +866,30 @@ string _vt_errtext(int i) {
 	return string(c);
 }
 
+void VideoTexture::Init() {
+	avcodec_register_all();
+}
+
 VideoTexture::VideoTexture(const string& path) {
-#define fail(msg) {Debug::Warning("VideoTexture", msg); formatContext = nullptr; return;}
-	
+#define fail(msg) {Debug::Warning("VideoTexture", msg); codec = nullptr; return;}
+	//strm = new std::ifstream(path, std::ios::binary);
+	//if (!strm) fail("cannot open file");
+	codec = avcodec_find_decoder(AV_CODEC_ID_H264);
+	if (!codec) fail("no h264 codec");
+	codecContext = avcodec_alloc_context3(codec);
+	if (codec->capabilities & CODEC_CAP_TRUNCATED) {
+		codecContext->flags |= CODEC_FLAG_TRUNCATED;
+	}
+	if (avcodec_open2(codecContext, codec, 0) < 0) fail("cannot open codec");
+	picture = av_frame_alloc();
+	parser = av_parser_init(AV_CODEC_ID_H264);
+	if (!parser) fail("cannot create parser");
+
+	std::cout << "ok" << std::endl;
 #undef fail
 }
 
 void VideoTexture::GetFrame() {
-	
 	Debug::Warning("VT", "get frame failed!");
 }
 

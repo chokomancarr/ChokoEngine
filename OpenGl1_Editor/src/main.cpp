@@ -48,6 +48,8 @@ string path;
 Editor* editor;
 std::mutex lockMutex;
 
+VideoTexture* vt;
+
 HWND splashHwnd;
 void ShowSplash(string bitmap, uint cx, uint cy, uint sw, uint sh);
 void KillSplash();
@@ -67,8 +69,6 @@ int main(int argc, char **argv)
 {
 	path = argv[0];
 	//signal(SIGABRT, &abort_func);
-
-	UI::EditText(0, 0, 0, 0, 0, "", 0, Vec4());
 
 	editor = new Editor();
 	editor->hwnd = GetForegroundWindow();
@@ -207,11 +207,10 @@ int main(int argc, char **argv)
 	glutPositionWindow(info.rcMonitor.left, info.rcMonitor.top);
 	glutReshapeWindow(editor->scrW, editor->scrH);
 	glutShowWindow();
-	//SetWindowText(editor->hwnd2, TEXT("ChokoEngine"));
-	//AnimateWindow(editor->hwnd2, 300, AW_ACTIVATE | AW_BLEND);
+
+	vt = new VideoTexture("D:\\bg.mp4");
+
 	glutMainLoop();
-	string str;
-	std::getline(std::cin, str);
 	return 0;
 }
 
@@ -343,9 +342,14 @@ void OnDie() {
 	editor->playSyncer.Terminate();
 }
 
-bool hi;
 void DrawOverlay() {
 	std::lock_guard<std::mutex> lock(lockMutex);
+	if (!UI::drawFuncLoc) {
+		__trace(funcLoc);
+		UI::drawFuncLoc = funcLoc;
+	}
+	UI::PreLoop();
+
 	editor->UpdateLerpers();
 	editor->playSyncer.Update();
 	if (editor->backgroundTex != nullptr)
@@ -382,10 +386,6 @@ void renderScene()
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
 		DrawOverlay();
-
-		//Engine::DrawQuad(0, 0, 512, 512, rt->pointer);
-		//Engine::DrawQuad(513, 0, 512, 512, rt->pointer);
-		//Engine::DrawQuad(1026, 0, 512, 512, rt2->pointer);
 
 		glutSwapBuffers();
 		redrawn = true;

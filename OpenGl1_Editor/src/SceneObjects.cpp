@@ -198,8 +198,7 @@ void Camera::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 	Camera* cam = (Camera*)c;
 	if (DrawComponentHeader(e, v, pos, this)) {
 		Engine::Label(v.r + 2, v.g + pos + 17, 12, "Field of view", e->font, white());
-		Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos + 17, v.b * 0.3f - 1, 16, grey1());
-		Engine::Label(v.r + v.b * 0.3f + 2, v.g + pos + 17, 12, to_string(cam->fov), e->font, white());
+		cam->fov = TryParse(UI::EditText(v.r + v.b * 0.3f, v.g + pos + 17, v.b * 0.3f - 1, 16, 12, grey1(), to_string(cam->fov), e->font, true, nullptr, white()), cam->fov);
 		cam->fov = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos + 17, v.b * 0.4f-1, 16, 0.1f, 179.9f, cam->fov, grey1(), white());
 		Engine::Label(v.r + 2, v.g + pos + 35, 12, "Frustrum", e->font, white());
 		Engine::Label(v.r + 4, v.g + pos + 47, 12, "X", e->font, white());
@@ -422,11 +421,11 @@ void MeshRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 					void* bbs = materials[a]->vals[materials[a]->valOrders[q]][materials[a]->valOrderGLIds[q]];
 					switch (materials[a]->valOrders[q]) {
 					case SHADER_INT:
-						Engine::EButton(e->editorLayer == 0, v.r + v.b * 0.3f + 17, v.g + pos , v.b*0.7f - 17, 16, grey1(), LerpVec4(grey1(), white(), 0.1f), LerpVec4(grey1(), black(), 0.5f), to_string(*(int*)bbs), 12, e->font, white());
+						*(int*)bbs = TryParse(UI::EditText(v.r + v.b * 0.3f + 17, v.g + pos, v.b*0.3f, 16, 12, grey1(), to_string(*(int*)bbs), e->font, true, nullptr, white()), *(int*)bbs);
 						*(int*)bbs = (int)round(Engine::DrawSliderFill(v.r + v.b*0.6f + 18, v.g + pos, v.b*0.4f - 19, 16, 0, 1, (float)(*(int*)bbs), grey2(), white()));
 						break;
 					case SHADER_FLOAT:
-						Engine::EButton(e->editorLayer == 0, v.r + v.b * 0.3f + 17, v.g + pos , v.b*0.6f - 17, 16, grey1(), LerpVec4(grey1(), white(), 0.1f), LerpVec4(grey1(), black(), 0.5f), to_string(*(float*)bbs), 12, e->font, white());
+						*(float*)bbs = TryParse(UI::EditText(v.r + v.b * 0.3f + 17, v.g + pos, v.b*0.3f, 16, 12, grey1(), to_string(*(float*)bbs), e->font, true, nullptr, white()), *(float*)bbs);
 						*(float*)bbs = Engine::DrawSliderFill(v.r + v.b*0.6f + 18, v.g + pos, v.b*0.4f - 19, 16, 0, 1, *(float*)bbs, grey2(), white());
 						break;
 					case SHADER_SAMPLER:

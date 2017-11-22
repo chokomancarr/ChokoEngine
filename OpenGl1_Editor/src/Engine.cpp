@@ -65,6 +65,31 @@ Vec3 to_vec3(Vec4 v) {
 	return Vec3(v.x, v.y, v.z);
 }
 
+int TryParse (string str, int defVal) {
+	try {
+		return std::stoi(str);
+	}
+	catch (...) {
+		return defVal;
+	}
+}
+uint TryParse(string str, uint defVal) {
+	try {
+		return std::stoul(str);
+	}
+	catch (...) {
+		return defVal;
+	}
+}
+float TryParse(string str, float defVal) {
+	try {
+		return std::stof(str);
+	}
+	catch (...) {
+		return defVal;
+	}
+}
+
 float Dw(float f) {
 	return (f / Display::width);
 }
@@ -417,11 +442,13 @@ void Engine::Init(string path) {
 		if (!fallbackTex->loaded)
 			std::cout << "cannot load fallback texture!" << std::endl;
 	}
+	Engine::_mainThreadId = std::this_thread::get_id().hash();
 
 	Material::LoadOris();
 	Light::InitShadow();
 	Camera::InitShaders();
 	Font::Init();
+	VideoTexture::Init();
 #ifdef IS_EDITOR
 	Editor::InitShaders();
 	Editor::instance->InitMaterialPreviewer();
@@ -508,6 +535,19 @@ uint UI::_editingEditText[UI_MAX_EDIT_TEXT_FRAMES] = {};
 ushort UI::_activeEditTextId = 0;
 ushort UI::_editingEditTextId = 0;
 uint UI::drawFuncLoc = 0;
+int UI::_editTextCursorPos = 0;
+int UI::_editTextCursorPos2 = 0;
+string UI::_editTextString = "";
+float UI::_editTextBlinkTime = 0;
+UI::Style UI::_defaultStyle = {};
+
+void UI::Init() {
+	_defaultStyle.fontSize = 12;
+	_defaultStyle.normal.Set(grey1(), black());
+	_defaultStyle.mouseover.Set(white(), black());
+	_defaultStyle.highlight.Set(blue(), white());
+	_defaultStyle.press.Set(grey2(), black());
+}
 
 void UI_Trace(uint fpar, uint numb, uint* tar) {
 	byte p = 0;
@@ -561,8 +601,15 @@ bool UI::IsActiveEditText() {
 	return false;
 }
 
+void UI::PreLoop() {
+	SecureZeroMemory(_lastEditText, UI_MAX_EDIT_TEXT_FRAMES * 4);
+	_activeEditTextId = 0;
+}
+
+#define _checkdraw assert(UI::CanDraw() && "UI functions can only be called from the Overlay function!");
+
 bool UI::CanDraw() {
-	return (std::this_thread::get_id().hash() == Engine::_mainThreadId) && _isDrawingLoop;
+	return (std::this_thread::get_id().hash() == Engine::_mainThreadId);
 }
 
 void UI::Texture(float x, float y, float w, float h, ::Texture* texture, DrawTex_Scaling scl, float miplevel) {
@@ -572,6 +619,7 @@ void UI::Texture(float x, float y, float w, float h, ::Texture* texture, float a
 	UI::Texture(x, y, w, h, texture, white(alpha), scl, miplevel);
 }
 void UI::Texture(float x, float y, float w, float h, ::Texture* texture, Vec4 tint, DrawTex_Scaling scl, float miplevel) {
+	_checkdraw;
 	GLuint tex = (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer;
 	if (scl == DrawTex_Stretch)
 		Engine::DrawQuad(x, y, w, h, tex, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint, miplevel);
@@ -587,21 +635,100 @@ void UI::Texture(float x, float y, float w, float h, ::Texture* texture, Vec4 ti
 	}
 }
 
-string UI::EditText(float x, float y, float w, float h, float s, string str, Font* font, Vec4 col) {
+string UI::EditText(float x, float y, float w, float h, float s, Vec4 bcol, string str, Font* font, bool delayed, bool* changed, Vec4 fcol, Vec4 hcol, Vec4 acol) {
+	_checkdraw;
 	GetEditTextId();
+	bool isActive = (UI_Same_Id(_activeEditText, _editingEditText) && (_activeEditTextId == _editingEditTextId));
+	
+	if (changed) *changed = false;
 
-
-	// (ry
+	if (isActive) {
+		if ((Input::mouse0State == MOUSE_UP && !Rect(x, y, w, h).Inside(Input::mousePos)) || Input::KeyDown(Key_Enter)) {
+			SecureZeroMemory(_editingEditText, UI_MAX_EDIT_TEXT_FRAMES * 4);
+			_activeEditTextId = 0;
+			if (changed && delayed) *changed = true;
+			return delayed ? _editTextString : str;
+		}
+		if (Input::KeyDown(Key_Escape)) {
+			SecureZeroMemory(_editingEditText, UI_MAX_EDIT_TEXT_FRAMES * 4);
+			_activeEditTextId = 0;
+			return str;
+		}
+		if (!delayed) _editTextString = str;
+		auto al = font->alignment;
+		font->Align(ALIGN_MIDLEFT);
+		Engine::DrawQuad(x, y, w, h, black());
+		Engine::DrawQuad(x+1, y+1, w-2, h-2, white());
+		_editTextCursorPos -= Input::KeyDown(Key_LeftArrow);
+		_editTextCursorPos += Input::KeyDown(Key_RightArrow);
+		_editTextCursorPos = clamp(_editTextCursorPos, 0, _editTextString.size());
+		if (!Input::KeyHold(Key_Shift) && (Input::KeyDown(Key_LeftArrow) || Input::KeyDown(Key_RightArrow))) {
+			_editTextCursorPos2 = _editTextCursorPos;
+			_editTextBlinkTime = 0;
+		}
+		auto ssz = Input::inputString.size();
+		if (ssz) {
+			if (_editTextCursorPos == _editTextCursorPos2) {
+				_editTextString = _editTextString.substr(0, _editTextCursorPos) + Input::inputString + _editTextString.substr(_editTextCursorPos);
+				_editTextCursorPos += ssz;
+				_editTextCursorPos2 += ssz;
+			}
+			else {
+				_editTextString = _editTextString.substr(0, min(_editTextCursorPos, _editTextCursorPos2)) + Input::inputString + _editTextString.substr(max(_editTextCursorPos, _editTextCursorPos2));
+				_editTextCursorPos = min(_editTextCursorPos, _editTextCursorPos2) + ssz;
+				_editTextCursorPos2 = _editTextCursorPos;
+			}
+			if (changed) *changed = true;
+			_editTextBlinkTime = 0;
+		}
+		if (Input::KeyDown(Key_Backspace)) {
+			if (_editTextCursorPos == _editTextCursorPos2) {
+				_editTextString = _editTextString.substr(0, _editTextCursorPos - 1) + _editTextString.substr(_editTextCursorPos);
+				if (!!_editTextCursorPos) {
+					_editTextCursorPos--;
+					_editTextCursorPos2--;
+				}
+			}
+			else {
+				_editTextString = _editTextString.substr(0, min(_editTextCursorPos, _editTextCursorPos2)) + _editTextString.substr(max(_editTextCursorPos, _editTextCursorPos2));
+				_editTextCursorPos = min(_editTextCursorPos, _editTextCursorPos2);
+				_editTextCursorPos2 = _editTextCursorPos;
+			}
+			if (changed) *changed = true;
+			_editTextBlinkTime = 0;
+		}
+		if (Input::KeyDown(Key_Delete) && _editTextCursorPos < _editTextString.size()) {
+			_editTextString = _editTextString.substr(0, _editTextCursorPos) + _editTextString.substr(_editTextCursorPos + 1);
+			if (changed) *changed = true;
+			_editTextBlinkTime = 0;
+		}
+		Engine::Label(x + 2, y + 0.4f*h, s, _editTextString, font);
+		float xp;
+		if (!_editTextCursorPos) xp = x + 2;
+		else xp = font->poss[_editTextCursorPos * 4].x*Display::width;
+		float xp2;
+		if (!_editTextCursorPos2) xp2 = x + 2;
+		else xp2 = font->poss[_editTextCursorPos2 * 4].x*Display::width;
+		if (_editTextCursorPos != _editTextCursorPos2) {
+			Engine::DrawQuad(xp, y + 2, xp2 - xp, h - 4, hcol);
+			Engine::Label(min(xp, xp2), y + 0.4f*h, s, _editTextString.substr(min(_editTextCursorPos, _editTextCursorPos2), abs(_editTextCursorPos - _editTextCursorPos2)), font, acol);
+		}
+		_editTextBlinkTime += Time::delta;
+		if (fmod(_editTextBlinkTime, 1) < 0.5f) Engine::DrawLine(Vec2(xp, y + 2), Vec2(xp, y + h - 2), (_editTextCursorPos == _editTextCursorPos2)? black() : white(), 1);
+		font->Align(al);
+		return delayed ? str : _editTextString;
+	}
+	else if(Engine::Button(x, y, w, h, bcol, str, s, font, fcol, false) == MOUSE_RELEASE) {
+		memcpy(_editingEditText, _activeEditText, UI_MAX_EDIT_TEXT_FRAMES * 4);
+		_editingEditTextId = _activeEditTextId;
+		_editTextCursorPos = str.size();
+		_editTextCursorPos2 = 0;
+		_editTextBlinkTime = 0;
+		if (delayed) _editTextString = str;
+	}
 	return str;
 }
 
-
-void Engine::Label(float x, float y, float s, string st, Font* font) {
-	Label(x, y, s, st, font, Vec4(0, 0, 0, 1));
-}
-void Engine::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4) {
-	Label(x, y, s, st, font, Vec4, -1);
-}
 void Engine::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4, float maxw) {
 	if (s <= 0) return;
 	uint sz = st.size();
@@ -638,6 +765,7 @@ void Engine::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4, 
 		font->cs[i + 3] = c;
 		x = ceil(x + font->w2s[c]*s + s*0.1f);
 	}
+	font->poss[sz * 4] = Vec3(x, 0, 0)*ds;
 
 	uint prog = font->fontProgram;
 	glEnableClientState(GL_VERTEX_ARRAY);
@@ -1240,23 +1368,35 @@ void Input::UpdateMouseNKeyboard(bool* src) {
 		for (byte a = 1; a < 112; a++) {
 			keyStatusNew[a] = ((GetAsyncKeyState(a) >> 8) == -128);
 		}
-		for (byte a = 187; a < 191; a++) {
+		for (byte a = Key_Plus; a <= Key_Dot; a++) {
 			keyStatusNew[a] = ((GetAsyncKeyState(a) >> 8) == -128);
 		}
 	}
 	
 	inputString = "";
 	bool shift = KeyHold(Key_Shift);
-	for (byte c = Key_0; c <= Key_9; c++) {
-		if (KeyDown((InputKey)c)) {
-			inputString += char(c);
+	byte b;
+	for (b = Key_0; b <= Key_9; b++) {
+		if (KeyDown((InputKey)b)) {
+			inputString += char(b);
 		}
 	}
-	for (byte b = Key_A; b <= Key_Z; b++) {
+	for (b = Key_NumPad0; b <= Key_NumPad9; b++) {
+		if (KeyDown((InputKey)b)) {
+			inputString += char(b-48);
+		}
+	}
+	for (b = Key_A; b <= Key_Z; b++) {
 		if (KeyDown((InputKey)b)) {
 			inputString += shift ? char(b) : char(b + 32);
 		}
 	}
+	for (b = Key_Plus; b <= Key_Dot; b++) {
+		if (KeyDown((InputKey)b)) {
+			inputString += char(b-0x90);
+		}
+	}
+	if (KeyDown(Key_Space)) inputString += " ";
 
 	if (mouse0)
 		mouse0State = min(mouse0State+1, MOUSE_HOLD);
@@ -1518,14 +1658,14 @@ float clamp(float f, float a, float b) {
 float repeat(float f, float a, float b) {
 	assert(b > a);
 	float fn = f;
-	while (f >= b) {
+	while (fn >= b) {
 		fn -= (b - a);
 		if (fn == f) {
 			Debug::Warning("Repeat", "Floating-point accuracy exceeded. Returning max.");
 			return b;
 		}
 	}
-	while (f < a) {
+	while (fn < a) {
 		fn += (b - a);
 		if (fn == f) {
 			Debug::Warning("Repeat", "Floating-point accuracy exceeded. Returning min.");
@@ -1592,7 +1732,7 @@ Font::Font(const string& path, int size) {
 
 void Font::SizeVec(uint sz) {
 	if (vecSize >= sz) return;
-	poss.resize(sz * 4);
+	poss.resize(sz * 4+1);
 	cs.resize(sz * 4);
 	for (; vecSize < sz; vecSize++) {
 		uvs.push_back(Vec2(0, 1));

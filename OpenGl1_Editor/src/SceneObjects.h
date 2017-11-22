@@ -27,7 +27,6 @@ public:
 	friend class EB_Viewer;
 	friend class EB_Inspector;
 	friend class SceneObject;
-	friend void EBI_DrawObj(Vec4 v, Editor* editor, EB_Inspector* b, SceneObject* o);
 	friend bool DrawComponentHeader(Editor* e, Vec4 v, uint pos, Component* c);
 	friend void DrawSceneObjectsOpaque(EB_Viewer* ebv, const std::vector<SceneObject*> &oo), DrawSceneObjectsGizmos(EB_Viewer* ebv, const std::vector<SceneObject*> &oo), DrawSceneObjectsTrans(EB_Viewer* ebv, std::vector<SceneObject*> oo);
 
@@ -70,6 +69,7 @@ public:
 
 	friend class SceneObject;
 	friend class EB_Viewer;
+	friend class EB_Inspector;
 	friend struct Editor_PlaySyncer;
 	friend void DrawSceneObjectsOpaque(EB_Viewer*, const std::vector<SceneObject*>&);
 	friend void DrawSceneObjectsGizmos(EB_Viewer*, const std::vector<SceneObject*>&);
@@ -308,8 +308,16 @@ public:
 	void Play(), Pause(), Stop();
 //protected:
 	GLuint d_fbo;
-	byte* buffer = 0;
+	std::vector<byte> buffer;
 
+	std::istream* strm;
+	AVCodec* codec;
+	AVCodecContext* codecContext;
+	AVCodecParserContext* parser;
+	AVFrame* picture;
+	int frame;
+
+	static void Init();
 	void GetFrame();
 };
 

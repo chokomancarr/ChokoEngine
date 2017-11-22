@@ -1064,16 +1064,17 @@ loaded = true;
 }
 */
 
-void EBI_DrawObj(Vec4 v, Editor* editor, EB_Inspector* b, SceneObject* o) {
+void EB_Inspector::DrawObj(Vec4 v, Editor* editor, EB_Inspector* b, SceneObject* o) {
 	UI::Texture(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 18, 18, editor->tex_object);
-	Engine::EButton((editor->editorLayer == 0), v.r + 20, v.g + 2 + EB_HEADER_SIZE, v.b - 21, 18, grey2());
-	Engine::Label(v.r + 22, v.g + 3 + EB_HEADER_SIZE, 12, o->name, editor->font, white());
+	o->name = UI::EditText(v.r + 20, v.g + 2 + EB_HEADER_SIZE, v.b - 21, 18, 12, grey2(), o->name, editor->font, true, nullptr, white());
 
-	//TRS
-	b->DrawVector3(editor, v, 21, "Position", o->transform.position);
-	b->DrawVector3(editor, v, 38, "Rotation", (Vec3&)o->transform.eulerRotation());
-	b->DrawVector3(editor, v, 55, "Scale", o->transform.scale);
-
+	//TRS (don't chain them together or the latter may be skipped)
+	bool chg = b->DrawVector3(editor, v, 21, "Position", o->transform.position);
+	chg |= b->DrawVector3(editor, v, 38, "Rotation", (Vec3&)o->transform.eulerRotation());
+	chg |= b->DrawVector3(editor, v, 55, "Scale", o->transform.scale);
+	if (chg) {
+		o->transform.eulerRotation(o->transform.eulerRotation()); //matrix updates itself
+	}
 	//draw components
 	uint off = 74 + EB_HEADER_SIZE;
 	for (Component* c : o->_components)
@@ -1205,7 +1206,7 @@ void EB_Inspector::Draw() {
 			DrawGlobal(v);
 		}
 		else if (lockGlobal == 1) {
-			EBI_DrawObj(v, editor, this, lockedObj);
+			DrawObj(v, editor, this, lockedObj);
 		}
 	}
 	else if (editor->selectedFileType != ASSETTYPE_UNDEF) {
@@ -1246,7 +1247,7 @@ void EB_Inspector::Draw() {
 		DrawGlobal(v);
 	}
 	else if (editor->selected != nullptr){
-		EBI_DrawObj(v, editor, this, editor->selected);
+		DrawObj(v, editor, this, editor->selected);
 	}
 	else if (editor->selectedFileTexts.size() > 0) {
 		Engine::Label(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 12, editor->selectedFileName, editor->font, white());
@@ -1286,14 +1287,21 @@ void EB_Inspector::DrawGlobal(Vec4 v) {
 	editor->activeScene->settings.rsmRadius = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + off, v.b*0.4f - 1, 16, 0, 3, editor->activeScene->settings.rsmRadius, grey2(), white());
 }
 
-void EB_Inspector::DrawVector3(Editor* e, Vec4 v, float dh, string label, Vec3& value) {
+bool EB_Inspector::DrawVector3(Editor* e, Vec4 v, float dh, string label, Vec3& value) {
+	bool changed = false, chg = false;
 	Engine::Label(v.r, v.g + dh + EB_HEADER_SIZE, 12, label, e->font, white());
-	Engine::EButton((e->editorLayer == 0), v.r + v.b*0.19f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Vec4(0.4f, 0.2f, 0.2f, 1));
-	Engine::Label(v.r + v.b*0.19f + 2, v.g + dh + EB_HEADER_SIZE, 12, to_string(value.x), e->font, white());
-	Engine::EButton((e->editorLayer == 0), v.r + v.b*0.46f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Vec4(0.2f, 0.4f, 0.2f, 1));
-	Engine::Label(v.r + v.b*0.46f + 2, v.g + dh + EB_HEADER_SIZE, 12, to_string(value.y), e->font, white());
-	Engine::EButton((e->editorLayer == 0), v.r + v.b*0.73f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Vec4(0.2f, 0.2f, 0.4f, 1));
-	Engine::Label(v.r + v.b*0.73f + 2, v.g + dh + EB_HEADER_SIZE, 12, to_string(value.z), e->font, white());
+	//Engine::EButton((e->editorLayer == 0), v.r + v.b*0.19f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Vec4(0.4f, 0.2f, 0.2f, 1));
+	//Engine::Label(v.r + v.b*0.19f + 2, v.g + dh + EB_HEADER_SIZE, 12, to_string(value.x), e->font, white());
+	auto res = UI::EditText(v.r + v.b*0.19f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, 12, Vec4(0.4f, 0.2f, 0.2f, 1), to_string(value.x), e->font, true, &chg, white());
+	value.x = TryParse(res, value.x);
+	changed |= chg;
+	res = UI::EditText(v.r + v.b*0.46f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, 12, Vec4(0.2f, 0.4f, 0.2f, 1), to_string(value.y), e->font, true, &chg, white());
+	value.y = TryParse(res, value.y);
+	changed |= chg;
+	res = UI::EditText(v.r + v.b*0.73f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, 12, Vec4(0.2f, 0.2f, 0.4f, 1), to_string(value.z), e->font, true, &chg, white());
+	value.z = TryParse(res, value.z);
+	changed |= chg;
+	return changed;
 }
 
 void EB_Inspector::DrawAsset(Editor* e, Vec4 v, float dh, string label, ASSETTYPE type) {

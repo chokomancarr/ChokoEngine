@@ -267,12 +267,14 @@ public:
 
 	void OnMouseScr(bool up) override;
 
-	static void DrawScalar(Editor* e, Vec4 v, float dh, string label, float& value);
-	static void DrawVector2(Editor* e, Vec4 v, float dh, string label, Vec2& value);
-	static void DrawVector3(Editor* e, Vec4 v, float dh, string label, Vec3& value);
-	static void DrawVector4(Editor* e, Vec4 v, float dh, string label, Vec4& value);
-	static void DrawVec4(Editor* e, Vec4 v, float dh, string label, Vec4& col);
+	static bool DrawScalar(Editor* e, Vec4 v, float dh, string label, float& value);
+	static bool DrawVector2(Editor* e, Vec4 v, float dh, string label, Vec2& value);
+	static bool DrawVector3(Editor* e, Vec4 v, float dh, string label, Vec3& value);
+	static bool DrawVector4(Editor* e, Vec4 v, float dh, string label, Vec4& value);
+	static bool DrawVec4(Editor* e, Vec4 v, float dh, string label, Vec4& col);
 	static void DrawAsset(Editor* e, Vec4 v, float dh, string label, ASSETTYPE type);
+
+	static void DrawObj(Vec4 v, Editor* editor, EB_Inspector* b, SceneObject* o);
 
 	static void _ApplyTexFilter0(EditorBlock* e), _ApplyTexFilter1(EditorBlock* e), _ApplyTexFilter2(EditorBlock* e);
 	static void _ApplyMatShader(void* v), _ApplySky(void* v), _ApplyEffMat(void* v);
