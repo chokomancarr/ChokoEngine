@@ -788,7 +788,7 @@ void ReflectiveQuad::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) 
 		Engine::EButton((e->editorLayer == 0), v.r + v.b*0.3f, v.g + pos, v.b*0.35f - 1, 16, Vec4(0.4f, 0.2f, 0.2f, 1));
 		UI::Label(v.r + v.b*0.33f, v.g + pos, 12, to_string(size.x), e->font, white());
 		Engine::EButton((e->editorLayer == 0), v.r + v.b*0.65f, v.g + pos, v.b*0.35f - 1, 16, Vec4(0.2f, 0.4f, 0.2f, 1));
-		UI::Label(v.r + v.b*0.67, v.g + pos, 12, to_string(size.y), e->font, white());
+		UI::Label(v.r + v.b*0.67f, v.g + pos, 12, to_string(size.y), e->font, white());
 	}
 }
 

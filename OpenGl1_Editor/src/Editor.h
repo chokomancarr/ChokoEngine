@@ -384,7 +384,7 @@ struct Editor_PlaySyncer {
 	} status;
 	DWORD exitCode;
 	PROCESS_INFORMATION pInfo = {};
-	HWND hwnd;
+	//HWND hwnd;
 	struct _PipeModeObj {
 		uint hasDataLoc, //inout: pbo buffer updated? (bool) (do we need this?)
 			pixelsLoc, //out: glreadpixels buffer (byte array, count per channel)

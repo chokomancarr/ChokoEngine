@@ -1174,7 +1174,7 @@ void EBI_DrawAss_Eff(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 
 void EBI_DrawAss_Txt(Vec4 v, Editor* editor, EB_Inspector* b, float off) {
 	uint sz = editor->selectedFileTexts.size();
-	Engine::DrawQuad(v.r + 2, off, v.b - 4, 14*sz + 4, black(0.8f));
+	Engine::DrawQuad(v.r + 2.0f, off, v.b - 4.0f, 14.0f*sz + 4.0f, black(0.8f));
 	for (uint a = 0; a < sz; a++) {
 		UI::Label(v.r + 4, off + a*14 + 2, 12, editor->selectedFileTexts[a], editor->font, white());
 	}
@@ -1565,7 +1565,7 @@ void PB_ColorPicker::Draw() {
 }
 
 void PB_ProceduralGenerator::Draw() {
-	Engine::DrawQuad(x(), y(), w, h, white(0.8f, 0.1f));
+	Engine::DrawQuad(x(), y(), (float)w, (float)h, white(0.8f, 0.1f));
 }
 
 template<typename T>
@@ -1578,8 +1578,6 @@ bool EPS_RWMem(bool write, Editor_PlaySyncer* syncer, T* val, uint loc, ulong sz
 	else ok = !!ReadProcessMemory(syncer->pInfo.hProcess, (LPVOID)loc, val, sz, &c);
 	if (!ok || c != sz) {
 		syncer->status = Editor_PlaySyncer::EPS_RWFailure;
-		//TerminateProcess(syncer->pInfo.hProcess, 0);
-		syncer->hwnd = 0;
 		Debug::Error("RWMem", "Unable to " + (string)(write? "write " : "read ") + to_string(sz) + " bytes to " + to_string(loc) + "! (" + to_string(c) + " bytes succeeded)");
 		return false;
 	}
@@ -1615,21 +1613,22 @@ void Editor_PlaySyncer::Update() {
 		timer -= Time::delta;
 		if (timer <= 0) {
 			if (syncStatus == 0) {
-				hwnd = WinFunc::GetHwndFromProcessID(pInfo.dwProcessId);
-				if (!hwnd) {
+				auto wl = Editor::instance->projectFolder + "Release\\winloc.txt";
+				if (!IO::HasFile(wl)) {
 					timer = 0.1f;
 					return;
 				}
-				char cs[50];
-				GetWindowText(hwnd, cs, 50);
-				std::string ws(cs);
-				if (ws == "" || ws.substr(0, 2) != "i_") {
-					timer = 0.1f;
+				std::ifstream strm(wl, std::ios::binary);
+				_Strm2Val(strm, pointerLoc);
+				strm.close();
+				if (!pointerLoc) {
+					Editor::instance->_Error("PlayMode(Internal)", "Error reading syncer struct!");
+					Disconnect();
 					return;
 				}
-				std::string s(ws.begin() + 2, ws.end());
-				Debug::Message("Player", "reading info struct at " + s);
-				pointerLoc = std::stoi(s);
+				DeleteFile(&wl[0]);
+
+				Debug::Message("Player", "reading info struct at " + to_string(pointerLoc));
 				if (!EPS_RWMem(false, this, &pointers, pointerLoc)) return;
 				Debug::Message("Player", "writing screen size to " + std::to_string((uint)pointers.screenSizeLoc));
 				uint sz = (playH << 16) + playW;
@@ -1739,7 +1738,6 @@ void Editor_PlaySyncer::Update() {
 			if (code == 0) status = EPS_Offline;
 			else status = EPS_Crashed;
 			exitCode = code;
-			hwnd = 0;
 		}
 		break;
 	}
@@ -1795,6 +1793,7 @@ bool Editor_PlaySyncer::Connect() {
 
 	SetWindowPos(Editor::hwnd2, HWND_TOPMOST, 0, 0, 10, 10, SWP_NOMOVE | SWP_NOSIZE);
 	std::string str("D:\\TestProject2\\Release\\TestProject2.exe -piped " + std::to_string((unsigned long)Editor::hwnd2));
+	//CreateProcess("D:\\TestProject2\\Release\\TestProject2.exe", &str[0], NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pInfo);
 	CreateProcess("D:\\TestProject2\\Release\\TestProject2.exe", &str[0], NULL, NULL, FALSE, CREATE_NEW_CONSOLE, NULL, NULL, &si, &pInfo);
 	SetForegroundWindow(Editor::hwnd2);
 	SetWindowPos(Editor::hwnd2, HWND_TOP, 0, 0, 10, 10, SWP_NOMOVE | SWP_NOSIZE);
@@ -1818,7 +1817,6 @@ bool Editor_PlaySyncer::Disconnect() {
 
 bool Editor_PlaySyncer::Terminate() {
 	TerminateProcess(pInfo.hProcess, 0);
-	hwnd = 0;
 	status = EPS_Offline;
 	for (auto a : syncedScene) delete(a);
 	syncedScene.clear();
@@ -2426,10 +2424,10 @@ void Editor::DrawPopup() {
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, Camera::screenRectVerts);
 
-	glUniform2f(glGetUniformLocation(popupShadeProgram, "screenSize"), Display::width, Display::height);
-	glUniform1f(glGetUniformLocation(popupShadeProgram, "distance"), 10);
+	glUniform2f(glGetUniformLocation(popupShadeProgram, "screenSize"), (float)Display::width, (float)Display::height);
+	glUniform1f(glGetUniformLocation(popupShadeProgram, "distance"), 10.0f);
 	glUniform1f(glGetUniformLocation(popupShadeProgram, "intensity"), 0.2f);
-	glUniform4f(glGetUniformLocation(popupShadeProgram, "pos"), popupPos.x, Display::height - popupPos.y - popup->h, popup->w, popup->h);
+	glUniform4f(glGetUniformLocation(popupShadeProgram, "pos"), popupPos.x, Display::height - popupPos.y - popup->h, (float)popup->w, (float)popup->h);
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, Camera::screenRectIndices);
@@ -2724,7 +2722,7 @@ dh = 1.0f / Display::height;
 
 	if (popup) {
 		DrawPopup();
-		if (Input::mouse0State == MOUSE_DOWN && !Rect(popupPos.x, popupPos.y, popup->w, popup->h).Inside(Input::mousePos)) {
+		if (Input::mouse0State == MOUSE_DOWN && !Rect(popupPos.x, popupPos.y, (float)popup->w, (float)popup->h).Inside(Input::mousePos)) {
 			delete(popup);
 			popup = nullptr;
 		}

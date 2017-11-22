@@ -157,7 +157,7 @@ void Color::Hsv2Rgb(float h, float s, float v, byte& r, byte& g, byte& b) {
 
 Vec3 Color::Rgb2Hsv(Vec4 col) {
 	Vec3 o = Vec3();
-	Rgb2Hsv(col.r, col.g, col.b, o.r, o.g, o.b);
+	Rgb2Hsv((byte)col.r, (byte)col.g, (byte)col.b, o.r, o.g, o.b);
 	return o;
 }
 
@@ -172,7 +172,7 @@ string Color::Col2Hex(Vec4 col) {
 }
 
 void Color::DrawPicker(float x, float y, Color& c) {
-	Engine::DrawQuad(x, y, 270, c.useA ? 335 : 318, white(0.8f, 0.1f));
+	Engine::DrawQuad(x, y, 270.0f, c.useA ? 335.0f : 318.0f, white(0.8f, 0.1f));
 	Vec2 v2 = Engine::DrawSliderFill2D(x + 10, y + 10, 220, 220, Vec2(), Vec2(1, 1), Vec2(1 - c.s, c.v), black(), grey1());
 	c.s = 1 - v2.x;
 	c.v = v2.y;
@@ -535,8 +535,8 @@ uint UI::_editingEditText[UI_MAX_EDIT_TEXT_FRAMES] = {};
 ushort UI::_activeEditTextId = 0;
 ushort UI::_editingEditTextId = 0;
 uint UI::drawFuncLoc = 0;
-int UI::_editTextCursorPos = 0;
-int UI::_editTextCursorPos2 = 0;
+uint UI::_editTextCursorPos = 0;
+uint UI::_editTextCursorPos2 = 0;
 string UI::_editTextString = "";
 float UI::_editTextBlinkTime = 0;
 UI::Style UI::_defaultStyle = {};
@@ -660,7 +660,7 @@ string UI::EditText(float x, float y, float w, float h, float s, Vec4 bcol, stri
 			if (!delayed) _editTextString = str;
 			_editTextCursorPos -= Input::KeyDown(Key_LeftArrow);
 			_editTextCursorPos += Input::KeyDown(Key_RightArrow);
-			_editTextCursorPos = clamp(_editTextCursorPos, 0, _editTextString.size());
+			_editTextCursorPos = Clamp(_editTextCursorPos, 0, _editTextString.size());
 			if (!Input::KeyHold(Key_Shift) && (Input::KeyDown(Key_LeftArrow) || Input::KeyDown(Key_RightArrow))) {
 				_editTextCursorPos2 = _editTextCursorPos;
 				_editTextBlinkTime = 0;
@@ -713,7 +713,7 @@ string UI::EditText(float x, float y, float w, float h, float s, Vec4 bcol, stri
 		else xp2 = font->poss[_editTextCursorPos2 * 4].x*Display::width;
 		if (_editTextCursorPos != _editTextCursorPos2) {
 			Engine::DrawQuad(xp, y + 2, xp2 - xp, h - 4, hcol);
-			UI::Label(min(xp, xp2), y + 0.4f*h, s, _editTextString.substr(min(_editTextCursorPos, _editTextCursorPos2), abs(_editTextCursorPos - _editTextCursorPos2)), font, acol);
+			UI::Label(min(xp, xp2), y + 0.4f*h, s, _editTextString.substr(min(_editTextCursorPos, _editTextCursorPos2), abs((int)_editTextCursorPos - (int)_editTextCursorPos2)), font, acol);
 		}
 		_editTextBlinkTime += Time::delta;
 		if (fmod(_editTextBlinkTime, 1) < 0.5f) Engine::DrawLine(Vec2(xp, y + 2), Vec2(xp, y + h - 2), (_editTextCursorPos == _editTextCursorPos2)? black() : white(), 1);
@@ -1456,6 +1456,7 @@ void Debug::Error(string c, string s) {
 	*stream << "[e]" << c << ": " << s << std::endl;
 #endif
 	std::cout << "[e]" << c << " says: " << s << std::endl;
+	__debugbreak();
 	abort();
 }
 

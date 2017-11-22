@@ -242,6 +242,7 @@ Vec4 black(float f = 1);
 Vec4 red(float f = 1, float i = 1), green(float f = 1, float i = 1), blue(float f = 1, float i = 1), cyan(float f = 1, float i = 1), yellow(float f = 1, float i = 1), white(float f = 1, float i = 1);
 Vec4 LerpVec4(Vec4 a, Vec4 b, float f);
 float clamp(float f, float a, float b);
+#define Clamp(f,a,b) min(b, max(f, a))
 float repeat(float f, float a, float b);
 //Vec3 rotate(Vec3 v, Quat q);
 void _StreamWrite(const void* val, std::ofstream* stream, int size);
@@ -695,7 +696,7 @@ public:
 
 	friend class Engine;
 protected:
-	static int _editTextCursorPos, _editTextCursorPos2;
+	static uint _editTextCursorPos, _editTextCursorPos2;
 	static string _editTextString;
 	static float _editTextBlinkTime;
 

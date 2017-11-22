@@ -79,10 +79,10 @@ RenderTexture::RenderTexture(uint w, uint h, RT_FLAGS flags, const GLvoid* pixel
 	glBindTexture(GL_TEXTURE_2D, pointer);
 	glTexImage2D(GL_TEXTURE_2D, 0, hdr? GL_RGBA32F : GL_RGBA, w, h, 0, pixelFormat, hdr? GL_FLOAT : GL_UNSIGNED_BYTE, pixels);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pointer, 0);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minFilter);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magFilter);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrapS);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrapT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minFilter);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magFilter);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrapS);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrapT);
 
 	GLenum DrawBuffers[] = { GL_COLOR_ATTACHMENT0 };
 	glDrawBuffers(1, DrawBuffers);
@@ -1037,7 +1037,7 @@ void Camera::RenderLights(GLuint targetFbo) {
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, targetFbo);
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, targetFbo);
 
-	_ApplyEmission(d_fbo, d_texs, Display::width, Display::height, targetFbo);
+	_ApplyEmission(d_fbo, d_texs, (float)Display::width, (float)Display::height, targetFbo);
 	Mat4x4 mat = glm::inverse(GetMatrix(GL_PROJECTION_MATRIX));
 	_RenderSky(mat, d_texs, d_depthTex); //wont work well on ortho, will it?
 	//glViewport(v.r, Display::height - v.g - v.a, v.b, v.a - EB_HEADER_SIZE - 2);
@@ -1356,8 +1356,8 @@ CubeMap::CubeMap(ushort size, bool mips, GLenum type, byte dataSize, GLenum form
 	glBindTexture(GL_TEXTURE_CUBE_MAP, pointer);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BASE_LEVEL, 0);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAX_LEVEL, 0);
-	glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, mips? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
-	glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, mips? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
