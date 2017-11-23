@@ -1793,9 +1793,9 @@ bool Editor_PlaySyncer::Connect() {
 
 	SetWindowPos(Editor::hwnd2, HWND_TOPMOST, 0, 0, 10, 10, SWP_NOMOVE | SWP_NOSIZE);
 	std::string str("D:\\TestProject2\\Release\\TestProject2.exe -piped " + std::to_string((unsigned long)Editor::hwnd2));
-	//CreateProcess("D:\\TestProject2\\Release\\TestProject2.exe", &str[0], NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pInfo);
-	CreateProcess("D:\\TestProject2\\Release\\TestProject2.exe", &str[0], NULL, NULL, FALSE, CREATE_NEW_CONSOLE, NULL, NULL, &si, &pInfo);
-	SetForegroundWindow(Editor::hwnd2);
+	CreateProcess("D:\\TestProject2\\Release\\TestProject2.exe", &str[0], NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pInfo);
+	//CreateProcess("D:\\TestProject2\\Release\\TestProject2.exe", &str[0], NULL, NULL, FALSE, CREATE_NEW_CONSOLE, NULL, NULL, &si, &pInfo);
+	//SetForegroundWindow(Editor::hwnd2);
 	SetWindowPos(Editor::hwnd2, HWND_TOP, 0, 0, 10, 10, SWP_NOMOVE | SWP_NOSIZE);
 	timer = 0.2f;
 	status = EPS_Starting;

@@ -70,6 +70,8 @@
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
+      <SubSystem>Console</SubSystem>
+      <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -95,6 +97,8 @@
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
+      <SubSystem>Windows</SubSystem>
+      <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
     </Link>
     <PostBuildEvent>
       <Command>

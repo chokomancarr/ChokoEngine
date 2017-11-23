@@ -35,7 +35,6 @@ void UpdateLoop();
 void OnDie();
 
 void renderScene();
-void closeCallback();
 
 Font *font;
 
@@ -68,9 +67,8 @@ char Get(std::istream& strm) {
 int main(int argc, char **argv)
 {
 	path = argv[0];
-	//signal(SIGABRT, &abort_func);
 	editor = new Editor();
-	editor->hwnd = GetForegroundWindow();
+	//editor->hwnd = GetForegroundWindow();
 	editor->dataPath = path.substr(0, path.find_last_of('\\') + 1);
 	editor->lockMutex = &lockMutex;
 
@@ -78,26 +76,16 @@ int main(int argc, char **argv)
 	MONITORINFO info;
 	info.cbSize = sizeof(MONITORINFO);
 	GetMonitorInfo(monitor, &info);
-	
 	ShowSplash(editor->dataPath + "res\\splash.png", (info.rcMonitor.right - info.rcMonitor.left) / 2, (info.rcMonitor.bottom - info.rcMonitor.top) / 2, 600, 300);
-	SetForegroundWindow(editor->hwnd);
-
+	
 	editor->scrW = info.rcMonitor.right - info.rcMonitor.left;
 	editor->scrH = info.rcMonitor.bottom - info.rcMonitor.top;
-	editor->scrW = 1024;
-	editor->scrH = 600;
+	//editor->scrW = 1024;
+	//editor->scrH = 600;
 
-
-	//editor->ParseAsset("D:\\test.blend");
-	//editor->Compile();
-
-	//*
-
-	std::cout << "Enter project folder path" << std::endl;
-	std::getline(std::cin, editor->projectFolder);
+	//std::cout << "Enter project folder path" << std::endl;
+	//std::getline(std::cin, editor->projectFolder);
 	editor->projectFolder = "D:\\TestProject2\\";
-
-	//ShowWindow(editor->hwnd, SW_HIDE);
 
 	DefaultResources::Init(editor->dataPath + "res\\defaultresources.bin");
 	editor->xPoss.push_back(0);
@@ -119,11 +107,6 @@ int main(int argc, char **argv)
 	editor->yLimits.push_back(Int2(0, 2));
 	editor->yLimits.push_back(Int2(2, 1));
 
-	//EBI_Asset* e = new EBI_Asset("D:\\OpenGl1\\OpenGl1_Editor\\OpenGl1_Editor\\src\\TestScript.h", "TestScript.h");
-	//((EB_Inspector*)(editor->blocks[0]))->SelectAsset(e, "D:\\OpenGl1\\OpenGl1_Editor\\OpenGl1_Editor\\src\\TestScript.h");
-
-	//TestScript* ts = new TestScript();
-
 	/*
 	string ip = editor->dataPath + "1.ico";
 	LPARAM hIcon = (LPARAM)LoadImage(NULL, ip.c_str(), IMAGE_ICON, 16, 16, LR_LOADFROMFILE);
@@ -132,21 +115,10 @@ int main(int argc, char **argv)
 	SendMessage(GetWindow(hwnd, GW_OWNER), WM_SETICON, ICON_SMALL, hIcon);
 	SendMessage(GetWindow(hwnd, GW_OWNER), WM_SETICON, ICON_BIG, hIcon);
 
-	long style = GetWindowLong(hwnd, GWL_STYLE);
-	style &= ~(WS_VISIBLE);    // this works - window become invisible
-
-	style |= WS_EX_TOOLWINDOW;
-	style &= ~(WS_EX_APPWINDOW);
-
-	ShowWindow(hwnd, SW_HIDE); // hide the window
-	SetWindowLong(hwnd, GWL_STYLE, style); // set the style
-	ShowWindow(hwnd, SW_SHOW); // show the window for the new style to come into effect
-	//SetWindowLong(hwnd, GWL_STYLE, style);
-	ShowWindow(hwnd, SW_HIDE); // hide the window so we can't see it
 	*/
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
-	glutInitWindowSize(editor->scrW, editor->scrH);
+	glutInitWindowSize(1024, 600);
 	glutInitWindowPosition(0, GetSystemMetrics(SM_CYVIRTUALSCREEN));
 	glutCreateWindow("ChokoEngine");
 	editor->hwnd2 = GetActiveWindow();
@@ -157,8 +129,6 @@ int main(int argc, char **argv)
 	//SendMessage(hwnd2, WM_SETICON, ICON_BIG, hIcon);
 	//SendMessage(GetWindow(hwnd2, GW_OWNER), WM_SETICON, ICON_SMALL, hIcon);
 	//SendMessage(GetWindow(hwnd2, GW_OWNER), WM_SETICON, ICON_BIG, hIcon);
-
-	//editor->RegisterPopup(new PB_ColorPicker(editor, &_col), Vec2(200, 200));
 
 	string p;
 	GLint GlewInitResult = glewInit();
@@ -202,21 +172,14 @@ int main(int argc, char **argv)
 	updateThread = std::thread(UpdateLoop);
 	atexit(OnDie);
 
-	KillSplash();
-	glutPositionWindow(info.rcMonitor.left, info.rcMonitor.top);
-	glutReshapeWindow(editor->scrW, editor->scrH);
+	glutPositionWindow(info.rcMonitor.left + editor->scrW/2 - 512, info.rcMonitor.top + editor->scrH / 2 - 300);
 	glutShowWindow();
+	KillSplash();
 
 	vt = new VideoTexture("D:\\bg.mp4");
 
 	glutMainLoop();
 	return 0;
-}
-
-void closeCallback()
-{
-
-	std::cout << "GLUT:\t Finished" << std::endl;
 }
 
 void CheckShortcuts() {
