@@ -27,7 +27,6 @@ public:
 	friend class EB_Viewer;
 	friend class EB_Inspector;
 	friend class SceneObject;
-	friend void EBI_DrawObj(Vec4 v, Editor* editor, EB_Inspector* b, SceneObject* o);
 	friend bool DrawComponentHeader(Editor* e, Vec4 v, uint pos, Component* c);
 	friend void DrawSceneObjectsOpaque(EB_Viewer* ebv, const std::vector<SceneObject*> &oo), DrawSceneObjectsGizmos(EB_Viewer* ebv, const std::vector<SceneObject*> &oo), DrawSceneObjectsTrans(EB_Viewer* ebv, std::vector<SceneObject*> oo);
 
@@ -70,6 +69,7 @@ public:
 
 	friend class SceneObject;
 	friend class EB_Viewer;
+	friend class EB_Inspector;
 	friend struct Editor_PlaySyncer;
 	friend void DrawSceneObjectsOpaque(EB_Viewer*, const std::vector<SceneObject*>&);
 	friend void DrawSceneObjectsGizmos(EB_Viewer*, const std::vector<SceneObject*>&);
@@ -81,7 +81,7 @@ private:
 	Vec3 _eulerRotation;
 	Mat4x4 _localMatrix, _worldMatrix;
 
-	static const struct _offset_map {
+	static struct _offset_map {
 		uint position = offsetof(Transform, position),
 			rotation = offsetof(Transform, _rotation),
 			scale = offsetof(Transform, scale);
@@ -300,7 +300,7 @@ protected:
 	
 	void GenECache(byte* dat, byte chn, bool isrgb, std::vector<RenderTexture*>* rts);
 };
-
+/*
 class VideoTexture : public Texture {
 public:
 	VideoTexture(const string& path);
@@ -308,11 +308,19 @@ public:
 	void Play(), Pause(), Stop();
 //protected:
 	GLuint d_fbo;
-	byte* buffer = 0;
+	std::vector<byte> buffer;
 
+	std::istream* strm;
+	AVCodec* codec;
+	AVCodecContext* codecContext;
+	AVCodecParserContext* parser;
+	AVFrame* picture;
+	int frame;
+
+	static void Init();
 	void GetFrame();
 };
-
+*/
 enum RT_FLAGS : byte {
 	RT_FLAG_NONE = 0U,
 	RT_FLAG_DEPTH = 1U,
@@ -491,11 +499,11 @@ protected:
 
 	void _RenderProbesMask(std::vector<SceneObject*>& objs, Mat4x4 mat, std::vector<ReflectionProbe*>& probes), _RenderProbes(std::vector<ReflectionProbe*>& probes, Mat4x4 mat);
 	void _DoRenderProbeMask(ReflectionProbe* p, Mat4x4& ip), _DoRenderProbe(ReflectionProbe* p, Mat4x4& ip);
-	static void _RenderSky(Mat4x4 ip, GLuint d_texs[], GLuint d_depthTex, float w = Display::width, float h = Display::height);
+	static void _RenderSky(Mat4x4 ip, GLuint d_texs[], GLuint d_depthTex, float w = (float)Display::width, float h = (float)Display::height);
 	void _DrawLights(std::vector<SceneObject*>& oo, Mat4x4& ip, GLuint targetFbo = 0);
-	static void _ApplyEmission(GLuint d_fbo, GLuint d_texs[], float w = Display::width, float h = Display::height, GLuint targetFbo = 0);
-	static void _DoDrawLight_Point(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs[], GLuint d_depthTex, GLuint ctar, GLuint c_tex, float w = Display::width, float h = Display::height, GLuint targetFbo = 0);
-	static void _DoDrawLight_Spot(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs[], GLuint d_depthTex, GLuint ctar, GLuint c_tex, float w = Display::width, float h = Display::height, GLuint targetFbo = 0);
+	static void _ApplyEmission(GLuint d_fbo, GLuint d_texs[], float w = (float)Display::width, float h = (float)Display::height, GLuint targetFbo = 0);
+	static void _DoDrawLight_Point(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs[], GLuint d_depthTex, GLuint ctar, GLuint c_tex, float w = (float)Display::width, float h = (float)Display::height, GLuint targetFbo = 0);
+	static void _DoDrawLight_Spot(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs[], GLuint d_depthTex, GLuint ctar, GLuint c_tex, float w = (float)Display::width, float h = (float)Display::height, GLuint targetFbo = 0);
 	static void _DoDrawLight_Spot_Contact(Light* l, Mat4x4& p, GLuint d_depthTex, float w, float h, GLuint src, GLuint tar);
 	static void _DoDrawLight_ReflQuad(ReflectiveQuad* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs[], GLuint d_depthTex, GLuint ctar, GLuint c_tex, float w = Display::width, float h = Display::height, GLuint targetFbo = 0);
 
@@ -951,7 +959,9 @@ public:
 protected:
 	SceneObject(byte* data);
 
-	static const struct _offset_map {
+	static SceneObject* _FromId(const std::vector<SceneObject*>& objs, ulong id);
+
+	static struct _offset_map {
 		uint name = offsetof(SceneObject, name),
 			transform = offsetof(SceneObject, transform),
 			components = offsetof(SceneObject, _components),

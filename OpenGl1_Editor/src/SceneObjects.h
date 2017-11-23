@@ -300,7 +300,7 @@ protected:
 	
 	void GenECache(byte* dat, byte chn, bool isrgb, std::vector<RenderTexture*>* rts);
 };
-
+/*
 class VideoTexture : public Texture {
 public:
 	VideoTexture(const string& path);
@@ -320,7 +320,7 @@ public:
 	static void Init();
 	void GetFrame();
 };
-
+*/
 enum RT_FLAGS : byte {
 	RT_FLAG_NONE = 0U,
 	RT_FLAG_DEPTH = 1U,

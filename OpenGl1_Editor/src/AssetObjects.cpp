@@ -857,6 +857,7 @@ bool Texture::DrawPreview(uint x, uint y, uint w, uint h) {
 
 #pragma endregion
 
+/*
 #pragma region VideoTexture
 
 string _vt_errtext(int i) {
@@ -894,7 +895,7 @@ void VideoTexture::GetFrame() {
 }
 
 #pragma endregion
-
+*/
 
 #pragma region Background
 

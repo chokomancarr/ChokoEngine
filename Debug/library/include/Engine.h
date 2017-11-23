@@ -14,6 +14,10 @@
 #include <Windows.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
+extern "C" {
+//#include "libavcodec\avcodec.h"
+//#include "libavutil\avutil.h"
+}
 #include "Defines.h"
 
 #ifndef IS_EDITOR
@@ -29,7 +33,7 @@ extern bool _pipemode;
 #pragma region asm_related_functions
 
 #ifdef __MSVC_RUNTIME_CHECKS
-#define __asmloc_offset 7 //this is wrong
+#error don't do runtime checks, it will ruin the stack-tracer (for now)
 #else
 #define __asmloc_offset 0
 #endif
@@ -91,6 +95,10 @@ inline string to_string(Vec2 v), to_string(Vec3 v), to_string(Vec4 v), to_string
 std::vector<string> string_split(string s, char c);
 
 Vec3 to_vec3(Vec4 v);
+
+int TryParse(string str, int defVal);
+uint TryParse(string str, uint defVal);
+float TryParse(string str, float defVal);
 
 class Mesh;
 
@@ -167,13 +175,16 @@ public:
 	static float Value(), Range(float min, float max);
 };
 
-#define MOUSE_DOWN 0x01
-#define MOUSE_HOLD 0x02
-#define MOUSE_UP 0x03
-#define MOUSE_HOVER_FLAG 0x10
-#define MOUSE_CLICK 0x11 //use for buttons
-#define MOUSE_PRESS 0x12 //use for buttons
-#define MOUSE_RELEASE 0x13 //use for buttons
+enum MOUSE_STATUS : byte {
+	MOUSE_NONE = 0x00,
+	MOUSE_DOWN,
+	MOUSE_HOLD,
+	MOUSE_UP,
+	MOUSE_HOVER_FLAG = 0x10,
+	MOUSE_CLICK, //use for buttons
+	MOUSE_PRESS, //use for buttons
+	MOUSE_RELEASE  //use for buttons
+};
 
 enum ALIGNMENT : byte {
 	ALIGN_BOTLEFT = 0x00,
@@ -204,7 +215,26 @@ class Editor;
 class EditorBlock;
 class EB_Inspector;
 
-typedef unsigned char ASSETTYPE;
+//typedef unsigned char ASSETTYPE;
+enum ASSETTYPE : byte {
+	ASSETTYPE_UNDEF = 0x00,
+
+	ASSETTYPE_SCENE = 0x90,
+	ASSETTYPE_TEXTURE = 0x01,
+	ASSETTYPE_HDRI = 0x02,
+	ASSETTYPE_TEXCUBE = 0x03,
+	ASSETTYPE_SHADER = 0x05,
+	ASSETTYPE_MATERIAL = 0x10,
+	ASSETTYPE_BLEND = 0x20,
+	ASSETTYPE_MESH = 0x21,
+	ASSETTYPE_ANIMCLIP = 0x30,
+	ASSETTYPE_ANIMATOR = 0x31,
+	ASSETTYPE_CAMEFFECT = 0x40,
+	ASSETTYPE_SCRIPT_H = 0x9e,
+	ASSETTYPE_SCRIPT_CPP = 0x9f,
+	//derived types
+	ASSETTYPE_TEXTURE_REND = 0xa0
+};
 typedef int ASSETID;
 
 //shorthands
@@ -212,6 +242,7 @@ Vec4 black(float f = 1);
 Vec4 red(float f = 1, float i = 1), green(float f = 1, float i = 1), blue(float f = 1, float i = 1), cyan(float f = 1, float i = 1), yellow(float f = 1, float i = 1), white(float f = 1, float i = 1);
 Vec4 LerpVec4(Vec4 a, Vec4 b, float f);
 float clamp(float f, float a, float b);
+#define Clamp(f,a,b) min(b, max(f, a))
 float repeat(float f, float a, float b);
 //Vec3 rotate(Vec3 v, Quat q);
 void _StreamWrite(const void* val, std::ofstream* stream, int size);
@@ -264,24 +295,6 @@ class ParticleSystem;
 //see Assetmanager
 class AssetItem;
 class AssetManager;
-
-#define ASSETTYPE_UNDEF 0x00
-
-#define ASSETTYPE_SCENE 0x90
-#define ASSETTYPE_TEXTURE 0x01
-#define ASSETTYPE_HDRI 0x02
-#define ASSETTYPE_TEXCUBE 0x03
-#define ASSETTYPE_SHADER 0x05
-#define ASSETTYPE_MATERIAL 0x10
-#define ASSETTYPE_BLEND 0x20
-#define ASSETTYPE_MESH 0x21
-#define ASSETTYPE_ANIMCLIP 0x30
-#define ASSETTYPE_ANIMATOR 0x31
-#define ASSETTYPE_CAMEFFECT 0x40
-#define ASSETTYPE_SCRIPT_H 0x9e
-#define ASSETTYPE_SCRIPT_CPP 0x9f
-//derived types
-#define ASSETTYPE_TEXTURE_REND 0xa0
 class AssetObject;
 class Mesh;
 class Texture;
@@ -350,6 +363,7 @@ public:
 	Font* Align(ALIGNMENT a);
 
 	friend class Engine;
+	friend class UI;
 protected:
 	static FT_Library _ftlib;
 	static void Init();
@@ -371,7 +385,7 @@ protected:
 	GLuint CreateGlyph (uint size, bool recalcW2h = false);
 };
 
-enum InputKey {
+enum InputKey : byte {
 	Key_None = 0x00,
 	Key_Backspace = 0x08,
 	Key_Tab = 0x09,
@@ -425,6 +439,7 @@ public:
 class Object {
 public:
 	Object(string nm = "");
+	Object(ulong id, string nm);
 	ulong id;
 	string name;
 	bool dirty = false; //triggers a reload of internal variables
@@ -443,7 +458,7 @@ protected:
 	{}
 	virtual  ~AssetObject() {}
 
-	const ASSETTYPE type = 0;
+	const ASSETTYPE type = ASSETTYPE_UNDEF;
 #ifdef IS_EDITOR
 	byte* _eCache = nullptr; //first byte is always 255
 	uint _eCacheSz = 0;
@@ -642,18 +657,52 @@ enum DrawTex_Scaling {
 
 //#define EditText(x,y,w,h,s,str,font) _EditText(__COUNTER__, x,y,w,h,s,str,font)
 
+#define UI_MAX_EDIT_TEXT_FRAMES 8
+
 class UI {
 public:
 	static void Texture(float x, float y, float w, float h, ::Texture* texture, DrawTex_Scaling scl = DrawTex_Stretch, float miplevel = 0);
 	static void Texture(float x, float y, float w, float h, ::Texture* texture, float alpha, DrawTex_Scaling scl = DrawTex_Stretch, float miplevel = 0);
 	static void Texture(float x, float y, float w, float h, ::Texture* texture, Vec4 tint, DrawTex_Scaling scl = DrawTex_Stretch, float miplevel = 0);
-	
-	static string EditText(float x, float y, float w, float h, float s, string str, Font* font, Vec4 col, int id = 0);
+	static void Label(float x, float y, float s, string str, Font* font, Vec4 col = black(), float maxw = -1);
+
+	//Draws an editable text box. EditText does not work on recursive functions.
+	static string EditText(float x, float y, float w, float h, float s, Vec4 bcol, string str, Font* font, bool delayed = false, bool* changed = nullptr, Vec4 fcol = black(), Vec4 hcol = Vec4(0, 120.0f / 255, 215.0f / 255, 1), Vec4 acol = white());
 
 	static bool CanDraw();
-protected:
+//protected:
 	static bool _isDrawingLoop;
-	static int _activeEditText;
+	static void PreLoop();
+	static uint _activeEditText[UI_MAX_EDIT_TEXT_FRAMES], _lastEditText[UI_MAX_EDIT_TEXT_FRAMES], _editingEditText[UI_MAX_EDIT_TEXT_FRAMES];
+	static ushort _activeEditTextId, _editingEditTextId;
+	static uint drawFuncLoc;
+
+	static void GetEditTextId();
+	static bool IsActiveEditText();
+
+	struct StyleColor {
+		Vec4 backColor, fontColor;
+		//Texture* backTex;
+
+		void Set(const Vec4 vb, const Vec4 vf) {
+			backColor = vb;
+			fontColor = vf;
+		}
+	};
+	struct Style {
+		StyleColor normal, mouseover, highlight, press;
+		int fontSize;
+	};
+
+	friend class Engine;
+protected:
+	static uint _editTextCursorPos, _editTextCursorPos2;
+	static string _editTextString;
+	static float _editTextBlinkTime;
+
+	static Style _defaultStyle;
+	
+	static void Init();
 };
 
 class Engine {
@@ -669,21 +718,18 @@ public:
 	static void DrawCircle(Vec2 c, float r, uint n, Vec4 col, float width);
 	static void DrawCircleW(Vec3 c, Vec3 x, Vec3 y, float r, uint n, Vec4 col, float width, bool dotted = false);
 	static void DrawCubeLinesW(float x0, float x1, float y0, float y1, float z0, float z1, float width, Vec4 col);
-	static void Label(float x, float y, float s, string str, Font* font);
-	static void Label(float x, float y, float s, string str, Font* font, Vec4 col);
-	static void Label(float x, float y, float s, string str, Font* font, Vec4 col, float maxw);
-	static byte Button(float x, float y, float w, float h);
-	static byte Button(float x, float y, float w, float h, Vec4 normalVec4);
-	static byte Button(float x, float y, float w, float h, Vec4 normalVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4, bool labelCenter = false);
-	static byte Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4);
-	static byte Button(float x, float y, float w, float h, Texture* texture, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, float uvx = 0, float uvy = 0, float uvw = 1, float uvh = 1);
-	static byte Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4, bool labelCenter = false);
-	static byte EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4);
-	static byte EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4);
-	static byte EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4);
-	static byte EButton(bool a, float x, float y, float w, float h, Texture* texture, Vec4 col);
-	static byte EButton(bool a, float x, float y, float w, float h, Texture* texture, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4);
-	static byte EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4);
+	static MOUSE_STATUS Button(float x, float y, float w, float h);
+	static MOUSE_STATUS Button(float x, float y, float w, float h, Vec4 normalVec4);
+	static MOUSE_STATUS Button(float x, float y, float w, float h, Vec4 normalVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4, bool labelCenter = false);
+	static MOUSE_STATUS Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4);
+	static MOUSE_STATUS Button(float x, float y, float w, float h, Texture* texture, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, float uvx = 0, float uvy = 0, float uvw = 1, float uvh = 1);
+	static MOUSE_STATUS Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4, bool labelCenter = false);
+	static MOUSE_STATUS EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4);
+	static MOUSE_STATUS EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4);
+	static MOUSE_STATUS EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4);
+	static MOUSE_STATUS EButton(bool a, float x, float y, float w, float h, Texture* texture, Vec4 col);
+	static MOUSE_STATUS EButton(bool a, float x, float y, float w, float h, Texture* texture, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4);
+	static MOUSE_STATUS EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4);
 	static bool Toggle(float x, float y, float s, Vec4 col, bool t);
 	static bool Toggle(float x, float y, float s, Texture* texture, bool t, Vec4 col=white(), ORIENTATION o = ORIENT_NONE);
 	static float DrawSliderFill(float x, float y, float w, float h, float min, float max, float val, Vec4 background, Vec4 foreground);
@@ -765,7 +811,7 @@ public:
 	Scene() : sceneName("newScene") {}
 	Scene(std::ifstream& stream, long pos);
 	~Scene() {}
-	static std::shared_ptr<Scene> active;
+	static Scene* active;
 	static bool loaded() {
 		return active != nullptr;
 	}

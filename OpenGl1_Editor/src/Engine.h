@@ -15,8 +15,8 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 extern "C" {
-#include "libavcodec\avcodec.h"
-#include "libavutil\avutil.h"
+//#include "libavcodec\avcodec.h"
+//#include "libavutil\avutil.h"
 }
 #include "Defines.h"
 

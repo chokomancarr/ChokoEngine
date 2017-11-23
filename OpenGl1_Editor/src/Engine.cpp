@@ -448,7 +448,7 @@ void Engine::Init(string path) {
 	Light::InitShadow();
 	Camera::InitShaders();
 	Font::Init();
-	VideoTexture::Init();
+	//VideoTexture::Init();
 #ifdef IS_EDITOR
 	Editor::InitShaders();
 	Editor::instance->InitMaterialPreviewer();
@@ -646,19 +646,8 @@ string UI::EditText(float x, float y, float w, float h, float s, Vec4 bcol, stri
 		auto al = font->alignment;
 		font->Align(ALIGN_MIDLEFT);
 		if (Editor::onFocus) {
-			if ((Input::mouse0State == MOUSE_UP && !Rect(x, y, w, h).Inside(Input::mousePos)) || Input::KeyDown(Key_Enter)) {
-				SecureZeroMemory(_editingEditText, UI_MAX_EDIT_TEXT_FRAMES * 4);
-				_activeEditTextId = 0;
-				if (changed && delayed) *changed = true;
-				return delayed ? _editTextString : str;
-			}
-			if (Input::KeyDown(Key_Escape)) {
-				SecureZeroMemory(_editingEditText, UI_MAX_EDIT_TEXT_FRAMES * 4);
-				_activeEditTextId = 0;
-				return str;
-			}
 			if (!delayed) _editTextString = str;
-			_editTextCursorPos -= Input::KeyDown(Key_LeftArrow);
+			if (!!_editTextCursorPos) _editTextCursorPos -= Input::KeyDown(Key_LeftArrow);
 			_editTextCursorPos += Input::KeyDown(Key_RightArrow);
 			_editTextCursorPos = Clamp(_editTextCursorPos, 0, _editTextString.size());
 			if (!Input::KeyHold(Key_Shift) && (Input::KeyDown(Key_LeftArrow) || Input::KeyDown(Key_RightArrow))) {
@@ -705,6 +694,20 @@ string UI::EditText(float x, float y, float w, float h, float s, Vec4 bcol, stri
 		Engine::DrawQuad(x, y, w, h, black());
 		Engine::DrawQuad(x + 1, y + 1, w - 2, h - 2, white());
 		UI::Label(x + 2, y + 0.4f*h, s, _editTextString, font);
+
+		auto szz = _editTextString.size();
+		if (!!Input::mouse0State && !!szz && Rect(x, y, w, h).Inside(Input::mousePos)) {
+			_editTextCursorPos = 0;
+			for (uint i = 1; i <= szz; i++) {
+				_editTextCursorPos += (Input::mousePos.x > Display::width*(font->poss[i*4-2].x + font->poss[i * 4].x)/2);
+			}
+			_editTextCursorPos2 = 0;
+			for (uint i = 1; i <= szz; i++) {
+				_editTextCursorPos2 += (Input::mouseDownPos.x > Display::width*(font->poss[i * 4 - 2].x + font->poss[i * 4].x) / 2);
+			}
+			_editTextBlinkTime = 0;
+		}
+
 		float xp;
 		if (!_editTextCursorPos) xp = x + 2;
 		else xp = font->poss[_editTextCursorPos * 4].x*Display::width;
@@ -718,6 +721,18 @@ string UI::EditText(float x, float y, float w, float h, float s, Vec4 bcol, stri
 		_editTextBlinkTime += Time::delta;
 		if (fmod(_editTextBlinkTime, 1) < 0.5f) Engine::DrawLine(Vec2(xp, y + 2), Vec2(xp, y + h - 2), (_editTextCursorPos == _editTextCursorPos2)? black() : white(), 1);
 		font->Align(al);
+
+		if ((Input::mouse0State == MOUSE_UP && !Rect(x, y, w, h).Inside(Input::mousePos)) || Input::KeyDown(Key_Enter)) {
+			SecureZeroMemory(_editingEditText, UI_MAX_EDIT_TEXT_FRAMES * 4);
+			_activeEditTextId = 0;
+			if (changed && delayed) *changed = true;
+			return delayed ? _editTextString : str;
+		}
+		if (Input::KeyDown(Key_Escape)) {
+			SecureZeroMemory(_editingEditText, UI_MAX_EDIT_TEXT_FRAMES * 4);
+			_activeEditTextId = 0;
+			return str;
+		}
 		return delayed ? str : _editTextString;
 	}
 	else if(Engine::Button(x, y, w, h, bcol, str, s, font, fcol, false) == MOUSE_RELEASE) {
@@ -1415,7 +1430,7 @@ void Input::UpdateMouseNKeyboard(bool* src) {
 
 	if (mouse0State == MOUSE_DOWN)
 		mouseDownPos = mousePos;
-	else if (mouse0State == 0)
+	else if (!mouse0State)
 		mouseDownPos = Vec2(-1, -1);
 
 	mouseDelta = mousePos - mousePosOld;
@@ -2193,7 +2208,7 @@ void Scene::Load(uint i) {
 #ifndef IS_EDITOR
 	if (_pipemode) {
 		std::ifstream strm2(sceneEPaths[i], std::ios::binary);
-		active = std::make_shared<Scene>(strm2, 0);
+		active = new Scene(strm2, 0);
 	} else {
 #else
 	{

@@ -17,10 +17,6 @@ Editor functions
 #define EB_HEADER_SIZE 16
 #define EB_HEADER_PADDING 16
 
-
-//class Editor;
-//class EditorBlock;
-
 typedef void(*dataFunc)(EditorBlock*, void*);
 typedef void(*shortcutFunc)(EditorBlock*);
 typedef void(*shortcutFuncGlobal)(Editor*);
@@ -34,7 +30,7 @@ typedef std::unordered_map<int, funcMap[]> CommandsMap;
 int GetShortcutInt(InputKey k, InputKey m1 = Key_None, InputKey m2 = Key_None, InputKey m3 = Key_None);
 bool ShortcutTriggered(int i, bool c, bool a, bool s);
 
-Vec4 grey1(), grey2(), headerCol();
+Vec4 grey1(), grey2(), headerCol(), hlCol();
 
 class EditorBlock {
 public:
@@ -267,12 +263,14 @@ public:
 
 	void OnMouseScr(bool up) override;
 
-	static void DrawScalar(Editor* e, Vec4 v, float dh, string label, float& value);
-	static void DrawVector2(Editor* e, Vec4 v, float dh, string label, Vec2& value);
-	static void DrawVector3(Editor* e, Vec4 v, float dh, string label, Vec3& value);
-	static void DrawVector4(Editor* e, Vec4 v, float dh, string label, Vec4& value);
-	static void DrawVec4(Editor* e, Vec4 v, float dh, string label, Vec4& col);
+	static bool DrawScalar(Editor* e, Vec4 v, float dh, string label, float& value);
+	static bool DrawVector2(Editor* e, Vec4 v, float dh, string label, Vec2& value);
+	static bool DrawVector3(Editor* e, Vec4 v, float dh, string label, Vec3& value);
+	static bool DrawVector4(Editor* e, Vec4 v, float dh, string label, Vec4& value);
+	static bool DrawVec4(Editor* e, Vec4 v, float dh, string label, Vec4& col);
 	static void DrawAsset(Editor* e, Vec4 v, float dh, string label, ASSETTYPE type);
+
+	static void DrawObj(Vec4 v, Editor* editor, EB_Inspector* b, SceneObject* o);
 
 	static void _ApplyTexFilter0(EditorBlock* e), _ApplyTexFilter1(EditorBlock* e), _ApplyTexFilter2(EditorBlock* e);
 	static void _ApplyMatShader(void* v), _ApplySky(void* v), _ApplyEffMat(void* v);
@@ -386,7 +384,7 @@ struct Editor_PlaySyncer {
 	} status;
 	DWORD exitCode;
 	PROCESS_INFORMATION pInfo = {};
-	HWND hwnd;
+	//HWND hwnd;
 	struct _PipeModeObj {
 		uint hasDataLoc, //inout: pbo buffer updated? (bool) (do we need this?)
 			pixelsLoc, //out: glreadpixels buffer (byte array, count per channel)
@@ -523,6 +521,7 @@ public:
 
 	Font* font;
 	static HWND hwnd, hwnd2;
+	static bool onFocus;
 	char mousePressType = -1;
 	int mouseOn = 0;
 	int mouseOnP = 0;
@@ -539,7 +538,7 @@ public:
 	int gridId[68];
 	Vec3 grid[64];
 
-	std::shared_ptr<Scene> activeScene = nullptr;
+	Scene* activeScene = nullptr;
 	bool sceneLoaded() { return activeScene != nullptr; }
 	SceneObject* selected;
 	Mat4x4 selectedMvMatrix;
@@ -562,8 +561,8 @@ public:
 
 	ShortcutMapGlobal globalShorts;
 
-	Texture* buttonX, *buttonExt, *buttonPlus, *buttonExtArrow, *background, *placeholder, *checkers, *expand;
-	Texture* collapse, *object, *checkbox, *keylock, *assetExpand, *assetCollapse, *browse, *mipLow, *mipHigh;
+	Texture* tex_buttonX, *tex_buttonExt, *tex_buttonPlus, *tex_buttonExtArrow, *tex_background, *tex_placeholder, *tex_checkers, *tex_expand;
+	Texture* tex_collapse, *tex_object, *tex_checkbox, *tex_keylock, *tex_assetExpand, *tex_assetCollapse, *tex_browse, *tex_mipLow, *tex_mipHigh, *tex_waiting;
 	std::vector<Texture*> tooltipTexs;
 	std::vector<Texture*> shadingTexs;
 	std::vector<Texture*> orientTexs;

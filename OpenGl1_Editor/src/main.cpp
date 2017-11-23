@@ -47,7 +47,7 @@ string path;
 Editor* editor;
 std::mutex lockMutex;
 
-VideoTexture* vt;
+//VideoTexture* vt;
 
 HWND splashHwnd;
 void ShowSplash(string bitmap, uint cx, uint cy, uint sw, uint sh);
@@ -176,7 +176,7 @@ int main(int argc, char **argv)
 	glutShowWindow();
 	KillSplash();
 
-	vt = new VideoTexture("D:\\bg.mp4");
+	//vt = new VideoTexture("D:\\bg.mp4");
 
 	glutMainLoop();
 	return 0;
