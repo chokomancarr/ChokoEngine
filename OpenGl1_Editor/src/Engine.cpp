@@ -635,7 +635,8 @@ void UI::Texture(float x, float y, float w, float h, ::Texture* texture, Vec4 ti
 	}
 }
 
-string UI::EditText(float x, float y, float w, float h, float s, Vec4 bcol, string str, Font* font, bool delayed, bool* changed, Vec4 fcol, Vec4 hcol, Vec4 acol) {
+string UI::EditText(float x, float y, float w, float h, float s, Vec4 bcol, const string& str2, Font* font, bool delayed, bool* changed, Vec4 fcol, Vec4 hcol, Vec4 acol, bool ser) {
+	string str = str2;
 	_checkdraw;
 	GetEditTextId();
 	bool isActive = (UI_Same_Id(_activeEditText, _editingEditText) && (_activeEditTextId == _editingEditTextId));
@@ -666,7 +667,7 @@ string UI::EditText(float x, float y, float w, float h, float s, Vec4 bcol, stri
 					_editTextCursorPos = min(_editTextCursorPos, _editTextCursorPos2) + ssz;
 					_editTextCursorPos2 = _editTextCursorPos;
 				}
-				if (changed) *changed = true;
+				if (!delayed && changed) *changed = true;
 				_editTextBlinkTime = 0;
 			}
 			if (Input::KeyDown(Key_Backspace)) {
@@ -682,12 +683,12 @@ string UI::EditText(float x, float y, float w, float h, float s, Vec4 bcol, stri
 					_editTextCursorPos = min(_editTextCursorPos, _editTextCursorPos2);
 					_editTextCursorPos2 = _editTextCursorPos;
 				}
-				if (changed) *changed = true;
+				if (!delayed && changed) *changed = true;
 				_editTextBlinkTime = 0;
 			}
 			if (Input::KeyDown(Key_Delete) && _editTextCursorPos < _editTextString.size()) {
 				_editTextString = _editTextString.substr(0, _editTextCursorPos) + _editTextString.substr(_editTextCursorPos + 1);
-				if (changed) *changed = true;
+				if (!delayed && changed) *changed = true;
 				_editTextBlinkTime = 0;
 			}
 		}
@@ -726,6 +727,11 @@ string UI::EditText(float x, float y, float w, float h, float s, Vec4 bcol, stri
 			SecureZeroMemory(_editingEditText, UI_MAX_EDIT_TEXT_FRAMES * 4);
 			_activeEditTextId = 0;
 			if (changed && delayed) *changed = true;
+
+#ifdef IS_EDITOR
+			if (delayed && ser) UndoStack::Add(new UndoStack::UndoObj((void*)&str2, 0, 0, UndoStack::UNDO_TYPE_STRING, 0, 0, _editTextString));
+#endif
+
 			return delayed ? _editTextString : str;
 		}
 		if (Input::KeyDown(Key_Escape)) {

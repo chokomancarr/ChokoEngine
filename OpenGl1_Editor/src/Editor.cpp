@@ -27,10 +27,97 @@
 
 using namespace ChokoEngine;
 
+UndoStack::UndoObj::UndoObj(void* loc, uint sz, uint nsz, UNDO_TYPE type, void* val, bool* dirty, string desc) :
+	loc(loc), type(type), sz(sz), nsz(nsz), desc(desc), dirty(dirty) {
+	switch (type) {
+	case UNDO_TYPE_NORMAL: //same size, no special care needed
+		this->val = new byte[sz];
+		memcpy(this->val, (val) ? val : loc, sz);
+		break;
+	case UNDO_TYPE_STRING:
+		this->val = new string(*((string*)((val) ? val : loc)));
+		if (desc != "") this->desc = *((string*)(this->val)) + "->" + desc;
+		break;
+	}
+}
+UndoStack::UndoObj::UndoObj(void* loc, void* val, uint sz, callbackFunc func, void* funcVal) :
+	loc(loc), type(UNDO_TYPE_ASSET), sz(sz), desc(""), func(func), funcVal(funcVal) {
+	this->val = new byte[sz];
+	memcpy(this->val, val, sz);
+}
+
+UndoStack::UndoObj::~UndoObj() {
+	switch (type) {
+	case UNDO_TYPE_NORMAL:
+	case UNDO_TYPE_ASSET:
+		delete[](val);
+		break;
+	case UNDO_TYPE_STRING:
+		delete((string*)val);
+		break;
+	}
+}
+
+void UndoStack::UndoObj::Apply() {
+	switch (type) {
+	case UNDO_TYPE_NORMAL:
+		memcpy(loc, val, sz);
+		break;
+	case UNDO_TYPE_STRING:
+		*((string*)loc) = *((string*)val);
+		break;
+	case UNDO_TYPE_ASSET:
+		memcpy(loc, val, sz);
+		if (func) (*func)(funcVal);
+		break;
+	}
+	if (dirty) *dirty = true;
+}
+
+#pragma region UndoStack
+#ifdef IS_EDITOR
+byte UndoStack::maxStack = 30;
+std::vector<UndoStack::UndoObj*> UndoStack::stack = {};
+std::vector<UndoStack::UndoObj*> UndoStack::rstack = {};
+byte UndoStack::esp = 0;
+
+void UndoStack::Init() {
+	stack.reserve(maxStack);
+	rstack.reserve(maxStack);
+}
+
+void UndoStack::Add(UndoObj* obj) {
+	if (esp < stack.size()) {
+		for (int a = stack.size() - 1; a >= esp; a--) delete(stack[a]);
+		stack.resize(esp);
+	}
+	if (stack.size() == maxStack) {
+		delete(stack[0]);
+		stack.erase(stack.begin());
+	}
+
+	else esp++;
+	stack.push_back(obj);
+	rstack.clear();
+}
+
+void UndoStack::Undo(byte cnt) {
+	if (!esp) return;
+	for (byte a = 0; a < cnt; a++) {
+		esp--;
+		stack[esp]->Apply();
+		if (!esp) return;
+	}
+}
+void UndoStack::Redo(byte cnt) {
+	
+}
+#endif
+#pragma endregion
+
+
 HWND Editor::hwnd = 0, Editor::hwnd2 = 0;
-//#ifdef IS_EDITOR
 Editor* Editor::instance = nullptr;
-//#endif
 string Editor::dataPath = "";
 bool Editor::onFocus;
 
@@ -1073,10 +1160,10 @@ void EB_Inspector::DrawObj(Vec4 v, Editor* editor, EB_Inspector* b, SceneObject*
 	o->name = UI::EditText(v.r + 20, v.g + 2 + EB_HEADER_SIZE, v.b - 21, 18, 12, grey2(), o->name, editor->font, true, nullptr, white());
 
 	//TRS (don't chain them together or the latter may be skipped)
-	bool chg = b->DrawVector3(editor, v, 21, "Position", o->transform.position);
-	chg |= b->DrawVector3(editor, v, 38, "Rotation", (Vec3&)o->transform.eulerRotation());
-	chg |= b->DrawVector3(editor, v, 55, "Scale", o->transform.scale);
-	if (chg) {
+	bool chg = b->DrawVector3(editor, v, 21, "Position", o->transform.position, &o->transform.dirty);
+	chg |= b->DrawVector3(editor, v, 38, "Rotation", (Vec3&)o->transform.eulerRotation(), &o->transform.dirty);
+	chg |= b->DrawVector3(editor, v, 55, "Scale", o->transform.scale, &o->transform.dirty);
+	if (chg || o->transform.dirty) {
 		o->transform.eulerRotation(o->transform.eulerRotation()); //matrix updates itself
 	}
 	//draw components
@@ -1291,20 +1378,26 @@ void EB_Inspector::DrawGlobal(Vec4 v) {
 	editor->activeScene->settings.rsmRadius = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + off, v.b*0.4f - 1, 16, 0, 3, editor->activeScene->settings.rsmRadius, grey2(), white());
 }
 
-bool EB_Inspector::DrawVector3(Editor* e, Vec4 v, float dh, string label, Vec3& value) {
+bool EB_Inspector::DrawVector3(Editor* e, Vec4 v, float dh, string label, Vec3& value, bool* dirty) {
+	Vec3 vo = value;
 	bool changed = false, chg = false;
 	UI::Label(v.r, v.g + dh + EB_HEADER_SIZE, 12, label, e->font, white());
 	//Engine::EButton((e->editorLayer == 0), v.r + v.b*0.19f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Vec4(0.4f, 0.2f, 0.2f, 1));
 	//UI::Label(v.r + v.b*0.19f + 2, v.g + dh + EB_HEADER_SIZE, 12, to_string(value.x), e->font, white());
-	auto res = UI::EditText(v.r + v.b*0.19f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, 12, Vec4(0.4f, 0.2f, 0.2f, 1), to_string(value.x), e->font, true, &chg, white());
+	auto res = UI::EditText(v.r + v.b*0.19f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, 12, Vec4(0.4f, 0.2f, 0.2f, 1), to_string(value.x), e->font, true, &chg, white(), hlCol(), white(), false);
 	value.x = TryParse(res, value.x);
 	changed |= chg;
-	res = UI::EditText(v.r + v.b*0.46f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, 12, Vec4(0.2f, 0.4f, 0.2f, 1), to_string(value.y), e->font, true, &chg, white());
+	res = UI::EditText(v.r + v.b*0.46f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, 12, Vec4(0.2f, 0.4f, 0.2f, 1), to_string(value.y), e->font, true, &chg, white(), hlCol(), white(), false);
 	value.y = TryParse(res, value.y);
 	changed |= chg;
-	res = UI::EditText(v.r + v.b*0.73f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, 12, Vec4(0.2f, 0.2f, 0.4f, 1), to_string(value.z), e->font, true, &chg, white());
+	res = UI::EditText(v.r + v.b*0.73f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, 12, Vec4(0.2f, 0.2f, 0.4f, 1), to_string(value.z), e->font, true, &chg, white(), hlCol(), white(), false);
 	value.z = TryParse(res, value.z);
 	changed |= chg;
+#ifdef IS_EDITOR
+	if (changed) {
+		UndoStack::Add(new UndoStack::UndoObj(&value, sizeof(Vec3), sizeof(Vec3), UndoStack::UNDO_TYPE_NORMAL, &vo, dirty));
+	}
+#endif
 	return changed;
 }
 
@@ -1917,10 +2010,10 @@ void Editor::DrawColorSelector(float x, float y, float w, float h, Vec4 col, flo
 }
 
 Editor::Editor() {
-//#ifndef IS_EDITOR
-//	throw runtime_error("Editor class usage not allowed in game!");
-//#endif
 	instance = this;
+#ifdef IS_EDITOR
+	UndoStack::Init();
+#endif
 }
 
 void Editor::InitShaders() {
@@ -2196,6 +2289,7 @@ void Editor::LoadDefaultAssets() {
 	globalShorts.emplace(GetShortcutInt(Key_X, Key_Control), &DeleteActive);
 	//globalShorts.emplace(GetShortcutInt(Key_Space, Key_Shift), &Maximize);
 	globalShorts.emplace(GetShortcutInt(Key_P, Key_Control), &TogglePlay);
+	globalShorts.emplace(GetShortcutInt(Key_Z, Key_Control), &Undo);
 
 	assetTypes.emplace("scene", ASSETTYPE_SCENE);
 	assetTypes.emplace("mesh", ASSETTYPE_MESH);
@@ -2484,7 +2578,7 @@ void Editor::DrawHandles() {
 			}
 			Engine::ResetUIMatrix();
 		}
-		Engine::DrawQuad(v.b - EB_HEADER_PADDING, v.a - EB_HEADER_PADDING - 1, EB_HEADER_PADDING, EB_HEADER_PADDING, tex_buttonExt->pointer); //splitter bot right
+		//Engine::DrawQuad(v.b - EB_HEADER_PADDING, v.a - EB_HEADER_PADDING - 1, EB_HEADER_PADDING, EB_HEADER_PADDING, tex_buttonExt->pointer); //splitter bot right
 		if (Engine::EButton((editorLayer == 0), v.b - EB_HEADER_PADDING, v.g + 1, EB_HEADER_PADDING, EB_HEADER_PADDING, tex_buttonX, white(0.7f, 0.8f), white(), white(1, 0.3f)) == MOUSE_RELEASE) {//window mod
 			//blocks.erase(blocks.begin() + r);
 			//delete(b);
@@ -2599,8 +2693,12 @@ dh = 1.0f / Display::height;
 					browseTargetComp->comp = nullptr;
 					browseTargetComp->path = "";
 				}
-				else
+				else {
+#ifdef IS_EDITOR
+					UndoStack::Add(new UndoStack::UndoObj(browseTarget, browseTarget, 4, browseCallback, browseCallbackParam));
+#endif
 					*browseTarget = -1;
+				}
 				editorLayer = 0;
 				if (browseCallback != nullptr)
 					(*browseCallback)(browseCallbackParam);
@@ -2645,6 +2743,9 @@ dh = 1.0f / Display::height;
 						previewType = browseType;
 						previewId = r;
 						if (b == MOUSE_RELEASE) {
+#ifdef IS_EDITOR
+							UndoStack::Add(new UndoStack::UndoObj(browseTarget, browseTarget, 4, browseCallback, browseCallbackParam));
+#endif
 							*browseTarget = r;
 							editorLayer = 0;
 							if (browseCallback != nullptr)
@@ -3062,7 +3163,7 @@ void Editor::SetEditing(byte t, string val, Rect a, Vec4 c) {
 void Editor::SetBackground(string s, float a) {
 	backgroundPath = s;
 	if (backgroundTex)
-		delete(backgroundTex); //ごめんなさいpandaman先生
+		delete(backgroundTex);
 	backgroundTex = new Texture(s);
 	if (a >= 0)
 		backgroundAlpha = (int)(a*100);

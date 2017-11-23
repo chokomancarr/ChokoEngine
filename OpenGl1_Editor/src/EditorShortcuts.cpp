@@ -600,6 +600,13 @@ void Editor::TogglePlay(Editor* e) {
 	e->flags |= WAITINGPLAYFLAG;
 }
 
+void Editor::Undo(Editor* e) {
+	UndoStack::Undo();
+}
+void Editor::Redo(Editor* e) {
+	UndoStack::Redo();
+}
+
 void GetSceneFiles(string path, string sub, std::vector<string>& list) {
 	for (string s : IO::GetFiles(path + sub, ".scene")) {
 		string ss(s.substr(path.size(), string::npos));

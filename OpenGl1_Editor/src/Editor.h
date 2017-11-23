@@ -263,11 +263,11 @@ public:
 
 	void OnMouseScr(bool up) override;
 
-	static bool DrawScalar(Editor* e, Vec4 v, float dh, string label, float& value);
-	static bool DrawVector2(Editor* e, Vec4 v, float dh, string label, Vec2& value);
-	static bool DrawVector3(Editor* e, Vec4 v, float dh, string label, Vec3& value);
-	static bool DrawVector4(Editor* e, Vec4 v, float dh, string label, Vec4& value);
-	static bool DrawVec4(Editor* e, Vec4 v, float dh, string label, Vec4& col);
+	static bool DrawScalar(Editor* e, Vec4 v, float dh, string label, float& value, bool* dirty);
+	static bool DrawVector2(Editor* e, Vec4 v, float dh, string label, Vec2& value, bool* dirty);
+	static bool DrawVector3(Editor* e, Vec4 v, float dh, string label, Vec3& value, bool* dirty);
+	static bool DrawVector4(Editor* e, Vec4 v, float dh, string label, Vec4& value, bool* dirty);
+	static bool DrawVec4(Editor* e, Vec4 v, float dh, string label, Vec4& col, bool* dirty);
 	static void DrawAsset(Editor* e, Vec4 v, float dh, string label, ASSETTYPE type);
 
 	static void DrawObj(Vec4 v, Editor* editor, EB_Inspector* b, SceneObject* o);
@@ -361,6 +361,40 @@ public:
 	Component* comp;
 	string path;
 };
+
+#ifdef IS_EDITOR
+class UndoStack {
+public:
+	enum UNDO_TYPE {
+		UNDO_TYPE_NORMAL,
+		UNDO_TYPE_STRING,
+		UNDO_TYPE_ASSET
+	};
+	struct UndoObj {
+		UndoObj(void* loc, uint sz, uint nsz, UNDO_TYPE type = UNDO_TYPE_NORMAL, void* val = nullptr, bool* dirty = nullptr, string desc = "");
+		UndoObj(void* loc, void* val, uint sz, callbackFunc func, void* funcVal);
+		~UndoObj();
+
+		void* loc = 0, *val = 0;
+		uint sz, nsz;
+		string desc;
+		UNDO_TYPE type;
+		bool* dirty = 0;
+		callbackFunc func; //called after memcpy
+		void* funcVal = 0;
+
+		void Apply();
+	};
+
+	static void Init();
+	static void Add(UndoObj* obj);
+	static byte maxStack;
+	static void Undo(byte cnt = 1), Redo(byte cnt = 1);
+
+	static std::vector<UndoObj*> stack, rstack;
+	static byte esp;
+};
+#endif
 
 class BlockCombo;
 class xPossLerper;
@@ -637,6 +671,7 @@ public:
 	static void DoDeleteActive(EditorBlock* b);
 	static void Maximize(Editor* e);
 	static void TogglePlay(Editor* e);
+	static void Undo(Editor* e), Redo(Editor* e);
 
 	void DoCompile();
 

@@ -667,8 +667,8 @@ public:
 	static void Label(float x, float y, float s, string str, Font* font, Vec4 col = black(), float maxw = -1);
 
 	//Draws an editable text box. EditText does not work on recursive functions.
-	static string EditText(float x, float y, float w, float h, float s, Vec4 bcol, string str, Font* font, bool delayed = false, bool* changed = nullptr, Vec4 fcol = black(), Vec4 hcol = Vec4(0, 120.0f / 255, 215.0f / 255, 1), Vec4 acol = white());
-
+	static string EditText(float x, float y, float w, float h, float s, Vec4 bcol, const string& str, Font* font, bool delayed = false, bool* changed = nullptr, Vec4 fcol = black(), Vec4 hcol = Vec4(0, 120.0f / 255, 215.0f / 255, 1), Vec4 acol = white(), bool ser = true);
+	
 	static bool CanDraw();
 //protected:
 	static bool _isDrawingLoop;
