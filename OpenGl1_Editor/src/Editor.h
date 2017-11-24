@@ -2,6 +2,7 @@
 
 #include "Defines.h"
 #include "Engine.h"
+#include "Xml.h"
 
 using namespace ChokoEngine;
 /*

@@ -51,6 +51,9 @@
     <ClCompile Include="src\Types.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\Xml.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -73,6 +76,9 @@
     </ClInclude>
     <ClInclude Include="src\SceneObjects.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Xml.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

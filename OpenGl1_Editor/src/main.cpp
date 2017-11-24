@@ -22,6 +22,7 @@
 #include <sstream>
 #include <type_traits>
 //#include <signal.h>
+#include "Xml.h"
 
 using namespace ChokoEngine;
 
@@ -66,6 +67,8 @@ char Get(std::istream& strm) {
 
 int main(int argc, char **argv)
 {
+	auto tb = Xml::Parse("D:\\cont.xml");
+
 	path = argv[0];
 	editor = new Editor();
 	//editor->hwnd = GetForegroundWindow();
