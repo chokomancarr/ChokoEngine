@@ -3,8 +3,6 @@
 #include <sstream>
 #include <random>
 
-using namespace ChokoEngine;
-
 void CheckGLOK() {
 	int err = glGetError();
 	if (err != GL_NO_ERROR) {

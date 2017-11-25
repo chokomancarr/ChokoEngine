@@ -26,7 +26,6 @@
 #include <glm/gtc/type_ptr.hpp>
 #include "Defines.h"
 #include "SceneScriptResolver.h"
-using namespace ChokoEngine;
 
 #define F2ISTREAM(_varname, _pathname) std::ifstream _f2i_ifstream((_pathname).c_str(), std::ios::in | std::ios::binary); \
 std::istream _varname(_f2i_ifstream.rdbuf());

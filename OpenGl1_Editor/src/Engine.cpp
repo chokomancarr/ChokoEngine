@@ -28,8 +28,6 @@
 #include "Defines.h"
 #include "SceneScriptResolver.h"
 
-using namespace ChokoEngine;
-
 string to_string(float f) { return std::to_string(f); }
 string to_string(double f) { return std::to_string(f); }
 string to_string(ulong f) { return std::to_string(f); }

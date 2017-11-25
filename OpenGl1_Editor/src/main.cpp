@@ -1,30 +1,20 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <iostream>
-#include <vector>
-#include <string>
 #include <ctime>
 #include <Windows.h>
 #include <Psapi.h>
 #include <typeinfo>
-#include <GL/glew.h>
-#include <glm/glm.hpp>
-#include <glm/gtx/transform.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-#include <gl/GLUT.h>
 #include <thread>
 #include <mutex>
+#include <sstream>
+#include <type_traits>
 #include "Engine.h"
 #include "Editor.h"
 #include "SceneObjects.h"
 #include "Compressors.h"
-#include <sstream>
-#include <type_traits>
-//#include <signal.h>
 #include "Xml.h"
-
-using namespace ChokoEngine;
+#include <gl/GLUT.h>
 
 void TimerGL(int i);
 void MouseGL(int button, int state, int x, int y);
@@ -435,9 +425,9 @@ void ShowSplash(string bitmap, uint cx, uint cy, uint sw, uint sh) {
 	byte* px = Texture::LoadPixels(bitmap, chn, pw, ph);
 	byte tmp = 0;
 	for (uint a = 0; a < pw*ph; a++) {
-		px[a * 4] *= px[a * 4 + 3] * 1.0f/255;
-		px[a * 4 + 1] *= px[a * 4 + 3] * 1.0f / 255;
-		px[a * 4 + 2] *= px[a * 4 + 3] * 1.0f / 255;
+		px[a * 4] = byte((px[a * 4] * px[a * 4 + 3])/255.0f);
+		px[a * 4 + 1] = byte((px[a * 4 + 1] * px[a * 4 + 3]) / 255.0f);
+		px[a * 4 + 2] = byte((px[a * 4 + 2] * px[a * 4 + 3]) / 255.0f);
 		tmp = px[a * 4];
 		px[a * 4] = px[a * 4 + 2];
 		px[a * 4 + 2] = tmp;

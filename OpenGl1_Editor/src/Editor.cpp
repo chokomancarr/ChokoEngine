@@ -25,8 +25,6 @@
 #include <thread>
 #include <filesystem>
 
-using namespace ChokoEngine;
-
 UndoStack::UndoObj::UndoObj(void* loc, uint sz, uint nsz, UNDO_TYPE type, void* val, bool* dirty, string desc) :
 	loc(loc), type(type), sz(sz), nsz(nsz), desc(desc), dirty(dirty) {
 	switch (type) {

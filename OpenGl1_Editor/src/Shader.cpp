@@ -8,8 +8,6 @@
 #include <fstream>
 #include <limits>
 
-using namespace ChokoEngine;
-
 bool ShaderBase::LoadShader(GLenum shaderType, string source, GLuint& shader, string* err) {
 
 	int compile_result = 0;

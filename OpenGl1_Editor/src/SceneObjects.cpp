@@ -3,8 +3,6 @@
 #include "Editor.h"
 #include <sstream>
 
-using namespace ChokoEngine;
-
 Object::Object(string nm) : id(Engine::GetNewId()), name(nm) {}
 Object::Object(ulong id, string nm) : id(id), name(nm) {}
 
@@ -44,7 +42,7 @@ COMPONENT_TYPE Component::Name2Type(string nm) {
 	return COMP_UNDEF;
 }
 
-int Camera::camVertsIds[19] = { 0, 1, 0, 2, 0, 3, 0, 4, 1, 2, 2, 4, 4, 3, 3, 1, 1, 2, 5 };
+const int Camera::camVertsIds[19] = { 0, 1, 0, 2, 0, 3, 0, 4, 1, 2, 2, 4, 4, 3, 3, 1, 1, 2, 5 };
 
 Camera::Camera() : Component("Camera", COMP_CAM, DRAWORDER_NONE), ortographic(false), fov(60), orthoSize(10), screenPos(0.3f, 0.1f, 0.6f, 0.4f), clearType(CAM_CLEAR_COLOR), clearColor(black(1)), _tarRT(-1), nearClip(0.01f), farClip(500) {
 	UpdateCamVerts();

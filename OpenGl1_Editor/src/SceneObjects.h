@@ -103,7 +103,7 @@ public:
 	std::vector<Vec3> normals, tangents;// , bitangents;
 	std::vector<int> triangles;
 	std::vector<Vec2> uv0, uv1;
-	ChokoEngine::BBox boundingBox;
+	BBox boundingBox;
 	
 	uint vertexCount, triangleCount, materialCount;
 	
@@ -487,7 +487,7 @@ public:
 	friend class RenderTexture;
 	friend class ReflectionProbe;
 	friend class CubeMap;
-	friend class ChokoEngine::Color;
+	friend class Color;
 protected:
 	Camera(std::ifstream& stream, SceneObject* o, long pos = -1);
 
@@ -511,7 +511,7 @@ protected:
 	static void GenShaderFromPath(GLuint vertex_shader, const string& path, GLuint* program);
 
 	Vec3 camVerts[6];
-	static int camVertsIds[19];
+	static const int camVertsIds[19];
 	GLuint d_fbo, d_texs[4], d_depthTex;
 	static GLuint d_probeMaskProgram, d_probeProgram, d_blurProgram, d_blurSBProgram, d_skyProgram, d_pLightProgram, d_sLightProgram, d_sLightCSProgram, d_sLightRSMProgram, d_sLightRSMFluxProgram;
 	static GLuint d_reflQuadProgram;

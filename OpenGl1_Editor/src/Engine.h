@@ -101,62 +101,59 @@ uint TryParse(string str, uint defVal);
 float TryParse(string str, float defVal);
 
 class Mesh;
+class QuatFunc {
+public:
+	static Quat Inverse(const Quat&);
+	//static Vec3 Rotate(const Vec3&, const Quat&); //just use Q*V
+	static Vec3 ToEuler(const Quat&);
+	static Mat4x4 ToMatrix(const Quat&);
+	static Quat FromAxisAngle(const Vec3&, float);
+};
 
-namespace ChokoEngine {
-	class QuatFunc {
-	public:
-		static Quat Inverse(const Quat&);
-		//static Vec3 Rotate(const Vec3&, const Quat&); //just use Q*V
-		static Vec3 ToEuler(const Quat&);
-		static Mat4x4 ToMatrix(const Quat&);
-		static Quat FromAxisAngle(const Vec3&, float);
-	};
-	
-	struct BBox {
-		BBox() {}
-		BBox(float, float, float, float, float, float);
+struct BBox {
+	BBox() {}
+	BBox(float, float, float, float, float, float);
 
-		float x0, x1, y0, y1, z0, z1;
-	};
+	float x0, x1, y0, y1, z0, z1;
+};
 
-	class Color {
-	public:
-		Color() : r(0), g(0), b(0), a(0), useA(true) {}
-		Color(Vec4 v, bool hasA = true) : r((byte)round(v.r * 255)), g((byte)round(v.g * 255)), b((byte)round(v.b * 255)), a((byte)round(v.a * 255)), useA(hasA) {}
-	
-		bool useA;
-		byte r, g, b, a;
-		float h, s, v;
+class Color {
+public:
+	Color() : r(0), g(0), b(0), a(0), useA(true) {}
+	Color(Vec4 v, bool hasA = true) : r((byte)round(v.r * 255)), g((byte)round(v.g * 255)), b((byte)round(v.b * 255)), a((byte)round(v.a * 255)), useA(hasA) {}
 
-		Vec3 hsv() { return Vec3(h, s, v); }
+	bool useA;
+	byte r, g, b, a;
+	float h, s, v;
 
-		Vec4 vec4() {
-			return Vec4(r, g, b, a)*(1.0f/255);
-		}
+	Vec3 hsv() { return Vec3(h, s, v); }
 
-		static GLuint pickerProgH, pickerProgSV;
+	Vec4 vec4() {
+		return Vec4(r, g, b, a)*(1.0f / 255);
+	}
 
-		string hex();
+	static GLuint pickerProgH, pickerProgSV;
 
-		static void Rgb2Hsv(byte r, byte g, byte b, float& h, float& s, float& v), Hsv2Rgb(float h, float s, float v, byte& r, byte& g, byte& b);
-		static Vec3 Rgb2Hsv(Vec4 col);
-		static string Col2Hex(Vec4 col);
-		static void DrawPicker(float x, float y, Color& c);
-		static Vec4 HueBaseCol(float hue);
+	string hex();
 
-	protected:
+	static void Rgb2Hsv(byte r, byte g, byte b, float& h, float& s, float& v), Hsv2Rgb(float h, float s, float v, byte& r, byte& g, byte& b);
+	static Vec3 Rgb2Hsv(Vec4 col);
+	static string Col2Hex(Vec4 col);
+	static void DrawPicker(float x, float y, Color& c);
+	static Vec4 HueBaseCol(float hue);
 
-		void RecalcRGB(), RecalcHSV();
-		static void DrawSV(float x, float y, float w, float h, float hue);
-		static void DrawH(float x, float y, float w, float h);
-	};
+protected:
 
-	class Procedurals {
-	public:
-		static Mesh* Plane(uint xCount, uint yCount);
-		static Mesh* UVSphere(uint uCount, uint vCount);
-	};
-}
+	void RecalcRGB(), RecalcHSV();
+	static void DrawSV(float x, float y, float w, float h, float hue);
+	static void DrawH(float x, float y, float w, float h);
+};
+
+class Procedurals {
+public:
+	static Mesh* Plane(uint xCount, uint yCount);
+	static Mesh* UVSphere(uint uCount, uint vCount);
+};
 
 class Rect {
 public:
@@ -165,7 +162,9 @@ public:
 	Rect(Vec4 v) : x(v.r), y(v.g), w(v.b), h(v.a) {}
 	float x, y, w, h;
 
+	/// Check if v is inside this rect.
 	bool Inside(const Vec2& v);
+	/// Returns a new Rect covered by both this rect and r2
 	Rect Intersection(const Rect& r2);
 };
 
@@ -791,7 +790,7 @@ public:
 	
 	Background* sky;
 	float skyStrength;
-	ChokoEngine::Color ambientCol;
+	Color ambientCol;
 	GITYPE GIType = GITYPE_RSM;
 	float rsmRadius;
 
