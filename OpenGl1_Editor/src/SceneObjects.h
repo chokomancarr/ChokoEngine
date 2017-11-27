@@ -91,6 +91,8 @@ private:
 	void _UpdateEuler();
 	void _UpdateLMatrix();
 	void _UpdateWMatrix(const Mat4x4& mat);
+	
+	Transform(const Transform& rhs);
 };
 
 class Mesh : public AssetObject {
@@ -103,6 +105,8 @@ public:
 	std::vector<Vec3> normals, tangents;// , bitangents;
 	std::vector<int> triangles;
 	std::vector<Vec2> uv0, uv1;
+	std::vector<std::vector<std::pair<byte, float>>> vertexGroupWeights;
+	std::vector<string> vertexGroups;
 	BBox boundingBox;
 	
 	uint vertexCount, triangleCount, materialCount;
@@ -610,11 +614,14 @@ protected:
 	int _texture;
 };
 
-struct SRD_ArmatureData { //bind(-1) -> animate -> bind
-	Mat4x4 bind[512];
-	Mat4x4 animate[512];
+#define ARMATURE_MAX_BONES 255
+#define SKINNED_MAX_VERTICES 65535
+struct SRD_ArmatureData {
+	Mat4x4 bind[ARMATURE_MAX_BONES];
+	Mat4x4 animate[ARMATURE_MAX_BONES];
 };
 
+class Armature;
 #define COMP_SRD 0x12
 class SkinnedMeshRenderer : public Component {
 public:
@@ -622,7 +629,8 @@ public:
 
 	std::vector<Material*> materials;
 	Animator* anim;
-
+	Mesh* mesh;
+	Armature* armature;
 	//void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
 	//void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
 
@@ -635,11 +643,16 @@ public:
 protected:
 	SkinnedMeshRenderer(std::ifstream& stream, SceneObject* o, long pos = -1);
 
-	SceneObject* baseBone;
+	static GLuint _vbos[2]; //vertex, normal
 	SRD_ArmatureData animData;
 	std::vector<std::pair<uint, SceneObject*>> boneObjs;
+	std::unordered_map<string, Transform&> bonePaths;
+	std::vector<std::pair<uint, float>[4]> weights;
 
-	void ApplyAnim();
+	static void Init();
+	void InitWeights();
+	void ApplyAnim(); //armature transforms -> animdata
+	void ApplyVbo();
 	void DrawDeferred();
 
 	std::vector<ASSETID> _materials;
@@ -829,19 +842,20 @@ protected:
 };
 
 #define COMP_ARM 0x30
-class ArmatureBone {
-public:
+struct ArmatureBone {
 	Transform* const tr;
 	Vec3 const restPosition;
 	Quat const restRotation;
 	Vec3 const restScale;
 	Vec3 tailPos;
 	bool const connected;
+	string const name;
+	uint const id;
 	const std::vector<ArmatureBone*>& children() { return _children; }
 
 	friend class Armature;
 protected:
-	ArmatureBone(Vec3 pos, Quat rot, Vec3 scl, Vec3 tal, bool conn, Transform* tr) : restPosition(pos), restRotation(rot), restScale(scl), tailPos(tal), connected(conn), tr(tr) {}
+	ArmatureBone(uint id, Vec3 pos, Quat rot, Vec3 scl, Vec3 tal, bool conn, Transform* tr);
 	std::vector<ArmatureBone*> _children;
 };
 class Armature : public Component {
@@ -869,7 +883,7 @@ public:
 protected:
 	Armature(string s, SceneObject* o);
 	Armature(std::ifstream& stream, SceneObject* o, long pos = -1);
-	static void AddBone(std::ifstream&, std::vector<ArmatureBone*>&, std::vector<ArmatureBone*>&, SceneObject*);
+	static void AddBone(std::ifstream&, std::vector<ArmatureBone*>&, std::vector<ArmatureBone*>&, SceneObject*, uint&);
 	ASSETID _anim;
 	std::vector<ArmatureBone*> _bones;
 };

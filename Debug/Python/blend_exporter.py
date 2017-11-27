@@ -50,7 +50,7 @@ class KTMExporter():
                 self.write(file2, " \x00rot {:f} {:f} {:f} {:f}".format(rott[0], rott[1], rott[2], rott[3]))
                 scll = obj.scale
                 self.write(file2, " \x00scl {:f} {:f} {:f}\n".format(scll[0], scll[2], scll[1]))
-                    
+                
                 print ("!writing to: " + dirr + name + "_blend\\" + obj.name + ".mesh.meta")
                 file = open(dirr + name + "_blend\\" + obj.name + ".mesh.meta", "wb")
                 obj.modifiers.new("EdgeSplit", 'EDGE_SPLIT')
@@ -58,7 +58,7 @@ class KTMExporter():
                 obj.modifiers["EdgeSplit"].use_edge_sharp = True
                 obj.modifiers.new("Triangulate", 'TRIANGULATE')
                 m = obj.to_mesh(bpy.context.scene, True, 'PREVIEW') #struct.pack("<i", len(m.loops))
-                self.write(file, "KTO123" + obj.name + "\x00V") #V size4 [vert4+norm4 array] F size4 [3xface4 array] NULL
+                self.write(file, "KTO123" + obj.name + "\x00V") #V size4 [vert4+norm4 array] F size4 [3xface4 array] (U size1 [uv02 array] (uv12 array)) 
                 file.write(struct.pack("<i", len(m.loops)))
                 for loop in m.loops:
                     vert = m.vertices[loop.vertex_index]
@@ -83,7 +83,17 @@ class KTMExporter():
                     if len(m.uv_layers) > 1:
                         for uvl in m.uv_layers[1].data:
                             file.write(struct.pack("<ff", uvl.uv[0], uvl.uv[1]))
-                self.write(file, "\x00")
+                #G groupSz1 [groupName NULL] (for each vert)[groupSz1 [groupId1 groupWeight4]]
+                self.write(file, "G")
+                file.write(struct.pack("<B", len(obj.vertex_groups)))
+                for grp in obj.vertex_groups:
+                    self.write(file, grp.name + "\x00")
+                for loop in m.loops:
+                    vert = m.vertices[loop.vertex_index]
+                    file.write(struct.pack("<B", len(vert.groups)))
+                    for grp in vert.groups:
+                        file.write(struct.pack("<Bf", grp.group, grp.weight))
+                
                 #if obj.type == 'MESH' and m.shape_keys:
                 #    for block in m.shape_keys.key_blocks:
                 #        self.write(file, "    shp " + block.name + "\r\n")
@@ -115,11 +125,10 @@ class KTMExporter():
             self.write(file, "B" + bone.name + "\x00")
             if bone.parent:
                 self.write(file, bone.parent.name)
-            self.write(file, "\x00");
+            self.write(file, "\x00")
             file.write(struct.pack("<fff", bone.head[0], bone.head[2], bone.head[1]))
             file.write(struct.pack("<fff", bone.tail[0], bone.tail[2], bone.tail[1]))
-            #file.write(struct.pack("<fff", bone.vector[0], bone.vector[1], bone.vector[2]))
-            file.write(struct.pack("<fff", bone.x_axis[0], bone.x_axis[2], bone.x_axis[1]))
+            file.write(struct.pack("<fff", bone.z_axis[0], bone.z_axis[2], bone.z_axis[1]))
             datamask = 0
             if self.dot(self.cross(bone.x_axis, bone.vector), bone.z_axis) > 0:
                 datamask += 240

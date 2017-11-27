@@ -1849,9 +1849,15 @@ Mesh::Mesh(string p) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0
 	stream.read(&cc, 1);
 
 	//std::cout << path << std::endl;
-	while (cc != 0) {
-		if (cc == 'V') {
+	while (cc != 0 && !stream.eof()) {
+		switch (cc) {
+		case 'V':
 			_Strm2Val(stream, vertexCount);
+			vertices.reserve(vertexCount);
+			normals.reserve(vertexCount);
+			uv0.reserve(vertexCount);
+			uv1.reserve(vertexCount);
+			vertexGroups.reserve(vertexCount);
 			for (uint vc = 0; vc < vertexCount; vc++) {
 				Vec3 v;
 				_Strm2Val(stream, v.x);
@@ -1863,9 +1869,10 @@ Mesh::Mesh(string p) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0
 				_Strm2Val(stream, v.z);
 				normals.push_back(v);
 			}
-		}
-		else if (cc == 'F') {
+			break;
+		case 'F':
 			_Strm2Val(stream, triangleCount);
+			triangles.reserve(triangleCount*3);
 			for (uint fc = 0; fc < triangleCount; fc++) {
 				byte m;
 				_Strm2Val(stream, m);
@@ -1884,8 +1891,8 @@ Mesh::Mesh(string p) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0
 				_matTriangles[m].push_back(i);
 				triangles.push_back(i);
 			}
-		}
-		else if (cc == 'U') {
+			break;
+		case 'U':
 			byte c;
 			_Strm2Val(stream, c);
 			for (uint vc = 0; vc < vertexCount; vc++) {
@@ -1902,8 +1909,31 @@ Mesh::Mesh(string p) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0
 					uv1.push_back(i);
 				}
 			}
-		}
-		else {
+			break;
+		case 'G':
+			byte d;
+			_Strm2Val(stream, d);
+			while (d > 0) {
+				char* cc = new char[100];
+				stream.getline(cc, 100, (char)0);
+				vertexGroups.push_back(string(cc));
+				d--;
+			}
+			vertexGroupWeights.resize(vertexCount);
+			for (uint vc = 0; vc < vertexCount; vc++) {
+				_Strm2Val(stream, d);
+				byte dd;
+				float ff;
+				vertexGroupWeights[vc].reserve(d);
+				while (d > 0) {
+					_Strm2Val(stream, dd);
+					_Strm2Val(stream, ff);
+					vertexGroupWeights[vc].push_back(std::pair<uint, float>(dd, ff));
+					d--;
+				}
+			}
+			break;
+		default:
 			Debug::Error("Mesh Importer", "Unknown char: " + to_string(cc));
 		}
 		stream.read(&cc, 1);

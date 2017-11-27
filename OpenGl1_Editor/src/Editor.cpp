@@ -963,32 +963,34 @@ void EB_Viewer::Draw() {
 const int EB_Viewer::arrowTIndexs[18] = { 0, 1, 2, 0, 2, 3, 0, 1, 4, 1, 2, 4, 2, 3, 4, 3, 0, 4 };
 const int EB_Viewer::arrowSIndexs[18] = { 0, 1, 2, 0, 2, 3, 0, 1, 4, 1, 2, 4, 2, 3, 4, 3, 0, 4 };
 
+#define _rot(vec) _wr*vec
 void EB_Viewer::DrawTArrows(Vec3 pos, float size) {
 	float s = size / (float)pow(2, scale);
+	auto _wr = editor->selected->transform.worldRotation();
 	glDepthFunc(GL_ALWAYS);
-	Engine::DrawLineW(pos, pos + Vec3(s, 0, 0), red(), 3);
-	Engine::DrawLineW(pos, pos + Vec3(0, s, 0), green(), 3);
-	Engine::DrawLineW(pos, pos + Vec3(0, 0, s), blue(), 3);
-
+	Engine::DrawLineW(pos, pos + _rot(Vec3(s, 0, 0)), red(), 3);
+	Engine::DrawLineW(pos, pos + _rot(Vec3(0, s, 0)), green(), 3);
+	Engine::DrawLineW(pos, pos + _rot(Vec3(0, 0, s)), blue(), 3);
+	
 	
 	float ds = s * 0.07f;
-	arrowVerts[0] = pos + Vec3(s, ds, ds);
-	arrowVerts[1] = pos + Vec3(s, -ds, ds);
-	arrowVerts[2] = pos + Vec3(s, -ds, -ds);
-	arrowVerts[3] = pos + Vec3(s, ds, -ds);
-	arrowVerts[4] = pos + Vec3(s*1.3f, 0, 0);
+	arrowVerts[0] = pos + _rot(Vec3(s, ds, ds));
+	arrowVerts[1] = pos + _rot(Vec3(s, -ds, ds));
+	arrowVerts[2] = pos + _rot(Vec3(s, -ds, -ds));
+	arrowVerts[3] = pos + _rot(Vec3(s, ds, -ds));
+	arrowVerts[4] = pos + _rot(Vec3(s*1.3f, 0, 0));
 
-	arrowVerts[5] = pos + Vec3(ds, s, ds);
-	arrowVerts[6] = pos + Vec3(-ds, s, ds);
-	arrowVerts[7] = pos + Vec3(-ds, s, -ds);
-	arrowVerts[8] = pos + Vec3(ds, s, -ds);
-	arrowVerts[9] = pos + Vec3(0, s*1.3f, 0);
+	arrowVerts[5] = pos + _rot(Vec3(ds, s, ds));
+	arrowVerts[6] = pos + _rot(Vec3(-ds, s, ds));
+	arrowVerts[7] = pos + _rot(Vec3(-ds, s, -ds));
+	arrowVerts[8] = pos + _rot(Vec3(ds, s, -ds));
+	arrowVerts[9] = pos + _rot(Vec3(0, s*1.3f, 0));
 
-	arrowVerts[10] = pos + Vec3(ds, ds, s);
-	arrowVerts[11] = pos + Vec3(-ds, ds, s);
-	arrowVerts[12] = pos + Vec3(-ds, -ds, s);
-	arrowVerts[13] = pos + Vec3(ds, -ds, s);
-	arrowVerts[14] = pos + Vec3(0, 0, s*1.3f);
+	arrowVerts[10] = pos + _rot(Vec3(ds, ds, s));
+	arrowVerts[11] = pos + _rot(Vec3(-ds, ds, s));
+	arrowVerts[12] = pos + _rot(Vec3(-ds, -ds, s));
+	arrowVerts[13] = pos + _rot(Vec3(ds, -ds, s));
+	arrowVerts[14] = pos + _rot(Vec3(0, 0, s*1.3f));
 
 	glEnableClientState(GL_VERTEX_ARRAY);
 	Engine::DrawIndicesI(&arrowVerts[0], &arrowTIndexs[0], 15, 1, 0, 0);
@@ -999,15 +1001,17 @@ void EB_Viewer::DrawTArrows(Vec3 pos, float size) {
 
 void EB_Viewer::DrawRArrows(Vec3 pos, float size) {
 	float sz = size / (float)pow(2, scale);
+	auto _wr = editor->selected->transform.worldRotation();
 	glDepthFunc(GL_ALWAYS);
-	Engine::DrawCircleW(pos, Vec3(0, 1, 0), Vec3(0, 0, 1), sz, 32, red(), 3);
-	Engine::DrawCircleW(pos, Vec3(1, 0, 0), Vec3(0, 0, 1), sz, 32, green(), 3);
-	Engine::DrawCircleW(pos, Vec3(0, 1, 0), Vec3(1, 0, 0), sz, 32, blue(), 3);
+	Engine::DrawCircleW(pos, _rot(Vec3(0, 1, 0)), _rot(Vec3(0, 0, 1)), sz, 32, red(), 3);
+	Engine::DrawCircleW(pos, _rot(Vec3(1, 0, 0)), _rot(Vec3(0, 0, 1)), sz, 32, green(), 3);
+	Engine::DrawCircleW(pos, _rot(Vec3(0, 1, 0)), _rot(Vec3(1, 0, 0)), sz, 32, blue(), 3);
 	glDepthFunc(GL_LEQUAL);
 }
 
 void EB_Viewer::DrawSArrows(Vec3 pos, float size) {
 	float sz = size / (float)pow(2, scale);
+	auto _wr = editor->selected->transform.worldRotation();
 	glDepthFunc(GL_ALWAYS);
 	Engine::DrawLineW(pos, pos + Vec3(sz, 0, 0), red(), 3);
 	Engine::DrawLineW(pos, pos + Vec3(0, sz, 0), green(), 3);
@@ -1021,6 +1025,7 @@ void EB_Viewer::DrawSArrows(Vec3 pos, float size) {
 	Engine::DrawCube(pos + Vec3(0, 0, (sz) + ds), ds, ds, ds, blue());
 	glDepthFunc(GL_LEQUAL);
 }
+#undef _rot
 
 void EB_Viewer::OnMouseM(Vec2 d) {
 	if (editor->mousePressType == 1 || (editor->mousePressType == 0 && Input::KeyHold(Key_Alt))) {

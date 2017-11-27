@@ -492,11 +492,26 @@ TextureRenderer::TextureRenderer(std::ifstream& stream, SceneObject* o, long pos
 }
 
 //-----------------Skinned Mesh Renderer-------------
+GLuint SkinnedMeshRenderer::_vbos[2] = {};
+
+void SkinnedMeshRenderer::Init() {
+	glGenBuffers(2, _vbos);
+}
+
+void SkinnedMeshRenderer::InitWeights() {
+	std::vector<std::vector<std::pair<uint, float>>> _weights(mesh->vertexCount);
+	
+}
+
 SkinnedMeshRenderer::SkinnedMeshRenderer(std::ifstream& stream, SceneObject* o, long pos) : Component("Skinned Mesh Renderer", COMP_SRD, DRAWORDER_SOLID | DRAWORDER_TRANSPARENT, o) {
 	
 }
 
 void SkinnedMeshRenderer::ApplyAnim() {
+	
+}
+
+void SkinnedMeshRenderer::ApplyVbo() {
 
 }
 
@@ -882,6 +897,9 @@ void ReflectionProbe::Serialize(Editor* e, std::ofstream* stream) {
 	_StreamWrite(&softness, stream, 4);
 }
 
+
+ArmatureBone::ArmatureBone(uint id, Vec3 pos, Quat rot, Vec3 scl, Vec3 tal, bool conn, Transform* tr) : id(id), restPosition(pos), restRotation(rot), restScale(scl), tailPos(tal), connected(conn), tr(tr), name(tr->object->name) {}
+
 Armature::Armature(string path, SceneObject* o) : Component("Armature", COMP_ARM, DRAWORDER_OVERLAY, o), overridePos(false), restPosition(o->transform.position), restRotation(o->transform.rotation()), restScale(o->transform.scale), _anim(-1) {
 	std::ifstream strm(path);
 	if (!strm.is_open()) {
@@ -898,8 +916,9 @@ Armature::Armature(string path, SceneObject* o) : Component("Armature", COMP_ARM
 	delete[](c);
 	std::vector<ArmatureBone*> boneList;
 	char b = strm.get();
+	uint i = 0;
 	while (b == 'B') {
-		AddBone(strm, _bones, boneList, object);
+		AddBone(strm, _bones, boneList, object, i);
 		b = strm.get();
 	}
 }
@@ -908,7 +927,7 @@ Armature::Armature(std::ifstream& stream, SceneObject* o, long pos) : Component(
 
 }
 
-void Armature::AddBone(std::ifstream& strm, std::vector<ArmatureBone*>& bones, std::vector<ArmatureBone*>& blist, SceneObject* o) {
+void Armature::AddBone(std::ifstream& strm, std::vector<ArmatureBone*>& bones, std::vector<ArmatureBone*>& blist, SceneObject* o, uint& id) {
 	char* c = new char[100];
 	strm.getline(c, 100, 0);
 	string nm = string(c);
@@ -923,7 +942,7 @@ void Armature::AddBone(std::ifstream& strm, std::vector<ArmatureBone*>& bones, s
 			}
 		}
 	}
-	Vec3 pos, tal, rht;
+	Vec3 pos, tal, fwd;
 	Quat rot;
 	byte mask;
 	_Strm2Val(strm, pos.x);
@@ -932,25 +951,28 @@ void Armature::AddBone(std::ifstream& strm, std::vector<ArmatureBone*>& bones, s
 	_Strm2Val(strm, tal.x);
 	_Strm2Val(strm, tal.y);
 	_Strm2Val(strm, tal.z);
-	_Strm2Val(strm, rht.x);
-	_Strm2Val(strm, rht.y);
-	_Strm2Val(strm, rht.z);
+	_Strm2Val(strm, fwd.x);
+	_Strm2Val(strm, fwd.y);
+	_Strm2Val(strm, fwd.z);
 	mask = strm.get();
-	SceneObject* oo = new SceneObject(nm, (prt == nullptr) ? pos : pos + prt->tailPos, Quat(), Vec3(1.0f));
-	auto bn = new ArmatureBone((prt == nullptr) ? pos : pos + prt->tailPos, Quat(), Vec3(), tal, (mask & 0xf0) != 0, &oo->transform);
-	if (prt == nullptr) {
-		bones.push_back(bn);
-		o->AddChild(oo);
+	std::cout << to_string(pos) << to_string(tal) << to_string(fwd) << std::endl;
+	rot = glm::quat_cast(glm::lookAt(pos, Normalize(tal), - fwd - pos));
+	std::vector<ArmatureBone*>& bnv = (prt)? prt->_children : bones;
+	SceneObject* scp = (prt) ? prt->tr->object : o;
+	SceneObject* oo = new SceneObject(nm, pos, rot, Vec3(1.0f));
+	ArmatureBone* bn = new ArmatureBone(id++, pos, rot, Vec3(1.0f), tal, (mask & 0xf0) != 0, &oo->transform);
+	bnv.push_back(bn);
+	if (prt) {
+		oo->transform.eulerRotation(Vec3());
+		auto a = prt->tr->object->parent->transform.worldRotation()*(prt->tailPos - prt->restPosition);
+		oo->transform.Translate(prt->tr->object->parent->transform.worldRotation()*(prt->tailPos - prt->restPosition));
 	}
-	else {
-		prt->_children.push_back(bn);
-		prt->tr->object->AddChild(oo);
-	}
+	scp->AddChild(oo);
 	blist.push_back(bn);
 	char b = strm.get();
 	if (b == 'b') return;
 	else while (b == 'B') {
-		AddBone(strm, bn->_children, blist, oo);
+		AddBone(strm, bn->_children, blist, oo, id);
 		b = strm.get();
 	}
 }
@@ -1183,7 +1205,13 @@ const Quat Transform::rotation() {
 }
 
 const Quat Transform::worldRotation() {
-	return Quat();
+	Quat r = _rotation;
+	auto obj = object;
+	while (obj->parent) {
+		obj = obj->parent;
+		r = obj->transform._rotation * r;
+	}
+	return r;
 }
 
 void Transform::eulerRotation(Vec3 r) {

@@ -23,7 +23,7 @@ Vec3 QuatFunc::ToEuler(const Quat& q) {
 	double t3 = +2.0 * (q.w * q.z + q.x * q.y);
 	double t4 = +1.0 - 2.0 * (ysqr + q.z * q.z);
 	out.z = (float)atan2(t3, t4);
-
+	
 	return out*rad2deg;
 }
 
@@ -34,7 +34,6 @@ Mat4x4 QuatFunc::ToMatrix(const Quat& q) {
 Quat QuatFunc::FromAxisAngle(const Vec3& axis, float angle) {
 	float a = deg2rad*angle;
 	float factor = (float)sin(a / 2.0);
-
 	// Calculate the x, y and z of the quaternion
 	float x = axis.x * factor;
 	float y = axis.y * factor;
