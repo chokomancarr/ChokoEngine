@@ -69,6 +69,8 @@ public:
 	const Mat4x4 localMatrix() { return _localMatrix; }
 	const Mat4x4 worldMatrix() { return _worldMatrix; }
 
+	Vec3 forward(), right(), up();
+
 	Transform& Translate(float x, float y, float z, TransformSpace sp = Space_Self) { return Translate(Vec3(x, y, z), sp); }
 	Transform& Rotate(float x, float y, float z, TransformSpace sp = Space_Self) { return Rotate(Vec3(x, y, z), sp); }
 	Transform& Scale(float x, float y, float z) { return Scale(Vec3(x, y, z)); }
@@ -859,7 +861,8 @@ struct ArmatureBone {
 	Vec3 const restPosition;
 	Quat const restRotation;
 	Vec3 const restScale;
-	Vec3 tailPos;
+	Vec3 tailPos() { return tr->position() + tr->forward()*length*tr->localScale().z; }
+	float const length;
 	bool const connected;
 	string const name;
 	uint const id;
@@ -867,7 +870,9 @@ struct ArmatureBone {
 
 	friend class Armature;
 protected:
-	ArmatureBone(uint id, Vec3 pos, Quat rot, Vec3 scl, Vec3 tal, bool conn, Transform* tr);
+	ArmatureBone(uint id, Vec3 pos, Quat rot, Vec3 scl, float lgh, bool conn, Transform* tr);
+	void Draw(EB_Viewer* ebv);
+	
 	std::vector<ArmatureBone*> _children;
 };
 class Armature : public Component {
@@ -882,7 +887,8 @@ public:
 	Vec3 restScale;
 	const std::vector<ArmatureBone*>& bones() { return _bones; }
 
-	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override {}
+	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
+	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, std::ofstream* stream) override {}
 
 	friend int main(int argc, char **argv);
@@ -954,7 +960,11 @@ public:
 	uint childCount = 0;
 	std::vector<SceneObject*> children;
 
-	SceneObject* AddChild(SceneObject* child);
+	void SetParent(SceneObject* parent, bool retainLocal = false);
+	///Add child to this SceneObject.
+	///@param child The child SceneObject to add.
+	///@param retainLocal If true, the child's local transform is retained. If false, the child's world transform is retained.
+	SceneObject* AddChild(SceneObject* child, bool retainLocal = false);
 	SceneObject* GetChild(int i) { return children[i]; }
 	Component* AddComponent(Component* c);
 	

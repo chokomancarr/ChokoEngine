@@ -249,17 +249,6 @@ void _StreamWriteAsset(Editor* e, std::ofstream* stream, ASSETTYPE t, ASSETID i)
 //void _Strm2Int(std::ifstream& strm, int& i), _Strm2Float(std::ifstream& strm, float& f), _Strm2Short(std::ifstream& strm, short& i);
 
 template<typename T> void _Strm2Val(std::istream& strm, T &val) {
-	/*
-	long long pos = strm.tellg();
-	byte size = sizeof(T);
-	char c[8];
-	strm.read(c, size);
-	if (strm.fail()) {
-		Debug::Error("Strm2Val", "Fail bit raised! (probably eof reached) " + to_string(pos));
-	}
-	//int rr(*(T*)c);
-	val = *(T*)c;
-	*/
 	long long pos = strm.tellg();
 	strm.read((char*)&val, (byte)sizeof(T));
 	if (strm.fail()) {

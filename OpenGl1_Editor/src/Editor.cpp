@@ -761,7 +761,7 @@ void EB_Viewer::Draw() {
 		glMultMatrixf(glm::value_ptr(glm::perspectiveFov(seeingCamera->fov * deg2rad, (float)Display::width, (float)Display::height, seeingCamera->nearClip, seeingCamera->farClip)));
 		glScalef(1, -1, -1);
 		glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(q)));
-		Vec3 pos = -seeingCamera->object->transform.worldPosition();
+		Vec3 pos = -seeingCamera->object->transform.position();
 		glTranslatef(pos.x, pos.y, pos.z);
 	}
 	glMatrixMode(GL_MODELVIEW);
@@ -794,8 +794,8 @@ void EB_Viewer::Draw() {
 			glDepthFunc(GL_LEQUAL);
 			glDepthMask(true);
 			DrawSceneObjectsOpaque(this, editor->activeScene->objects);
-			glDepthMask(false);
 			DrawSceneObjectsGizmos(this, editor->activeScene->objects);
+			glDepthMask(false);
 			DrawSceneObjectsTrans(this, editor->activeScene->objects);
 
 			/*draw background
@@ -830,7 +830,7 @@ void EB_Viewer::Draw() {
 	//draw tooltip
 	if (editor->selected != nullptr) {
 		if (modifying == 0) {
-			Vec3 wpos = editor->selected->transform.worldPosition();
+			Vec3 wpos = editor->selected->transform.position();
 			if (selectedTooltip == 0) DrawTArrows(wpos, 2);
 			else if (selectedTooltip == 1) DrawRArrows(wpos, 2);
 			else DrawSArrows(wpos, 2);
@@ -838,23 +838,23 @@ void EB_Viewer::Draw() {
 		else {
 			byte bb = modifying & 0xf0;
 			if (bb == 0x10)
-				Engine::DrawLineW(editor->selected->transform.worldPosition() + modAxisDir*-100000.0f, editor->selected->transform.worldPosition() + modAxisDir*100000.0f, white(), 2);
+				Engine::DrawLineW(editor->selected->transform.position() + modAxisDir*-100000.0f, editor->selected->transform.position() + modAxisDir*100000.0f, white(), 2);
 			else if (bb == 0x20) {
 				bb = modifying & 0x0f;
 				if (bb == 0) {
 					Vec4 rx = invMatrix*Vec4(1, 0, 0, 0);
 					Vec4 ry = invMatrix*Vec4(0, 1, 0, 0);
-					Engine::DrawCircleW(editor->selected->transform.worldPosition(), Normalize(Vec3(rx.x, rx.y, rx.z)), Normalize(Vec3(ry.x, ry.y, ry.z)), 2 / scale, 32, white(), 2);
+					Engine::DrawCircleW(editor->selected->transform.position(), Normalize(Vec3(rx.x, rx.y, rx.z)), Normalize(Vec3(ry.x, ry.y, ry.z)), 2 / scale, 32, white(), 2);
 				}
 				else if (bb == 1)
-					Engine::DrawCircleW(editor->selected->transform.worldPosition(), Vec3(0, 1, 0), Vec3(0, 0, 1), 2 / scale, 32, white(), 2);
+					Engine::DrawCircleW(editor->selected->transform.position(), Vec3(0, 1, 0), Vec3(0, 0, 1), 2 / scale, 32, white(), 2);
 				else if (bb == 2)
-					Engine::DrawCircleW(editor->selected->transform.worldPosition(), Vec3(1, 0, 0), Vec3(0, 0, 1), 2 / scale, 32, white(), 2);
+					Engine::DrawCircleW(editor->selected->transform.position(), Vec3(1, 0, 0), Vec3(0, 0, 1), 2 / scale, 32, white(), 2);
 				else
-					Engine::DrawCircleW(editor->selected->transform.worldPosition(), Vec3(0, 1, 0), Vec3(1, 0, 0), 2 / scale, 32, white(), 2);
+					Engine::DrawCircleW(editor->selected->transform.position(), Vec3(0, 1, 0), Vec3(1, 0, 0), 2 / scale, 32, white(), 2);
 			}
 			else if ((modifying & 0x0f) != 0)
-				Engine::DrawLineW(editor->selected->transform.worldPosition() + modAxisDir*-100000.0f, editor->selected->transform.worldPosition() + modAxisDir*100000.0f, white(), 2);
+				Engine::DrawLineW(editor->selected->transform.position() + modAxisDir*-100000.0f, editor->selected->transform.position() + modAxisDir*100000.0f, white(), 2);
 		}
 	}
 	glDepthFunc(GL_ALWAYS);
@@ -966,7 +966,7 @@ const int EB_Viewer::arrowSIndexs[18] = { 0, 1, 2, 0, 2, 3, 0, 1, 4, 1, 2, 4, 2,
 #define _rot(vec) _wr*vec
 void EB_Viewer::DrawTArrows(Vec3 pos, float size) {
 	float s = size / (float)pow(2, scale);
-	auto _wr = editor->selected->transform.worldRotation();
+	auto _wr = editor->selected->transform.rotation();
 	glDepthFunc(GL_ALWAYS);
 	Engine::DrawLineW(pos, pos + _rot(Vec3(s, 0, 0)), red(), 3);
 	Engine::DrawLineW(pos, pos + _rot(Vec3(0, s, 0)), green(), 3);
@@ -1001,7 +1001,7 @@ void EB_Viewer::DrawTArrows(Vec3 pos, float size) {
 
 void EB_Viewer::DrawRArrows(Vec3 pos, float size) {
 	float sz = size / (float)pow(2, scale);
-	auto _wr = editor->selected->transform.worldRotation();
+	auto _wr = editor->selected->transform.rotation();
 	glDepthFunc(GL_ALWAYS);
 	Engine::DrawCircleW(pos, _rot(Vec3(0, 1, 0)), _rot(Vec3(0, 0, 1)), sz, 32, red(), 3);
 	Engine::DrawCircleW(pos, _rot(Vec3(1, 0, 0)), _rot(Vec3(0, 0, 1)), sz, 32, green(), 3);
@@ -1011,7 +1011,7 @@ void EB_Viewer::DrawRArrows(Vec3 pos, float size) {
 
 void EB_Viewer::DrawSArrows(Vec3 pos, float size) {
 	float sz = size / (float)pow(2, scale);
-	auto _wr = editor->selected->transform.worldRotation();
+	auto _wr = editor->selected->transform.rotation();
 	glDepthFunc(GL_ALWAYS);
 	Engine::DrawLineW(pos, pos + Vec3(sz, 0, 0), red(), 3);
 	Engine::DrawLineW(pos, pos + Vec3(0, sz, 0), green(), 3);
@@ -1089,16 +1089,16 @@ void EB_Viewer::OnMouseM(Vec2 d) {
 		else {
 			switch (modifying & 0x0f) {
 			case 0:
-				editor->selected->transform.scale = Vec3(preModVals + Vec3(1, 1, 1)*((modVal.x) * 40 / scl));
+				editor->selected->transform.Scale(Vec3(preModVals + Vec3(1, 1, 1)*((modVal.x) * 40 / scl)));
 				break;
 			case 1:
-				editor->selected->transform.scale = Vec3(preModVals + Vec3((modVal.x) * 40 / scl, 0, 0));
+				editor->selected->transform.Scale(Vec3(preModVals + Vec3((modVal.x) * 40 / scl, 0, 0)));
 				break;
 			case 2:
-				editor->selected->transform.scale = Vec3(preModVals + Vec3(0, (modVal.x) * 40 / scl, 0));
+				editor->selected->transform.Scale(Vec3(preModVals + Vec3(0, (modVal.x) * 40 / scl, 0)));
 				break;
 			case 3:
-				editor->selected->transform.scale = Vec3(preModVals + Vec3(0, 0, (modVal.x) * 40 / scl));
+				editor->selected->transform.Scale(Vec3(preModVals + Vec3(0, 0, (modVal.x) * 40 / scl)));
 				break;
 			}
 		}
@@ -1110,13 +1110,13 @@ void EB_Viewer::OnMousePress(int i) {
 		if (i != 0) {
 			switch (modifying >> 4) {
 			case 1:
-				editor->selected->transform.position = preModVals;
+				editor->selected->transform.localPosition(preModVals);
 				break;
 			case 2:
-				editor->selected->transform.eulerRotation(preModVals);
+				editor->selected->transform.localEulerRotation(preModVals);
 				break;
 			case 3:
-				editor->selected->transform.scale = preModVals;
+				editor->selected->transform.localScale(preModVals);
 				break;
 			}
 		}
@@ -1163,11 +1163,13 @@ void EB_Inspector::DrawObj(Vec4 v, Editor* editor, EB_Inspector* b, SceneObject*
 	o->name = UI::EditText(v.r + 20, v.g + 2 + EB_HEADER_SIZE, v.b - 21, 18, 12, grey2(), o->name, editor->font, true, nullptr, white());
 
 	//TRS (don't chain them together or the latter may be skipped)
-	bool chg = b->DrawVector3(editor, v, 21, "Position", o->transform.position, &o->transform.dirty);
-	chg |= b->DrawVector3(editor, v, 38, "Rotation", (Vec3&)o->transform.eulerRotation(), &o->transform.dirty);
-	chg |= b->DrawVector3(editor, v, 55, "Scale", o->transform.scale, &o->transform.dirty);
+	bool chg = b->DrawVector3(editor, v, 21, "Position", o->transform._localPosition, &o->transform.dirty);
+	chg |= b->DrawVector3(editor, v, 38, "Rotation", o->transform._localEulerRotation, &o->transform.dirty);
+	chg |= b->DrawVector3(editor, v, 55, "Scale", o->transform._localScale, &o->transform.dirty);
 	if (chg || o->transform.dirty) {
-		o->transform.eulerRotation(o->transform.eulerRotation()); //matrix updates itself
+		o->transform._L2WPos();
+		o->transform._UpdateLQuat();
+		o->transform._UpdateLMatrix();
 	}
 	//draw components
 	uint off = 74 + EB_HEADER_SIZE;
@@ -1608,7 +1610,7 @@ void EB_Previewer::Draw() {
 				glMultMatrixf(glm::value_ptr(glm::perspectiveFov(seeingCamera->fov * deg2rad, (float)Display::width, (float)Display::height, seeingCamera->nearClip, seeingCamera->farClip)));
 				glScalef(1, -1, -1);
 				glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(q)));
-				Vec3 pos = -seeingCamera->object->transform.worldPosition();
+				Vec3 pos = -seeingCamera->object->transform.position();
 				glTranslatef(pos.x, pos.y, pos.z);
 			}
 

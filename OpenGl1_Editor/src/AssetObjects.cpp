@@ -2140,7 +2140,7 @@ bool Mesh::ParseBlend(Editor* e, string s) {
 	string cmd2("cd " + e->_blenderInstallationPath.substr(0, e->_blenderInstallationPath.find_last_of("\\")) + "\n");
 	string cmd3("blender \"" + s + "\" --background --python \"" + e->dataPath + "\\Python\\blend_exporter.py\" -- \"" + s.substr(0, s.find_last_of('\\')) + "?" + ss.substr(ss.find_last_of('\\') + 1, string::npos) + "\"\n");
 	//outputs object list, and meshes in subdir
-	if (CreateProcess("C:\\Windows\\System32\\cmd.exe", 0, NULL, NULL, true, CREATE_NO_WINDOW, NULL, "D:\\TestProject\\", &startInfo, &processInfo) != 0) {
+	if (CreateProcess("C:\\Windows\\System32\\cmd.exe", 0, NULL, NULL, true, CREATE_NO_WINDOW, NULL, "D:\\TestProject2\\", &startInfo, &processInfo) != 0) {
 		std::cout << "executing Blender..." << std::endl;
 		bool bSuccess = false;
 		DWORD dwWrite;
@@ -2193,7 +2193,8 @@ bool Mesh::ParseBlend(Editor* e, string s) {
 			return false;
 	}
 	else {
-		std::cout << "Cannot start Blender!" << std::endl;
+		DWORD err = GetLastError();
+		std::cout << "Cannot start Blender! (Error code " << to_string(err) << ")" << std::endl;
 		CloseHandle(stdOutR);
 		CloseHandle(stdOutW);
 		CloseHandle(stdInR);

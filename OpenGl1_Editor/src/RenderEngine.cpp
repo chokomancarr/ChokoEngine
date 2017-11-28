@@ -525,7 +525,7 @@ void Camera::_DoRenderProbeMask(ReflectionProbe* p, Mat4x4& ip) {
 	glUniformMatrix4fv(_IP, 1, GL_FALSE, glm::value_ptr(ip));
 
 	glUniform2f(scrSzLoc, (GLfloat)Display::width, (GLfloat)Display::height);
-	Vec3 wpos = p->object->transform.worldPosition();
+	Vec3 wpos = p->object->transform.position();
 	glUniform3f(prbPosLoc, wpos.x, wpos.y, wpos.z);
 	glUniform3f(prbRngLoc, p->range.x, p->range.y, p->range.z);
 	glUniform1f(prbSftLoc, p->softness);
@@ -761,7 +761,7 @@ void Camera::_DoDrawLight_Point(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_tex
 	glActiveTexture(GL_TEXTURE3);
 	glBindTexture(GL_TEXTURE_2D, d_depthTex);
 	glUniform2f(sloc[5], w, h);
-	Vec3 wpos = l->object->transform.worldPosition();
+	Vec3 wpos = l->object->transform.position();
 	glUniform3f(sloc[6], wpos.x, wpos.y, wpos.z);
 	Vec3 dir = l->object->transform.forward();
 	glUniform3f(sloc[7], dir.x, dir.y, dir.z);
@@ -818,7 +818,7 @@ void Camera::_DoDrawLight_Spot_Contact(Light* l, Mat4x4& p, GLuint d_depthTex, f
 	glBindTexture(GL_TEXTURE_2D, d_depthTex);
 	glUniform1i(sloc[3], (GLint)l->contactShadowSamples);
 	glUniform1f(sloc[4], l->contactShadowDistance);
-	Vec3 wpos = l->object->transform.worldPosition();
+	Vec3 wpos = l->object->transform.position();
 	Vec4 wpos2 = p*Vec4(wpos.x, wpos.y, wpos.z, 1);
 	wpos2 /= wpos2.w;
 	glUniform3f(sloc[5], wpos2.x, wpos2.y, wpos2.z);
@@ -882,7 +882,7 @@ void Camera::_DoDrawLight_Spot(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs
 	glActiveTexture(GL_TEXTURE3);
 	glBindTexture(GL_TEXTURE_2D, d_depthTex);
 	glUniform2f(sloc[5], w, h);
-	Vec3 wpos = l->object->transform.worldPosition();
+	Vec3 wpos = l->object->transform.position();
 	glUniform3f(sloc[6], wpos.x, wpos.y, wpos.z);
 	Vec3 dir = l->object->transform.forward();
 	glUniform3f(sloc[7], dir.x, dir.y, dir.z);
@@ -961,9 +961,9 @@ void Camera::_DoDrawLight_ReflQuad(ReflectiveQuad* l, Mat4x4& ip, GLuint d_fbo, 
 	glActiveTexture(GL_TEXTURE3);
 	glBindTexture(GL_TEXTURE_2D, d_depthTex);
 	glUniform2f(sloc[5], w, h);
-	Vec3 wp = l->object->transform.worldPosition();
-	Vec3 wf = l->object->transform.right() * l->object->transform.scale.x;
-	Vec3 wu = l->object->transform.up() * l->object->transform.scale.y;
+	Vec3 wp = l->object->transform.position();
+	Vec3 wf = l->object->transform.right() * l->object->transform.localScale().x;
+	Vec3 wu = l->object->transform.up() * l->object->transform.localScale().y;
 	Vec3 pos = wp + wf*l->origin.x + wu*l->origin.y;
 	wf *= l->size.x;
 	wu *= l->size.y;

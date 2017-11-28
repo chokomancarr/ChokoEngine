@@ -1777,10 +1777,10 @@ GLuint Font::CreateGlyph(uint sz, bool recalc) {
 	glGenTextures(1, &_glyphs[sz]);
 	glBindTexture(GL_TEXTURE_2D, _glyphs[sz]);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (sz + 1) * 16, (sz + 1) * 16, 0, GL_RED, GL_UNSIGNED_BYTE, NULL);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 	for (ushort a = 0; a < 256; a++) {
@@ -1983,16 +1983,12 @@ void Serialize(Editor* e, SceneObject* o, std::ofstream* stream) {
 	//_StreamWrite(&o->name, stream, o->name.size());
 	*stream << o->name;
 	*stream << (char)0;
-	_StreamWrite(&o->transform.position.x, stream, 4);
-	_StreamWrite(&o->transform.position.y, stream, 4);
-	_StreamWrite(&o->transform.position.z, stream, 4);
-	const Vec3& rot = o->transform.eulerRotation();
-	_StreamWrite(&rot.x, stream, 4);
-	_StreamWrite(&rot.y, stream, 4);
-	_StreamWrite(&rot.z, stream, 4);
-	_StreamWrite(&o->transform.scale.x, stream, 4);
-	_StreamWrite(&o->transform.scale.y, stream, 4);
-	_StreamWrite(&o->transform.scale.z, stream, 4);
+	auto& pos = o->transform.localPosition();
+	_StreamWrite(&pos, stream, 12);
+	auto& rot = o->transform.localEulerRotation();
+	_StreamWrite(&rot, stream, 12);
+	auto& scl = o->transform.localScale();
+	_StreamWrite(&scl, stream, 12);
 	for (Component* c : o->_components)
 	{
 		stream->write("C", 1);
@@ -2014,17 +2010,15 @@ void Deserialize(std::ifstream& stream, SceneObject* obj) {
 	obj->name = string(cc);
 	Debug::Message("Object Deserializer", "Deserializing object " + obj->name);
 	char c;
-	_Strm2Val(stream, obj->transform.position.x);
-	_Strm2Val(stream, obj->transform.position.y);
-	_Strm2Val(stream, obj->transform.position.z);
-	Vec3 r;
-	_Strm2Val(stream, r.x);
-	_Strm2Val(stream, r.y);
-	_Strm2Val(stream, r.z);
-	_Strm2Val(stream, obj->transform.scale.x);
-	_Strm2Val(stream, obj->transform.scale.y);
-	_Strm2Val(stream, obj->transform.scale.z);
-	obj->transform.eulerRotation(r); //so matrix will be updated
+	Vec3 pos, rot, scl;
+	_Strm2Val(stream, pos);
+	_Strm2Val(stream, rot);
+	_Strm2Val(stream, scl);
+	auto& tr = obj->transform;
+	tr.localPosition(pos);
+	tr.localEulerRotation(rot);
+	tr.localScale(scl);
+
 	c = stream.get();
 	while (c != 'o') {
 		//Debug::Message("Object Deserializer", to_string(c) + " " + to_string(stream.tellg()));

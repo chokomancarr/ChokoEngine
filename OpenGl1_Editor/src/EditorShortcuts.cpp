@@ -89,19 +89,19 @@ void EB_Viewer::_Grab(EditorBlock* b) {
 		if (v->modifying > 0) {
 			switch (v->modifying >> 4) {
 			case 1:
-				v->editor->selected->transform.position = v->preModVals;
+				v->editor->selected->transform.localPosition(v->preModVals);
 				break;
 			case 2:
-				v->editor->selected->transform.eulerRotation(v->preModVals);
+				v->editor->selected->transform.localEulerRotation(v->preModVals);
 				break;
 			case 3:
-				v->editor->selected->transform.scale = v->preModVals;
+				v->editor->selected->transform.localScale(v->preModVals);
 				break;
 			}
 		}
 		v->modifying = 0x10;
 		v->modVal = Vec2();
-		v->preModVals = v->editor->selected->transform.position;
+		v->preModVals = v->editor->selected->transform._localPosition;
 	}
 }
 void EB_Viewer::_Rotate(EditorBlock* b) {
@@ -110,19 +110,19 @@ void EB_Viewer::_Rotate(EditorBlock* b) {
 		if (v->modifying > 0) {
 			switch (v->modifying >> 4) {
 			case 1:
-				v->editor->selected->transform.position = v->preModVals;
+				v->editor->selected->transform.localPosition(v->preModVals);
 				break;
 			case 2:
-				v->editor->selected->transform.eulerRotation(v->preModVals);
+				v->editor->selected->transform.localEulerRotation(v->preModVals);
 				break;
 			case 3:
-				v->editor->selected->transform.scale = v->preModVals;
+				v->editor->selected->transform.localScale(v->preModVals);
 				break;
 			}
 		}
 		v->modifying = 0x20;
 		v->modVal = Vec2();
-		v->preModVals = v->editor->selected->transform.eulerRotation();
+		v->preModVals = v->editor->selected->transform._localEulerRotation;
 	}
 }
 void EB_Viewer::_Scale(EditorBlock* b) {
@@ -131,19 +131,19 @@ void EB_Viewer::_Scale(EditorBlock* b) {
 		if (v->modifying > 0) {
 			switch (v->modifying >> 4) {
 			case 1:
-				v->editor->selected->transform.position = v->preModVals;
+				v->editor->selected->transform.localPosition(v->preModVals);
 				break;
 			case 2:
-				v->editor->selected->transform.eulerRotation(v->preModVals);
+				v->editor->selected->transform.localEulerRotation(v->preModVals);
 				break;
 			case 3:
-				v->editor->selected->transform.scale = v->preModVals;
+				v->editor->selected->transform.localScale(v->preModVals);
 				break;
 			}
 		}
 		v->modifying = 0x30;
 		v->modVal = Vec2();
-		v->preModVals = v->editor->selected->transform.scale;
+		v->preModVals = v->editor->selected->transform._localScale;
 	}
 }
 
@@ -511,7 +511,7 @@ void EB_Viewer::_SnapCenter(EditorBlock* b) {
 		((EB_Viewer*)b)->rotCenter = Vec3();
 	}
 	else {
-		((EB_Viewer*)b)->rotCenter = b->editor->selected->transform.worldPosition();
+		((EB_Viewer*)b)->rotCenter = b->editor->selected->transform.position();
 	}
 }
 
