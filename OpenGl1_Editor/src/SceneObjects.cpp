@@ -16,7 +16,7 @@ bool DrawComponentHeader(Editor* e, Vec4 v, uint pos, Component* c) {
 	if (Engine::EButton(e->editorLayer == 0, v.r + v.b - 16, v.g + pos, 16, 16, e->tex_buttonX, white(1, 0.7f)) == MOUSE_RELEASE) {
 		//delete
 		c->object->RemoveComponent(c);
-		if (c == nullptr)
+		if (!c)
 			e->flags |= WAITINGREFRESHFLAG;
 		return false;
 	}
@@ -89,7 +89,7 @@ void Camera::ApplyGL() {
 	glMultMatrixf(glm::value_ptr(glm::perspectiveFov(fov * deg2rad, (float)Display::width, (float)Display::height, 0.01f, 500.0f)));
 	glScalef(1, 1, -1);
 	glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(q)));
-	Vec3 pos = -object->transform.worldPosition();
+	Vec3 pos = -object->transform.position();
 	glTranslatef(pos.x, pos.y, pos.z);
 }
 
@@ -340,7 +340,7 @@ MeshRenderer::MeshRenderer(std::ifstream& stream, SceneObject* o, long pos) : Co
 
 void MeshRenderer::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 	MeshFilter* mf = (MeshFilter*)dependacyPointers[0];
-	if (mf->mesh == nullptr || !mf->mesh->loaded)
+	if (!mf->mesh || !mf->mesh->loaded)
 		return;
 	bool isE = (ebv != nullptr);
 	glEnableClientState(GL_VERTEX_ARRAY);
@@ -354,7 +354,7 @@ void MeshRenderer::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 	Mat4x4 m1(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
 	Mat4x4 m2(matrix2[0], matrix2[1], matrix2[2], matrix2[3], matrix2[4], matrix2[5], matrix2[6], matrix2[7], matrix2[8], matrix2[9], matrix2[10], matrix2[11], matrix2[12], matrix2[13], matrix2[14], matrix2[15]);
 	for (uint m = 0; m < mf->mesh->materialCount; m++) {
-		if (materials[m] == nullptr)
+		if (!materials[m])
 			continue;
 		if (shader == 0) materials[m]->ApplyGL(m1, m2);
 		else glUseProgram(shader);
@@ -388,7 +388,7 @@ void MeshRenderer::DrawDeferred(GLuint shader) {
 void MeshRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 	if (DrawComponentHeader(e, v, pos, this)) {
 		MeshFilter* mft = (MeshFilter*)dependacyPointers[0];
-		if (mft->mesh == nullptr) {
+		if (!mft->mesh) {
 			UI::Label(v.r + 2, v.g + pos + 20, 12, "No Mesh Assigned!", e->font, white());
 			pos += 34;
 		}
@@ -399,7 +399,7 @@ void MeshRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 				UI::Label(v.r + 2, v.g + pos , 12, "Material " + to_string(a), e->font, white());
 				e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos, v.b*0.7f, 16, grey1(), ASSETTYPE_MATERIAL, 12, e->font, &_materials[a], & _UpdateMat, this);
 				pos += 17;
-				if (materials[a] == nullptr)
+				if (!materials[a])
 					continue;
 				if (Engine::EButton(e->editorLayer == 0, v.r, v.g + pos, 16, 16, e->tex_expand, white()) == MOUSE_RELEASE) {
 					materials[a]->_maskExpanded = !materials[a]->_maskExpanded;
@@ -460,7 +460,7 @@ void MeshRenderer::Serialize(Editor* e, std::ofstream* stream) {
 
 void MeshRenderer::Refresh() {
 	MeshFilter* mf = (MeshFilter*)dependacyPointers[0];
-	if (mf == nullptr || mf->mesh == nullptr || !mf->mesh->loaded) {
+	if (!mf || !mf->mesh || !mf->mesh->loaded) {
 		materials.clear();
 		_materials.clear();
 	}
@@ -726,7 +726,7 @@ void Light::CalcShadowMatrix() {
 		glMultMatrixf(glm::value_ptr(glm::perspectiveFov(angle * deg2rad, 1024.0f, 1024.0f, minDist, maxDist)));
 		glScalef(1, 1, -1);
 		glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(q)));
-		Vec3 pos = -object->transform.worldPosition();
+		Vec3 pos = -object->transform.position();
 		glTranslatef(pos.x, pos.y, pos.z);
 	}
 	//else
@@ -900,7 +900,7 @@ void ReflectionProbe::Serialize(Editor* e, std::ofstream* stream) {
 
 ArmatureBone::ArmatureBone(uint id, Vec3 pos, Quat rot, Vec3 scl, Vec3 tal, bool conn, Transform* tr) : id(id), restPosition(pos), restRotation(rot), restScale(scl), tailPos(tal), connected(conn), tr(tr), name(tr->object->name) {}
 
-Armature::Armature(string path, SceneObject* o) : Component("Armature", COMP_ARM, DRAWORDER_OVERLAY, o), overridePos(false), restPosition(o->transform.position), restRotation(o->transform.rotation()), restScale(o->transform.scale), _anim(-1) {
+Armature::Armature(string path, SceneObject* o) : Component("Armature", COMP_ARM, DRAWORDER_OVERLAY, o), overridePos(false), restPosition(o->transform.position()), restRotation(o->transform.rotation()), restScale(o->transform.localScale()), _anim(-1) {
 	std::ifstream strm(path);
 	if (!strm.is_open()) {
 		Debug::Error("Armature", "File not found!");
@@ -964,8 +964,8 @@ void Armature::AddBone(std::ifstream& strm, std::vector<ArmatureBone*>& bones, s
 	bnv.push_back(bn);
 	if (prt) {
 		oo->transform.eulerRotation(Vec3());
-		auto a = prt->tr->object->parent->transform.worldRotation()*(prt->tailPos - prt->restPosition);
-		oo->transform.Translate(prt->tr->object->parent->transform.worldRotation()*(prt->tailPos - prt->restPosition));
+		auto a = prt->tr->object->parent->transform.rotation()*(prt->tailPos - prt->restPosition);
+		oo->transform.Translate(prt->tr->object->parent->transform.rotation()*(prt->tailPos - prt->restPosition));
 	}
 	scp->AddChild(oo);
 	blist.push_back(bn);
@@ -1173,8 +1173,9 @@ void SceneScript::Parse(string s, Editor* e) {
 Transform::_offset_map Transform::_offsets = {};
 
 Transform::Transform(SceneObject* sc, Vec3 pos, Quat rot, Vec3 scl) : object(sc), _rotation(rot) {
-	Translate(pos)->Scale(scl);
-	_UpdateEuler();
+	Translate(pos).Scale(scl);
+	_UpdateWEuler();
+	_W2LQuat();
 	_UpdateLMatrix();
 }
 
@@ -1183,86 +1184,62 @@ Transform::Transform(SceneObject* sc, byte* data) :
 		*((Quat*)(data + Transform::_offsets.rotation)), 
 		*((Vec3*)(data + Transform::_offsets.scale))) {}
 
-const Vec3 Transform::worldPosition() {
-	Vec4 v = _worldMatrix * Vec4(0, 0, 0, 1);
-	return Vec3(v.x, v.y, v.z);
+void Transform::position(const Vec3& r) {
+	_position = r;
+	_W2LPos();
+	_UpdateLMatrix();
 }
 
-const Vec3 Transform::forward() {
-	return _rotation*Vec3(0, 0, 1);
+void Transform::localPosition(const Vec3& r) {
+	_localPosition = r;
+	_L2WPos();
+	_UpdateLMatrix();
 }
 
-const Vec3 Transform::right() {
-	return _rotation*Vec3(1, 0, 0);
+void Transform::rotation(const Quat& r) {
+	_rotation = r;
+	_UpdateWEuler();
+	_W2LQuat();
 }
 
-const Vec3 Transform::up() {
-	return _rotation*Vec3(0, 1, 0);
+void Transform::localRotation(const Quat& r) {
+	_localRotation = r;
+	_UpdateLEuler();
+	_L2WQuat();
 }
 
-const Quat Transform::rotation() {
-	return _rotation;
+void Transform::localScale(const Vec3& r) {
+	_localScale = r;
+	_UpdateLMatrix();
 }
 
-const Quat Transform::worldRotation() {
-	Quat r = _rotation;
-	auto obj = object;
-	while (obj->parent) {
-		obj = obj->parent;
-		r = obj->transform._rotation * r;
-	}
-	return r;
-}
-
-void Transform::eulerRotation(Vec3 r) {
-	//_eulerRotation = r;
+void Transform::eulerRotation(const Vec3& r) {
 	_eulerRotation.x = repeat(r.x, 0, 360);
 	_eulerRotation.y = repeat(r.y, 0, 360);
 	_eulerRotation.z = repeat(r.z, 0, 360);
-	_UpdateQuat();
+	_UpdateWQuat();
+}
+
+void Transform::localEulerRotation(const Vec3& r) {
+	_localEulerRotation.x = repeat(r.x, 0, 360);
+	_localEulerRotation.y = repeat(r.y, 0, 360);
+	_localEulerRotation.z = repeat(r.z, 0, 360);
+	_UpdateLQuat();
+}
+
+Transform& Transform::Translate(Vec3 v, TransformSpace sp) {
+	_position += v;
 	_UpdateLMatrix();
+	return *this;
 }
-
-void Transform::_UpdateQuat() {
-	_rotation = Quat(deg2rad*_eulerRotation);
-}
-
-void Transform::_UpdateEuler() {
-	//std::cout << to_string(_rotation) << std::endl;
-	_eulerRotation = QuatFunc::ToEuler(_rotation);
-}
-
-void Transform::_UpdateLMatrix() {
-	_localMatrix = glm::scale(scale);
-	_localMatrix = QuatFunc::ToMatrix(_rotation) * _localMatrix;
-	_localMatrix = glm::translate(position) * _localMatrix;
-	_UpdateWMatrix(object->parent ? object->parent->transform._worldMatrix : Mat4x4());
-}
-
-void Transform::_UpdateWMatrix(const Mat4x4& mat) {
-	_worldMatrix = mat*_localMatrix;
-
-	for (uint a = 0; a < object->childCount; a++)
-		object->children[a]->transform._UpdateWMatrix(_worldMatrix);
-}
-
-Transform* Transform::Translate(Vec3 v) {
-	position += v;
-	_UpdateLMatrix();
-	return this;
-}
-Transform* Transform::Rotate(Vec3 v, TransformSpace sp) {
-	if (sp == Space_Self) {
-		Quat qx = QuatFunc::FromAxisAngle(Vec3(1, 0, 0), v.x);
-		Quat qy = QuatFunc::FromAxisAngle(Vec3(0, 1, 0), v.y);
-		Quat qz = QuatFunc::FromAxisAngle(Vec3(0, 0, 1), v.z);
-		_rotation *= qx * qy * qz;
-	}
-	else if (object->parent == nullptr) {
+Transform& Transform::Rotate(Vec3 v, TransformSpace sp) {
+	if ((sp == Space_Self) || (!object->parent)) {
 		Quat qx = QuatFunc::FromAxisAngle(Vec3(1, 0, 0), v.x);
 		Quat qy = QuatFunc::FromAxisAngle(Vec3(0, 1, 0), v.y);
 		Quat qz = QuatFunc::FromAxisAngle(Vec3(0, 0, 1), v.z);
 		_rotation = qx * qy * qz * _rotation;
+		_UpdateLEuler();
+		_L2WQuat();
 	}
 	else {
 		Mat4x4 im = glm::inverse(object->parent->transform._worldMatrix);
@@ -1273,17 +1250,77 @@ Transform* Transform::Rotate(Vec3 v, TransformSpace sp) {
 		Quat qy = QuatFunc::FromAxisAngle(Normalize(to_vec3(vy)), v.y);
 		Quat qz = QuatFunc::FromAxisAngle(Normalize(to_vec3(vz)), v.z);
 		_rotation = qx * qy * qz * _rotation;
+		_UpdateWEuler();
+		_W2LQuat();
 	}
 
-	_UpdateEuler();
 	_UpdateLMatrix();
-	return this;
+	return *this;
 }
 
-Transform* Transform::Scale(Vec3 v) {
-	scale += v;
+Transform& Transform::Scale(Vec3 v) {
+	_localScale += v;
 	_UpdateLMatrix();
-	return this;
+	return *this;
+}
+
+void Transform::_UpdateWQuat() {
+	_rotation = Quat(deg2rad*_eulerRotation);
+	_W2LQuat();
+}
+
+void Transform::_UpdateLQuat() {
+	_localRotation = Quat(deg2rad*_localEulerRotation);
+	_L2WQuat();
+}
+
+void Transform::_UpdateWEuler() {
+	_eulerRotation = QuatFunc::ToEuler(_rotation);
+}
+void Transform::_UpdateLEuler() {
+	_localEulerRotation = QuatFunc::ToEuler(_localRotation);
+}
+
+void Transform::_L2WPos() {
+	if (!object->parent) _position = _localPosition;
+	else {
+
+	}
+}
+void Transform::_W2LPos() {
+	if (!object->parent) _localPosition = _position;
+	else {
+
+	}
+}
+
+void Transform::_L2WQuat() {
+	if (!object->parent) _rotation = _localRotation;
+	else {
+
+	}
+	_UpdateWEuler();
+}
+void Transform::_W2LQuat() {
+	if (!object->parent) _localRotation = _rotation;
+	else {
+
+	}
+	_UpdateLEuler();
+}
+
+void Transform::_UpdateLMatrix() {
+	_localMatrix = glm::scale(_localScale);
+	_localMatrix = QuatFunc::ToMatrix(_localRotation) * _localMatrix;
+	_localMatrix = glm::translate(_localPosition) * _localMatrix;
+	_UpdateWMatrix(object->parent ? object->parent->transform._worldMatrix : Mat4x4());
+}
+
+void Transform::_UpdateWMatrix(const Mat4x4& mat) {
+	_worldMatrix = mat*_localMatrix;
+
+	for (auto& a : object->children)
+		a->transform._UpdateWMatrix(_worldMatrix);
 }
 
 
@@ -1349,7 +1386,7 @@ Component* SceneObject::AddComponent(Component* c) {
 	int i = 0;
 	for (COMPONENT_TYPE t : c->dependancies) {
 		c->dependacyPointers[i] = GetComponent(t);
-		if (c->dependacyPointers[i] == nullptr) {
+		if (!c->dependacyPointers[i]) {
 			c->dependacyPointers[i] = AddComponent(ComponentFromType(t));
 		}
 		i++;
