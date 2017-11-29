@@ -1089,16 +1089,16 @@ void EB_Viewer::OnMouseM(Vec2 d) {
 		else {
 			switch (modifying & 0x0f) {
 			case 0:
-				editor->selected->transform.Scale(Vec3(preModVals + Vec3(1, 1, 1)*((modVal.x) * 40 / scl)));
+				editor->selected->transform.localScale(Vec3(preModVals + Vec3(1, 1, 1)*((modVal.x) * 40 / scl)));
 				break;
 			case 1:
-				editor->selected->transform.Scale(Vec3(preModVals + Vec3((modVal.x) * 40 / scl, 0, 0)));
+				editor->selected->transform.localScale(Vec3(preModVals + Vec3((modVal.x) * 40 / scl, 0, 0)));
 				break;
 			case 2:
-				editor->selected->transform.Scale(Vec3(preModVals + Vec3(0, (modVal.x) * 40 / scl, 0)));
+				editor->selected->transform.localScale(Vec3(preModVals + Vec3(0, (modVal.x) * 40 / scl, 0)));
 				break;
 			case 3:
-				editor->selected->transform.Scale(Vec3(preModVals + Vec3(0, 0, (modVal.x) * 40 / scl)));
+				editor->selected->transform.localScale(Vec3(preModVals + Vec3(0, 0, (modVal.x) * 40 / scl)));
 				break;
 			}
 		}

@@ -899,6 +899,19 @@ void ReflectionProbe::Serialize(Editor* e, std::ofstream* stream) {
 
 
 ArmatureBone::ArmatureBone(uint id, Vec3 pos, Quat rot, Vec3 scl, float lgh, bool conn, Transform* tr) : id(id), restPosition(pos), restRotation(rot), restScale(scl), length(lgh), connected(conn), tr(tr), name(tr->object->name) {}
+#define _dw 0.1f
+const Vec3 ArmatureBone::boneVecs[6] = {
+	Vec3(0, 0, 0),
+	Vec3(_dw, _dw, _dw),
+	Vec3(_dw, -_dw, _dw),
+	Vec3(-_dw, -_dw, _dw),
+	Vec3(-_dw, _dw, _dw),
+	Vec3(0, 0, 1)
+};
+const uint ArmatureBone::boneIndices[24] = { 0,1,0,2,0,3,0,4,1,2,2,3,3,4,4,1,4,5,3,5,2,5,1,5 };
+#undef _dw
+const Vec3 ArmatureBone::boneCol = Vec3(0.6f, 0.6f, 0.6f);
+const Vec3 ArmatureBone::boneSelCol = Vec3(1, 190.0f/255, 0);
 
 Armature::Armature(string path, SceneObject* o) : Component("Armature", COMP_ARM, DRAWORDER_OVERLAY, o), overridePos(false), restPosition(o->transform.position()), restRotation(o->transform.rotation()), restScale(o->transform.localScale()), _anim(-1) {
 	std::ifstream strm(path);
@@ -924,10 +937,18 @@ Armature::Armature(string path, SceneObject* o) : Component("Armature", COMP_ARM
 }
 
 void ArmatureBone::Draw(EB_Viewer* ebv) {
+	bool sel = (ebv->editor->selected == tr->object);
 	glPushMatrix();
 	glMultMatrixf(glm::value_ptr(tr->localMatrix()));
-
-	Engine::DrawLineW(Vec3(), Vec3(0, 0, length), yellow(), 3);
+	glPushMatrix();
+	glScalef(length, length, length);
+	glVertexPointer(3, GL_FLOAT, 0, &boneVecs[0]);
+	glLineWidth(1);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	if (sel) glColor4f(boneSelCol.r, boneSelCol.g, boneSelCol.b, 1);
+	else glColor4f(boneCol.r, boneCol.g, boneCol.b, 1);
+	glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, &boneIndices[0]);
+	glPopMatrix();
 
 	for (auto a : _children) a->Draw(ebv);
 	glPopMatrix();
@@ -966,7 +987,7 @@ void Armature::AddBone(std::ifstream& strm, std::vector<ArmatureBone*>& bones, s
 	_Strm2Val(strm, fwd.z);
 	mask = strm.get();
 	std::cout << to_string(pos) << to_string(tal) << to_string(fwd) << std::endl;
-	rot = glm::quat_cast(glm::lookAt(pos, Normalize(tal), - fwd - pos));
+	rot = glm::quat_cast(glm::lookAt(pos, tal, - fwd - pos));
 	std::vector<ArmatureBone*>& bnv = (prt)? prt->_children : bones;
 	SceneObject* scp = (prt) ? prt->tr->object : o;
 	SceneObject* oo = new SceneObject(nm, pos, rot, Vec3(1.0f));
@@ -988,11 +1009,13 @@ void Armature::AddBone(std::ifstream& strm, std::vector<ArmatureBone*>& bones, s
 }
 
 void Armature::DrawEditor(EB_Viewer* ebv, GLuint shader) {
+	glEnableClientState(GL_VERTEX_ARRAY);
 	glPushMatrix();
 	glMultMatrixf(glm::value_ptr(object->transform.localMatrix()));
 
 	for (auto a : _bones) a->Draw(ebv);
 	glPopMatrix();
+	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
 void Armature::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {

@@ -871,9 +871,13 @@ struct ArmatureBone {
 	friend class Armature;
 protected:
 	ArmatureBone(uint id, Vec3 pos, Quat rot, Vec3 scl, float lgh, bool conn, Transform* tr);
-	void Draw(EB_Viewer* ebv);
 	
+	static const Vec3 boneVecs[6];
+	static const uint boneIndices[24];
+	static const Vec3 boneCol, boneSelCol;
 	std::vector<ArmatureBone*> _children;
+
+	void Draw(EB_Viewer* ebv);
 };
 class Armature : public Component {
 public:
