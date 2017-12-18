@@ -57,8 +57,6 @@ char Get(std::istream& strm) {
 
 int main(int argc, char **argv)
 {
-	auto tb = Xml::Parse("D:\\cont.xml");
-
 	path = argv[0];
 	editor = new Editor();
 	//editor->hwnd = GetForegroundWindow();
@@ -168,6 +166,9 @@ int main(int argc, char **argv)
 	glutPositionWindow(info.rcMonitor.left + editor->scrW/2 - 512, info.rcMonitor.top + editor->scrH / 2 - 300);
 	glutShowWindow();
 	KillSplash();
+
+	Editor::instance->activeScene = new Scene();
+	Scene::active = Editor::instance->activeScene;
 
 	//vt = new VideoTexture("D:\\bg.mp4");
 

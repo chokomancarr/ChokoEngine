@@ -709,6 +709,9 @@ void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 				}
 			}
 		}
+		UI::Label(v.r + 2, v.g + pos, 12, "HSV Map", e->font, white());
+		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos, v.b*0.7f, 16, grey1(), ASSETTYPE_TEXTURE, 12, e->font, &_hsvMap, &_SetHsvMap, this);
+
 	}
 	else pos += 17;
 }
@@ -716,6 +719,10 @@ void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 void Light::_SetCookie(void* v) {
 	Light* l = (Light*)v;
 	l->cookie = _GetCache<Texture>(ASSETTYPE_TEXTURE, l->_cookie);
+}
+void Light::_SetHsvMap(void* v) {
+	Light* l = (Light*)v;
+	l->hsvMap = _GetCache<Texture>(ASSETTYPE_TEXTURE, l->_hsvMap);
 }
 
 void Light::CalcShadowMatrix() {
@@ -959,6 +966,7 @@ Armature::Armature(std::ifstream& stream, SceneObject* o, long pos) : Component(
 }
 
 void Armature::AddBone(std::ifstream& strm, std::vector<ArmatureBone*>& bones, std::vector<ArmatureBone*>& blist, SceneObject* o, uint& id) {
+	const Vec3 viz(1,1,-1);
 	char* c = new char[100];
 	strm.getline(c, 100, 0);
 	string nm = string(c);
@@ -986,7 +994,6 @@ void Armature::AddBone(std::ifstream& strm, std::vector<ArmatureBone*>& bones, s
 	_Strm2Val(strm, fwd.y);
 	_Strm2Val(strm, fwd.z);
 	mask = strm.get();
-	std::cout << to_string(pos) << to_string(tal) << to_string(fwd) << std::endl;
 	rot = glm::quat_cast(glm::lookAt(pos, tal, - fwd - pos));
 	std::vector<ArmatureBone*>& bnv = (prt)? prt->_children : bones;
 	SceneObject* scp = (prt) ? prt->tr->object : o;
@@ -996,9 +1003,14 @@ void Armature::AddBone(std::ifstream& strm, std::vector<ArmatureBone*>& bones, s
 	scp->AddChild(oo);
 	blist.push_back(bn);
 	if (prt) {
-		oo->transform.localRotation(glm::quat_cast(glm::lookAt(pos, -Normalize(tal), fwd - pos)));
-		auto ps = prt->tr->object->parent->transform.rotation()*(prt->tailPos() - prt->restPosition);
-		oo->transform.position(ps);
+		std::cout << " " << to_string((tal - pos)) << to_string(fwd) << std::endl;
+		oo->transform.localRotation(QuatFunc::LookAt((tal - pos), fwd));
+		oo->transform.localPosition(pos + Vec3(0,0,1)*prt->length);
+	}
+	else {
+		std::cout << " " << to_string((tal - pos)) << to_string(fwd) << std::endl;
+		oo->transform.localRotation(QuatFunc::LookAt((tal-pos), fwd));
+		oo->transform.localPosition(pos);
 	}
 	char b = strm.get();
 	if (b == 'b') return;
@@ -1279,15 +1291,20 @@ void Transform::localEulerRotation(const Vec3& r) {
 
 Vec3 Transform::forward() {
 	auto v = _worldMatrix*Vec4(0, 0, 1, 0);
-	return Vec3(v.x, v.y, v.z);
+	return Vec3(v);
 }
 Vec3 Transform::right() {
 	auto v = _worldMatrix*Vec4(1, 0, 0, 0);
-	return Vec3(v.x, v.y, v.z);
+	return Vec3(v);
 }
 Vec3 Transform::up() {
 	auto v = _worldMatrix*Vec4(0, 1, 0, 0);
-	return Vec3(v.x, v.y, v.z);
+	return Vec3(v);
+}
+
+Vec3 Transform::Local2World(Vec3 vec) {
+	auto v = _worldMatrix*Vec4(vec, 1);
+	return Vec3(v);
 }
 
 Transform& Transform::Translate(Vec3 v, TransformSpace sp) {

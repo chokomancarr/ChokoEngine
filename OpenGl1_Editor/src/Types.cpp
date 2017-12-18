@@ -44,4 +44,24 @@ Quat QuatFunc::FromAxisAngle(const Vec3& axis, float angle) {
 	return Normalize(Quat(w, x, y, z));
 }
 
+//https://gamedev.stackexchange.com/questions/53129/quaternion-look-at-with-up-vector
+Quat QuatFunc::LookAt(const Vec3& tarr, const Vec3& up) {
+	Vec3 tar = Normalize(tarr);
+	Vec3 fw = Vec3(0,0,1);
+	Vec3 axis = cross(tar, fw);
+	float angle = rad2deg*acos(dot(tar,fw));
+	Vec3 tr = cross(axis, fw);
+	if (dot(tr, tar) < 0) angle *= -1;
+	Quat q1 = FromAxisAngle(axis, angle);
+
+	Vec3 mup = QuatFunc::ToMatrix(q1)*Vec4(0, 1, 0, 0);
+	Vec3 up2 = Normalize(cross(tar, cross(up, tar)));
+	std::cout << "  " << to_string(mup) << to_string(up2) << std::endl;
+	float angle2 = rad2deg*acos(dot(mup, up2));
+	if (dot(cross(mup, tar), up2) > 0) angle2 *= -1;
+	Quat q2 = FromAxisAngle(tar, angle2);
+
+	return q2 * q1;
+}
+
 BBox::BBox(float x0, float x1, float y0, float y1, float z0, float z1) : x0(x0), x1(x1), y0(y0), y1(y1), z0(z0), z1(z1) {}

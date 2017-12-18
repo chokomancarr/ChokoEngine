@@ -108,6 +108,7 @@ public:
 	static Vec3 ToEuler(const Quat&);
 	static Mat4x4 ToMatrix(const Quat&);
 	static Quat FromAxisAngle(const Vec3&, float);
+	static Quat LookAt(const Vec3&, const Vec3&);
 };
 
 struct BBox {

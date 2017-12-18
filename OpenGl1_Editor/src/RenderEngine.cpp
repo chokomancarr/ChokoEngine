@@ -635,6 +635,8 @@ void Light::ScanParams() {
 	PBSL "lightDepthBias"));
 	PBSL "lightDepthStrength"));
 	PBSL "lightFalloffType"));
+	PBSL "useHsvMap"));
+	PBSL "hsvMap"));
 #undef PBSL
 	paramLocs_Spot.clear();
 #define PBSL paramLocs_Spot.push_back(glGetUniformLocation(Camera::d_sLightProgram,
@@ -662,6 +664,8 @@ void Light::ScanParams() {
 	PBSL "lightContShadStrength"));
 	PBSL "inEmi"));
 	PBSL "lightFalloffType"));
+	PBSL "useHsvMap"));
+	PBSL "hsvMap"));
 #undef PBSL
 	paramLocs_SpotCS.clear();
 #define PBSL paramLocs_SpotCS.push_back(glGetUniformLocation(Camera::d_sLightCSProgram,
@@ -779,6 +783,12 @@ void Camera::_DoDrawLight_Point(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_tex
 	*/
 	glUniform1i(sloc[17], (int)l->falloff);
 
+	glUniform1f(sloc[18], l->hsvMap? 1 : 0);
+	if (l->hsvMap) {
+		glUniform1i(sloc[19], 6);
+		glActiveTexture(GL_TEXTURE6);
+		glBindTexture(GL_TEXTURE_2D, l->hsvMap->pointer);
+	}
 #undef sloc
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, screenRectIndices);
@@ -916,6 +926,13 @@ void Camera::_DoDrawLight_Spot(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs
 	glUniform1i(sloc[22], 7);
 	glActiveTexture(GL_TEXTURE7);
 	glBindTexture(GL_TEXTURE_2D, d_texs[3]);
+
+	glUniform1f(sloc[24], l->hsvMap ? 1 : 0);
+	if (l->hsvMap) {
+		glUniform1i(sloc[25], 8);
+		glActiveTexture(GL_TEXTURE8);
+		glBindTexture(GL_TEXTURE_2D, l->hsvMap->pointer);
+	}
 #undef sloc
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, screenRectIndices);
