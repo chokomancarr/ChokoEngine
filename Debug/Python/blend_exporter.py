@@ -42,6 +42,13 @@ class KTMExporter():
             if obj.type == 'MESH':
                 print ("obj " + obj.name)
                 self.write(file2, "obj " + obj.name)
+                hasbone = False;
+                for mod in obj.modifiers:
+                    if mod.type == 'ARMATURE':
+                        hasbone = True;
+                        break
+                if hasbone:
+                    self.write(file2, "\x01")
                 if obj.parent:
                     self.write(file2, " \x00prt " + obj.parent.name)
                 poss = obj.location

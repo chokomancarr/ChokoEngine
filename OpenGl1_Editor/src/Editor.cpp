@@ -764,9 +764,7 @@ void EB_Viewer::Draw() {
 		Vec3 pos = -seeingCamera->object->transform.position();
 		glTranslatef(pos.x, pos.y, pos.z);
 	}
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	//glPushMatrix();
+	glPushMatrix();
 	if (seeingCamera == nullptr) {
 		float csz = cos(-rz*deg2rad);
 		float snz = sin(-rz*deg2rad);
@@ -776,6 +774,8 @@ void EB_Viewer::Draw() {
 		glMultMatrixf(glm::value_ptr(mMatrix));
 		glTranslatef(-rotCenter.x, -rotCenter.y, -rotCenter.z);
 	}
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
 	glEnable(GL_DEPTH_TEST);
 	glClearDepth(1);
 

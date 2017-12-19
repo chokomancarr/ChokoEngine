@@ -1607,8 +1607,10 @@ void Material::ApplyGL(Mat4x4& _mv, Mat4x4& _p) {
 	else {
 		glUseProgram(shader->pointer);
 		GLint mv = glGetUniformLocation(shader->pointer, "_M");
+		GLint p = glGetUniformLocation(shader->pointer, "_VP");
 		GLint mvp = glGetUniformLocation(shader->pointer, "_MVP");
 		glUniformMatrix4fv(mv, 1, GL_FALSE, glm::value_ptr(_mv));
+		glUniformMatrix4fv(p, 1, GL_FALSE, glm::value_ptr(_p));
 		glUniformMatrix4fv(mvp, 1, GL_FALSE, glm::value_ptr(_p*_mv));
 		//glUniformMatrix4fv(p, 1, GL_FALSE, matrix2);
 		for (auto& a : vals[SHADER_INT])
@@ -1930,7 +1932,7 @@ Mesh::Mesh(string p) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0
 				while (d > 0) {
 					_Strm2Val(stream, dd);
 					_Strm2Val(stream, ff);
-					vertexGroupWeights[vc].push_back(std::pair<uint, float>(dd, ff));
+					vertexGroupWeights[vc].push_back(std::pair<byte, float>(dd, ff));
 					d--;
 				}
 			}

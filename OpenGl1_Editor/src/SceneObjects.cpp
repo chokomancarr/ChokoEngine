@@ -401,39 +401,44 @@ void MeshRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 				pos += 17;
 				if (!materials[a])
 					continue;
-				if (Engine::EButton(e->editorLayer == 0, v.r, v.g + pos, 16, 16, e->tex_expand, white()) == MOUSE_RELEASE) {
-					materials[a]->_maskExpanded = !materials[a]->_maskExpanded;
-				}
-				UI::Label(v.r + 17, v.g + pos, 12, "Write Mask", e->font, white());
-				pos += 17;
-				if (materials[a]->_maskExpanded) {
-					for (uint ea = 0; ea < GBUFFER_NUM_TEXTURES - 1; ea++) {
-						materials[a]->writeMask[ea] = Engine::Toggle(v.r + 17, v.g + pos, 16, e->tex_checkbox, materials[a]->writeMask[ea], white(), ORIENT_HORIZONTAL);
-						UI::Label(v.r + 38, v.g + pos, 12, Camera::_gbufferNames[ea], e->font, white());
-						pos += 17;
+				if (overwriteWriteMask) {
+					if (Engine::EButton(e->editorLayer == 0, v.r + 5, v.g + pos, 16, 16, e->tex_expand, white()) == MOUSE_RELEASE) {
+						materials[a]->_maskExpanded = !materials[a]->_maskExpanded;
+					}
+					UI::Label(v.r + 22, v.g + pos, 12, "Write Mask", e->font, white());
+					pos += 17;
+					if (materials[a]->_maskExpanded) {
+						for (uint ea = 0; ea < GBUFFER_NUM_TEXTURES - 1; ea++) {
+							materials[a]->writeMask[ea] = Engine::Toggle(v.r + 22, v.g + pos, 16, e->tex_checkbox, materials[a]->writeMask[ea], white(), ORIENT_HORIZONTAL);
+							UI::Label(v.r + 43, v.g + pos, 12, Camera::_gbufferNames[ea], e->font, white());
+							pos += 17;
+						}
 					}
 				}
 				for (uint q = 0, qq = materials[a]->valOrders.size(); q < qq; q++) {
-					UI::Label(v.r + 20, v.g + pos, 12, materials[a]->valNames[materials[a]->valOrders[q]][materials[a]->valOrderIds[q]], e->font, white());
-					UI::Texture(v.r + 3, v.g + pos, 16, 16, e->matVarTexs[materials[a]->valOrders[q]]);
+					UI::Texture(v.r + 8, v.g + pos, 16, 16, e->matVarTexs[materials[a]->valOrders[q]]);
+					UI::Label(v.r + 25, v.g + pos, 12, materials[a]->valNames[materials[a]->valOrders[q]][materials[a]->valOrderIds[q]], e->font, white());
 					void* bbs = materials[a]->vals[materials[a]->valOrders[q]][materials[a]->valOrderGLIds[q]];
 					switch (materials[a]->valOrders[q]) {
 					case SHADER_INT:
-						*(int*)bbs = TryParse(UI::EditText(v.r + v.b * 0.3f + 17, v.g + pos, v.b*0.3f, 16, 12, grey1(), to_string(*(int*)bbs), e->font, true, nullptr, white()), *(int*)bbs);
-						*(int*)bbs = (int)round(Engine::DrawSliderFill(v.r + v.b*0.6f + 18, v.g + pos, v.b*0.4f - 19, 16, 0, 1, (float)(*(int*)bbs), grey2(), white()));
+						*(int*)bbs = TryParse(UI::EditText(v.r + v.b * 0.3f + 22, v.g + pos, v.b*0.3f, 16, 12, grey1(), to_string(*(int*)bbs), e->font, true, nullptr, white()), *(int*)bbs);
+						*(int*)bbs = (int)round(Engine::DrawSliderFill(v.r + v.b*0.6f + 23, v.g + pos, v.b*0.4f - 19, 16, 0, 1, (float)(*(int*)bbs), grey2(), white()));
 						break;
 					case SHADER_FLOAT:
-						*(float*)bbs = TryParse(UI::EditText(v.r + v.b * 0.3f + 17, v.g + pos, v.b*0.3f, 16, 12, grey1(), to_string(*(float*)bbs), e->font, true, nullptr, white()), *(float*)bbs);
-						*(float*)bbs = Engine::DrawSliderFill(v.r + v.b*0.6f + 18, v.g + pos, v.b*0.4f - 19, 16, 0, 1, *(float*)bbs, grey2(), white());
+						*(float*)bbs = TryParse(UI::EditText(v.r + v.b * 0.3f + 22, v.g + pos, v.b*0.3f, 16, 12, grey1(), to_string(*(float*)bbs), e->font, true, nullptr, white()), *(float*)bbs);
+						*(float*)bbs = Engine::DrawSliderFill(v.r + v.b*0.6f + 23, v.g + pos, v.b*0.4f - 19, 16, 0, 1, *(float*)bbs, grey2(), white());
 						break;
 					case SHADER_SAMPLER:
-						e->DrawAssetSelector(v.r + v.b * 0.3f + 17, v.g + pos, v.b*0.7f - 17, 16, grey1(), ASSETTYPE_TEXTURE, 12, e->font, &((MatVal_Tex*)bbs)->id, _UpdateTex, bbs);
+						e->DrawAssetSelector(v.r + v.b * 0.3f + 22, v.g + pos, v.b*0.7f - 17, 16, grey1(), ASSETTYPE_TEXTURE, 12, e->font, &((MatVal_Tex*)bbs)->id, _UpdateTex, bbs);
 						break;
 					}
 					pos += 17;
 				}
 				pos++;
 			}
+			UI::Label(v.r + 2, v.g + pos, 12, "Override Masks", e->font, white());
+			overwriteWriteMask = Engine::Toggle(v.r + v.b*0.3f, v.g + pos, 12, e->tex_checkbox, overwriteWriteMask, white(), ORIENT_HORIZONTAL);
+			pos += 17;
 		}
 	}
 	else pos += 17;
@@ -498,23 +503,230 @@ void SkinnedMeshRenderer::Init() {
 	glGenBuffers(2, _vbos);
 }
 
-void SkinnedMeshRenderer::InitWeights() {
-	std::vector<std::vector<std::pair<uint, float>>> _weights(mesh->vertexCount);
-	
+SkinnedMeshRenderer::SkinnedMeshRenderer(SceneObject* o) : Component("Skinned Mesh Renderer", COMP_SRD, DRAWORDER_SOLID | DRAWORDER_TRANSPARENT, o) {
+	if (!o) {
+		Debug::Error("SMR", "SceneObject cannot be null!");
+	}
+	SceneObject* par = object->parent;
+	while (par) {
+		armature = par->GetComponent<Armature>();
+		if (armature) break;
+		else par = par->parent;
+	}
+	if (!armature) {
+		Debug::Error("SkinnedMeshRenderer", "Cannot add Skin to object without armature!");
+		dead = true;
+	}
 }
 
 SkinnedMeshRenderer::SkinnedMeshRenderer(std::ifstream& stream, SceneObject* o, long pos) : Component("Skinned Mesh Renderer", COMP_SRD, DRAWORDER_SOLID | DRAWORDER_TRANSPARENT, o) {
-	
-}
-
-void SkinnedMeshRenderer::ApplyAnim() {
-	
-}
-
-void SkinnedMeshRenderer::ApplyVbo() {
 
 }
 
+void SkinnedMeshRenderer::mesh(Mesh* m) {
+	_mesh = m;
+	InitWeights();
+}
+
+void SkinnedMeshRenderer::InitWeights() {
+	std::vector<uint> noweights;
+	weights.clear();
+	weights.resize(_mesh->vertexCount);
+	mats.resize(_mesh->vertexCount);
+	for (uint i = 0; i < _mesh->vertexCount; i++) {
+		byte a = 0;
+		float tot = 0;
+		for (auto& g : _mesh->vertexGroupWeights[i]) {
+			auto bn = armature->_bonemap[_mesh->vertexGroups[g.first]];
+			if (!bn) continue;
+			weights[i][a].first = bn;
+			weights[i][a].second = g.second;
+			tot += g.second;
+			if (++a == 4) break;
+		}
+		for (byte b = a; b < 4; b++) {
+			weights[i][b].first = armature->_bones[0];
+		}
+		if (a == 0) {
+			noweights.push_back(i);
+			weights[i][0].second = 1;
+		}
+		else {
+			while (a > 0) {
+				weights[i][a - 1].second /= tot;
+				a--;
+			}
+		}
+	}
+	if (!!noweights.size()) Debug::Warning("SMR", to_string(noweights.size()) + " vertices have no weights assigned!");
+}
+
+void SkinnedMeshRenderer::EvalMats() {
+	for (uint i = 0; i < _mesh->vertexCount; i++) {
+		mats[i] = weights[i][0].first->animMatrix*weights[i][0].second
+			+ weights[i][1].first->animMatrix*weights[i][1].second
+			+ weights[i][2].first->animMatrix*weights[i][2].second
+			+ weights[i][3].first->animMatrix*weights[i][3].second;
+	}
+}
+
+void SkinnedMeshRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
+	if (DrawComponentHeader(e, v, pos, this)) {
+		UI::Label(v.r + 2, v.g + pos + 20, 12, "Mesh", e->font, white());
+		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 17, v.b*0.7f, 16, grey1(), ASSETTYPE_MESH, 12, e->font, &_meshId, &_UpdateMesh, this);
+		pos += 34;
+		UI::Label(v.r + 2, v.g + pos, 12, "Show Bounding Box", e->font, white());
+		showBoundingBox = Engine::Toggle(v.r + v.b*0.3f, v.g + pos, 12, e->tex_checkbox, showBoundingBox, white(), ORIENT_HORIZONTAL);
+		pos += 17;
+
+		if (!_mesh) {
+			UI::Label(v.r + 2, v.g + pos + 20, 12, "No Mesh Assigned!", e->font, white());
+			pos += 34;
+		}
+		else {
+			UI::Label(v.r + 2, v.g + pos, 12, "Materials: " + to_string(_mesh->materialCount), e->font, white());
+			pos += 17;
+			for (uint a = 0; a < _mesh->materialCount; a++) {
+				UI::Label(v.r + 2, v.g + pos, 12, "Material " + to_string(a), e->font, white());
+				e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos, v.b*0.7f, 16, grey1(), ASSETTYPE_MATERIAL, 12, e->font, &_materials[a], &_UpdateMat, this);
+				pos += 17;
+				if (!materials[a])
+					continue;
+				if (overwriteWriteMask) {
+					if (Engine::EButton(e->editorLayer == 0, v.r + 5, v.g + pos, 16, 16, e->tex_expand, white()) == MOUSE_RELEASE) {
+						materials[a]->_maskExpanded = !materials[a]->_maskExpanded;
+					}
+					UI::Label(v.r + 22, v.g + pos, 12, "Write Mask", e->font, white());
+					pos += 17;
+					if (materials[a]->_maskExpanded) {
+						for (uint ea = 0; ea < GBUFFER_NUM_TEXTURES - 1; ea++) {
+							materials[a]->writeMask[ea] = Engine::Toggle(v.r + 22, v.g + pos, 16, e->tex_checkbox, materials[a]->writeMask[ea], white(), ORIENT_HORIZONTAL);
+							UI::Label(v.r + 43, v.g + pos, 12, Camera::_gbufferNames[ea], e->font, white());
+							pos += 17;
+						}
+					}
+				}
+				for (uint q = 0, qq = materials[a]->valOrders.size(); q < qq; q++) {
+					UI::Texture(v.r + 8, v.g + pos, 16, 16, e->matVarTexs[materials[a]->valOrders[q]]);
+					UI::Label(v.r + 25, v.g + pos, 12, materials[a]->valNames[materials[a]->valOrders[q]][materials[a]->valOrderIds[q]], e->font, white());
+					void* bbs = materials[a]->vals[materials[a]->valOrders[q]][materials[a]->valOrderGLIds[q]];
+					switch (materials[a]->valOrders[q]) {
+					case SHADER_INT:
+						*(int*)bbs = TryParse(UI::EditText(v.r + v.b * 0.3f + 22, v.g + pos, v.b*0.3f, 16, 12, grey1(), to_string(*(int*)bbs), e->font, true, nullptr, white()), *(int*)bbs);
+						*(int*)bbs = (int)round(Engine::DrawSliderFill(v.r + v.b*0.6f + 23, v.g + pos, v.b*0.4f - 19, 16, 0, 1, (float)(*(int*)bbs), grey2(), white()));
+						break;
+					case SHADER_FLOAT:
+						*(float*)bbs = TryParse(UI::EditText(v.r + v.b * 0.3f + 22, v.g + pos, v.b*0.3f, 16, 12, grey1(), to_string(*(float*)bbs), e->font, true, nullptr, white()), *(float*)bbs);
+						*(float*)bbs = Engine::DrawSliderFill(v.r + v.b*0.6f + 23, v.g + pos, v.b*0.4f - 19, 16, 0, 1, *(float*)bbs, grey2(), white());
+						break;
+					case SHADER_SAMPLER:
+						e->DrawAssetSelector(v.r + v.b * 0.3f + 22, v.g + pos, v.b*0.7f - 17, 16, grey1(), ASSETTYPE_TEXTURE, 12, e->font, &((MatVal_Tex*)bbs)->id, _UpdateTex, bbs);
+						break;
+					}
+					pos += 17;
+				}
+				pos++;
+			}
+			UI::Label(v.r + 2, v.g + pos, 12, "Override Masks", e->font, white());
+			overwriteWriteMask = Engine::Toggle(v.r + v.b*0.3f, v.g + pos, 12, e->tex_checkbox, overwriteWriteMask, white(), ORIENT_HORIZONTAL);
+			pos += 17;
+		}
+	}
+	else pos += 17;
+}
+
+void SkinnedMeshRenderer::DrawEditor(EB_Viewer* ebv, GLuint shader) {
+	if (!_mesh || !_mesh->loaded)
+		return;
+	EvalMats();
+	bool isE = !!ebv;
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glPolygonMode(GL_FRONT_AND_BACK, (!isE || ebv->selectedShading == 0) ? GL_FILL : GL_LINE);
+	if (!isE || ebv->selectedShading == 0) glEnable(GL_CULL_FACE);
+	glVertexPointer(3, GL_FLOAT, 0, &(_mesh->vertices[0]));
+	glLineWidth(1);
+	GLfloat matrix[16], matrix2[16];
+	glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
+	glGetFloatv(GL_PROJECTION_MATRIX, matrix2);
+	Mat4x4 m1(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
+	Mat4x4 m2(matrix2[0], matrix2[1], matrix2[2], matrix2[3], matrix2[4], matrix2[5], matrix2[6], matrix2[7], matrix2[8], matrix2[9], matrix2[10], matrix2[11], matrix2[12], matrix2[13], matrix2[14], matrix2[15]);
+
+	if (materials[0]) {
+		materials[0]->ApplyGL(m1, m2);
+		glEnableVertexAttribArray(0);
+		glEnableVertexAttribArray(1);
+		glEnableVertexAttribArray(2);
+		glEnableVertexAttribArray(3);
+		glEnableVertexAttribArray(4); //matrix
+		glEnableVertexAttribArray(5);
+		glEnableVertexAttribArray(6);
+		glEnableVertexAttribArray(7);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &(_mesh->vertices[0]));
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, &(_mesh->uv0[0]));
+		glVertexAttribPointer(2, 3, GL_FLOAT, GL_TRUE, 0, &(_mesh->normals[0]));
+		glVertexAttribPointer(3, 3, GL_FLOAT, GL_TRUE, 0, &(_mesh->tangents[0]));
+		glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(float) * 16, &mats[0]);
+		glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(float) * 16, (void*)((uint)(&mats[0]) + sizeof(float) * 4));
+		glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(float) * 16, (void*)((uint)(&mats[0]) + sizeof(float) * 8));
+		glVertexAttribPointer(7, 4, GL_FLOAT, GL_FALSE, sizeof(float) * 16, (void*)((uint)(&mats[0]) + sizeof(float) * 12));
+		glDrawElements(GL_TRIANGLES, _mesh->triangleCount * 3, GL_UNSIGNED_INT, &_mesh->triangles[0]);
+		glDisableVertexAttribArray(0);
+		glDisableVertexAttribArray(1);
+		glDisableVertexAttribArray(2);
+		glDisableVertexAttribArray(3);
+		glDisableVertexAttribArray(4); //matrix
+		glDisableVertexAttribArray(5);
+		glDisableVertexAttribArray(6);
+		glDisableVertexAttribArray(7);
+		glUseProgram(0);
+	}
+	glDisableClientState(GL_VERTEX_ARRAY);
+	glDisable(GL_CULL_FACE);
+	if (isE && showBoundingBox) {
+		BBox& b = _mesh->boundingBox;
+		Engine::DrawCubeLinesW(b.x0, b.x1, b.y0, b.y1, b.z0, b.z1, 1, white(1, 0.5f));
+	}
+}
+
+void SkinnedMeshRenderer::SetMesh(int i) {
+	_meshId = i;
+	if (i >= 0) {
+		_mesh = _GetCache<Mesh>(ASSETTYPE_MESH, i);
+		InitWeights();
+	}
+	else
+		_mesh = nullptr;
+	if (!_mesh || !_mesh->loaded) {
+		materials.clear();
+		_materials.clear();
+	}
+	else {
+		materials.resize(_mesh->materialCount, nullptr);
+		_materials.resize(_mesh->materialCount, -1);
+	}
+}
+
+void SkinnedMeshRenderer::_UpdateMesh(void* i) {
+	SkinnedMeshRenderer* mf = (SkinnedMeshRenderer*)i;
+	if (mf->_meshId != -1) {
+		mf->_mesh = _GetCache<Mesh>(ASSETTYPE_MESH, mf->_meshId);
+	}
+	else
+		mf->_mesh = nullptr;
+}
+void SkinnedMeshRenderer::_UpdateMat(void* i) {
+	SkinnedMeshRenderer* mf = (SkinnedMeshRenderer*)i;
+	for (int q = mf->_materials.size() - 1; q >= 0; q--) {
+		mf->materials[q] = _GetCache<Material>(ASSETTYPE_MATERIAL, mf->_materials[q]);
+	}
+}
+void SkinnedMeshRenderer::_UpdateTex(void* i) {
+	MatVal_Tex* v = (MatVal_Tex*)i;
+	v->tex = _GetCache<Texture>(ASSETTYPE_TEXTURE, v->id);
+}
+
+
+//-----------------Particle System-------------
 
 float ParticleSystemValue::Eval() {
 	switch (type) {
@@ -905,7 +1117,9 @@ void ReflectionProbe::Serialize(Editor* e, std::ofstream* stream) {
 }
 
 
-ArmatureBone::ArmatureBone(uint id, Vec3 pos, Quat rot, Vec3 scl, float lgh, bool conn, Transform* tr) : id(id), restPosition(pos), restRotation(rot), restScale(scl), length(lgh), connected(conn), tr(tr), name(tr->object->name) {}
+ArmatureBone::ArmatureBone(uint id, Vec3 pos, Quat rot, Vec3 scl, float lgh, bool conn, Transform* tr) : 
+	id(id), restPosition(pos), restRotation(rot), restScale(scl), restMatrix(MatFunc::FromTRS(pos, rot, scl)), 
+	restMatrixInv(glm::inverse(restMatrix)), length(lgh), connected(conn), tr(tr), name(tr->object->name) {}
 #define _dw 0.1f
 const Vec3 ArmatureBone::boneVecs[6] = {
 	Vec3(0, 0, 0),
@@ -941,6 +1155,13 @@ Armature::Armature(string path, SceneObject* o) : Component("Armature", COMP_ARM
 		AddBone(strm, _bones, boneList, object, i);
 		b = strm.get();
 	}
+	GenMap();
+	Scene::active->_preRenderComps.push_back(this);
+}
+
+Armature::~Armature() {
+	auto& prc = Scene::active->_preRenderComps;
+	prc.erase(std::find(prc.begin(), prc.end(), this));
 }
 
 void ArmatureBone::Draw(EB_Viewer* ebv) {
@@ -961,12 +1182,10 @@ void ArmatureBone::Draw(EB_Viewer* ebv) {
 	glPopMatrix();
 }
 
-Armature::Armature(std::ifstream& stream, SceneObject* o, long pos) : Component("Armature", COMP_ARM, DRAWORDER_OVERLAY) {
-
-}
+Armature::Armature(std::ifstream& stream, SceneObject* o, long pos) : Component("Armature", COMP_ARM, DRAWORDER_OVERLAY) {}
 
 void Armature::AddBone(std::ifstream& strm, std::vector<ArmatureBone*>& bones, std::vector<ArmatureBone*>& blist, SceneObject* o, uint& id) {
-	const Vec3 viz(1,1,-1);
+	//const Vec3 viz(1,1,-1);
 	char* c = new char[100];
 	strm.getline(c, 100, 0);
 	string nm = string(c);
@@ -994,22 +1213,22 @@ void Armature::AddBone(std::ifstream& strm, std::vector<ArmatureBone*>& bones, s
 	_Strm2Val(strm, fwd.y);
 	_Strm2Val(strm, fwd.z);
 	mask = strm.get();
-	rot = glm::quat_cast(glm::lookAt(pos, tal, - fwd - pos));
+	rot = QuatFunc::LookAt((tal - pos), fwd);
 	std::vector<ArmatureBone*>& bnv = (prt)? prt->_children : bones;
 	SceneObject* scp = (prt) ? prt->tr->object : o;
 	SceneObject* oo = new SceneObject(nm, pos, rot, Vec3(1.0f));
-	ArmatureBone* bn = new ArmatureBone(id++, pos, rot, Vec3(1.0f), glm::length(tal-pos), (mask & 0xf0) != 0, &oo->transform);
+	ArmatureBone* bn = new ArmatureBone(id++, (prt) ? pos + Vec3(0, 0, 1)*prt->length : pos, rot, Vec3(1.0f), glm::length(tal-pos), (mask & 0xf0) != 0, &oo->transform);
 	bnv.push_back(bn);
 	scp->AddChild(oo);
 	blist.push_back(bn);
 	if (prt) {
-		std::cout << " " << to_string((tal - pos)) << to_string(fwd) << std::endl;
-		oo->transform.localRotation(QuatFunc::LookAt((tal - pos), fwd));
+		//std::cout << " " << to_string((tal - pos)) << to_string(fwd) << std::endl;
+		oo->transform.localRotation(rot);
 		oo->transform.localPosition(pos + Vec3(0,0,1)*prt->length);
 	}
 	else {
-		std::cout << " " << to_string((tal - pos)) << to_string(fwd) << std::endl;
-		oo->transform.localRotation(QuatFunc::LookAt((tal-pos), fwd));
+		//std::cout << " " << to_string((tal - pos)) << to_string(fwd) << std::endl;
+		oo->transform.localRotation(rot);
 		oo->transform.localPosition(pos);
 	}
 	char b = strm.get();
@@ -1017,6 +1236,23 @@ void Armature::AddBone(std::ifstream& strm, std::vector<ArmatureBone*>& bones, s
 	else while (b == 'B') {
 		AddBone(strm, bn->_children, blist, oo, id);
 		b = strm.get();
+	}
+}
+
+void Armature::GenMap(ArmatureBone* b) {
+	auto& bn = b ? b->_children : _bones;
+	for (auto bb : bn) {
+		_bonemap.emplace(bb->name, bb);
+		GenMap(bb);
+	}
+}
+
+void Armature::UpdateMats(ArmatureBone* b) {
+	auto& bn = b ? b->_children : _bones;
+	for (auto bb : bn) {
+		Mat4x4 pari = glm::inverse(bb->tr->object->parent->transform.worldMatrix());
+		bb->animMatrix = bb->tr->worldMatrix()*bb->restMatrixInv*pari;
+		UpdateMats(bb);
 	}
 }
 
@@ -1037,6 +1273,10 @@ void Armature::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 		pos += 34;
 	}
 	else pos += 17;
+}
+
+void Armature::OnPreRender() {
+	UpdateMats();
 }
 
 SceneScript::SceneScript(Editor* e, ASSETID id) : Component(e->headerAssets[id] + " (Script)", COMP_SCR, DRAWORDER_NONE), _script(id) {
@@ -1399,9 +1639,7 @@ void Transform::_W2LQuat() {
 }
 
 void Transform::_UpdateLMatrix() {
-	_localMatrix = glm::scale(_localScale);
-	_localMatrix = QuatFunc::ToMatrix(_localRotation) * _localMatrix;
-	_localMatrix = glm::translate(_localPosition) * _localMatrix;
+	_localMatrix = MatFunc::FromTRS(_localPosition, _localRotation, _localScale);
 	_UpdateWMatrix(object->parent ? object->parent->transform._worldMatrix : Mat4x4());
 }
 

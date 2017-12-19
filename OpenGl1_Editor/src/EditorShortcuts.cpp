@@ -236,11 +236,24 @@ void LoadMeshMeta(std::vector<SceneObject*>& os, string& path) {
 	for (SceneObject* o : os) {
 		string nn(path.substr(Editor::instance->projectFolder.size() + 7, string::npos));
 		int r = 0;
+		bool skinned = false;
+		if (o->name.back() == 1) {
+			skinned = true;
+			o->name = o->name.substr(0, o->name.size()-1);
+		}
 		for (string ss : Editor::instance->normalAssets[ASSETTYPE_MESH]) {
 			if (ss == (nn + o->name)) {
-				MeshFilter* mft = new MeshFilter();
-				o->AddComponent(mft)->object->AddComponent(new MeshRenderer());
-				mft->SetMesh(r);
+				if (skinned) {
+					auto skn = new SkinnedMeshRenderer(o);
+					o->AddComponent(skn);
+					skn->SetMesh(r);
+				}
+				else {
+					MeshFilter* mft = new MeshFilter();
+					o->AddComponent(mft);
+					o->AddComponent(new MeshRenderer());
+					mft->SetMesh(r);
+				}
 				break;
 			}
 			r++;

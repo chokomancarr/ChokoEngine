@@ -212,7 +212,7 @@ void Color::DrawPicker(float x, float y, Color& c) {
 	}
 
 	c.RecalcHSV();
-	std::cout << to_string(c.vec4()) << std::endl << to_string(c.hsv()) << std::endl;
+	//std::cout << to_string(c.vec4()) << std::endl << to_string(c.hsv()) << std::endl;
 }
 
 Vec4 Color::HueBaseCol(float hue) {

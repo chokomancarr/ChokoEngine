@@ -306,6 +306,11 @@ void DrawOverlay() {
 		UI::drawFuncLoc = funcLoc;
 	}
 	UI::PreLoop();
+	if (Scene::active) {
+		for (auto a : Scene::active->_preRenderComps) {
+			a->OnPreRender();
+		}
+	}
 
 	editor->UpdateLerpers();
 	editor->playSyncer.Update();

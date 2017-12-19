@@ -783,7 +783,7 @@ void Camera::_DoDrawLight_Point(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_tex
 	*/
 	glUniform1i(sloc[17], (int)l->falloff);
 
-	glUniform1f(sloc[18], l->hsvMap? 1 : 0);
+	glUniform1f(sloc[18], l->hsvMap? 1.0f : 0.0f);
 	if (l->hsvMap) {
 		glUniform1i(sloc[19], 6);
 		glActiveTexture(GL_TEXTURE6);
@@ -927,7 +927,7 @@ void Camera::_DoDrawLight_Spot(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs
 	glActiveTexture(GL_TEXTURE7);
 	glBindTexture(GL_TEXTURE_2D, d_texs[3]);
 
-	glUniform1f(sloc[24], l->hsvMap ? 1 : 0);
+	glUniform1f(sloc[24], l->hsvMap ? 1.0f : 0.0f);
 	if (l->hsvMap) {
 		glUniform1i(sloc[25], 8);
 		glActiveTexture(GL_TEXTURE8);

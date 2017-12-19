@@ -1,5 +1,9 @@
 #include "Engine.h"
 
+Mat4x4 MatFunc::FromTRS(const Vec3& t, const Quat& r, const Vec3& s) {
+	return glm::translate(t) * QuatFunc::ToMatrix(r) * glm::scale(s);
+}
+
 Quat QuatFunc::Inverse(const Quat& q) {
 	return Quat(-q.x, -q.y, -q.z, q.w);
 }

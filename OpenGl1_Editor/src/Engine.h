@@ -5,6 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <array>
 #include <memory>
 #include <unordered_map>
 #include <glm/glm.hpp>
@@ -85,13 +86,13 @@ typedef glm::vec4 Vec4;
 typedef glm::quat Quat;
 typedef glm::mat4 Mat4x4;
 
-inline string to_string(float f);
-inline string to_string(double f);
-inline string to_string(ulong f);
-inline string to_string(long f);
-inline string to_string(uint f);
-inline string to_string(int f);
-inline string to_string(Vec2 v), to_string(Vec3 v), to_string(Vec4 v), to_string(Quat v);
+string to_string(float f);
+string to_string(double f);
+string to_string(ulong f);
+string to_string(long f);
+string to_string(uint f);
+string to_string(int f);
+string to_string(Vec2 v), to_string(Vec3 v), to_string(Vec4 v), to_string(Quat v);
 std::vector<string> string_split(string s, char c);
 
 Vec3 to_vec3(Vec4 v);
@@ -101,6 +102,10 @@ uint TryParse(string str, uint defVal);
 float TryParse(string str, float defVal);
 
 class Mesh;
+class MatFunc {
+public:
+	static Mat4x4 FromTRS(const Vec3& t, const Quat& r, const Vec3& s);
+};
 class QuatFunc {
 public:
 	static Quat Inverse(const Quat&);
@@ -432,6 +437,7 @@ public:
 	ulong id;
 	string name;
 	bool dirty = false; //triggers a reload of internal variables
+	bool dead = false; //will be cleaned up after this frame
 
 	virtual bool ReferencingObject(Object* o) { return false; }
 };
@@ -553,6 +559,7 @@ protected:
 class MatVal_Tex {
 	friend class Material;
 	friend class MeshRenderer;
+	friend class SkinnedMeshRenderer;
 	friend void EBI_DrawAss_Mat(Vec4 v, Editor* editor, EB_Inspector* b, float &off);
 protected:
 	MatVal_Tex() : id(-1), tex(nullptr), defTex(0) {}
@@ -600,6 +607,7 @@ public:
 	friend class EB_Inspector;
 	friend class Mesh;
 	friend class MeshRenderer;
+	friend class SkinnedMeshRenderer;
 	friend class Scene;
 	friend class AssetManager;
 	friend class ShaderBase;
@@ -809,6 +817,7 @@ public:
 	uint objectCount = 0;
 	std::vector<SceneObject*> objects;
 	SceneSettings settings;
+	std::vector<Component*> _preRenderComps;
 
 	static void Load(uint i), Load(string name);
 	static void AddObject(SceneObject* object, SceneObject* parent = nullptr);

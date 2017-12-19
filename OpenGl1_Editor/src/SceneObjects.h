@@ -20,6 +20,8 @@ public:
 	bool active;
 	SceneObject* object;
 
+	virtual void OnPreRender() {}
+
 	friend int main(int argc, char **argv);
 	friend void Serialize(Editor* e, SceneObject* o, std::ofstream* stream);
 	friend class Scene;
@@ -131,6 +133,7 @@ public:
 	friend class Editor;
 	friend class MeshFilter;
 	friend class MeshRenderer;
+	friend class SkinnedMeshRenderer;
 	friend class AssetManager;
 protected:
 	Mesh(Editor* e, int i);
@@ -497,6 +500,7 @@ public:
 	friend class EB_Previewer;
 	friend class Background;
 	friend class MeshRenderer;
+	friend class SkinnedMeshRenderer;
 	friend class Engine;
 	friend class Editor;
 	friend class Light;
@@ -628,48 +632,47 @@ protected:
 	int _texture;
 };
 
-#define ARMATURE_MAX_BONES 255
 #define SKINNED_MAX_VERTICES 65535
-struct SRD_ArmatureData {
-	Mat4x4 bind[ARMATURE_MAX_BONES];
-	Mat4x4 animate[ARMATURE_MAX_BONES];
-};
 
 class Armature;
+class ArmatureBone;
 #define COMP_SRD 0x12
 class SkinnedMeshRenderer : public Component {
 public:
-	SkinnedMeshRenderer();
-
+	SkinnedMeshRenderer(SceneObject* o);
 	std::vector<Material*> materials;
-	Animator* anim;
-	Mesh* mesh;
-	Armature* armature;
+	Mesh* mesh() { return _mesh; }
+	void mesh(Mesh*);
 	//void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
-	//void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
-
-	//void Serialize(Editor* e, std::ofstream* stream) override;
+	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
+	void Serialize(Editor* e, std::ofstream* stream) override {}
 	//void Refresh() override;
 
 	friend class Editor;
 	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
-	friend void DrawSceneObjectsOpaque(std::vector<SceneObject*> oo);
+	friend void LoadMeshMeta(std::vector<SceneObject*>& os, string& path);
 protected:
 	SkinnedMeshRenderer(std::ifstream& stream, SceneObject* o, long pos = -1);
 
 	static GLuint _vbos[2]; //vertex, normal
-	SRD_ArmatureData animData;
-	std::vector<std::pair<uint, SceneObject*>> boneObjs;
-	std::unordered_map<string, Transform&> bonePaths;
-	std::vector<std::pair<uint, float>[4]> weights;
+	std::vector<std::array<std::pair<ArmatureBone*, float>, 4>> weights;
+	std::vector<Mat4x4> mats;
 
 	static void Init();
 	void InitWeights();
-	void ApplyAnim(); //armature transforms -> animdata
-	void ApplyVbo();
-	void DrawDeferred();
+	void EvalMats();
+	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0);
 
+	Mesh* _mesh;
+	ASSETID _meshId = -1;
+	Armature* armature;
 	std::vector<ASSETID> _materials;
+	bool overwriteWriteMask;
+	std::vector<bool> writeMask;
+	bool showBoundingBox;
+
+	void SetMesh(int i);
+	static void _UpdateMesh(void* i);
 	static void _UpdateMat(void* i);
 	static void _UpdateTex(void* i);
 };
@@ -857,7 +860,10 @@ protected:
 };
 
 #define COMP_ARM 0x30
-struct ArmatureBone {
+#define ARMATURE_MAX_BONES 255
+class ArmatureBone {
+public:
+
 	Transform* const tr;
 	Vec3 const restPosition;
 	Quat const restRotation;
@@ -865,6 +871,8 @@ struct ArmatureBone {
 	Vec3 tailPos() { return tr->position() + tr->forward()*length*tr->localScale().z; }
 	float const length;
 	bool const connected;
+	const Mat4x4 restMatrix, restMatrixInv;
+	Mat4x4 animMatrix;
 	string const name;
 	uint const id;
 	const std::vector<ArmatureBone*>& children() { return _children; }
@@ -883,6 +891,7 @@ protected:
 class Armature : public Component {
 public:
 	//Armature() : _anim(-1), Component("Armature", COMP_ARM, DRAWORDER_OVERLAY) {}
+	~Armature();
 
 	Animator* anim;
 
@@ -896,6 +905,8 @@ public:
 	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, std::ofstream* stream) override {}
 
+	virtual void OnPreRender() override;
+
 	friend int main(int argc, char **argv);
 	friend void Serialize(Editor* e, SceneObject* o, std::ofstream* stream);
 	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
@@ -903,12 +914,18 @@ public:
 	friend class Editor;
 	friend class EB_Viewer;
 	friend class EB_Previewer;
+	friend class SkinnedMeshRenderer;
 protected:
 	Armature(string s, SceneObject* o);
 	Armature(std::ifstream& stream, SceneObject* o, long pos = -1);
-	static void AddBone(std::ifstream&, std::vector<ArmatureBone*>&, std::vector<ArmatureBone*>&, SceneObject*, uint&);
+
 	ASSETID _anim;
 	std::vector<ArmatureBone*> _bones;
+	std::unordered_map<string, ArmatureBone*> _bonemap;
+	
+	static void AddBone(std::ifstream&, std::vector<ArmatureBone*>&, std::vector<ArmatureBone*>&, SceneObject*, uint&);
+	void GenMap(ArmatureBone* b = nullptr);
+	void UpdateMats(ArmatureBone* b = nullptr);
 };
 
 #define COMP_SCR 0xff
