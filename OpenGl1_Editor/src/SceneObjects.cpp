@@ -1270,8 +1270,13 @@ void Armature::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glPushMatrix();
 	glMultMatrixf(glm::value_ptr(object->transform.localMatrix()));
-
+	if (xray) {
+		glDepthFunc(GL_ALWAYS);
+		glDepthMask(false);
+	}
 	for (auto a : _bones) a->Draw(ebv);
+	glDepthFunc(GL_LEQUAL);
+	glDepthMask(true);
 	glPopMatrix();
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
@@ -1279,8 +1284,10 @@ void Armature::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 void Armature::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 	Armature* cam = (Armature*)c;
 	if (DrawComponentHeader(e, v, pos, this)) {
-		
-		pos += 34;
+		pos += 17;
+		UI::Label(v.r + 2, v.g + pos, 12, "XRay", e->font, white());
+		xray = Engine::Toggle(v.r + v.b*0.3f, v.g + pos, 12, e->tex_checkbox, xray, white(), ORIENT_HORIZONTAL);
+		pos += 17;
 	}
 	else pos += 17;
 }

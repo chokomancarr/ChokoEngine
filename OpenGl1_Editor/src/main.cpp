@@ -57,7 +57,7 @@ char Get(std::istream& strm) {
 
 int main(int argc, char **argv)
 {
-	auto qt = QuatFunc::LookAt(Vec3(0, -0.2f, -1.5f), Vec3(0, -0.9f, 0.1f));
+	auto qt = QuatFunc::LookAt(Vec3(-0.016894f, -1.029442f, 3.475262f), Vec3(-0.000585f, 0.958819f, 0.284018f));
 	path = argv[0];
 	editor = new Editor();
 	//editor->hwnd = GetForegroundWindow();

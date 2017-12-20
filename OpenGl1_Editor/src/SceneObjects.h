@@ -922,6 +922,7 @@ protected:
 	Armature(string s, SceneObject* o);
 	Armature(std::ifstream& stream, SceneObject* o, long pos = -1);
 
+	bool xray;
 	ASSETID _anim;
 	std::vector<ArmatureBone*> _bones;
 	std::unordered_map<string, ArmatureBone*> _bonemap;

@@ -112,7 +112,7 @@ public:
 	//static Vec3 Rotate(const Vec3&, const Quat&); //just use Q*V
 	static Vec3 ToEuler(const Quat&);
 	static Mat4x4 ToMatrix(const Quat&);
-	static Quat FromAxisAngle(const Vec3&, float);
+	static Quat FromAxisAngle(Vec3, float);
 	static Quat LookAt(const Vec3&, const Vec3&);
 };
 

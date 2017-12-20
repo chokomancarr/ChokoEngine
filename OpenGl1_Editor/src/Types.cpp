@@ -35,7 +35,8 @@ Mat4x4 QuatFunc::ToMatrix(const Quat& q) {
 	return glm::mat4_cast(q);
 }
 
-Quat QuatFunc::FromAxisAngle(const Vec3& axis, float angle) {
+Quat QuatFunc::FromAxisAngle(Vec3 axis, float angle) {
+	axis = Normalize(axis);
 	float a = deg2rad*angle;
 	float factor = (float)sin(a / 2.0);
 	// Calculate the x, y and z of the quaternion
@@ -53,16 +54,18 @@ Quat QuatFunc::LookAt(const Vec3& tarr, const Vec3& up) {
 	Vec3 tar = Normalize(tarr);
 	Vec3 fw = Vec3(0,0,1);
 	Vec3 axis = cross(tar, fw);
-	float angle = rad2deg*acos(dot(tar,fw));
+	float angle = rad2deg*acos(Clamp(dot(tar,fw), -1, 1));
 	Vec3 tr = cross(axis, fw);
 	if (dot(tr, tar) < 0) angle *= -1;
 	Quat q1 = FromAxisAngle(axis, angle);
 
-	Vec3 mup = q1*Vec3(0,1,0);//QuatFunc::ToMatrix(q1)*Vec4(0, 1, 0, 0);
-	Vec3 up2 = Normalize(cross(tar, cross(up, tar)));
+	Vec3 mup = q1*Vec3(0, 1, 0);//QuatFunc::ToMatrix(q1)*Vec4(0, 1, 0, 0);
+	Vec3 mrt = q1*Vec3(1, 0, 0);
+	//Vec3 mrt = Normalize(cross(mup, tar)); //we might not need to normalize this
+	Vec3 rt = Normalize(cross(up, tar));
 	//std::cout << "  " << to_string(mup) << to_string(up2) << std::endl;
-	float angle2 = rad2deg*acos(dot(mup, up2));
-	if (dot(cross(mup, tar), up2) > 0) angle2 *= -1;
+	float angle2 = rad2deg*acos(Clamp(dot(mrt, rt), -1, 1));
+	if (dot(mup, rt) < 0) angle2 *= -1;
 	Quat q2 = FromAxisAngle(tar, angle2);
 
 	return q2 * q1;
