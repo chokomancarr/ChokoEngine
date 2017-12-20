@@ -1117,9 +1117,9 @@ void ReflectionProbe::Serialize(Editor* e, std::ofstream* stream) {
 }
 
 
-ArmatureBone::ArmatureBone(uint id, Vec3 pos, Quat rot, Vec3 scl, float lgh, bool conn, Transform* tr) : 
-	id(id), restPosition(pos), restRotation(rot), restScale(scl), restMatrix(MatFunc::FromTRS(pos, rot, scl)), 
-	restMatrixInv(glm::inverse(restMatrix)), length(lgh), connected(conn), tr(tr), name(tr->object->name) {}
+ArmatureBone::ArmatureBone(uint id, Vec3 pos, Quat rot, Vec3 scl, float lgh, bool conn, Transform* tr, ArmatureBone* par) : 
+	id(id), restPosition(pos), restRotation(rot), restScale(scl), restMatrix(MatFunc::FromTRS(pos, rot, scl)),
+	restMatrixInv(glm::inverse(restMatrix)), restMatrixAInv(par? restMatrixInv*par->restMatrixAInv : restMatrixInv), length(lgh), connected(conn), tr(tr), name(tr->object->name), parent(par) {}
 #define _dw 0.1f
 const Vec3 ArmatureBone::boneVecs[6] = {
 	Vec3(0, 0, 0),
@@ -1217,7 +1217,7 @@ void Armature::AddBone(std::ifstream& strm, std::vector<ArmatureBone*>& bones, s
 	std::vector<ArmatureBone*>& bnv = (prt)? prt->_children : bones;
 	SceneObject* scp = (prt) ? prt->tr->object : o;
 	SceneObject* oo = new SceneObject(nm, pos, rot, Vec3(1.0f));
-	ArmatureBone* bn = new ArmatureBone(id++, (prt) ? pos + Vec3(0, 0, 1)*prt->length : pos, rot, Vec3(1.0f), glm::length(tal-pos), (mask & 0xf0) != 0, &oo->transform);
+	ArmatureBone* bn = new ArmatureBone(id++, (prt) ? pos + Vec3(0, 0, 1)*prt->length : pos, rot, Vec3(1.0f), glm::length(tal-pos), (mask & 0xf0) != 0, &oo->transform, prt);
 	bnv.push_back(bn);
 	scp->AddChild(oo);
 	blist.push_back(bn);
@@ -1250,8 +1250,9 @@ void Armature::GenMap(ArmatureBone* b) {
 void Armature::UpdateMats(ArmatureBone* b) {
 	auto& bn = b ? b->_children : _bones;
 	for (auto bb : bn) {
-		Mat4x4 pari = glm::inverse(bb->tr->object->parent->transform.worldMatrix());
-		bb->animMatrix = bb->tr->worldMatrix()*bb->restMatrixInv*pari;
+		if (bb->parent) bb->newMatrix = bb->parent->newMatrix * bb->tr->_localMatrix;
+		else bb->newMatrix = bb->tr->_localMatrix;
+		bb->animMatrix = bb->newMatrix*bb->restMatrixAInv;
 		UpdateMats(bb);
 	}
 }

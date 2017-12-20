@@ -83,6 +83,7 @@ public:
 	friend class EB_Viewer;
 	friend class EB_Inspector;
 	friend struct Editor_PlaySyncer;
+	friend class Armature;
 	friend void DrawSceneObjectsOpaque(EB_Viewer*, const std::vector<SceneObject*>&);
 	friend void DrawSceneObjectsGizmos(EB_Viewer*, const std::vector<SceneObject*>&);
 private:
@@ -872,14 +873,16 @@ public:
 	float const length;
 	bool const connected;
 	const Mat4x4 restMatrix, restMatrixInv;
-	Mat4x4 animMatrix;
+	const Mat4x4 restMatrixAInv;
+	Mat4x4 newMatrix, animMatrix;
 	string const name;
 	uint const id;
 	const std::vector<ArmatureBone*>& children() { return _children; }
+	const ArmatureBone* parent;
 
 	friend class Armature;
 protected:
-	ArmatureBone(uint id, Vec3 pos, Quat rot, Vec3 scl, float lgh, bool conn, Transform* tr);
+	ArmatureBone(uint id, Vec3 pos, Quat rot, Vec3 scl, float lgh, bool conn, Transform* tr, ArmatureBone* par);
 	
 	static const Vec3 boneVecs[6];
 	static const uint boneIndices[24];
