@@ -657,11 +657,11 @@ protected:
 
 	static GLuint _vbos[2]; //vertex, normal
 	std::vector<std::array<std::pair<ArmatureBone*, float>, 4>> weights;
-	std::vector<Mat4x4> mats;
+	std::vector<float> wets;
+	std::vector<float> wids;
 
 	static void Init();
 	void InitWeights();
-	void EvalMats();
 	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0);
 
 	Mesh* _mesh;
@@ -861,7 +861,7 @@ protected:
 };
 
 #define COMP_ARM 0x30
-#define ARMATURE_MAX_BONES 255
+#define ARMATURE_MAX_BONES 128
 class ArmatureBone {
 public:
 
@@ -925,6 +925,7 @@ protected:
 	ASSETID _anim;
 	std::vector<ArmatureBone*> _bones;
 	std::unordered_map<string, ArmatureBone*> _bonemap;
+	Mat4x4 _animMatrices[ARMATURE_MAX_BONES];
 	
 	static void AddBone(std::ifstream&, std::vector<ArmatureBone*>&, std::vector<ArmatureBone*>&, SceneObject*, uint&);
 	void GenMap(ArmatureBone* b = nullptr);

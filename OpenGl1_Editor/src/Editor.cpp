@@ -687,7 +687,7 @@ void DrawSceneObjectsOpaque(EB_Viewer* ebv, const std::vector<SceneObject*>& oo)
 		glMultMatrixf(glm::value_ptr(sc->transform._localMatrix));
 		for (Component* com : sc->_components)
 		{
-			if (com->componentType == COMP_MRD || com->componentType == COMP_CAM)
+			if (com->componentType == COMP_MRD || com->componentType == COMP_SRD || com->componentType == COMP_CAM)
 				com->DrawEditor(ebv);
 		}
 		DrawSceneObjectsOpaque(ebv, sc->children);
