@@ -1469,6 +1469,7 @@ void Debug::Warning(string c, string s) {
 	*stream << "[w]" << c << ": " << s << std::endl;
 #endif
 	std::cout << "[w]" << c << ": " << s << std::endl;
+	Editor::instance->_Warning(c, s);
 }
 void Debug::Error(string c, string s) {
 #ifndef IS_EDITOR

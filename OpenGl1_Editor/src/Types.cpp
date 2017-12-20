@@ -58,9 +58,9 @@ Quat QuatFunc::LookAt(const Vec3& tarr, const Vec3& up) {
 	if (dot(tr, tar) < 0) angle *= -1;
 	Quat q1 = FromAxisAngle(axis, angle);
 
-	Vec3 mup = QuatFunc::ToMatrix(q1)*Vec4(0, 1, 0, 0);
+	Vec3 mup = q1*Vec3(0,1,0);//QuatFunc::ToMatrix(q1)*Vec4(0, 1, 0, 0);
 	Vec3 up2 = Normalize(cross(tar, cross(up, tar)));
-	std::cout << "  " << to_string(mup) << to_string(up2) << std::endl;
+	//std::cout << "  " << to_string(mup) << to_string(up2) << std::endl;
 	float angle2 = rad2deg*acos(dot(mup, up2));
 	if (dot(cross(mup, tar), up2) > 0) angle2 *= -1;
 	Quat q2 = FromAxisAngle(tar, angle2);

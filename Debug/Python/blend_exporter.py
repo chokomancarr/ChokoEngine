@@ -111,6 +111,7 @@ class KTMExporter():
         #self.execute_anim(dirr + name + "_blend\\")
     
     def export_arm(self, file2, obj, dirr, name):
+        obj.data.pose_position = 'REST'
         self.write(file2, "arm " + obj.name)
         if obj.parent:
             self.write(file2, " \x00prt " + obj.parent.name)
@@ -126,6 +127,7 @@ class KTMExporter():
         self.write(file, "ARM\x00")
         self.write_bone(file, obj.data.bones)
         file.close()
+        obj.data.pose_position = 'POSE'
     
     def write_bone(self, file, bones):
         for bone in bones:

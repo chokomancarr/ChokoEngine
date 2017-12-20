@@ -565,7 +565,8 @@ void SkinnedMeshRenderer::InitWeights() {
 			}
 		}
 	}
-	if (!!noweights.size()) Debug::Warning("SMR", to_string(noweights.size()) + " vertices have no weights assigned!");
+	if (!!noweights.size()) 
+		Debug::Warning("SMR", to_string(noweights.size()) + " vertices have no weights assigned!");
 }
 
 void SkinnedMeshRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
@@ -1138,7 +1139,7 @@ const Vec3 ArmatureBone::boneCol = Vec3(0.6f, 0.6f, 0.6f);
 const Vec3 ArmatureBone::boneSelCol = Vec3(1, 190.0f/255, 0);
 
 Armature::Armature(string path, SceneObject* o) : Component("Armature", COMP_ARM, DRAWORDER_OVERLAY, o), overridePos(false), restPosition(o->transform.position()), restRotation(o->transform.rotation()), restScale(o->transform.localScale()), _anim(-1) {
-	std::ifstream strm(path);
+	std::ifstream strm(path, std::ios::binary);
 	if (!strm.is_open()) {
 		Debug::Error("Armature", "File not found!");
 		return;
@@ -1155,8 +1156,10 @@ Armature::Armature(string path, SceneObject* o) : Component("Armature", COMP_ARM
 	char b = strm.get();
 	uint i = 0;
 	while (b == 'B') {
+		//std::cout << " >" << to_string(strm.tellg());
 		AddBone(strm, _bones, boneList, object, i);
 		b = strm.get();
+		//std::cout << " " << to_string(strm.tellg()) << std::endl;
 	}
 	GenMap();
 	Scene::active->_preRenderComps.push_back(this);
@@ -1192,6 +1195,7 @@ void Armature::AddBone(std::ifstream& strm, std::vector<ArmatureBone*>& bones, s
 	char* c = new char[100];
 	strm.getline(c, 100, 0);
 	string nm = string(c);
+	//std::cout << "b> " << nm << std::endl;
 	strm.getline(c, 100, 0);
 	string pr = string(c);
 	ArmatureBone* prt = nullptr;
@@ -1224,6 +1228,7 @@ void Armature::AddBone(std::ifstream& strm, std::vector<ArmatureBone*>& bones, s
 	bnv.push_back(bn);
 	scp->AddChild(oo);
 	blist.push_back(bn);
+	std::cout << nm << " " << scp->name << " " << to_string((tal - pos)) << to_string(fwd) << std::endl;
 	if (prt) {
 		//std::cout << " " << to_string((tal - pos)) << to_string(fwd) << std::endl;
 		oo->transform.localRotation(rot);
