@@ -861,6 +861,29 @@ void EB_Viewer::Draw() {
 
 	//Color::DrawPicker(150, 50, editor->cc);
 	glPopMatrix();
+	glScalef(0.1f, 0.1f, 0.1f);
+
+
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, Scene::active->posSSBO);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, Scene::active->velSSBO);
+	glUseProgram(Scene::active->computeprog);
+	glDispatchCompute(16, 16, 1);
+	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, 0);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, 0);
+
+
+	glBindBuffer(GL_ARRAY_BUFFER, Scene::active->posSSBO);
+	glUseProgram(0);
+
+	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+	glPointSize(2);
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(3, GL_FLOAT, 16, 0);
+	glDrawArrays(GL_POINTS, 0, 512*512);
+	glDisableClientState(GL_VERTEX_ARRAY);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();

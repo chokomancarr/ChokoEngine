@@ -49,6 +49,10 @@ void KillSplash();
 //	MessageBox(hwnd, "aaa", "title", MB_OK);
 //}
 
+const uint particlecount = 512 * 512;
+GLuint posSSBO, velSSBO;
+
+
 char Get(std::istream& strm) {
 	char c;
 	strm.read(&c, 1);
@@ -132,6 +136,8 @@ int main(int argc, char **argv)
 	}
 
 	Engine::Init(path);
+	Editor::instance->activeScene = new Scene();
+	Scene::active = Editor::instance->activeScene;
 	editor->LoadDefaultAssets();
 	editor->ReloadAssets(editor->projectFolder + "Assets\\", true);
 	editor->ReadPrefs();
@@ -164,15 +170,71 @@ int main(int argc, char **argv)
 	updateThread = std::thread(UpdateLoop);
 	atexit(OnDie);
 
-	glutPositionWindow(info.rcMonitor.left + editor->scrW/2 - 512, info.rcMonitor.top + editor->scrH / 2 - 300);
-	glutShowWindow();
-	KillSplash();
-
-	Editor::instance->activeScene = new Scene();
-	Scene::active = Editor::instance->activeScene;
 
 	//vt = new VideoTexture("D:\\bg.mp4");
 
+	glGenBuffers(1, &posSSBO);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, posSSBO);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, particlecount * sizeof(Vec4), NULL, GL_STATIC_DRAW);
+	GLint bufmask = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT;
+	Vec4* pts = (Vec4*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, particlecount * sizeof(Vec4), bufmask);
+	for (uint a = 0; a < particlecount; a++) {
+		pts[a].x = Random::Range(-10, 10);
+		pts[a].y = Random::Range(-2, 2);
+		pts[a].z = Random::Range(-10, 10);
+	}
+	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+	Scene::active->posSSBO = posSSBO;
+
+	glGenBuffers(1, &velSSBO);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, velSSBO);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, particlecount * sizeof(Vec4), NULL, GL_STATIC_DRAW);
+	Vec4* vls = (Vec4*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, particlecount * sizeof(Vec4), bufmask);
+	for (uint a = 0; a < particlecount; a++) {
+		vls[a].x = Random::Range(-5, 5);
+		vls[a].y = 0;// Random::Range(-5, 5);
+		vls[a].z = Random::Range(-5, 5);
+		vls[a] *= 50.0f;
+	}
+	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+	Scene::active->velSSBO = velSSBO;
+
+
+	auto computeprog = glCreateProgram();
+
+	// Create and compile the compute shader
+
+	GLuint mComputeShader = glCreateShader(GL_COMPUTE_SHADER);
+	auto txt = IO::GetText("D:\\test.compute");
+	std::cout << txt << std::endl;
+	auto c_str = txt.c_str();
+	char err[500];
+	glShaderSource(mComputeShader, 1, &c_str, NULL);
+	glCompileShader(mComputeShader);
+	int rvalue, length;
+	glGetShaderiv(mComputeShader, GL_COMPILE_STATUS, &rvalue);
+	if (!rvalue)
+	{
+		glGetShaderInfoLog(mComputeShader, 500, &length, err);
+		std::cout << string(err);
+	}
+	glAttachShader(computeprog, mComputeShader);
+	glLinkProgram(computeprog);
+	glGetProgramiv(computeprog, GL_LINK_STATUS, &rvalue);
+	if (!rvalue)
+	{
+		glGetProgramInfoLog(computeprog, 500, &length, err);
+		std::cout << string(err);
+	}
+	glDetachShader(computeprog, mComputeShader);
+	glDeleteShader(mComputeShader);
+	Scene::active->computeprog = computeprog;
+
+
+	glutPositionWindow(info.rcMonitor.left + editor->scrW / 2 - 512, info.rcMonitor.top + editor->scrH / 2 - 300);
+	glutShowWindow();
+	KillSplash();
+	
 	glutMainLoop();
 	return 0;
 }
