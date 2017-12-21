@@ -58,15 +58,15 @@ Quat QuatFunc::LookAt(const Vec3& tarr, const Vec3& up) {
 	Vec3 tr = cross(axis, fw);
 	if (dot(tr, tar) < 0) angle *= -1;
 	Quat q1 = FromAxisAngle(axis, angle);
+	if (abs(angle) < 0.000001f) q1 = Quat();
 
 	Vec3 mup = q1*Vec3(0, 1, 0);//QuatFunc::ToMatrix(q1)*Vec4(0, 1, 0, 0);
 	Vec3 mrt = q1*Vec3(1, 0, 0);
-	//Vec3 mrt = Normalize(cross(mup, tar)); //we might not need to normalize this
 	Vec3 rt = Normalize(cross(up, tar));
-	//std::cout << "  " << to_string(mup) << to_string(up2) << std::endl;
 	float angle2 = rad2deg*acos(Clamp(dot(mrt, rt), -1, 1));
 	if (dot(mup, rt) < 0) angle2 *= -1;
 	Quat q2 = FromAxisAngle(tar, angle2);
+	if (abs(angle2) < 0.000001f) q2 = Quat();
 
 	return q2 * q1;
 }
