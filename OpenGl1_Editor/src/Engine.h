@@ -823,9 +823,6 @@ public:
 	static void AddObject(SceneObject* object, SceneObject* parent = nullptr);
 	static void DeleteObject(SceneObject* object);
 
-	GLuint posSSBO, velSSBO;
-	GLuint computeprog;
-
 	friend int main(int argc, char **argv);
 	friend class Editor;
 	friend struct Editor_PlaySyncer;

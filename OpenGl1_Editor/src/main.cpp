@@ -16,6 +16,8 @@
 #include "Xml.h"
 #include <gl/GLUT.h>
 
+#include "MD.h"
+
 void TimerGL(int i);
 void MouseGL(int button, int state, int x, int y);
 void MotionGL(int x, int y);
@@ -48,9 +50,6 @@ void KillSplash();
 //{
 //	MessageBox(hwnd, "aaa", "title", MB_OK);
 //}
-
-const uint particlecount = 512 * 512;
-GLuint posSSBO, velSSBO;
 
 
 char Get(std::istream& strm) {
@@ -86,9 +85,12 @@ int main(int argc, char **argv)
 	DefaultResources::Init(editor->dataPath + "res\\defaultresources.bin");
 	editor->xPoss.push_back(0);
 	editor->xPoss.push_back(1);
-	editor->xPoss.push_back(0.75f);
-	editor->xPoss.push_back(0.63f);
-	editor->xPoss.push_back(0.4f);
+	editor->xPoss.push_back(0.95f);
+	editor->xPoss.push_back(0.9f);
+	editor->xPoss.push_back(0.1f);
+	//editor->xPoss.push_back(0.75f);
+	//editor->xPoss.push_back(0.63f);
+	//editor->xPoss.push_back(0.4f);
 	editor->xLimits.push_back(Int2(0, 1));
 	editor->xLimits.push_back(Int2(0, 1));
 	editor->xLimits.push_back(Int2(0, 1));
@@ -97,7 +99,8 @@ int main(int argc, char **argv)
 
 	editor->yPoss.push_back(0);
 	editor->yPoss.push_back(1);
-	editor->yPoss.push_back(0.65f);
+	//editor->yPoss.push_back(0.65f);
+	editor->yPoss.push_back(0.95f);
 	editor->yLimits.push_back(Int2(0, 1));
 	editor->yLimits.push_back(Int2(0, 1));
 	editor->yLimits.push_back(Int2(0, 2));
@@ -173,62 +176,7 @@ int main(int argc, char **argv)
 
 	//vt = new VideoTexture("D:\\bg.mp4");
 
-	glGenBuffers(1, &posSSBO);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, posSSBO);
-	glBufferData(GL_SHADER_STORAGE_BUFFER, particlecount * sizeof(Vec4), NULL, GL_STATIC_DRAW);
-	GLint bufmask = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT;
-	Vec4* pts = (Vec4*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, particlecount * sizeof(Vec4), bufmask);
-	for (uint a = 0; a < particlecount; a++) {
-		pts[a].x = Random::Range(-10, 10);
-		pts[a].y = Random::Range(-2, 2);
-		pts[a].z = Random::Range(-10, 10);
-	}
-	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
-	Scene::active->posSSBO = posSSBO;
-
-	glGenBuffers(1, &velSSBO);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, velSSBO);
-	glBufferData(GL_SHADER_STORAGE_BUFFER, particlecount * sizeof(Vec4), NULL, GL_STATIC_DRAW);
-	Vec4* vls = (Vec4*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, particlecount * sizeof(Vec4), bufmask);
-	for (uint a = 0; a < particlecount; a++) {
-		vls[a].x = Random::Range(-5, 5);
-		vls[a].y = 0;// Random::Range(-5, 5);
-		vls[a].z = Random::Range(-5, 5);
-		vls[a] *= 50.0f;
-	}
-	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
-	Scene::active->velSSBO = velSSBO;
-
-
-	auto computeprog = glCreateProgram();
-
-	// Create and compile the compute shader
-
-	GLuint mComputeShader = glCreateShader(GL_COMPUTE_SHADER);
-	auto txt = IO::GetText("D:\\test.compute");
-	std::cout << txt << std::endl;
-	auto c_str = txt.c_str();
-	char err[500];
-	glShaderSource(mComputeShader, 1, &c_str, NULL);
-	glCompileShader(mComputeShader);
-	int rvalue, length;
-	glGetShaderiv(mComputeShader, GL_COMPILE_STATUS, &rvalue);
-	if (!rvalue)
-	{
-		glGetShaderInfoLog(mComputeShader, 500, &length, err);
-		std::cout << string(err);
-	}
-	glAttachShader(computeprog, mComputeShader);
-	glLinkProgram(computeprog);
-	glGetProgramiv(computeprog, GL_LINK_STATUS, &rvalue);
-	if (!rvalue)
-	{
-		glGetProgramInfoLog(computeprog, 500, &length, err);
-		std::cout << string(err);
-	}
-	glDetachShader(computeprog, mComputeShader);
-	glDeleteShader(mComputeShader);
-	Scene::active->computeprog = computeprog;
+	(new MD(10, 1, 1))->InitProg("D:\\md.compute");
 
 
 	glutPositionWindow(info.rcMonitor.left + editor->scrW / 2 - 512, info.rcMonitor.top + editor->scrH / 2 - 300);
@@ -411,6 +359,8 @@ void renderScene()
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
 		DrawOverlay();
+
+		MD::me->DrawUI();
 
 		glutSwapBuffers();
 		redrawn = true;
