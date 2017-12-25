@@ -159,6 +159,8 @@ xcopy /y "$(SolutionDir)Debug\Library\include\*" "D:\TestProject2\System\"</Comm
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="hdr\hdr.h" />
+    <ClInclude Include="png\lodepng.h" />
     <ClInclude Include="src\Compressors.h" />
     <ClInclude Include="src\Defines.h" />
     <ClInclude Include="src\Editor.h" />

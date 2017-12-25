@@ -1,5 +1,6 @@
-#ifndef HDR_H
-#define HDR_H
+#pragma once
+
+#define _ITERATOR_DEBUG_LEVEL 0
 #include <iostream>
 #include <fstream>
 
@@ -8,5 +9,3 @@ public:
 	static const char* szSignature, *szFormat;
 	static unsigned char * read_hdr(const char *filename, unsigned int *w, unsigned int *h);
 };
-
-#endif

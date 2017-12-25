@@ -1126,6 +1126,7 @@ Background::Background(byte* mem) : AssetObject(ASSETTYPE_HDRI) {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	loaded = true;
+#undef RD
 }
 
 void Background::GenECache(const std::vector<Vec2>& szs, const std::vector<RenderTexture*>& rts) {

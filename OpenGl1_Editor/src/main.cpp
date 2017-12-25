@@ -1,4 +1,5 @@
 #define _USE_MATH_DEFINES
+#define _ITERATOR_DEBUG_LEVEL 0
 #include <math.h>
 #include <iostream>
 #include <ctime>
@@ -176,7 +177,7 @@ int main(int argc, char **argv)
 
 	//vt = new VideoTexture("D:\\bg.mp4");
 
-	(new MD(10, 1, 1))->InitProg("D:\\md.compute");
+	(new MD(4, 1, 1))->InitProg("D:\\md.compute");
 
 
 	glutPositionWindow(info.rcMonitor.left + editor->scrW / 2 - 512, info.rcMonitor.top + editor->scrH / 2 - 300);

@@ -26,6 +26,7 @@ freely, subject to the following restrictions:
 #ifndef LODEPNG_H
 #define LODEPNG_H
 
+#define _ITERATOR_DEBUG_LEVEL 0
 #include <string.h> /*for size_t*/
 
 extern const char* LODEPNG_VERSION_STRING;

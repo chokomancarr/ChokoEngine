@@ -1712,12 +1712,14 @@ vector<T> vec; vec->[iterator??][pointer to first element]
 template <typename T>
 bool EPS_ReadVec(std::vector<T>& vec, uint& sz, Editor_PlaySyncer* syncer, uint loc) {
 	assert(!!loc);
-	uint loc2 = 0;
-	if (!EPS_RWMem(false, syncer, &sz, loc - 4)) return false;
-	vec.resize(sz);
+	byte* a = new byte[sizeof(std::vector<T>)];
+	if (!EPS_RWMem(false, syncer, a, loc, sizeof(std::vector<T>))) return false;
+	sz = ((std::vector<T>*)a)->size();
 	if (!sz) return true;
-	if (!EPS_RWMem(false, syncer, &loc2, loc)) return false;
-	return (EPS_RWMem(false, syncer, &vec[0], loc2, sizeof(T) * sz));
+	vec.resize(sz);
+	bool ok = EPS_RWMem(false, syncer, &vec[0], (uint)((std::vector<T>*)a)->data(), sizeof(T) * sz);
+	delete[](a);
+	return ok;
 }
 
 bool EPS_ReadStr(std::string* str, Editor_PlaySyncer* syncer, uint loc, ushort maxSz = 100) {

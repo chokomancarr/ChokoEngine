@@ -1,4 +1,5 @@
 #pragma once
+#define _ITERATOR_DEBUG_LEVEL 0
 
 #include <gl/glew.h>
 #include <string>
