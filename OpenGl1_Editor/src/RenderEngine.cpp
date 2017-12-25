@@ -95,7 +95,7 @@ RenderTexture::~RenderTexture() {
 	glDeleteFramebuffers(1, &d_fbo);
 }
 
-void RenderTexture::Blit(Texture* src, RenderTexture* dst, ShaderBase* shd, string texName) {
+void RenderTexture::Blit(Texture* src, RenderTexture* dst, Shader* shd, string texName) {
 	if (src == nullptr || dst == nullptr || shd == nullptr) {
 		Debug::Warning("Blit", "Parameter is null!");
 		return;
@@ -241,13 +241,13 @@ void EB_Previewer::_InitDebugPrograms() {
 		std::ifstream strm("D:\\lightPassVert.txt");
 		std::stringstream vert, frag;
 		vert << strm.rdbuf();
-		if (!ShaderBase::LoadShader(GL_VERTEX_SHADER, vert.str(), vs, &error)) {
+		if (!Shader::LoadShader(GL_VERTEX_SHADER, vert.str(), vs, &error)) {
 			Debug::Error("Previewer", "Cannot init lumi shader(v)! " + error);
 		}
 		strm.close();
 		strm = std::ifstream("D:\\expVisFrag.txt");
 		frag << strm.rdbuf();
-		if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, frag.str(), fs, &error)) {
+		if (!Shader::LoadShader(GL_FRAGMENT_SHADER, frag.str(), fs, &error)) {
 			Debug::Error("Previewer", "Cannot init lumi shader(f)! " + error);
 		}
 		lumiProgram = glCreateProgram();

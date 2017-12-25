@@ -96,7 +96,7 @@ void Camera::ApplyGL() {
 void Camera::GenShaderFromPath(const string& pathv, const string& pathf, GLuint* program) {
 	GLuint vertex_shader;
 	std::string err;
-	if (!ShaderBase::LoadShader(GL_VERTEX_SHADER, DefaultResources::GetStr(pathv), vertex_shader, &err)) {
+	if (!Shader::LoadShader(GL_VERTEX_SHADER, DefaultResources::GetStr(pathv), vertex_shader, &err)) {
 		Debug::Error("Cam Shader Compiler", pathv + "! " + err);
 		abort();
 	}
@@ -115,7 +115,7 @@ void Camera::GenShaderFromPath(GLuint vertex_shader, const string& path, GLuint*
 	std::stringstream ss;
 	ss << strm.rdbuf();
 	*/
-	if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, DefaultResources::GetStr(path), fragment_shader, &err)) {
+	if (!Shader::LoadShader(GL_FRAGMENT_SHADER, DefaultResources::GetStr(path), fragment_shader, &err)) {
 		Debug::Error("Cam Shader Compiler", path + "! " + err);
 		abort();
 	}
@@ -147,7 +147,7 @@ void Camera::InitShaders() {
 	GLuint vertex_shader;
 	string err = "";
 
-	if (!ShaderBase::LoadShader(GL_VERTEX_SHADER, DefaultResources::GetStr("lightPassVert.txt"), vertex_shader, &err)) {
+	if (!Shader::LoadShader(GL_VERTEX_SHADER, DefaultResources::GetStr("lightPassVert.txt"), vertex_shader, &err)) {
 		Debug::Error("Cam Shader Compiler", "v! " + err);
 		abort();
 	}
@@ -661,7 +661,7 @@ void SkinnedMeshRenderer::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 		glEnableVertexAttribArray(6);
 		glEnableVertexAttribArray(7);
 		glEnableVertexAttribArray(8);
-		auto bml = glGetUniformLocation(materials[0]->shader->pointer, "bonemats");
+		auto bml = glGetUniformLocation(materials[0]->_shader->pointer, "bonemats");
 		glUniformMatrix4fv(bml, ARMATURE_MAX_BONES, GL_FALSE, glm::value_ptr(armature->_animMatrices[0]));
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &(_mesh->vertices[0]));
 		glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, &(_mesh->uv0[0]));

@@ -866,7 +866,7 @@ void EB_Viewer::Draw() {
 
 	MD::me->Update();
 
-	glBindBuffer(GL_ARRAY_BUFFER, MD::me->posSSBO);
+	glBindBuffer(GL_ARRAY_BUFFER, MD::me->psb->pointer);
 	glUseProgram(0);
 
 	glTranslatef(-MD::me->wall / 2, -MD::me->wall / 2, -MD::me->wall / 2);
@@ -1236,7 +1236,7 @@ void EBI_DrawAss_Tex(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 void EBI_DrawAss_Mat(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 	Material* mat = (Material*)editor->selectedFileCache;
 	UI::Label(v.r + 18, off + 17, 12, "Shader", editor->font, white());
-	editor->DrawAssetSelector(v.r + v.b*0.25f, off + 15, v.b*0.75f - 1, 16, grey1(), ASSETTYPE_SHADER, 12, editor->font, &mat->_shader, &EB_Inspector::_ApplyMatShader, mat);
+	editor->DrawAssetSelector(v.r + v.b*0.25f, off + 15, v.b*0.75f - 1, 16, grey1(), ASSETTYPE_SHADER, 12, editor->font, &mat->_shaderId, &EB_Inspector::_ApplyMatShader, mat);
 	off += 34;
 	for (uint q = 0, qq = mat->valOrders.size(); q < qq; q++) {
 		int r = 0;
@@ -1453,7 +1453,7 @@ void EB_Inspector::_ApplyTexFilter2(EditorBlock* b) {
 
 void EB_Inspector::_ApplyMatShader(void* v) {
 	Material* mat = (Material*)v;
-	mat->shader = _GetCache<ShaderBase>(ASSETTYPE_SHADER, mat->_shader);
+	mat->_shader = _GetCache<Shader>(ASSETTYPE_SHADER, mat->_shaderId);
 	mat->_ReloadParams();
 	mat->Save(Editor::instance->selectedFilePath);
 }
@@ -3157,7 +3157,7 @@ bool Editor::ParseAsset(string path) {
 	string p = (path + ".meta");
 	SetFileAttributes(p.c_str(), FILE_ATTRIBUTE_NORMAL);
 	if (ext == "shade") {
-		ok = ShaderBase::Parse(&stream, path + ".meta");
+		ok = Shader::Parse(&stream, path + ".meta");
 	}
 	else if (ext == "blend"){
 		ok = Mesh::ParseBlend(this, path);
@@ -3277,7 +3277,7 @@ AssetObject* Editor::GenCache(ASSETTYPE type, int i) {
 		normalAssetCaches[type][i] = new Animator(pth);
 		break;
 	case ASSETTYPE_SHADER:
-		normalAssetCaches[type][i] = new ShaderBase(pth + ".meta");
+		normalAssetCaches[type][i] = new Shader(pth + ".meta");
 		break;
 	case ASSETTYPE_MATERIAL:
 		normalAssetCaches[type][i] = new Material(pth);

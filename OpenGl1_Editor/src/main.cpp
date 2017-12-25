@@ -177,7 +177,7 @@ int main(int argc, char **argv)
 
 	//vt = new VideoTexture("D:\\bg.mp4");
 
-	(new MD(4, 1, 1))->InitProg("D:\\md.compute");
+	new MD("D:\\md.compute", 4, 1, 1);
 
 
 	glutPositionWindow(info.rcMonitor.left + editor->scrW / 2 - 512, info.rcMonitor.top + editor->scrH / 2 - 300);

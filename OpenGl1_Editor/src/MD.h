@@ -4,8 +4,7 @@
 class MD {
 public:
 	static MD* me;
-	MD(uint c, float d, float t);
-	void InitProg(string path);
+	MD(const string& path, uint c, float d, float t);
 	void Update();
 	void DrawUI();
 
@@ -13,6 +12,9 @@ public:
 	uint pei, pen;
 	Vec2 per;
 	float pe;
+
+	IComputeBuffer* frb, *psb, *vlb, *prb, *rdb;
+	ComputeShader* shader;
 
 	Vec3 rdf[40];
 

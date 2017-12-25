@@ -357,7 +357,7 @@ public:
 
 	const bool depth, stencil, hdr;
 
-	static void Blit(Texture* src, RenderTexture* dst, ShaderBase* shd, string texName = "mainTex");
+	static void Blit(Texture* src, RenderTexture* dst, Shader* shd, string texName = "mainTex");
 	static void Blit(Texture* src, RenderTexture* dst, Material* mat, string texName = "mainTex");
 	static void Blit(GLuint src, RenderTexture* dst, GLuint shd, string texName = "mainTex");
 

@@ -457,10 +457,10 @@ void Engine::Init(string path) {
 	string fragcode3 = "#version 330 core\nin vec2 UV;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = col;\n}";
 	string fragcodeSky = "in vec2 UV;uniform sampler2D sampler;uniform vec2 dir;uniform float length;out vec4 color;void main(){float ay = asin((UV.y) / length);float l2 = length*cos(ay);float ax = asin((dir.x + UV.x) / l2);color = textureLod(sampler, vec2((dir.x + ax / 3.14159)*sin(dir.y + ay / 3.14159) + 0.5, (dir.y + ay / 3.14159)), 0);color.a = 1;}";
 
-	unlitProgram = ShaderBase::FromVF(vertcode, fragcode);
-	unlitProgramA = ShaderBase::FromVF(vertcode, fragcode2);
-	unlitProgramC = ShaderBase::FromVF(vertcode, fragcode3);
-	skyProgram = ShaderBase::FromVF(vertcode, fragcodeSky);
+	unlitProgram = Shader::FromVF(vertcode, fragcode);
+	unlitProgramA = Shader::FromVF(vertcode, fragcode2);
+	unlitProgramC = Shader::FromVF(vertcode, fragcode3);
+	skyProgram = Shader::FromVF(vertcode, fragcodeSky);
 	ScanQuadParams();
 
 #ifdef IS_EDITOR
@@ -468,10 +468,10 @@ void Engine::Init(string path) {
 	//string colorPickerF = "#version 330 core\nin vec2 UV;\nuniform vec3 col;\nout vec4 color;void main(){\ncolor = vec4(mix(mix(col, vec3(1, 1, 1), UV.x), vec3(0, 0, 0), 1-UV.y), 1);\n}";
 
 	std::vector<string> s2 = string_split(DefaultResources::GetStr("e_colorPickerSV.txt"), '$');
-	Color::pickerProgSV = ShaderBase::FromVF(s2[0], s2[1]);
+	Color::pickerProgSV = Shader::FromVF(s2[0], s2[1]);
 
 	std::vector<string> s22 = string_split(DefaultResources::GetStr("e_colorPickerH.txt"), '$');
-	Color::pickerProgH = ShaderBase::FromVF(s22[0], s22[1]);
+	Color::pickerProgH = Shader::FromVF(s22[0], s22[1]);
 #endif
 }
 
@@ -1711,11 +1711,11 @@ void Font::Init() {
 	string error;
 	GLuint vs, fs;
 	string frag = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = vec4(1, 1, 1, texture(sampler, UV).r)*col;\n}";
-	if (!ShaderBase::LoadShader(GL_VERTEX_SHADER, DefaultResources::GetStr("fontVert.txt"), vs, &error)) {
+	if (!Shader::LoadShader(GL_VERTEX_SHADER, DefaultResources::GetStr("fontVert.txt"), vs, &error)) {
 		Debug::Error("Engine", "Fatal: Cannot init font shader(v)! " + error);
 		abort();
 	}
-	if (!ShaderBase::LoadShader(GL_FRAGMENT_SHADER, frag, fs, &error)) {
+	if (!Shader::LoadShader(GL_FRAGMENT_SHADER, frag, fs, &error)) {
 		Debug::Error("Engine", "Fatal: Cannot init font shader(f)! " + error);
 		abort();
 	}

@@ -498,7 +498,7 @@ Texture::Texture(int i, Editor* e) : AssetObject(ASSETTYPE_TEXTURE) {
 		if (_mipmap && _blurmips) {
 			uint width_1 = width, height_1 = height, width_2, height_2;
 
-			ShaderBase shd = ShaderBase(Camera::d_blurProgram);
+			Shader shd = Shader(Camera::d_blurProgram);
 			Material mat = Material(&shd);
 
 			rts.push_back(new RenderTexture(width, height, RT_FLAG_NONE, data, (chn==3) ? GL_RGB : GL_RGBA));
@@ -579,7 +579,7 @@ Texture::Texture(std::istream& strm, uint offset) : AssetObject(ASSETTYPE_TEXTUR
 		if (_mipmap && _blurmips) {
 			uint width_1 = width, height_1 = height, width_2, height_2;
 
-			ShaderBase shd = ShaderBase(Camera::d_blurProgram);
+			Shader shd = Shader(Camera::d_blurProgram);
 			Material mat = Material(&shd);
 
 			rts.push_back(new RenderTexture(width, height, RT_FLAG_NONE, data, (chn==3) ? GL_RGB : GL_RGBA));
@@ -915,7 +915,7 @@ Background::Background(const string& path) : width(0), height(0), AssetObject(AS
 
 	uint width_1 = width, height_1 = height, width_2, height_2, mips = 0;
 
-	ShaderBase shd = ShaderBase(Camera::d_blurSBProgram);
+	Shader shd = Shader(Camera::d_blurSBProgram);
 	Material mat = Material(&shd);
 
 	std::vector<RenderTexture*> rts = std::vector<RenderTexture*>();
@@ -984,7 +984,7 @@ Background::Background(int i, Editor* editor) : width(0), height(0), AssetObject
 
 	uint width_1 = width, height_1 = height, width_2, height_2, mips = 0;
 
-	ShaderBase shd = ShaderBase(Camera::d_blurSBProgram);
+	Shader shd = Shader(Camera::d_blurSBProgram);
 	Material mat = Material(&shd);
 
 	std::vector<RenderTexture*> rts = std::vector<RenderTexture*>();
@@ -1052,7 +1052,7 @@ Background::Background(std::istream& strm, uint offset) : width(0), height(0), A
 
 	uint width_1 = width, height_1 = height, width_2, height_2, mips = 0;
 
-	ShaderBase shd = ShaderBase(Camera::d_blurSBProgram);
+	Shader shd = Shader(Camera::d_blurSBProgram);
 	Material mat = Material(&shd);
 
 	std::vector<RenderTexture*> rts = std::vector<RenderTexture*>();
@@ -1182,30 +1182,30 @@ bool Background::Parse(string path) {
 
 #pragma region Material
 
-Material::Material() : _shader(-1), AssetObject(ASSETTYPE_MATERIAL), writeMask(4, true) {
-	shader = nullptr;// Engine::unlitProgram;
+Material::Material() : _shaderId(-1), AssetObject(ASSETTYPE_MATERIAL), writeMask(4, true) {
+	_shader = nullptr;// Engine::unlitProgram;
 }
 
-Material::Material(ShaderBase * shad) : _shader(-1), AssetObject(ASSETTYPE_MATERIAL), writeMask(4, true) {
-	shader = shad;
+Material::Material(Shader * shad) : _shaderId(-1), AssetObject(ASSETTYPE_MATERIAL), writeMask(4, true) {
+	_shader = shad;
 	if (shad == nullptr)
 		return;
 	if (Editor::instance != nullptr)
-		_shader = Editor::instance->GetAssetId(shader);
+		_shaderId = Editor::instance->GetAssetId(_shader);
 	_ReloadParams();
 }
 
-ShaderBase* Material::Shader() {
-	return shader;
+Shader* Material::shader() {
+	return _shader;
 }
-void Material::Shader(ShaderBase* shad) {
-	shader = shad;
+void Material::shader(Shader* shad) {
+	_shader = shad;
 	_ReloadParams();
 }
 
 void Material::_ReloadParams() {
 	ResetVals();
-	for (ShaderVariable* v : shader->vars) {
+	for (ShaderVariable* v : _shader->vars) {
 		void* l = nullptr;
 		if (v->type == SHADER_INT)
 			l = new int();
@@ -1216,7 +1216,7 @@ void Material::_ReloadParams() {
 			((MatVal_Tex*)l)->defTex = defTexs[v->def.i];
 		}
 		valNames[v->type].push_back(v->name);
-		GLint ii = glGetUniformLocation(shader->pointer, v->name.c_str());
+		GLint ii = glGetUniformLocation(_shader->pointer, v->name.c_str());
 		if (ii > -1) {
 			vals[v->type].emplace(ii, l);
 			valOrders.push_back(v->type);
@@ -1253,16 +1253,16 @@ Material::Material(string p) : AssetObject(ASSETTYPE_MATERIAL), writeMask(4, tru
 		return;
 	}
 	ASSETTYPE t;
-	Editor::instance->GetAssetInfo(shp, t, _shader);
-	shader = _GetCache<ShaderBase>(ASSETTYPE_SHADER, _shader);
+	Editor::instance->GetAssetInfo(shp, t, _shaderId);
+	_shader = _GetCache<Shader>(ASSETTYPE_SHADER, _shaderId);
 
-	if (shader == nullptr) {
+	if (!_shader) {
 		delete[](nmm);
 		return;
 	}
 	ResetVals();
 	std::unordered_map<string, GLint> nMap;
-	for (ShaderVariable* v : shader->vars) {
+	for (ShaderVariable* v : _shader->vars) {
 		void* l = nullptr;
 		if (v->type == SHADER_INT)
 			l = new int();
@@ -1273,7 +1273,7 @@ Material::Material(string p) : AssetObject(ASSETTYPE_MATERIAL), writeMask(4, tru
 			((MatVal_Tex*)l)->defTex = defTexs[v->def.i];
 		}
 		valNames[v->type].push_back(v->name);
-		GLint loc = glGetUniformLocation(shader->pointer, v->name.c_str());
+		GLint loc = glGetUniformLocation(_shader->pointer, v->name.c_str());
 		if (loc > -1) {
 			vals[v->type].emplace(loc, l);
 			nMap.emplace(v->name, loc);
@@ -1359,17 +1359,17 @@ Material::Material(std::istream& stream, uint offset) : AssetObject(ASSETTYPE_MA
 		}
 		offset = (uint)stream.tellg();
 		ASSETTYPE t;
-		_shader = AssetManager::GetAssetId(shp, t);
-		shader = _GetCache<ShaderBase>(ASSETTYPE_SHADER, _shader);
+		_shaderId = AssetManager::GetAssetId(shp, t);
+		_shader = _GetCache<Shader>(ASSETTYPE_SHADER, _shaderId);
 		stream.seekg(offset);
 
-		if (shader == nullptr) {
+		if (_shader == nullptr) {
 			delete[](nmm);
 			return;
 		}
 		ResetVals();
 		std::unordered_map<string, GLint> nMap;
-		for (ShaderVariable* v : shader->vars) {
+		for (ShaderVariable* v : _shader->vars) {
 			void* l = nullptr;
 			if (v->type == SHADER_INT)
 				l = new int();
@@ -1378,7 +1378,7 @@ Material::Material(std::istream& stream, uint offset) : AssetObject(ASSETTYPE_MA
 			else if (v->type == SHADER_SAMPLER)
 				l = new MatVal_Tex();
 			valNames[v->type].push_back(v->name);
-			GLint loc = glGetUniformLocation(shader->pointer, v->name.c_str());
+			GLint loc = glGetUniformLocation(_shader->pointer, v->name.c_str());
 			if (loc > -1) {
 				vals[v->type].emplace(loc, l);
 				nMap.emplace(v->name, loc);
@@ -1468,7 +1468,7 @@ void Material::ResetVals() {
 }
 
 void Material::SetTexture(string name, Texture * texture) {
-	SetTexture(glGetUniformLocation(shader->pointer, name.c_str()), texture);
+	SetTexture(glGetUniformLocation(_shader->pointer, name.c_str()), texture);
 }
 void Material::SetTexture(GLint id, Texture * texture) {
 	if (id > -1) {
@@ -1478,7 +1478,7 @@ void Material::SetTexture(GLint id, Texture * texture) {
 }
 
 void Material::SetFloat(string name, float val) {
-	SetFloat(glGetUniformLocation(shader->pointer, name.c_str()), val);
+	SetFloat(glGetUniformLocation(_shader->pointer, name.c_str()), val);
 }
 void Material::SetFloat(GLint id, float val) {
 	if (id > -1)
@@ -1486,7 +1486,7 @@ void Material::SetFloat(GLint id, float val) {
 }
 
 void Material::SetInt(string name, int val) {
-	SetInt(glGetUniformLocation(shader->pointer, name.c_str()), val);
+	SetInt(glGetUniformLocation(_shader->pointer, name.c_str()), val);
 }
 void Material::SetInt(GLint id, int val) {
 	if (id > -1)
@@ -1494,7 +1494,7 @@ void Material::SetInt(GLint id, int val) {
 }
 
 void Material::SetVec2(string name, Vec2 val) {
-	SetVec2(glGetUniformLocation(shader->pointer, name.c_str()), val);
+	SetVec2(glGetUniformLocation(_shader->pointer, name.c_str()), val);
 }
 void Material::SetVec2(GLint id, Vec2 val) {
 	if (id > -1)
@@ -1557,7 +1557,7 @@ void Material::Save(string path) {
 	std::ofstream strm(path.c_str(), std::ios::out | std::ios::binary | std::ios::trunc);
 	strm << "KTC";
 	ASSETTYPE st;
-	ASSETID si = Editor::instance->GetAssetId(shader, st);
+	ASSETID si = Editor::instance->GetAssetId(_shader, st);
 	_StreamWriteAsset(Editor::instance, &strm, ASSETTYPE_SHADER, si);
 	int i = 0, j = 0;
 	SHADER_VARTYPE t = SHADER_INT;
@@ -1600,16 +1600,16 @@ void Material::Save(string path) {
 }
 
 void Material::ApplyGL(Mat4x4& _mv, Mat4x4& _p) {
-	if (shader == nullptr || !shader->loaded) {
+	if (_shader == nullptr || !_shader->loaded) {
 		//Debug::Warning("mat", "no shader " + string((shader) ? "()" : ""));
 		glUseProgram(0);
 		return;
 	}
 	else {
-		glUseProgram(shader->pointer);
-		GLint mv = glGetUniformLocation(shader->pointer, "_M");
-		GLint p = glGetUniformLocation(shader->pointer, "_VP");
-		GLint mvp = glGetUniformLocation(shader->pointer, "_MVP");
+		glUseProgram(_shader->pointer);
+		GLint mv = glGetUniformLocation(_shader->pointer, "_M");
+		GLint p = glGetUniformLocation(_shader->pointer, "_VP");
+		GLint mvp = glGetUniformLocation(_shader->pointer, "_MVP");
 		glUniformMatrix4fv(mv, 1, GL_FALSE, glm::value_ptr(_mv));
 		glUniformMatrix4fv(p, 1, GL_FALSE, glm::value_ptr(_p));
 		glUniformMatrix4fv(mvp, 1, GL_FALSE, glm::value_ptr(_p*_mv));

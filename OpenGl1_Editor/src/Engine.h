@@ -524,14 +524,14 @@ public:
 	float min, max;
 };
 
-class ShaderBase : public AssetObject {
+class Shader : public AssetObject {
 public:
-	ShaderBase(string path);
-	ShaderBase(std::istream& stream, uint offset);
-	ShaderBase(const string& vert, const string& frag);
-	ShaderBase(GLuint p) : AssetObject(ASSETTYPE_SHADER), pointer(p), loaded(!!p), inherited(true) {}
+	Shader(string path);
+	Shader(std::istream& stream, uint offset);
+	Shader(const string& vert, const string& frag);
+	Shader(GLuint p) : AssetObject(ASSETTYPE_SHADER), pointer(p), loaded(!!p), inherited(true) {}
 	//ShaderBase(string vert, string frag);
-	~ShaderBase() {
+	~Shader() {
 		if (!inherited) glDeleteProgram(pointer);
 		for (ShaderVariable* v : vars)
 			delete(v);
@@ -555,6 +555,59 @@ public:
 protected:
 	static GLuint FromVF(const string& vert, const string& frag);
 	bool inherited = false;
+};
+
+class IComputeBuffer {
+public:
+	IComputeBuffer(uint size, void* data);
+
+	GLuint pointer;
+	uint size;
+
+	void Set(void* data);
+	template <typename T> T* Get() {
+		byte* tar = new byte[size];
+		GLint bufmask = GL_MAP_READ_BIT;
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, pointer);
+		void* src = (void*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, 4 * 4, bufmask);
+		if (!src) {
+			Debug::Warning("ComputeBuffer", "Set: Unable to map buffer!");
+		}
+		memcpy(tar, src, size);
+		glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+		return (T*)tar;
+	}
+};
+
+template<typename T> class ComputeBuffer : public IComputeBuffer {
+public:
+	ComputeBuffer(uint num, T* data = nullptr) : IComputeBuffer(num*sizeof(T), data) {}
+
+	void SetData(T* data) {
+		Set(data);
+	}
+	T* GetData() {
+		return Get<T>();
+	}
+};
+
+class ComputeShader {
+public:
+	ComputeShader(string str);
+	~ComputeShader();
+
+	void SetBuffer(uint binding, IComputeBuffer* buf);
+	void SetFloat(string name, const int& val);
+	void SetFloat(string name, const float& val);
+	void SetMatrix(string name, const Mat4x4& val);
+	void SetArray(string name, void* val, uint cnt);
+
+	void Dispatch(uint cx, uint cy, uint xz);
+protected:
+	std::vector<std::pair<GLuint, IComputeBuffer*>> buffers;
+
+	GLuint pointer;
 };
 
 class MatVal_Tex {
@@ -584,11 +637,11 @@ enum DEFTEX : byte {
 class Material : public AssetObject {
 public:
 	Material(void);
-	Material(ShaderBase* shad);
+	Material(Shader* shad);
 	~Material();
 
-	ShaderBase* Shader();
-	void Shader(ShaderBase* shad);
+	Shader* shader();
+	void shader(Shader* shad);
 	//values applied to program on drawing stage
 	std::unordered_map<SHADER_VARTYPE, std::unordered_map <GLint, void*>> vals;
 	std::unordered_map<SHADER_VARTYPE, std::vector<string>> valNames;
@@ -611,7 +664,7 @@ public:
 	friend class SkinnedMeshRenderer;
 	friend class Scene;
 	friend class AssetManager;
-	friend class ShaderBase;
+	friend class Shader;
 	friend class RenderTexture;
 	friend int main(int argc, char **argv);
 	friend void EBI_DrawAss_Mat(Vec4 v, Editor* editor, EB_Inspector* b, float &off);
@@ -620,8 +673,8 @@ protected:
 	Material(std::istream& stream, uint offset = 0);
 	void _ReloadParams();
 
-	ShaderBase* shader;
-	int _shader;
+	Shader* _shader;
+	int _shaderId;
 	std::vector<SHADER_VARTYPE> valOrders;
 	std::vector<byte> valOrderIds;
 	std::vector<byte> valOrderGLIds;

@@ -144,6 +144,7 @@ xcopy /y "$(SolutionDir)Debug\Library\include\*" "D:\TestProject2\System\"</Comm
     <ClCompile Include="png\lodepng.cpp" />
     <ClCompile Include="src\AssetObjects.cpp" />
     <ClCompile Include="src\Compressors.cpp" />
+    <ClCompile Include="src\ComputeShader.cpp" />
     <ClCompile Include="src\Editor.cpp" />
     <ClCompile Include="src\EditorShortcuts.cpp" />
     <ClCompile Include="src\Engine.cpp" />

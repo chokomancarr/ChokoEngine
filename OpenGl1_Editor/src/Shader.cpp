@@ -8,7 +8,9 @@
 #include <fstream>
 #include <limits>
 
-bool ShaderBase::LoadShader(GLenum shaderType, string source, GLuint& shader, string* err) {
+#pragma region Shader
+
+bool Shader::LoadShader(GLenum shaderType, string source, GLuint& shader, string* err) {
 
 	int compile_result = 0;
 
@@ -37,7 +39,7 @@ bool ShaderBase::LoadShader(GLenum shaderType, string source, GLuint& shader, st
 	return true;
 }
 
-ShaderBase::ShaderBase(string p) : AssetObject(ASSETTYPE_SHADER) {
+Shader::Shader(string p) : AssetObject(ASSETTYPE_SHADER) {
 	//string p = Editor::instance->projectFolder + "Assets\\" + path + ".meta";
 	std::ifstream strm(p.c_str(), std::ios::in | std::ios::binary);
 	std::stringstream strm2; //15% faster
@@ -161,7 +163,7 @@ ShaderBase::ShaderBase(string p) : AssetObject(ASSETTYPE_SHADER) {
 	loaded = true;
 }
 
-ShaderBase::ShaderBase(std::istream& stream, uint offset) : AssetObject(ASSETTYPE_SHADER) {
+Shader::Shader(std::istream& stream, uint offset) : AssetObject(ASSETTYPE_SHADER) {
 	string vertex_shader_code = "";
 	string fragment_shader_code = "";
 	//std::ifstream stream(p.c_str());
@@ -281,12 +283,12 @@ ShaderBase::ShaderBase(std::istream& stream, uint offset) : AssetObject(ASSETTYP
 	loaded = true;
 }
 
-ShaderBase::ShaderBase(const string& vert, const string& frag) : AssetObject(ASSETTYPE_SHADER) {
+Shader::Shader(const string& vert, const string& frag) : AssetObject(ASSETTYPE_SHADER) {
 	pointer = FromVF(vert, frag);
 	loaded = true;
 }
 
-GLuint ShaderBase::FromVF(const string& vert, const string& frag) {
+GLuint Shader::FromVF(const string& vert, const string& frag) {
 	GLuint vertex_shader, fragment_shader;
 	string err = "";
 	if (vert != "") {
@@ -339,7 +341,7 @@ VRT
 FRG
 [size(4)][codestring]\0
 */
-bool ShaderBase::Parse(std::ifstream* stream, string path) {
+bool Shader::Parse(std::ifstream* stream, string path) {
 	string a, text;
 	std::vector<string> included;
 	byte readingType = 0;
@@ -639,3 +641,77 @@ bool ShaderBase::Parse(std::ifstream* stream, string path) {
 	strm.close();
 	return true;
 }
+
+#pragma endregion
+
+#pragma region ComputeShader
+
+IComputeBuffer::IComputeBuffer(uint size, void* data) : size(size) {
+	glGenBuffers(1, &pointer);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, pointer);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, size, data, GL_DYNAMIC_READ);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+}
+
+void IComputeBuffer::Set(void* data) {
+	if (!data) {
+		Debug::Warning("ComputeBuffer", "Set: Buffer is null!");
+	}
+	GLint bufmask = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT;
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, pointer);
+	void* tar = (void*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, 4 * 4, bufmask);
+	if (!tar) {
+		Debug::Warning("ComputeBuffer", "Set: Unable to map buffer!");
+	}
+	memcpy(tar, data, size);
+	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+}
+
+ComputeShader::ComputeShader(string str) {
+	pointer = glCreateProgram();
+	GLuint mComputeShader = glCreateShader(GL_COMPUTE_SHADER);
+	auto txt = IO::GetText(str);
+	auto c_str = txt.c_str();
+	char err[500];
+	glShaderSource(mComputeShader, 1, &c_str, NULL);
+	glCompileShader(mComputeShader);
+	int rvalue, length;
+	glGetShaderiv(mComputeShader, GL_COMPILE_STATUS, &rvalue);
+	if (!rvalue)
+	{
+		glGetShaderInfoLog(mComputeShader, 500, &length, err);
+		Debug::Error("ComputeShader", string(err));
+	}
+	glAttachShader(pointer, mComputeShader);
+	glLinkProgram(pointer);
+	glGetProgramiv(pointer, GL_LINK_STATUS, &rvalue);
+	if (!rvalue)
+	{
+		glGetProgramInfoLog(pointer, 500, &length, err);
+		Debug::Error("ComputeShader", string(err));
+	}
+	glDetachShader(pointer, mComputeShader);
+	glDeleteShader(mComputeShader);
+}
+
+ComputeShader::~ComputeShader() {
+
+}
+
+void ComputeShader::SetBuffer(uint binding, IComputeBuffer* buf) {
+	buffers.push_back(std::pair<uint, IComputeBuffer*>(binding, buf));
+}
+
+void ComputeShader::Dispatch(uint cx, uint cy, uint cz) {
+	for (auto& a : buffers)
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, a.first, a.second->pointer);
+	glUseProgram(pointer);
+	glDispatchCompute(cx, cy, cz);
+	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+	glUseProgram(0);
+	for (auto& a : buffers)
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, a.first, 0);
+}
+
+#pragma endregion
