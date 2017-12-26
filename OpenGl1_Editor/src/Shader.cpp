@@ -663,16 +663,14 @@ void IComputeBuffer::Set(void* data, uint padding, uint stride) {
 	}
 	GLint bufmask = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT;
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, pointer);
-	void* tar = (void*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, 4 * 4, bufmask);
+	void* tar = (void*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, size, bufmask);
 	if (!tar) {
 		Debug::Warning("ComputeBuffer", "Set: Unable to map buffer!");
 	}
 	if (!padding) memcpy(tar, data, size);
 	else {
-		uint loc = 0;
-		while (loc < size) {
-			memcpy((void*)((uint)tar + loc), (void*)((uint)data + loc), stride);
-			loc += padding;
+		for (uint a = 0; a*padding < size; a++) {
+			memcpy((void*)((uint)tar + a*padding), (void*)((uint)data + a*stride), stride);
 		}
 	}
 	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);

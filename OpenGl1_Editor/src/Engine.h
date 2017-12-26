@@ -597,7 +597,7 @@ public:
 	ComputeShader(string str);
 	~ComputeShader();
 
-	ComputeShader* FromPath(string path);
+	static ComputeShader* FromPath(string path);
 
 	void SetBuffer(uint binding, IComputeBuffer* buf);
 	void SetFloat(string name, const int& val);

@@ -634,6 +634,7 @@ protected:
 };
 
 #define SKINNED_MAX_VERTICES 65535
+#define SKINNED_THREADS_PER_GROUP 32
 
 class Armature;
 class ArmatureBone;
@@ -651,6 +652,7 @@ public:
 
 	friend class Engine;
 	friend class Editor;
+	friend class Camera;
 	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
 	friend void LoadMeshMeta(std::vector<SceneObject*>& os, string& path);
 protected:
@@ -660,6 +662,7 @@ protected:
 
 	void InitWeights();
 	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0);
+	void DrawDeferred(GLuint shader = 0);
 
 	Mesh* _mesh;
 	ASSETID _meshId = -1;
@@ -670,15 +673,25 @@ protected:
 	bool showBoundingBox;
 
 	struct SkinDats {
+		SkinDats() {
+			mats[0] = 0;
+			mats[1] = 0;
+			mats[2] = 0;
+			mats[3] = 0;
+		}
+
 		uint mats[4];
 		Vec4 weights;
 	};
 	ComputeBuffer<Vec4>* skinBufPoss, *skinBufNrms;
+	ComputeBuffer<Vec4>*skinBufPossO, *skinBufNrmsO;
 	ComputeBuffer<SkinDats>* skinBufDats;
 	ComputeBuffer<Mat4x4>* skinBufMats;
 	static ComputeShader* skinningProg;
+	uint skinDispatchGroups;
 
 	static void InitSkinning();
+	void Skin();
 
 	void SetMesh(int i);
 	static void _UpdateMesh(void* i);

@@ -27,6 +27,11 @@ void Camera::DrawSceneObjectsOpaque(std::vector<SceneObject*> oo, GLuint shader)
 			//Debug::Message("Cam", "Drawing " + sc->name);
 			mrd->DrawDeferred(shader);
 		}
+		SkinnedMeshRenderer* smd = sc->GetComponent<SkinnedMeshRenderer>();
+		if (smd != nullptr) {
+			//Debug::Message("Cam", "Drawing " + sc->name);
+			smd->DrawDeferred(shader);
+		}
 		Camera::DrawSceneObjectsOpaque(sc->children, shader);
 		glPopMatrix();
 	}

@@ -353,25 +353,28 @@ void MeshRenderer::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 	glGetFloatv(GL_PROJECTION_MATRIX, matrix2);
 	Mat4x4 m1(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
 	Mat4x4 m2(matrix2[0], matrix2[1], matrix2[2], matrix2[3], matrix2[4], matrix2[5], matrix2[6], matrix2[7], matrix2[8], matrix2[9], matrix2[10], matrix2[11], matrix2[12], matrix2[13], matrix2[14], matrix2[15]);
+	
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glEnableVertexAttribArray(2);
+	glEnableVertexAttribArray(3);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->vertices[0]));
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->uv0[0]));
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->normals[0]));
+	glVertexAttribPointer(3, 3, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->tangents[0]));
 	for (uint m = 0; m < mf->mesh->materialCount; m++) {
 		if (!materials[m])
 			continue;
 		if (shader == 0) materials[m]->ApplyGL(m1, m2);
 		else glUseProgram(shader);
-		glEnableVertexAttribArray(0);
-		glEnableVertexAttribArray(1);
-		glEnableVertexAttribArray(2);
-		glEnableVertexAttribArray(3);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->vertices[0]));
-		glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->uv0[0]));
-		glVertexAttribPointer(2, 3, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->normals[0]));
-		glVertexAttribPointer(3, 3, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->tangents[0]));
+
 		glDrawElements(GL_TRIANGLES, mf->mesh->_matTriangles[m].size(), GL_UNSIGNED_INT, &(mf->mesh->_matTriangles[m][0]));
-		glDisableVertexAttribArray(0);
-		glDisableVertexAttribArray(1);
-		glDisableVertexAttribArray(2);
-		glDisableVertexAttribArray(3);
 	}
+	glDisableVertexAttribArray(0);
+	glDisableVertexAttribArray(1);
+	glDisableVertexAttribArray(2);
+	glDisableVertexAttribArray(3);
+
 	glUseProgram(0);
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glDisable(GL_CULL_FACE);
@@ -498,6 +501,8 @@ TextureRenderer::TextureRenderer(std::ifstream& stream, SceneObject* o, long pos
 
 //-----------------Skinned Mesh Renderer-------------
 
+ComputeShader* SkinnedMeshRenderer::skinningProg = 0;
+
 SkinnedMeshRenderer::SkinnedMeshRenderer(SceneObject* o) : Component("Skinned Mesh Renderer", COMP_SRD, DRAWORDER_SOLID, o) {
 	if (!o) {
 		Debug::Error("SMR", "SceneObject cannot be null!");
@@ -552,7 +557,7 @@ void SkinnedMeshRenderer::InitWeights() {
 		else {
 			while (a > 0) {
 				weights[i][a - 1].second /= tot;
-				dats[i].weights[a] = weights[i][a - 1].second;
+				dats[i].weights[a - 1] = weights[i][a - 1].second;
 				a--;
 			}
 		}
@@ -561,16 +566,21 @@ void SkinnedMeshRenderer::InitWeights() {
 	if (skinBufPoss) {
 		delete(skinBufPoss);
 		delete(skinBufNrms);
+		delete(skinBufPossO);
+		delete(skinBufNrmsO);
 		delete(skinBufDats);
 		delete(skinBufMats);
 	}
 	skinBufPoss = new ComputeBuffer<Vec4>(_mesh->vertexCount);
 	skinBufNrms = new ComputeBuffer<Vec4>(_mesh->vertexCount);
+	skinBufPossO = new ComputeBuffer<Vec4>(_mesh->vertexCount);
+	skinBufNrmsO = new ComputeBuffer<Vec4>(_mesh->vertexCount);
 	skinBufDats = new ComputeBuffer<SkinDats>(_mesh->vertexCount);
 	skinBufMats = new ComputeBuffer<Mat4x4>(ARMATURE_MAX_BONES);
 	skinBufPoss->Set(&_mesh->vertices[0].x, sizeof(Vec4), sizeof(Vec3));
 	skinBufNrms->Set(&_mesh->normals[0].x, sizeof(Vec4), sizeof(Vec3));
 	skinBufDats->Set(&dats[0]);
+	skinDispatchGroups = ceil(((float)_mesh->vertexCount) / SKINNED_THREADS_PER_GROUP);
 
 	if (!!noweights.size()) 
 		Debug::Warning("SMR", to_string(noweights.size()) + " vertices have no weights assigned!");
@@ -644,8 +654,10 @@ void SkinnedMeshRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& 
 void SkinnedMeshRenderer::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 	if (!_mesh || !_mesh->loaded)
 		return;
-	//EvalMats();
 	bool isE = !!ebv;
+	
+	Skin();
+
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glPolygonMode(GL_FRONT_AND_BACK, (!isE || ebv->selectedShading == 0) ? GL_FILL : GL_LINE);
 	if (!isE || ebv->selectedShading == 0) glEnable(GL_CULL_FACE);
@@ -657,29 +669,29 @@ void SkinnedMeshRenderer::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 	Mat4x4 m1(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
 	Mat4x4 m2(matrix2[0], matrix2[1], matrix2[2], matrix2[3], matrix2[4], matrix2[5], matrix2[6], matrix2[7], matrix2[8], matrix2[9], matrix2[10], matrix2[11], matrix2[12], matrix2[13], matrix2[14], matrix2[15]);
 
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glEnableVertexAttribArray(2);
+	glEnableVertexAttribArray(3);
+	glBindBuffer(GL_ARRAY_BUFFER, skinBufPossO->pointer);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, sizeof(Vec4), 0);
+	glBindBuffer(GL_ARRAY_BUFFER, skinBufNrmsO->pointer);
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_TRUE, sizeof(Vec4), 0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glVertexAttribPointer(3, 3, GL_FLOAT, GL_TRUE, 0, &(_mesh->tangents[0]));
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, &(_mesh->uv0[0]));
 	for (uint m = 0; m < _mesh->materialCount; m++) {
 		if (!materials[m])
 			continue;
 		if (shader == 0) materials[m]->ApplyGL(m1, m2);
 		else glUseProgram(shader);
-		glEnableVertexAttribArray(0);
-		glEnableVertexAttribArray(1);
-		glEnableVertexAttribArray(2);
-		glEnableVertexAttribArray(3);
-
-		glBindBuffer(GL_ARRAY_BUFFER, skinBufPoss->pointer);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, sizeof(Vec4), &(_mesh->vertices[0]));
-		glBindBuffer(GL_ARRAY_BUFFER, skinBufNrms->pointer);
-		glVertexAttribPointer(2, 3, GL_FLOAT, GL_TRUE, sizeof(Vec4), &(_mesh->normals[0]));
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		glVertexAttribPointer(3, 3, GL_FLOAT, GL_TRUE, 0, &(_mesh->tangents[0]));
-		glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, &(_mesh->uv0[0]));
 		glDrawElements(GL_TRIANGLES, _mesh->_matTriangles[m].size(), GL_UNSIGNED_INT, &(_mesh->_matTriangles[m][0]));
-		glDisableVertexAttribArray(0);
-		glDisableVertexAttribArray(1);
-		glDisableVertexAttribArray(2);
-		glDisableVertexAttribArray(3);
 	}
+	glDisableVertexAttribArray(0);
+	glDisableVertexAttribArray(1);
+	glDisableVertexAttribArray(2);
+	glDisableVertexAttribArray(3);
+
 	glUseProgram(0);
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glDisable(GL_CULL_FACE);
@@ -689,8 +701,31 @@ void SkinnedMeshRenderer::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 	}
 }
 
+void SkinnedMeshRenderer::DrawDeferred(GLuint shader) {
+	DrawEditor(nullptr, shader);
+}
+
 void SkinnedMeshRenderer::InitSkinning() {
-	skinningProg = new ComputeShader(DefaultResources::GetStr("gpuskin.txt"));
+	//skinningProg = new ComputeShader(DefaultResources::GetStr("gpuskin.txt"));
+	skinningProg = ComputeShader::FromPath("D://gpuskin.txt");
+}
+
+void SkinnedMeshRenderer::Skin() {
+	skinBufMats->Set(&armature->_animMatrices[0][0].x);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, skinBufPoss->pointer);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, skinBufNrms->pointer);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, skinBufDats->pointer);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, skinBufMats->pointer);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 10, skinBufPossO->pointer);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 11, skinBufNrmsO->pointer);
+	skinningProg->Dispatch(skinDispatchGroups, 1, 1);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, 0);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, 0);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, 0);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, 0);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 10, 0);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 11, 0);
+
 }
 
 void SkinnedMeshRenderer::SetMesh(int i) {
