@@ -559,14 +559,21 @@ protected:
 
 class IComputeBuffer {
 public:
-	IComputeBuffer(uint size, void* data);
+	IComputeBuffer(uint size, void* data, uint padding = 0, uint stride = 1);
+	~IComputeBuffer();
 
 	GLuint pointer;
 	uint size;
 
-	void Set(void* data);
-	template <typename T> T* Get() {
-		byte* tar = new byte[size];
+
+	void Set(void* data, uint padding = 0, uint stride = 1);
+	
+	/// Returns a copy of the compute buffer data.
+	/// The lhs pointer will be overwritten if target is null. Use Get(T*) to prevent memory leaks.
+	template <typename T> T* Get(T* target = nullptr) {
+		byte* tar;
+		if (!target) tar = new byte[size];
+		else tar = (byte*)target;
 		GLint bufmask = GL_MAP_READ_BIT;
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, pointer);
 		void* src = (void*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, 4 * 4, bufmask);
@@ -582,20 +589,15 @@ public:
 
 template<typename T> class ComputeBuffer : public IComputeBuffer {
 public:
-	ComputeBuffer(uint num, T* data = nullptr) : IComputeBuffer(num*sizeof(T), data) {}
-
-	void SetData(T* data) {
-		Set(data);
-	}
-	T* GetData() {
-		return Get<T>();
-	}
+	ComputeBuffer(uint num, T* data = nullptr, uint padding = 0) : IComputeBuffer(num*sizeof(T), data, padding) {}
 };
 
 class ComputeShader {
 public:
 	ComputeShader(string str);
 	~ComputeShader();
+
+	ComputeShader* FromPath(string path);
 
 	void SetBuffer(uint binding, IComputeBuffer* buf);
 	void SetFloat(string name, const int& val);

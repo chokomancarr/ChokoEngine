@@ -649,18 +649,15 @@ public:
 	void Serialize(Editor* e, std::ofstream* stream) override {}
 	//void Refresh() override;
 
+	friend class Engine;
 	friend class Editor;
 	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
 	friend void LoadMeshMeta(std::vector<SceneObject*>& os, string& path);
 protected:
 	SkinnedMeshRenderer(std::ifstream& stream, SceneObject* o, long pos = -1);
 
-	static GLuint _vbos[2]; //vertex, normal
 	std::vector<std::array<std::pair<ArmatureBone*, float>, 4>> weights;
-	std::vector<float> wets;
-	std::vector<float> wids;
 
-	static void Init();
 	void InitWeights();
 	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0);
 
@@ -671,6 +668,17 @@ protected:
 	bool overwriteWriteMask;
 	std::vector<bool> writeMask;
 	bool showBoundingBox;
+
+	struct SkinDats {
+		uint mats[4];
+		Vec4 weights;
+	};
+	ComputeBuffer<Vec4>* skinBufPoss, *skinBufNrms;
+	ComputeBuffer<SkinDats>* skinBufDats;
+	ComputeBuffer<Mat4x4>* skinBufMats;
+	static ComputeShader* skinningProg;
+
+	static void InitSkinning();
 
 	void SetMesh(int i);
 	static void _UpdateMesh(void* i);
@@ -861,7 +869,7 @@ protected:
 };
 
 #define COMP_ARM 0x30
-#define ARMATURE_MAX_BONES 128
+#define ARMATURE_MAX_BONES 256
 class ArmatureBone {
 public:
 

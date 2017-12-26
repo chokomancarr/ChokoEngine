@@ -25,7 +25,7 @@
 #include <thread>
 #include <filesystem>
 
-#include "MD.h"
+//#include "MD.h"
 
 UndoStack::UndoObj::UndoObj(void* loc, uint sz, uint nsz, UNDO_TYPE type, void* val, bool* dirty, string desc) :
 	loc(loc), type(type), sz(sz), nsz(nsz), desc(desc), dirty(dirty) {
@@ -864,6 +864,7 @@ void EB_Viewer::Draw() {
 	//Color::DrawPicker(150, 50, editor->cc);
 	glPopMatrix();
 
+	/*
 	MD::me->Update();
 
 	glBindBuffer(GL_ARRAY_BUFFER, MD::me->psb->pointer);
@@ -884,7 +885,7 @@ void EB_Viewer::Draw() {
 	//glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	Engine::DrawCubeLinesW(0, MD::me->wall, 0, MD::me->wall, 0, MD::me->wall, 1, white());
-
+	*/
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();

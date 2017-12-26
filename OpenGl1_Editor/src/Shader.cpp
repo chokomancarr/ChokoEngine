@@ -646,14 +646,18 @@ bool Shader::Parse(std::ifstream* stream, string path) {
 
 #pragma region ComputeShader
 
-IComputeBuffer::IComputeBuffer(uint size, void* data) : size(size) {
+IComputeBuffer::IComputeBuffer(uint size, void* data, uint padding, uint stride) : size(size) {
 	glGenBuffers(1, &pointer);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, pointer);
-	glBufferData(GL_SHADER_STORAGE_BUFFER, size, data, GL_DYNAMIC_READ);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, size, (!!padding)? nullptr : data, GL_DYNAMIC_READ);
+	if (!!padding) Set(data, padding, stride);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
+IComputeBuffer::~IComputeBuffer() {
+	glDeleteBuffers(1, &pointer);
+}
 
-void IComputeBuffer::Set(void* data) {
+void IComputeBuffer::Set(void* data, uint padding, uint stride) {
 	if (!data) {
 		Debug::Warning("ComputeBuffer", "Set: Buffer is null!");
 	}
@@ -663,7 +667,14 @@ void IComputeBuffer::Set(void* data) {
 	if (!tar) {
 		Debug::Warning("ComputeBuffer", "Set: Unable to map buffer!");
 	}
-	memcpy(tar, data, size);
+	if (!padding) memcpy(tar, data, size);
+	else {
+		uint loc = 0;
+		while (loc < size) {
+			memcpy((void*)((uint)tar + loc), (void*)((uint)data + loc), stride);
+			loc += padding;
+		}
+	}
 	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
@@ -671,8 +682,7 @@ void IComputeBuffer::Set(void* data) {
 ComputeShader::ComputeShader(string str) {
 	pointer = glCreateProgram();
 	GLuint mComputeShader = glCreateShader(GL_COMPUTE_SHADER);
-	auto txt = IO::GetText(str);
-	auto c_str = txt.c_str();
+	auto c_str = str.c_str();
 	char err[500];
 	glShaderSource(mComputeShader, 1, &c_str, NULL);
 	glCompileShader(mComputeShader);
@@ -696,7 +706,11 @@ ComputeShader::ComputeShader(string str) {
 }
 
 ComputeShader::~ComputeShader() {
+	glDeleteProgram(pointer);
+}
 
+ComputeShader* ComputeShader::FromPath(string path) {
+	return new ComputeShader(IO::GetText(path));
 }
 
 void ComputeShader::SetBuffer(uint binding, IComputeBuffer* buf) {

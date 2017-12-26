@@ -446,6 +446,7 @@ void Engine::Init(string path) {
 	Light::InitShadow();
 	Camera::InitShaders();
 	Font::Init();
+	SkinnedMeshRenderer::InitSkinning();
 	//VideoTexture::Init();
 #ifdef IS_EDITOR
 	Editor::InitShaders();

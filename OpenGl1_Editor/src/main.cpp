@@ -17,7 +17,7 @@
 #include "Xml.h"
 #include <gl/GLUT.h>
 
-#include "MD.h"
+//#include "MD.h"
 
 void TimerGL(int i);
 void MouseGL(int button, int state, int x, int y);
@@ -86,12 +86,12 @@ int main(int argc, char **argv)
 	DefaultResources::Init(editor->dataPath + "res\\defaultresources.bin");
 	editor->xPoss.push_back(0);
 	editor->xPoss.push_back(1);
-	editor->xPoss.push_back(0.95f);
-	editor->xPoss.push_back(0.9f);
-	editor->xPoss.push_back(0.1f);
-	//editor->xPoss.push_back(0.75f);
-	//editor->xPoss.push_back(0.63f);
-	//editor->xPoss.push_back(0.4f);
+	//editor->xPoss.push_back(0.95f);
+	//editor->xPoss.push_back(0.9f);
+	//editor->xPoss.push_back(0.1f);
+	editor->xPoss.push_back(0.75f);
+	editor->xPoss.push_back(0.63f);
+	editor->xPoss.push_back(0.4f);
 	editor->xLimits.push_back(Int2(0, 1));
 	editor->xLimits.push_back(Int2(0, 1));
 	editor->xLimits.push_back(Int2(0, 1));
@@ -100,8 +100,8 @@ int main(int argc, char **argv)
 
 	editor->yPoss.push_back(0);
 	editor->yPoss.push_back(1);
-	//editor->yPoss.push_back(0.65f);
-	editor->yPoss.push_back(0.95f);
+	editor->yPoss.push_back(0.65f);
+	//editor->yPoss.push_back(0.95f);
 	editor->yLimits.push_back(Int2(0, 1));
 	editor->yLimits.push_back(Int2(0, 1));
 	editor->yLimits.push_back(Int2(0, 2));
@@ -177,7 +177,7 @@ int main(int argc, char **argv)
 
 	//vt = new VideoTexture("D:\\bg.mp4");
 
-	new MD("D:\\md.compute", 4, 1, 1);
+	//new MD("D:\\md.compute", 4, 1, 1);
 
 
 	glutPositionWindow(info.rcMonitor.left + editor->scrW / 2 - 512, info.rcMonitor.top + editor->scrH / 2 - 300);
@@ -361,7 +361,7 @@ void renderScene()
 		glLoadIdentity();
 		DrawOverlay();
 
-		MD::me->DrawUI();
+		//MD::me->DrawUI();
 
 		glutSwapBuffers();
 		redrawn = true;

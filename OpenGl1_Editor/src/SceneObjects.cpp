@@ -497,11 +497,6 @@ TextureRenderer::TextureRenderer(std::ifstream& stream, SceneObject* o, long pos
 }
 
 //-----------------Skinned Mesh Renderer-------------
-GLuint SkinnedMeshRenderer::_vbos[2] = {};
-
-void SkinnedMeshRenderer::Init() {
-	glGenBuffers(2, _vbos);
-}
 
 SkinnedMeshRenderer::SkinnedMeshRenderer(SceneObject* o) : Component("Skinned Mesh Renderer", COMP_SRD, DRAWORDER_SOLID, o) {
 	if (!o) {
@@ -533,10 +528,7 @@ void SkinnedMeshRenderer::InitWeights() {
 	weights.clear();
 	auto bsz = armature->_bonemap.size();
 	weights.resize(_mesh->vertexCount);
-	wets.clear();
-	wets.resize(_mesh->vertexCount * 4);
-	wids.clear();
-	wids.resize(_mesh->vertexCount * 4);
+	std::vector<SkinDats> dats(_mesh->vertexCount);
 	for (uint i = 0; i < _mesh->vertexCount; i++) {
 		byte a = 0;
 		float tot = 0;
@@ -545,7 +537,7 @@ void SkinnedMeshRenderer::InitWeights() {
 			if (!bn) continue;
 			weights[i][a].first = bn;
 			weights[i][a].second = g.second;
-			wids[i * 4 + a] = (float)bn->id + 0.1f;
+			dats[i].mats[a] = bn->id;
 			tot += g.second;
 			if (++a == 4) break;
 		}
@@ -555,16 +547,31 @@ void SkinnedMeshRenderer::InitWeights() {
 		if (a == 0) {
 			noweights.push_back(i);
 			weights[i][0].second = 1;
-			wets[i * 4] = 1;
+			dats[i].weights[0] = 1;
 		}
 		else {
 			while (a > 0) {
 				weights[i][a - 1].second /= tot;
-				wets[i * 4 + a - 1] = weights[i][a - 1].second;
+				dats[i].weights[a] = weights[i][a - 1].second;
 				a--;
 			}
 		}
 	}
+
+	if (skinBufPoss) {
+		delete(skinBufPoss);
+		delete(skinBufNrms);
+		delete(skinBufDats);
+		delete(skinBufMats);
+	}
+	skinBufPoss = new ComputeBuffer<Vec4>(_mesh->vertexCount);
+	skinBufNrms = new ComputeBuffer<Vec4>(_mesh->vertexCount);
+	skinBufDats = new ComputeBuffer<SkinDats>(_mesh->vertexCount);
+	skinBufMats = new ComputeBuffer<Mat4x4>(ARMATURE_MAX_BONES);
+	skinBufPoss->Set(&_mesh->vertices[0].x, sizeof(Vec4), sizeof(Vec3));
+	skinBufNrms->Set(&_mesh->normals[0].x, sizeof(Vec4), sizeof(Vec3));
+	skinBufDats->Set(&dats[0]);
+
 	if (!!noweights.size()) 
 		Debug::Warning("SMR", to_string(noweights.size()) + " vertices have no weights assigned!");
 }
@@ -650,46 +657,40 @@ void SkinnedMeshRenderer::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 	Mat4x4 m1(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
 	Mat4x4 m2(matrix2[0], matrix2[1], matrix2[2], matrix2[3], matrix2[4], matrix2[5], matrix2[6], matrix2[7], matrix2[8], matrix2[9], matrix2[10], matrix2[11], matrix2[12], matrix2[13], matrix2[14], matrix2[15]);
 
-	if (materials[0]) {
-		materials[0]->ApplyGL(m1, m2);
+	for (uint m = 0; m < _mesh->materialCount; m++) {
+		if (!materials[m])
+			continue;
+		if (shader == 0) materials[m]->ApplyGL(m1, m2);
+		else glUseProgram(shader);
 		glEnableVertexAttribArray(0);
 		glEnableVertexAttribArray(1);
 		glEnableVertexAttribArray(2);
 		glEnableVertexAttribArray(3);
-		glEnableVertexAttribArray(4);
-		glEnableVertexAttribArray(5);
-		glEnableVertexAttribArray(6);
-		glEnableVertexAttribArray(7);
-		glEnableVertexAttribArray(8);
-		auto bml = glGetUniformLocation(materials[0]->_shader->pointer, "bonemats");
-		glUniformMatrix4fv(bml, ARMATURE_MAX_BONES, GL_FALSE, glm::value_ptr(armature->_animMatrices[0]));
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &(_mesh->vertices[0]));
-		glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, &(_mesh->uv0[0]));
-		glVertexAttribPointer(2, 3, GL_FLOAT, GL_TRUE, 0, &(_mesh->normals[0]));
+
+		glBindBuffer(GL_ARRAY_BUFFER, skinBufPoss->pointer);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, sizeof(Vec4), &(_mesh->vertices[0]));
+		glBindBuffer(GL_ARRAY_BUFFER, skinBufNrms->pointer);
+		glVertexAttribPointer(2, 3, GL_FLOAT, GL_TRUE, sizeof(Vec4), &(_mesh->normals[0]));
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glVertexAttribPointer(3, 3, GL_FLOAT, GL_TRUE, 0, &(_mesh->tangents[0]));
-		glVertexAttribPointer(4, 4, GL_FLOAT, GL_TRUE, 0, &(wets[0]));
-		glVertexAttribPointer(5, 1, GL_FLOAT, GL_TRUE, sizeof(float) * 4, &(wids[0]));
-		glVertexAttribPointer(6, 1, GL_FLOAT, GL_TRUE, sizeof(float) * 4, &(wids[1]));
-		glVertexAttribPointer(7, 1, GL_FLOAT, GL_TRUE, sizeof(float) * 4, &(wids[2]));
-		glVertexAttribPointer(8, 1, GL_FLOAT, GL_TRUE, sizeof(float) * 4, &(wids[3]));
-		glDrawElements(GL_TRIANGLES, _mesh->triangleCount * 3, GL_UNSIGNED_INT, &_mesh->triangles[0]);
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, &(_mesh->uv0[0]));
+		glDrawElements(GL_TRIANGLES, _mesh->_matTriangles[m].size(), GL_UNSIGNED_INT, &(_mesh->_matTriangles[m][0]));
 		glDisableVertexAttribArray(0);
 		glDisableVertexAttribArray(1);
 		glDisableVertexAttribArray(2);
 		glDisableVertexAttribArray(3);
-		glDisableVertexAttribArray(4);
-		glDisableVertexAttribArray(5);
-		glDisableVertexAttribArray(6);
-		glDisableVertexAttribArray(7);
-		glDisableVertexAttribArray(8);
-		glUseProgram(0);
 	}
+	glUseProgram(0);
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glDisable(GL_CULL_FACE);
 	if (isE && showBoundingBox) {
 		BBox& b = _mesh->boundingBox;
 		Engine::DrawCubeLinesW(b.x0, b.x1, b.y0, b.y1, b.z0, b.z1, 1, white(1, 0.5f));
 	}
+}
+
+void SkinnedMeshRenderer::InitSkinning() {
+	skinningProg = new ComputeShader(DefaultResources::GetStr("gpuskin.txt"));
 }
 
 void SkinnedMeshRenderer::SetMesh(int i) {
