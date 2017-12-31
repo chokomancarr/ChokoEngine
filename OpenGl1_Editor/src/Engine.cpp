@@ -1564,6 +1564,8 @@ std::vector<EB_Browser_File> IO::GetFilesE (Editor* e, const string& folder)
 					names.push_back(EB_Browser_File(e, folder, aa, aa));
 				else if ((aa.length() > 9 && (aa.substr(aa.length() - 9) == ".animator")))
 					names.push_back(EB_Browser_File(e, folder, aa, aa));
+				else if ((aa.length() > 9 && (aa.substr(aa.length() - 9) == ".animclip")))
+					names.push_back(EB_Browser_File(e, folder, aa, aa));
 			}
 		} while (::FindNextFile(hFind, &fd));
 		::FindClose(hFind);
@@ -1894,26 +1896,6 @@ float BezierSolve(Vec2& v1, Vec2& v2, Vec2& v3, Vec2& v4, float x) { //x is betw
 	c = 3 * v2.y - 3 * v1.y;
 	d = v1.y;
 	return t*t*t*a + t*t*b + t*c + d;
-}
-
-float FCurve::Eval(float t, float repeat) {
-	if (!repeat) {
-		if (t <= startTime)
-			return keys[0].point.y;
-		else if (t >= endTime)
-			return keys[keyCount-1].point.y;
-	}
-	while (t > endTime)
-		t -= (endTime - startTime);
-	while (t < startTime)
-		t += (endTime - startTime);
-
-	for (uint i = 0; i < keyCount; i++) {
-		if (keys[i].point.x >= t) {
-			return BezierSolveApprox(keys[i - 1].point, keys[i-1].right, keys[i].left, keys[i].point, t, 0.2f);
-		}
-	}
-	return 0;
 }
 
 void _StreamWrite(const void* val, std::ofstream* stream, int size) {

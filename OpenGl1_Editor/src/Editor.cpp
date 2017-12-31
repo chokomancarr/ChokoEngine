@@ -183,8 +183,8 @@ ASSETTYPE GetFormatEnum(string ext) {
 		return ASSETTYPE_MATERIAL;
 	else if (ext == ".animclip")
 		return ASSETTYPE_ANIMCLIP;
-	else if (ext == ".animator")
-		return ASSETTYPE_ANIMATOR;
+	else if (ext == ".anim")
+		return ASSETTYPE_ANIMATION;
 	else if (ext == ".hdr")
 		return ASSETTYPE_HDRI;
 	else if (ext == ".bmp" || ext == ".jpg" || ext == ".png" || ext == ".rendtex")
@@ -595,8 +595,19 @@ void EB_Browser::Draw() {
 		}
 		if (files[ff].expanded) {
 			for (int fff = files[ff].children.size() - 1; fff >= 0; fff--) {
-				Engine::DrawQuad(v.r + 149 + ww, v.g + EB_HEADER_SIZE + (fileSize + 1)* hh + 1, fileSize + 1.0f, fileSize-2.0f, Vec4(1, 0.494f, 0.176f, 0.3f));
-				DrawFileRect(v.r + 153 + ww, v.g + EB_HEADER_SIZE + (fileSize+1)* hh + 2.0f, fileSize - 4.0f, &files[ff].children[fff], this);
+				Engine::DrawQuad(v.r + 149 + ww, v.g + EB_HEADER_SIZE + (fileSize + 1)* hh + 1, fileSize + 1.0f, fileSize - 2.0f, Vec4(1, 0.494f, 0.176f, 0.3f));
+				if (DrawFileRect(v.r + 153 + ww, v.g + EB_HEADER_SIZE + (fileSize + 1)* hh + 2.0f, fileSize - 4.0f, &files[ff].children[fff], this)) {
+					editor->GetAssetInfo(files[ff].children[fff].fullName, editor->selectedFileType, editor->selectedFile);
+					editor->selectedFileTexts.clear();
+					editor->selectedFileName = files[ff].children[fff].name;
+					editor->selectedFilePath = files[ff].children[fff].fullName;
+					if (editor->selectedFileType != ASSETTYPE_UNDEF) {
+						editor->selectedFileCache = _GetCache<void>(editor->selectedFileType, editor->selectedFile);
+					}
+					else if (IsTextFile(files[ff].children[fff].fullName)) {
+						editor->selectedFileTexts = GetTexts(files[ff].children[fff].fullName);
+					}
+				}
 				ww += fileSize+1;
 				if (ww > (v.b - 152 - fileSize)) {
 					ww = 0;
@@ -1511,7 +1522,7 @@ void EB_AnimEditor::Draw() {
 		Engine::DrawLine(Vec2(v.r, y), Vec2(v.r + v.b, y), black(0.6f), 1);
 	}
 
-	editor->DrawAssetSelector(v.r, v.g + EB_HEADER_SIZE + 1, v.b * 0.5f, 14, grey2(), ASSETTYPE_ANIMATOR, 12, editor->font, &_editingAnim, &_SetAnim, this);
+	editor->DrawAssetSelector(v.r, v.g + EB_HEADER_SIZE + 1, v.b * 0.5f, 14, grey2(), ASSETTYPE_ANIMATION, 12, editor->font, &_editingAnim, &_SetAnim, this);
 	
 	if (editingAnim != nullptr) {
 		for (Anim_State* state : editingAnim->states) {
@@ -2076,6 +2087,8 @@ ASSETID Editor::GetAssetInfo(string p, ASSETTYPE &type, ASSETID& i) {
 			switch (t.first) {
 			case ASSETTYPE_MATERIAL:
 			case ASSETTYPE_CAMEFFECT:
+			case ASSETTYPE_ANIMATION:
+			case ASSETTYPE_ANIMCLIP:
 				uu = projectFolder + "Assets\\" + u;
 				break;
 			default:
@@ -2334,12 +2347,12 @@ void Editor::LoadDefaultAssets() {
 	assetTypes.emplace("rendtex", ASSETTYPE_TEXTURE);
 	assetTypes.emplace("hdr", ASSETTYPE_HDRI);
 	assetTypes.emplace("animclip", ASSETTYPE_ANIMCLIP);
-	assetTypes.emplace("animator", ASSETTYPE_ANIMATOR);
+	assetTypes.emplace("animator", ASSETTYPE_ANIMATION);
 	
 	allAssets.emplace(ASSETTYPE_SCENE, std::vector<string>());
 	allAssets.emplace(ASSETTYPE_MESH, std::vector<string>());
 	allAssets.emplace(ASSETTYPE_ANIMCLIP, std::vector<string>());
-	allAssets.emplace(ASSETTYPE_ANIMATOR, std::vector<string>());
+	allAssets.emplace(ASSETTYPE_ANIMATION, std::vector<string>());
 	allAssets.emplace(ASSETTYPE_MATERIAL, std::vector<string>());
 	allAssets.emplace(ASSETTYPE_CAMEFFECT, std::vector<string>());
 	allAssets.emplace(ASSETTYPE_TEXTURE, std::vector<string>());
@@ -2967,7 +2980,7 @@ void DoScanAssetsGet(Editor* e, std::vector<string>& list, string p, bool rec) {
 				e->normalAssets[type].push_back(ww.substr(0, ww.find_last_of('\\')) + ww.substr(ww.find_last_of('\\') + 1, string::npos));
 				e->normalAssetCaches[type].push_back(nullptr);
 			}
-			if (type == ASSETTYPE_MATERIAL || type == ASSETTYPE_CAMEFFECT || type == ASSETTYPE_SCENE || type == ASSETTYPE_ANIMATOR) //no meta file
+			if (type == ASSETTYPE_MATERIAL || type == ASSETTYPE_CAMEFFECT || type == ASSETTYPE_SCENE || type == ASSETTYPE_ANIMATION) //no meta file
 				continue;
 			if (IO::HasFile(ss.c_str())) {
 				FILETIME metaTime, realTime;
@@ -3084,7 +3097,7 @@ void Editor::ResetAssetMap() {
 	normalAssets[ASSETTYPE_MESH] = std::vector<string>();
 	normalAssets[ASSETTYPE_BLEND] = std::vector<string>();
 	normalAssets[ASSETTYPE_ANIMCLIP] = std::vector<string>();
-	normalAssets[ASSETTYPE_ANIMATOR] = std::vector<string>();
+	normalAssets[ASSETTYPE_ANIMATION] = std::vector<string>();
 	normalAssets[ASSETTYPE_CAMEFFECT] = std::vector<string>();
 
 	derivedAssets[ASSETTYPE_TEXTURE_REND] = std::pair<ASSETTYPE, std::vector<uint>>(ASSETTYPE_TEXTURE, std::vector<uint>());
@@ -3094,7 +3107,7 @@ void Editor::ResetAssetMap() {
 	normalAssetCaches[ASSETTYPE_MATERIAL] = std::vector<AssetObject*>(); //Material*
 	normalAssetCaches[ASSETTYPE_MESH] = std::vector<AssetObject*>(); //Mesh*
 	normalAssetCaches[ASSETTYPE_ANIMCLIP] = std::vector<AssetObject*>(); //AnimClip*
-	normalAssetCaches[ASSETTYPE_ANIMATOR] = std::vector<AssetObject*>(); //Animator*
+	normalAssetCaches[ASSETTYPE_ANIMATION] = std::vector<AssetObject*>(); //Animator*
 	normalAssetCaches[ASSETTYPE_CAMEFFECT] = std::vector<AssetObject*>(); //CameraEffect*
 
 	if (!internalAssetsLoaded) {
@@ -3272,10 +3285,10 @@ AssetObject* Editor::GenCache(ASSETTYPE type, int i) {
 		normalAssetCaches[type][i] = new Mesh(pth + ".mesh.meta");
 		break;
 	case ASSETTYPE_ANIMCLIP:
-		normalAssetCaches[type][i] = new AnimClip(pth + ".animclip.meta");
+		normalAssetCaches[type][i] = new AnimClip(pth);
 		break;
-	case ASSETTYPE_ANIMATOR:
-		normalAssetCaches[type][i] = new Animator(pth);
+	case ASSETTYPE_ANIMATION:
+		normalAssetCaches[type][i] = new Animation(pth);
 		break;
 	case ASSETTYPE_SHADER:
 		normalAssetCaches[type][i] = new Shader(pth + ".meta");
@@ -3334,7 +3347,7 @@ bool Editor::MergeAssets_(Editor* e) {
 				file << as2 + ".animclip.meta" << char0;
 				break;
 			case ASSETTYPE_MATERIAL:
-			case ASSETTYPE_ANIMATOR:
+			case ASSETTYPE_ANIMATION:
 			case ASSETTYPE_CAMEFFECT:
 				file << as2 << char0;
 				break;
@@ -3461,7 +3474,7 @@ bool Editor::MergeAssets(Editor* e) {
 				string nmm;
 				if (it.first == ASSETTYPE_MESH)
 					nmm = e->projectFolder + "Assets\\" + s + ".mesh.meta";
-				else if (it.first == ASSETTYPE_MATERIAL || it.first == ASSETTYPE_ANIMATOR || it.first == ASSETTYPE_CAMEFFECT)
+				else if (it.first == ASSETTYPE_MATERIAL || it.first == ASSETTYPE_ANIMATION || it.first == ASSETTYPE_CAMEFFECT)
 					nmm = e->projectFolder + "Assets\\" + s;
 				else
 					nmm = e->projectFolder + "Assets\\" + s + ".meta";

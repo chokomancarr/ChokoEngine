@@ -2,7 +2,21 @@
 
 #include "Engine.h"
 
-typedef unsigned char COMPONENT_TYPE;
+enum COMPONENT_TYPE : byte {
+	COMP_UNDEF = 0x00,
+	COMP_CAM = 0x01,
+	COMP_MFT = 0x02,
+	COMP_MRD = 0x10,
+	COMP_TRD = 0x11,
+	COMP_SRD = 0x12,
+	COMP_PST = 0x13,
+	COMP_LHT = 0x20,
+	COMP_RFQ = 0x22,
+	COMP_RDP = 0x25,
+	COMP_ARM = 0x30,
+	COMP_ANM = 0x31,
+	COMP_SCR = 0xff
+};
 typedef unsigned char DRAWORDER;
 #define DRAWORDER_NONE 0x00
 #define DRAWORDER_SOLID 0x01
@@ -15,7 +29,7 @@ public:
 	Component(string name, COMPONENT_TYPE t, DRAWORDER drawOrder = 0x00, SceneObject* o = nullptr, std::vector<COMPONENT_TYPE> dep = {});
 	virtual  ~Component() {}
 
-	const COMPONENT_TYPE componentType = 0;
+	const COMPONENT_TYPE componentType = COMP_UNDEF;
 	const DRAWORDER drawOrder;
 	bool active;
 	SceneObject* object;
@@ -112,6 +126,8 @@ private:
 	Transform(const Transform& rhs);
 };
 
+#pragma region AssetObjects
+
 class Mesh : public AssetObject {
 public:
 	//Mesh(); //until i figure out normal recalc algorithm
@@ -151,39 +167,55 @@ protected:
 	//void Load();
 };
 
-class FCurve_Key {
-public:
-	FCurve_Key(Vec2 a, Vec2 b, Vec2 c) : point(a), left(b), right(c) {}
-	Vec2 point, left, right;
+enum Interpolation : byte {
+	Interpolation_Ease,
+	Interpolation_Linear,
+	Interpolation_Before,
+	Interpolation_Center,
+	Interpolation_After
 };
 
-enum FCurveType : byte {
-	FC_Undef = 0x00,
-	FC_BoneLoc_X = 0x10,
-	FC_BoneLoc_Y, FC_BoneLoc_Z,
-	FC_BoneQuat_W, FC_BoneQuat_X, FC_BoneQuat_Y, FC_BoneQuat_Z,
-	FC_BoneScl_X, FC_BoneScl_Y, FC_BoneScl_Z,
-	FC_ShapeKey = 0x20,
-	FC_Location_X = 0xf0,
-	FC_Location_Y, FC_Location_Z,
-	FC_Rotation_X, FC_Rotation_Y, FC_Rotation_Z,
-	FC_Scale_X = 0xf7,
-	FC_Scale_Y, FC_Scale_Z,
+enum AnimKeyType : byte {
+	AK_Undef = 0x00,
+	AK_BoneLoc = 0x10,
+	AK_BoneRot,
+	AK_BoneScl,
+	AK_Location = 0x20,
+	AK_Rotation,
+	AK_Scale,
+	AK_ShapeKey = 0x30,
 };
-class FCurve {
+
+class AnimClip_Key {
 public:
-	FCurve() : type(FC_Undef), name(""), keys(), keyCount(0), startTime(0), endTime(0) {}
-	FCurveType type;
+	AnimClip_Key(string name, AnimKeyType type, uint cnt = 0, float* loc = 0) : name(name), type(type),
+		dim((type == AK_ShapeKey) ? 1 : ((type & 0x0f) == 0x01)? 4 : 3) {
+		if (!!cnt) AddFrames(cnt, loc);
+	}
+	
+	std::vector<std::pair<int, Vec4>> frames;
+	uint frameCount;
+
 	string name;
-	std::vector<FCurve_Key> keys;
-	byte keyCount;
-	float startTime, endTime;
-	float Eval(float t, float repeat = false);
+	const AnimKeyType type;
+	const byte dim;
+
+	void AddFrames(uint cnt, float* loc);
+	Vec4 Eval(float t);
 };
 
 class AnimClip : public AssetObject {
-	std::vector<FCurve> curves;
-	uint curveLength;
+	std::vector<AnimClip_Key*> keys;
+	ushort keyCount;
+	ushort frameStart, frameEnd;
+	bool repeat;
+
+	std::vector<string> keynames;
+	std::vector<Vec4> keyvals;
+
+	Interpolation interpolation;
+
+	void Eval(float t);
 
 	friend class Editor;
 	friend class AssetManager;
@@ -196,7 +228,7 @@ protected:
 class AnimFrameItem {
 public:
 	AnimFrameItem();
-	friend class Animator;
+	friend class Animation;
 	friend class Anim_State;
 protected:
 	byte type;
@@ -208,6 +240,7 @@ protected:
 class Anim_State {
 public:
 	Anim_State(bool blend = false) : name(blend? "newBlendState" : "newState"), isBlend(blend), speed(1), length(0), time(0), _clip(-1), editorPos(Vec2()), editorExpand(true) {}
+	friend class Animation;
 	friend class Animator;
 	friend class EB_AnimEditor;
 protected:
@@ -215,7 +248,6 @@ protected:
 	string name;
 	bool isBlend;
 	float speed, length, time;
-	float Eval(); //increments time automatically
 
 	AnimClip* clip;
 	ASSETID _clip;
@@ -230,28 +262,23 @@ protected:
 class Anim_Transition {
 public:
 	Anim_Transition();
-	friend class Animator;
+	friend class Animation;
 protected:
 	bool canInterrupt;
 	float length, time;
 
 };
 
-class AnimValue {
-	string name;
-	Vec3 pos, scl;
-	Quat rot;
-};
-
-class Animator : public AssetObject {
+class Animation : public AssetObject {
 
 	friend class EB_AnimEditor;
 	friend class Editor;
 	friend class SkinnedMeshRenderer;
+	friend class Animator;
 protected:
-	Animator();
-	Animator(string s);
-	Animator(std::ifstream& stream, uint offset);
+	Animation();
+	Animation(string s);
+	Animation(std::ifstream& stream, uint offset);
 	uint activeState, nextState;
 	float stateTransition;
 
@@ -431,11 +458,9 @@ protected:
 	std::vector<GLuint> fbos[6]; //[face][mip]
 };
 
-#define COMP_UNDEF 0x00
 
 class ReflectionProbe;
 
-#define COMP_CAM 0x01
 enum CAM_CLEARTYPE : byte {
 	CAM_CLEAR_NONE,
 	CAM_CLEAR_COLOR,
@@ -476,6 +501,10 @@ protected:
 	//CameraEffect(std::ifstream& strm, uint offset);
 	//void SetShader(ShaderBase* shad);
 };
+
+#pragma endregion
+
+#pragma region Components
 
 class Camera : public Component {
 public:
@@ -563,7 +592,6 @@ protected:
 	static void _SetClear0(EditorBlock* b), _SetClear1(EditorBlock* b), _SetClear2(EditorBlock* b), _SetClear3(EditorBlock* b);
 };
 
-#define COMP_MFT 0x02
 class MeshFilter : public Component {
 public:
 	MeshFilter();
@@ -588,7 +616,6 @@ protected:
 	ASSETID _mesh;
 };
 
-#define COMP_MRD 0x10
 class MeshRenderer : public Component {
 public:
 	MeshRenderer();
@@ -615,7 +642,6 @@ protected:
 	static void _UpdateTex(void* i);
 };
 
-#define COMP_TRD 0x11
 class TextureRenderer : public Component {
 public:
 	TextureRenderer(): _texture(-1), Component("Texture Renderer", COMP_TRD, DRAWORDER_OVERLAY) {}
@@ -638,7 +664,6 @@ protected:
 
 class Armature;
 class ArmatureBone;
-#define COMP_SRD 0x12
 class SkinnedMeshRenderer : public Component {
 public:
 	SkinnedMeshRenderer(SceneObject* o);
@@ -699,7 +724,6 @@ protected:
 	static void _UpdateTex(void* i);
 };
 
-#define COMP_PST 0x13
 enum ParticleEmissionType {
 	ParticleEmission_Cone
 };
@@ -757,7 +781,6 @@ enum LIGHT_FALLOFF : byte {
 	LIGHT_FALLOFF_LINEAR,
 	LIGHT_FALLOFF_CONSTANT
 };
-#define COMP_LHT 0x20
 #define LIGHT_POINT_MINSTR 0.01f
 #define BUFFERLOC_LIGHT_RSM 2
 class Light : public Component {
@@ -811,7 +834,6 @@ protected:
 	//static CubeMap* _shadowCube;
 };
 
-#define COMP_RFQ 0x22
 class ReflectiveQuad : public Component {
 public:
 	ReflectiveQuad(Texture* tex = nullptr);
@@ -840,7 +862,6 @@ protected:
 	void Serialize(Editor* e, std::ofstream* stream) override;
 };
 
-#define COMP_RDP 0x25
 enum ReflProbe_UpdateMode : byte {
 	ReflProbe_UpdateMode_Start,
 	ReflProbe_UpdateMode_Realtime,
@@ -881,7 +902,29 @@ protected:
 	void _DoUpdate();
 };
 
-#define COMP_ARM 0x30
+class Animator : public Component {
+public:
+	Animator(Animation* anim = nullptr);
+
+	Animation* animation;
+
+	float fps = 24;
+
+	void Update();
+
+	friend int main(int argc, char **argv);
+	friend void Serialize(Editor* e, SceneObject* o, std::ofstream* stream);
+	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
+	friend class Engine;
+protected:
+	ASSETID _animation = -1;
+
+	static void _SetAnim(void* v);
+	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override {}
+	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
+	void Serialize(Editor* e, std::ofstream* stream) override {}
+};
+
 #define ARMATURE_MAX_BONES 256
 class ArmatureBone {
 public:
@@ -917,8 +960,6 @@ public:
 	//Armature() : _anim(-1), Component("Armature", COMP_ARM, DRAWORDER_OVERLAY) {}
 	~Armature();
 
-	Animator* anim;
-
 	bool overridePos;
 	Vec3 restPosition;
 	Quat restRotation;
@@ -951,10 +992,10 @@ protected:
 	
 	static void AddBone(std::ifstream&, std::vector<ArmatureBone*>&, std::vector<ArmatureBone*>&, SceneObject*, uint&);
 	void GenMap(ArmatureBone* b = nullptr);
+	void Animate();
 	void UpdateMats(ArmatureBone* b = nullptr);
 };
 
-#define COMP_SCR 0xff
 enum SCR_VARTYPE : byte {
 	SCR_VAR_UNDEF = 0U,
 	SCR_VAR_INT, SCR_VAR_UINT,
@@ -991,6 +1032,8 @@ protected:
 	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override; //we want c to be null if deleted
 	void Serialize(Editor* e, std::ofstream* stream) override;
 };
+
+#pragma endregion
 
 class SceneObject : public Object {
 public:

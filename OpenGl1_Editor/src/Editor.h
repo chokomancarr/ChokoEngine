@@ -220,11 +220,11 @@ public:
 
 	static byte preAddType;
 	static void _AddObjectE(EditorBlock*), _AddObjectPr(EditorBlock*), _AddObjectBl(EditorBlock*), _AddObjectCam(EditorBlock*), _AddObjectAud(EditorBlock*);
-	static void _AddComScr(EditorBlock*), _AddComAud(EditorBlock*), _AddComRend(EditorBlock*), _AddComMesh(EditorBlock*);
+	static void _AddComScr(EditorBlock*), _AddComAud(EditorBlock*), _AddComAnim(EditorBlock*), _AddComRend(EditorBlock*), _AddComMesh(EditorBlock*);
 	
 	static void _DoAddObjectBl(EditorBlock* b, void* v);
 	static void _DoAddComScr(EditorBlock* b, void* v), _DoAddComRend(EditorBlock* b, void* v);
-	static void _D2AddComCam(EditorBlock*), _D2AddComMrd(EditorBlock*), _D2AddComLht(EditorBlock*), _D2AddComRfq(EditorBlock*), _D2AddComRdp(EditorBlock*), _D2AddComMft(EditorBlock*);
+	static void _D2AddComCam(EditorBlock*), _D2AddComMrd(EditorBlock*), _D2AddComAnm(EditorBlock*), _D2AddComLht(EditorBlock*), _D2AddComRfq(EditorBlock*), _D2AddComRdp(EditorBlock*), _D2AddComMft(EditorBlock*);
 	
 	static void _AddObjAsI(EditorBlock*); //, _AddObjAsC(EditorBlock*), _AddObjAsP(EditorBlock*);
 	
@@ -283,7 +283,7 @@ public:
 	float scale = 1;
 	Vec2 offset;
 
-	Animator* editingAnim;
+	Animation* editingAnim;
 	ASSETID _editingAnim;
 	uint selected;
 	bool selectingTransition;

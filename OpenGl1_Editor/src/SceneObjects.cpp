@@ -1062,6 +1062,7 @@ void ReflectiveQuad::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) 
 		Engine::EButton((e->editorLayer == 0), v.r + v.b*0.65f, v.g + pos, v.b*0.35f - 1, 16, Vec4(0.2f, 0.4f, 0.2f, 1));
 		UI::Label(v.r + v.b*0.67f, v.g + pos, 12, to_string(size.y), e->font, white());
 	}
+	else pos += 17;
 }
 
 void ReflectiveQuad::_SetTex(void* v) {
@@ -1289,6 +1290,13 @@ void Armature::GenMap(ArmatureBone* b) {
 		_bonemap.emplace(bb->name, bb);
 		GenMap(bb);
 	}
+}
+
+void Armature::Animate() {
+	if (!object->parent) return;
+	Animator* anm = object->parent->GetComponent<Animator>();
+
+	
 }
 
 void Armature::UpdateMats(ArmatureBone* b) {

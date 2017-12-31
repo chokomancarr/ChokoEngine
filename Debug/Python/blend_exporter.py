@@ -23,7 +23,7 @@ class KTMExporter():
     frame_offset = 0
 
     def execute(self):
-        print("python start")
+        print("---------export start----------")
         pos0 = self.arg.index("?")
         dirr = self.arg[:pos0]
         print (dirr)
@@ -108,7 +108,8 @@ class KTMExporter():
             elif obj.type == "ARMATURE":
                 self.export_arm(file2, obj, dirr, name)
         file2.close()
-        #self.export_anim(dirr + name + "_blend\\")
+        self.export_anim(dirr + name + "_blend\\")
+        print ("-------export end--------")
     
     def export_arm(self, file2, obj, dirr, name):
         obj.data.pose_position = 'REST'
@@ -162,52 +163,75 @@ class KTMExporter():
     #rotation_euler 0xf3 ~ 0xf5
     #scale 0xf7 ~ 0xf9
     def export_anim(self, path):
-		arm = None
-		for obj in self.scene.objects:
-			if obj.type == 'ARMATURE':
-				arm = obj;
-				break
-		if arm == None:
-			return
+        arm = None
+        for obj in self.scene.objects:
+            if obj.type == 'ARMATURE':
+                arm = obj;
+                break
+        if arm == None:
+            return
         for action in bpy.data.actions:
             if len(action.fcurves) == 0:
                 continue
             
-			abones = []
-			abc = 0
-			for bn in arm.data.bones:
-				acn = "pose.bones[\"" + bn.name + "\"]"
-				haskey = [x for x in action.fcurves if x.data_path.startswith(acn)]
-				if len(haskey) != 0:
-					abones.insert(abc, bn)
-					abc += 1
-			if abc == 0:
-				continue
-			
+            abones = []
+            abc = 0
+            for bn in arm.pose.bones:
+                acn = "pose.bones[\"" + bn.name + "\"]"
+                haskey = [x for x in action.fcurves if x.data_path.startswith(acn)]
+                if len(haskey) != 0:
+                    abones.insert(abc, bn)
+                    abc += 1
+            if abc == 0:
+                continue
+            
+            
+            frange = action.frame_range
+            fr0 = int(frange[0])
+            fr1 = int(frange[1])
+            
             print ("!writing to: " + path + action.name + ".animclip")
             file = open(path + action.name + ".animclip", "wb")
             self.write(file, "ANIM")
-			
-			arm.animation_data.action = action
-			
-			
-			for bn in abones:
-				
-			
-			frange = action.frame_range
-			for f in range(int(frange[0]), int(frange[1])):
-				self.scene.frame_set(f)
-				for bn in abones:
-					
-					
+            file.write(struct.pack("<H", len(abones)))
+            file.write(struct.pack("<HH", fr0, fr1))
+            
+            arm.animation_data.action = action
+            
+            for bn in abones:
+                cvs = []
+                for f in range(fr0, fr1 + 1):
+                    self.scene.frame_set(f)
+                    mat = bn.matrix_basis
+                    cvs.insert(f-fr0, [mat.to_translation(), mat.to_quaternion(), mat.to_scale()])
+                
+                bfn = self.bonefullname(bn, "")
+                self.write(file, "\x10") #FC_BoneLoc
+                self.write(file, bfn + "\x00\x00")
+                file.write(struct.pack("<H", fr1 - fr0 + 1))
+                for f in range(fr0, fr1 + 1):
+                    file.write(struct.pack("<ifff", f, cvs[f-fr0][0][0], cvs[f-fr0][0][2], cvs[f-fr0][0][1]))
+                
+                self.write(file, "\x11") #FC_BoneRot
+                self.write(file, bfn + "\x00\x00")
+                file.write(struct.pack("<H", fr1 - fr0 + 1))
+                for f in range(fr0, fr1 + 1):
+                    file.write(struct.pack("<iffff", f, cvs[f-fr0][1][1], cvs[f-fr0][1][3], cvs[f-fr0][1][2], cvs[f-fr0][1][0]))
+                
+                self.write(file, "\x12") #FC_BoneScl
+                self.write(file, bfn + "\x00\x00")
+                file.write(struct.pack("<H", fr1 - fr0 + 1))
+                for f in range(fr0, fr1 + 1):
+                    file.write(struct.pack("<ifff", f, cvs[f-fr0][2][0], cvs[f-fr0][2][2], cvs[f-fr0][2][1]))
+                
             file.close()
     
-	def bonefullname (self, bone, par):
-		if bone.parent:
-			return bonefullname(bone.parent, bone.name + "/" + par)
-		else:
-			return bone.name + "/" + par
-	
+    def bonefullname (self, bone, par):
+        if bone.parent:
+            return self.bonefullname(bone.parent, bone.name + "/" + par)
+        else:
+            return bone.name + "/" + par
+
     def write (self, file, _str):
         file.write(_str.encode())
 

@@ -73,8 +73,16 @@ const float deg2rad = 0.0174533f;
 const char char0 = 0;
 
 #define Lerp(a, b, c) ((a)*(1-(c)) + (b)*(c))
+#define InverseLerp(a,b,c) (clamp( (c - a)/(b - a) , 0, 1))
 #define Normalize(a) glm::normalize(a)
 #define Distance(a, b) glm::distance(a, b)
+template <typename T> T Repeat(T t, T a, T b) {
+	while (t > b)
+		t -= (b - a);
+	while (t < a)
+		t += (b - a);
+	return t;
+}
 
 typedef unsigned char byte;
 typedef unsigned int uint;
@@ -234,7 +242,7 @@ enum ASSETTYPE : byte {
 	ASSETTYPE_BLEND = 0x20,
 	ASSETTYPE_MESH = 0x21,
 	ASSETTYPE_ANIMCLIP = 0x30,
-	ASSETTYPE_ANIMATOR = 0x31,
+	ASSETTYPE_ANIMATION = 0x31,
 	ASSETTYPE_CAMEFFECT = 0x40,
 	ASSETTYPE_SCRIPT_H = 0x9e,
 	ASSETTYPE_SCRIPT_CPP = 0x9f,

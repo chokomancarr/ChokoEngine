@@ -181,7 +181,7 @@ void EB_Viewer::_OpenMenuAdd(EditorBlock* b) {
 }
 void EB_Viewer::_OpenMenuCom(EditorBlock* b) {
 	if (b->editor->selected != nullptr)
-		b->editor->RegisterMenu(b, "Add Component", { "Script", "Audio", "Mesh", "Rendering" }, { _AddComScr, _AddComAud, _AddComMesh, _AddComRend }, 3);
+		b->editor->RegisterMenu(b, "Add Component", { "Script", "Audio", "Mesh", "Animation", "Rendering" }, { _AddComScr, _AddComAud, _AddComMesh, _AddComAnim, _AddComRend }, 3);
 }
 void EB_Viewer::_OpenMenuW(EditorBlock* b) {
 	if (b->editor->activeScene != nullptr)
@@ -212,6 +212,9 @@ void EB_Viewer::_AddComScr(EditorBlock* b) {
 }
 void EB_Viewer::_AddComAud(EditorBlock* b) {
 
+}
+void EB_Viewer::_AddComAnim(EditorBlock* b) {
+	b->editor->RegisterMenu(b, "Add Animation", std::vector<string>({ "Animator" }), std::vector<shortcutFunc>({ _D2AddComAnm }), 0);
 }
 void EB_Viewer::_AddComMesh(EditorBlock* b) {
 	b->editor->RegisterMenu(b, "Add Mesh", std::vector<string>({ "Mesh Filter", "Mesh Renderer" }), std::vector<shortcutFunc>({ _D2AddComMft, _D2AddComMrd }), 0);
@@ -400,6 +403,9 @@ void EB_Viewer::_D2AddComMft(EditorBlock* b) {
 void EB_Viewer::_D2AddComMrd(EditorBlock* b) {
 	b->editor->selected->AddComponent(new MeshRenderer());
 }
+void EB_Viewer::_D2AddComAnm(EditorBlock* b) {
+	b->editor->selected->AddComponent(new Animator());
+}
 void EB_Viewer::_D2AddComLht(EditorBlock* b) {
 	b->editor->selected->AddComponent(new Light());
 }
@@ -543,7 +549,7 @@ void EB_AnimEditor::_AddState(EditorBlock* eb) {
 
 void EB_AnimEditor::_SetAnim(void* v) {
 	EB_AnimEditor* b = (EB_AnimEditor*)v;
-	b->editingAnim = _GetCache<Animator>(ASSETTYPE_ANIMATOR, b->_editingAnim);
+	b->editingAnim = _GetCache<Animation>(ASSETTYPE_ANIMATION, b->_editingAnim);
 }
 
 void EB_AnimEditor::_AddEmpty(EditorBlock* v) {

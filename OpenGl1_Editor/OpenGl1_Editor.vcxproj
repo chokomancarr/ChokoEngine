@@ -142,6 +142,7 @@ xcopy /y "$(SolutionDir)Debug\Library\include\*" "D:\TestProject2\System\"</Comm
   <ItemGroup>
     <ClCompile Include="hdr\hdr.cpp" />
     <ClCompile Include="png\lodepng.cpp" />
+    <ClCompile Include="src\Animation.cpp" />
     <ClCompile Include="src\AssetObjects.cpp" />
     <ClCompile Include="src\Compressors.cpp" />
     <ClCompile Include="src\ComputeShader.cpp" />
