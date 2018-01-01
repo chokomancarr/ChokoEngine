@@ -187,13 +187,13 @@ class KTMExporter():
             
             
             frange = action.frame_range
-            fr0 = int(frange[0])
-            fr1 = int(frange[1])
+            fr0 = max(int(frange[0]), 0)
+            fr1 = max(int(frange[1]), 0)
             
             print ("!writing to: " + path + action.name + ".animclip")
             file = open(path + action.name + ".animclip", "wb")
             self.write(file, "ANIM")
-            file.write(struct.pack("<H", len(abones)))
+            file.write(struct.pack("<H", len(abones)*3)) #TRS
             file.write(struct.pack("<HH", fr0, fr1))
             
             arm.animation_data.action = action
@@ -216,8 +216,10 @@ class KTMExporter():
                 self.write(file, bfn + "\x00\x00")
                 file.write(struct.pack("<H", fr1 - fr0 + 1))
                 for f in range(fr0, fr1 + 1):
-                    file.write(struct.pack("<iffff", f, cvs[f-fr0][1][1], cvs[f-fr0][1][3], cvs[f-fr0][1][2], cvs[f-fr0][1][0]))
-                
+                    if bn.parent != None:
+                        file.write(struct.pack("<iffff", f, cvs[f-fr0][1][1], -cvs[f-fr0][1][3], cvs[f-fr0][1][2], cvs[f-fr0][1][0]))
+                    else:
+                        file.write(struct.pack("<iffff", f, cvs[f-fr0][1][1], cvs[f-fr0][1][2], cvs[f-fr0][1][3], cvs[f-fr0][1][0]))
                 self.write(file, "\x12") #FC_BoneScl
                 self.write(file, bfn + "\x00\x00")
                 file.write(struct.pack("<H", fr1 - fr0 + 1))

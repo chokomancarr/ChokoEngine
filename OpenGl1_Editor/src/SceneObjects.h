@@ -23,6 +23,7 @@ typedef unsigned char DRAWORDER;
 #define DRAWORDER_TRANSPARENT 0x02
 #define DRAWORDER_OVERLAY 0x04
 #define DRAWORDER_LIGHT 0x08
+
 #define ECACHESZ_PADDING 1
 class Component : public Object {
 public:
@@ -34,6 +35,8 @@ public:
 	bool active;
 	SceneObject* object;
 
+	virtual void OnPreUpdate() {}
+	virtual void OnPreLUpdate() {}
 	virtual void OnPreRender() {}
 
 	friend int main(int argc, char **argv);
@@ -205,6 +208,7 @@ public:
 };
 
 class AnimClip : public AssetObject {
+public:
 	std::vector<AnimClip_Key*> keys;
 	ushort keyCount;
 	ushort frameStart, frameEnd;
@@ -239,15 +243,21 @@ protected:
 
 class Anim_State {
 public:
-	Anim_State(bool blend = false) : name(blend? "newBlendState" : "newState"), isBlend(blend), speed(1), length(0), time(0), _clip(-1), editorPos(Vec2()), editorExpand(true) {}
+	Anim_State(bool blend = false) : Anim_State(Vec2()) {}
+	
+	string name;
+	void SetClip(AnimClip* clip);
+
 	friend class Animation;
 	friend class Animator;
 	friend class EB_AnimEditor;
 protected:
 	Anim_State(Vec2 pos, bool blend = false) : name(blend ? "newBlendState" : "newState"), isBlend(blend), speed(1), length(0), time(0), _clip(-1), editorPos(pos), editorExpand(true) {}
-	string name;
 	bool isBlend;
 	float speed, length, time;
+
+	std::vector<string> keynames;
+	std::vector<Vec4> keyvals;
 
 	AnimClip* clip;
 	ASSETID _clip;
@@ -257,6 +267,8 @@ protected:
 	std::vector<AnimClip*> blendClips;
 	std::vector<ASSETID> _blendClips;
 	std::vector<float> blendOffsets;
+
+	void Eval(float dt);
 };
 
 class Anim_Transition {
@@ -282,17 +294,16 @@ protected:
 	uint activeState, nextState;
 	float stateTransition;
 
-	std::vector<string> names; //Bones must have unique names
 	std::vector<Anim_State*> states;
 	std::vector<Anim_Transition*> transitions;
 
-	int IdOfName(string n) {
-		for (int a = names.size() - 1; a >= 0; a--)
-			if (names[a] == n)
-				return a;
-		return -1;
-	}
-	void Get(uint id);
+	std::vector<string> keynames;
+	std::vector<Vec4> keyvals;
+	
+	int IdOf(const string& s);
+
+	Vec4 Get(const string& s);
+	Vec4 Get(uint id);
 
 	void Save(string s);
 };
@@ -905,12 +916,24 @@ protected:
 class Animator : public Component {
 public:
 	Animator(Animation* anim = nullptr);
+	~Animator();
 
 	Animation* animation;
 
+	int IdOf(const string& s) {
+		return animation ? animation->IdOf(s) : -1;
+	}
+
+	Vec4 Get(const string& name) {
+		return animation ? animation->Get(name) : Vec4();
+	}
+	Vec4 Get(uint id) {
+		return animation ? animation->Get(id) : Vec4();
+	}
+
 	float fps = 24;
 
-	void Update();
+	void OnPreLUpdate() override;
 
 	friend int main(int argc, char **argv);
 	friend void Serialize(Editor* e, SceneObject* o, std::ofstream* stream);
@@ -939,7 +962,7 @@ public:
 	const Mat4x4 restMatrix, restMatrixInv;
 	const Mat4x4 restMatrixAInv;
 	Mat4x4 newMatrix, animMatrix;
-	string const name;
+	string const name, fullName; // parent2/parent/me/
 	uint const id;
 	const std::vector<ArmatureBone*>& children() { return _children; }
 	const ArmatureBone* parent;
@@ -984,14 +1007,17 @@ protected:
 	Armature(string s, SceneObject* o);
 	Armature(std::ifstream& stream, SceneObject* o, long pos = -1);
 
+	Animator* _anim;
+
 	bool xray;
-	ASSETID _anim;
 	std::vector<ArmatureBone*> _bones;
 	std::unordered_map<string, ArmatureBone*> _bonemap;
+	std::vector<int> _boneAnimIds;
 	Mat4x4 _animMatrices[ARMATURE_MAX_BONES];
 	
 	static void AddBone(std::ifstream&, std::vector<ArmatureBone*>&, std::vector<ArmatureBone*>&, SceneObject*, uint&);
 	void GenMap(ArmatureBone* b = nullptr);
+	void UpdateAnimIds();
 	void Animate();
 	void UpdateMats(ArmatureBone* b = nullptr);
 };

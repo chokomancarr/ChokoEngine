@@ -881,6 +881,8 @@ public:
 	uint objectCount = 0;
 	std::vector<SceneObject*> objects;
 	SceneSettings settings;
+	std::vector<Component*> _preUpdateComps;
+	std::vector<Component*> _preLUpdateComps;
 	std::vector<Component*> _preRenderComps;
 
 	static void Load(uint i), Load(string name);
@@ -891,13 +893,16 @@ public:
 	friend class Editor;
 	friend struct Editor_PlaySyncer;
 	friend class AssetManager;
+	friend class Component;
 protected:
+
 	static std::ifstream* strm;
 //#ifndef IS_EDITOR
 	static std::vector<string> sceneEPaths;
 //#endif
 	static std::vector<string> sceneNames;
 	static std::vector<long> scenePoss;
+
 	static void ReadD0();
 	static void Unload();
 	void Save(Editor* e);

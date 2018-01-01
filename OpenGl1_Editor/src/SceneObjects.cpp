@@ -1160,7 +1160,8 @@ void ReflectionProbe::Serialize(Editor* e, std::ofstream* stream) {
 
 ArmatureBone::ArmatureBone(uint id, Vec3 pos, Quat rot, Vec3 scl, float lgh, bool conn, Transform* tr, ArmatureBone* par) : 
 	id(id), restPosition(pos), restRotation(rot), restScale(scl), restMatrix(MatFunc::FromTRS(pos, rot, scl)),
-	restMatrixInv(glm::inverse(restMatrix)), restMatrixAInv(par? restMatrixInv*par->restMatrixAInv : restMatrixInv), length(lgh), connected(conn), tr(tr), name(tr->object->name), parent(par) {}
+	restMatrixInv(glm::inverse(restMatrix)), restMatrixAInv(par? restMatrixInv*par->restMatrixAInv : restMatrixInv),
+	length(lgh), connected(conn), tr(tr), name(tr->object->name), fullName((par? par->fullName + name : name) + "/"), parent(par) {}
 #define _dw 0.1f
 const Vec3 ArmatureBone::boneVecs[6] = {
 	Vec3(0, 0, 0),
@@ -1175,7 +1176,9 @@ const uint ArmatureBone::boneIndices[24] = { 0,1,0,2,0,3,0,4,1,2,2,3,3,4,4,1,4,5
 const Vec3 ArmatureBone::boneCol = Vec3(0.6f, 0.6f, 0.6f);
 const Vec3 ArmatureBone::boneSelCol = Vec3(1, 190.0f/255, 0);
 
-Armature::Armature(string path, SceneObject* o) : Component("Armature", COMP_ARM, DRAWORDER_OVERLAY, o), overridePos(false), restPosition(o->transform.position()), restRotation(o->transform.rotation()), restScale(o->transform.localScale()), _anim(-1) {
+Armature::Armature(std::ifstream& stream, SceneObject* o, long pos) : Component("Armature", COMP_ARM, DRAWORDER_OVERLAY) {}
+
+Armature::Armature(string path, SceneObject* o) : Component("Armature", COMP_ARM, DRAWORDER_OVERLAY, o), overridePos(false), restPosition(o->transform.position()), restRotation(o->transform.rotation()), restScale(o->transform.localScale()) {
 	std::ifstream strm(path, std::ios::binary);
 	if (!strm.is_open()) {
 		Debug::Error("Armature", "File not found!");
@@ -1198,6 +1201,8 @@ Armature::Armature(string path, SceneObject* o) : Component("Armature", COMP_ARM
 		b = strm.get();
 		//std::cout << " " << to_string(strm.tellg()) << std::endl;
 	}
+	_bonemap.reserve(i);
+	_boneAnimIds.resize(i, -1);
 	GenMap();
 	Scene::active->_preRenderComps.push_back(this);
 }
@@ -1224,8 +1229,6 @@ void ArmatureBone::Draw(EB_Viewer* ebv) {
 	for (auto a : _children) a->Draw(ebv);
 	glPopMatrix();
 }
-
-Armature::Armature(std::ifstream& stream, SceneObject* o, long pos) : Component("Armature", COMP_ARM, DRAWORDER_OVERLAY) {}
 
 void Armature::AddBone(std::ifstream& strm, std::vector<ArmatureBone*>& bones, std::vector<ArmatureBone*>& blist, SceneObject* o, uint& id) {
 	//const Vec3 viz(1,1,-1);
@@ -1292,14 +1295,48 @@ void Armature::GenMap(ArmatureBone* b) {
 	}
 }
 
+void Armature::UpdateAnimIds() {
+	uint i = 0;
+	for (auto& bm : _bonemap) {
+		if (!bm.second) continue; //????
+		_boneAnimIds[i] = _anim->IdOf(bm.second->fullName + (char)AK_BoneLoc);
+		i++;
+	}
+}
+
 void Armature::Animate() {
 	if (!object->parent) return;
 	Animator* anm = object->parent->GetComponent<Animator>();
+	if (!anm || !anm->animation) return;
 
-	
+	anm->OnPreLUpdate();
+	if (anm != _anim || object->parent->dirty) {
+		_anim = anm;
+		UpdateAnimIds();
+		object->parent->dirty = false;
+	}
+	//
+
+	uint i = 0;
+	for (auto& bm : _bonemap) {
+		if (!bm.second) {
+			i++;
+			continue; //????
+		}
+		auto id = _boneAnimIds[i];
+		if (id != -1) {
+			Vec4 rot = anm->Get(id + 1);
+			bm.second->tr->localRotation(*(Quat*)&rot * bm.second->restRotation);
+
+		}
+		i++;
+	}
 }
 
 void Armature::UpdateMats(ArmatureBone* b) {
+	//
+	Animate();
+
 	auto& bn = b ? b->_children : _bones;
 	for (auto bb : bn) {
 		if (bb->parent) bb->newMatrix = bb->parent->newMatrix * bb->tr->_localMatrix;
@@ -1563,12 +1600,14 @@ void Transform::rotation(const Quat& r) {
 	_rotation = r;
 	_UpdateWEuler();
 	_W2LQuat();
+	_UpdateLMatrix();
 }
 
 void Transform::localRotation(const Quat& r) {
 	_localRotation = r;
 	_UpdateLEuler();
 	_L2WQuat();
+	_UpdateLMatrix();
 }
 
 void Transform::localScale(const Vec3& r) {
@@ -1581,6 +1620,7 @@ void Transform::eulerRotation(const Vec3& r) {
 	_eulerRotation.y = repeat(r.y, 0, 360);
 	_eulerRotation.z = repeat(r.z, 0, 360);
 	_UpdateWQuat();
+	_UpdateLMatrix();
 }
 
 void Transform::localEulerRotation(const Vec3& r) {
@@ -1588,6 +1628,7 @@ void Transform::localEulerRotation(const Vec3& r) {
 	_localEulerRotation.y = repeat(r.y, 0, 360);
 	_localEulerRotation.z = repeat(r.z, 0, 360);
 	_UpdateLQuat();
+	_UpdateLMatrix();
 }
 
 Vec3 Transform::forward() {
@@ -1706,6 +1747,9 @@ void Transform::_UpdateLMatrix() {
 
 void Transform::_UpdateWMatrix(const Mat4x4& mat) {
 	_worldMatrix = mat*_localMatrix;
+
+	_L2WPos();
+	_L2WQuat();
 
 	for (uint a = 0; a < object->childCount; a++) //using iterators cause error
 		object->children[a]->transform._UpdateWMatrix(_worldMatrix);

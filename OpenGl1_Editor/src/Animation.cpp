@@ -80,14 +80,30 @@ AnimClip::AnimClip(string p) : AssetObject(ASSETTYPE_ANIMCLIP) {
 }
 
 void AnimClip::Eval(float t) {
+	t = Repeat<float>(t, frameStart, frameEnd);
 	for (ushort k = 0; k < keyCount; k++) {
 		keyvals[k] = keys[k]->Eval(t);
 	}
 }
 
+void Anim_State::SetClip(AnimClip* nc) {
+	clip = nc;
+	keynames = clip->keynames;
+	keyvals = clip->keyvals;
+}
+
+void Anim_State::Eval(float dt) {
+	time += dt;
+	if (!isBlend) {
+		if (!clip) return;
+		clip->Eval(time);
+		keyvals = clip->keyvals;
+	}
+}
+
 
 Animation::Animation() : AssetObject(ASSETTYPE_ANIMATION), activeState(0), nextState(0), stateTransition(0), states(), transitions() {
-
+	
 }
 
 Animation::Animation(string p) : Animation() {
@@ -112,7 +128,7 @@ Animation::Animation(string p) : Animation() {
 		ASSETTYPE t;
 		if (!state->isBlend) {
 			_Strm2Asset(stream, Editor::instance, t, state->_clip);
-			state->clip = _GetCache<AnimClip>(ASSETTYPE_ANIMCLIP, state->_clip);
+			state->SetClip(_GetCache<AnimClip>(ASSETTYPE_ANIMCLIP, state->_clip));
 		}
 		else {
 			byte bc;
@@ -133,16 +149,42 @@ Animation::Animation(string p) : Animation() {
 
 }
 
-
-Animator::Animator(Animation* anim) : Component("Animator", COMP_ANM), animation(anim) {
-
+int Animation::IdOf(const string& s) {
+	for (uint a = 0; a < keynames.size(); a++) {
+		if (keynames[a] == s) return a;
+	}
+	return -1;
 }
 
-void Animator::Update() {
+Vec4 Animation::Get(const string& s) {
+	for (uint a = 0; a < keynames.size(); a++) {
+		if (keynames[a] == s) return keyvals[a];
+	}
+	return Vec4();
+}
+
+Vec4 Animation::Get(uint i) {
+	if (i < 0 || i >= keyvals.size()) return Vec4();
+	return keyvals[i];
+}
+
+
+Animator::Animator(Animation* anim) : Component("Animator", COMP_ANM), animation(anim) {
+	Scene::active->_preLUpdateComps.push_back(this);
+}
+
+Animator::~Animator() {
+	auto& prc = Scene::active->_preLUpdateComps;
+	prc.erase(std::find(prc.begin(), prc.end(), this));
+}
+
+void Animator::OnPreLUpdate() {
 	if (!animation) return;
 
 	//
-	animation->states[0]->time += Time::delta*fps;
+	animation->states[0]->Eval(Time::delta*fps);
+	animation->keynames = animation->states[0]->keynames;
+	animation->keyvals = animation->states[0]->keyvals;
 }
 
 void Animator::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
@@ -160,4 +202,5 @@ void Animator::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 void Animator::_SetAnim(void* v) {
 	Animator* r = (Animator*)v;
 	r->animation = _GetCache<Animation>(ASSETTYPE_ANIMATION, r->_animation);
+	r->object->dirty = true;
 }
