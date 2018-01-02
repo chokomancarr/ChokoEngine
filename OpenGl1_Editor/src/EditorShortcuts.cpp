@@ -275,6 +275,7 @@ void EB_Viewer::_DoAddObjectBl(EditorBlock* b, void* v) {
 	SceneObject* o = new SceneObject(name, ((EB_Viewer*)b)->rotCenter, Quat(), Vec3(1,1,1));
 	b->editor->activeScene->objects.push_back(o);
 	std::ifstream file(path.c_str(), std::ios::in | std::ios::binary);
+	bool hasarm = false;
 	if (file.is_open()) {
 		char * c = new char[8];
 		file.read(c, 7);
@@ -379,6 +380,10 @@ void EB_Viewer::_DoAddObjectBl(EditorBlock* b, void* v) {
 				o->AddChild(so);
 				//std::ifstream astrm(path.substr(0, path.size() - 11) + "_blend\\" + nm + ".arma.meta", std::ios::in | sd::ios::bin);
 				so->AddComponent(new Armature(path.substr(0, path.size() - 11) + "_blend\\" + nm + ".arma.meta", so));
+				if (!hasarm) {
+					hasarm = true;
+					o->AddComponent<Animator>();
+				}
 			}
 			file >> d;
 		}

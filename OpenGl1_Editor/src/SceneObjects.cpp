@@ -531,14 +531,14 @@ void SkinnedMeshRenderer::mesh(Mesh* m) {
 void SkinnedMeshRenderer::InitWeights() {
 	std::vector<uint> noweights;
 	weights.clear();
-	auto bsz = armature->_bonemap.size();
+	auto bsz = armature->_allbones.size();
 	weights.resize(_mesh->vertexCount);
 	std::vector<SkinDats> dats(_mesh->vertexCount);
 	for (uint i = 0; i < _mesh->vertexCount; i++) {
 		byte a = 0;
 		float tot = 0;
 		for (auto& g : _mesh->vertexGroupWeights[i]) {
-			auto bn = armature->_bonemap[_mesh->vertexGroups[g.first]];
+			auto bn = armature->MapBone(_mesh->vertexGroups[g.first]);
 			if (!bn) continue;
 			weights[i][a].first = bn;
 			weights[i][a].second = g.second;
@@ -583,7 +583,7 @@ void SkinnedMeshRenderer::InitWeights() {
 	skinDispatchGroups = ceil(((float)_mesh->vertexCount) / SKINNED_THREADS_PER_GROUP);
 
 	if (!!noweights.size()) 
-		Debug::Warning("SMR", to_string(noweights.size()) + " vertices have no weights assigned!");
+		Debug::Warning("SMR", to_string(noweights.size()) + " vertices in \"" + _mesh->name + "\" have no weights assigned!");
 }
 
 void SkinnedMeshRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
@@ -1201,7 +1201,8 @@ Armature::Armature(string path, SceneObject* o) : Component("Armature", COMP_ARM
 		b = strm.get();
 		//std::cout << " " << to_string(strm.tellg()) << std::endl;
 	}
-	_bonemap.reserve(i);
+	_allbonenames.reserve(i);
+	_allbones.reserve(i);
 	_boneAnimIds.resize(i, -1);
 	GenMap();
 	Scene::active->_preRenderComps.push_back(this);
@@ -1228,6 +1229,15 @@ void ArmatureBone::Draw(EB_Viewer* ebv) {
 
 	for (auto a : _children) a->Draw(ebv);
 	glPopMatrix();
+}
+
+ArmatureBone* Armature::MapBone(string nm) {
+	uint i = 0;
+	for (string& name : _allbonenames) {
+		if (name == nm) return _allbones[i];
+		i++;
+	}
+	return nullptr;
 }
 
 void Armature::AddBone(std::ifstream& strm, std::vector<ArmatureBone*>& bones, std::vector<ArmatureBone*>& blist, SceneObject* o, uint& id) {
@@ -1290,16 +1300,16 @@ void Armature::AddBone(std::ifstream& strm, std::vector<ArmatureBone*>& bones, s
 void Armature::GenMap(ArmatureBone* b) {
 	auto& bn = b ? b->_children : _bones;
 	for (auto bb : bn) {
-		_bonemap.emplace(bb->name, bb);
+		_allbonenames.push_back(bb->name);
+		_allbones.push_back(bb);
 		GenMap(bb);
 	}
 }
 
 void Armature::UpdateAnimIds() {
 	uint i = 0;
-	for (auto& bm : _bonemap) {
-		if (!bm.second) continue; //????
-		_boneAnimIds[i] = _anim->IdOf(bm.second->fullName + (char)AK_BoneLoc);
+	for (auto bn : _allbones) {
+		_boneAnimIds[i] = _anim->IdOf(bn->fullName + (char)AK_BoneLoc);
 		i++;
 	}
 }
@@ -1315,28 +1325,24 @@ void Armature::Animate() {
 		UpdateAnimIds();
 		object->parent->dirty = false;
 	}
-	//
 
 	uint i = 0;
-	for (auto& bm : _bonemap) {
-		if (!bm.second) {
-			i++;
-			continue; //????
-		}
+	for (auto& bn : _allbones) {
 		auto id = _boneAnimIds[i];
 		if (id != -1) {
+			Vec4 loc = anm->Get(id);
 			Vec4 rot = anm->Get(id + 1);
-			bm.second->tr->localRotation(*(Quat*)&rot * bm.second->restRotation);
-
+			Vec4 scl = anm->Get(id + 2);
+			bn->tr->localPosition(loc);
+			bn->tr->localRotation(*(Quat*)&rot);
+			bn->tr->localScale(scl);
+			//bm.second->tr->_localMatrix = MatFunc::FromTRS(bm.second->tr->_localPosition, bm.second->tr->_localRotation, bm.second->tr->_localScale);
 		}
 		i++;
 	}
 }
 
 void Armature::UpdateMats(ArmatureBone* b) {
-	//
-	Animate();
-
 	auto& bn = b ? b->_children : _bones;
 	for (auto bb : bn) {
 		if (bb->parent) bb->newMatrix = bb->parent->newMatrix * bb->tr->_localMatrix;
@@ -1374,6 +1380,7 @@ void Armature::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 }
 
 void Armature::OnPreRender() {
+	Animate();
 	UpdateMats();
 }
 

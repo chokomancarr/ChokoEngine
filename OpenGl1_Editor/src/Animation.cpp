@@ -57,6 +57,7 @@ AnimClip::AnimClip(string p) : AssetObject(ASSETTYPE_ANIMCLIP) {
 	keys.reserve(keyCount);
 	keynames.resize(keyCount);
 	keyvals.resize(keyCount);
+	std::cout << "Clip data: " << keyCount << " keys @ " << frameStart << " ~ " << frameEnd << std::endl;
 	for (ushort aa = 0; aa < keyCount; aa++) {
 		if (stream.eof()) {
 			Debug::Error("AnimClip", "Unexpected eof");

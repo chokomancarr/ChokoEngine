@@ -1011,9 +1011,11 @@ protected:
 
 	bool xray;
 	std::vector<ArmatureBone*> _bones;
-	std::unordered_map<string, ArmatureBone*> _bonemap;
+	std::vector<string> _allbonenames;
+	std::vector<ArmatureBone*> _allbones;
 	std::vector<int> _boneAnimIds;
 	Mat4x4 _animMatrices[ARMATURE_MAX_BONES];
+	ArmatureBone* MapBone(string nm);
 	
 	static void AddBone(std::ifstream&, std::vector<ArmatureBone*>&, std::vector<ArmatureBone*>&, SceneObject*, uint&);
 	void GenMap(ArmatureBone* b = nullptr);
@@ -1084,6 +1086,9 @@ public:
 	SceneObject* AddChild(SceneObject* child, bool retainLocal = false);
 	SceneObject* GetChild(int i) { return children[i]; }
 	Component* AddComponent(Component* c);
+	template <typename T> T* AddComponent() {
+		return (T*)AddComponent(new T());
+	}
 	
 	Component* GetComponent(COMPONENT_TYPE type);
 	template<class T> T* GetComponent() {

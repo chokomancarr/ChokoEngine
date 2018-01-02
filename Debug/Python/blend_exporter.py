@@ -42,12 +42,13 @@ class KTMExporter():
             if obj.type == 'MESH':
                 print ("obj " + obj.name)
                 self.write(file2, "obj " + obj.name)
-                hasbone = False;
+                marm = None
                 for mod in obj.modifiers:
                     if mod.type == 'ARMATURE':
-                        hasbone = True;
+                        marm = mod
                         break
-                if hasbone:
+                if marm != None:
+                    obj.modifiers.remove(marm)
                     self.write(file2, "\x01")
                 if obj.parent:
                     self.write(file2, " \x00prt " + obj.parent.name)
@@ -128,7 +129,6 @@ class KTMExporter():
         self.write(file, "ARM\x00")
         self.write_bone(file, obj.data.bones)
         file.close()
-        obj.data.pose_position = 'POSE'
     
     def write_bone(self, file, bones):
         for bone in bones:
@@ -170,25 +170,36 @@ class KTMExporter():
                 break
         if arm == None:
             return
+            
+        #obj.data.pose_position = 'REST'
+        
+        abones = arm.pose.bones
+        #restmats = [] #foreach bone {TRS}
+        #for bn in abones:
+        #    mat = self.bonelocalmat(bn)
+        #    restmats.append([mat.to_translation(), mat.to_quaternion(), mat.to_scale()]);
+        
+        obj.data.pose_position = 'POSE'
+        
         for action in bpy.data.actions:
             if len(action.fcurves) == 0:
                 continue
-            
-            abones = []
-            abc = 0
-            for bn in arm.pose.bones:
-                acn = "pose.bones[\"" + bn.name + "\"]"
-                haskey = [x for x in action.fcurves if x.data_path.startswith(acn)]
-                if len(haskey) != 0:
-                    abones.insert(abc, bn)
-                    abc += 1
-            if abc == 0:
+            if action.id_root != "OBJECT":
                 continue
-            
             
             frange = action.frame_range
             fr0 = max(int(frange[0]), 0)
             fr1 = max(int(frange[1]), 0)
+            
+            mats = [] #foreach frame { foreach bone {TRS} }
+            for f in range(fr0, fr1 + 1):
+                self.scene.frame_set(f)
+                mats.append([]);
+                i = 0
+                for bn in abones:
+                    mat = self.bonelocalmat(bn)
+                    mats[f-fr0].append([mat.to_translation(), mat.to_quaternion(), mat.to_scale()]);
+                    i += 1
             
             print ("!writing to: " + path + action.name + ".animclip")
             file = open(path + action.name + ".animclip", "wb")
@@ -198,35 +209,39 @@ class KTMExporter():
             
             arm.animation_data.action = action
             
+            i = 0
             for bn in abones:
-                cvs = []
-                for f in range(fr0, fr1 + 1):
-                    self.scene.frame_set(f)
-                    mat = bn.matrix_basis
-                    cvs.insert(f-fr0, [mat.to_translation(), mat.to_quaternion(), mat.to_scale()])
-                
                 bfn = self.bonefullname(bn, "")
                 self.write(file, "\x10") #FC_BoneLoc
                 self.write(file, bfn + "\x00\x00")
                 file.write(struct.pack("<H", fr1 - fr0 + 1))
                 for f in range(fr0, fr1 + 1):
-                    file.write(struct.pack("<ifff", f, cvs[f-fr0][0][0], cvs[f-fr0][0][2], cvs[f-fr0][0][1]))
+                    res = mats[f-fr0][i][0]
+                    file.write(struct.pack("<ifff", f, res[0], res[2], res[1]))
                 
                 self.write(file, "\x11") #FC_BoneRot
                 self.write(file, bfn + "\x00\x00")
                 file.write(struct.pack("<H", fr1 - fr0 + 1))
                 for f in range(fr0, fr1 + 1):
-                    if bn.parent != None:
-                        file.write(struct.pack("<iffff", f, cvs[f-fr0][1][1], -cvs[f-fr0][1][3], cvs[f-fr0][1][2], cvs[f-fr0][1][0]))
-                    else:
-                        file.write(struct.pack("<iffff", f, cvs[f-fr0][1][1], cvs[f-fr0][1][2], cvs[f-fr0][1][3], cvs[f-fr0][1][0]))
+                    res = mats[f-fr0][i][1]
+                    file.write(struct.pack("<iffff", f, -res[1], -res[3], -res[2], res[0]))
+                
                 self.write(file, "\x12") #FC_BoneScl
                 self.write(file, bfn + "\x00\x00")
                 file.write(struct.pack("<H", fr1 - fr0 + 1))
                 for f in range(fr0, fr1 + 1):
-                    file.write(struct.pack("<ifff", f, cvs[f-fr0][2][0], cvs[f-fr0][2][2], cvs[f-fr0][2][1]))
+                    res = mats[f-fr0][i][2]
+                    file.write(struct.pack("<ifff", f, res[0], res[2], res[1]))
                 
+                i += 1
+            
             file.close()
+    
+    def bonelocalmat (self, bone):
+        if bone.parent == None:
+            return bone.matrix
+        else:
+            return bone.parent.matrix.inverted() * bone.matrix
     
     def bonefullname (self, bone, par):
         if bone.parent:
