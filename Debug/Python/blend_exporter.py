@@ -187,6 +187,8 @@ class KTMExporter():
             if action.id_root != "OBJECT":
                 continue
             
+            arm.animation_data.action = action
+            
             frange = action.frame_range
             fr0 = max(int(frange[0]), 0)
             fr1 = max(int(frange[1]), 0)
@@ -206,8 +208,6 @@ class KTMExporter():
             self.write(file, "ANIM")
             file.write(struct.pack("<H", len(abones)*3)) #TRS
             file.write(struct.pack("<HH", fr0, fr1))
-            
-            arm.animation_data.action = action
             
             i = 0
             for bn in abones:
@@ -254,3 +254,11 @@ class KTMExporter():
 
 if __name__ == "__main__":
     KTMExporter().execute()
+
+## This poem below is stolen from https://www.reddit.com/r/copypasta/comments/51cvdw/why_python_sucks/ ##
+
+# Let's start with indentation errors. What the actual fuck? No sane programming language structures itself on tabs, you want clear blocks? You want an end, well fuck you! Better make sure it's all aligned well. Are you 4 layers down into indentation, better make sure that screen real estate is holding up, wouldn't want to cause you any fucking stupid problems or anything. Wanna use tabs? Sure, use tabs, prettiest things on earth, some spaces, why not, throw it all in, oh wait, I like either one but not both together. Your dirty friend doesn't know how to set up his vim (and it shouldn't damn well matter), :retab won't work because you've now created a horrible mess. Oh, wanna git clone some code, for sure, just make sure you use the exact same configuration, and please do follow the joke of a style guide, it's the only way our programs actually run. BECAUSE THEy ARE DEPENDANT ON STYLE WHAT THE FUCK. Semicolons are optional, lovely. Want to flatten an array, .flatten? Nooooo, gotta overload the + operator sum(fuck,+) this how disgusting is that. Want to unique a list? .uniq? Something like that? Noooo list(set(mylist)) are you kidding me?! Type conversion will solve all our issues. 100. most disguting syntax, and a loop just iterates through a range. Ohhh, backwards compatability? Nopeeeeee, wouldn't want that in a scripting language now would we, too bad our original design was so messed up we had to be so brave to basically rewrite the whole thing, not like anyone was using it or anything.... And holy crap the syntax, most ugly thing I've ever seen what on earth Curly braces noooooope, too easy and they have the gall to call this entire monster the "pythonist" way, must be . Want to overload default operators in your class, just what they look like right? Nooope, every single one has a godamn special name, let's take a look at the list right, couldn't make it simple or anything. Want a ternary, eh? Something simple two character ?: magic? No, fuck you, use [res1,res2](condition) or a assbackwards most confusing and ugly horrific res1 if condition else res 2, I mean what the actualy fuck is that? Oh and let's preface all our functions with a thousand ____ like the tears you cry when you try to make sure it's the correct number, oh and always make sure to pass in self, wouldn't want to have scope or get lost or anything nooooo.
+
+# Well you may ask? Surely python must have something good right? All those scientists must use it for a reason (and 90% of them write horrific code and have no clue about it by the way, as is unsurprising, hence the python). Well yeah, it has some nice libraries, but that's like saying it's a nice car because someone decided to build a fancy trailer for it. And it automatically freezes string literals, that's slightly convenient.
+
+## end copy-pasta ##
