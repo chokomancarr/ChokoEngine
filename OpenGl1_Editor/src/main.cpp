@@ -1,21 +1,16 @@
 #define _USE_MATH_DEFINES
 #define _ITERATOR_DEBUG_LEVEL 0
-#include <math.h>
-#include <iostream>
+#include "Engine.h"
+#include "Editor.h"
 #include <ctime>
-#include <Windows.h>
 #include <Psapi.h>
 #include <typeinfo>
 #include <thread>
 #include <mutex>
-#include <sstream>
 #include <type_traits>
-#include "Engine.h"
-#include "Editor.h"
-#include "SceneObjects.h"
 #include "Compressors.h"
-#include "Xml.h"
-#include <gl/GLUT.h>
+#include <shellapi.h>
+//#include <GLFW\glfw3.h>
 
 //#include "MD.h"
 

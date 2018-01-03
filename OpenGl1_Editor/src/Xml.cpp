@@ -1,6 +1,4 @@
 #include "Xml.h"
-#include <iostream>
-#include <fstream>
 #include "Engine.h"
 
 uint _spacecount(char* c) {

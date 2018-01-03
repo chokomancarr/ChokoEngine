@@ -1,11 +1,5 @@
 #include "Engine.h"
 #include "Editor.h"
-#include <GL/glew.h>
-#include <vector>
-#include <string>
-#include <iostream>
-#include <sstream>
-#include <fstream>
 #include <limits>
 
 #pragma region Shader

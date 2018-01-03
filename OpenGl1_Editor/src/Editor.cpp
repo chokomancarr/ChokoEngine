@@ -1,26 +1,13 @@
 ﻿#include "Editor.h"
 #include "Engine.h"
-#include <GL/glew.h>
-#include <iostream>
-#include <sstream>
-#include <vector>
-#include <string>
 #include <shlobj.h>
 #include <shlguid.h>
 #include <shellapi.h>
-#include <algorithm>
 #include <commctrl.h>
 #include <commoncontrols.h>
 #include <shellapi.h>
-#include <Windows.h>
 #include <Thumbcache.h>
-#include <math.h>
 #include <mutex>
-#include <glm/glm.hpp>
-#include <glm/gtx/transform.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-#include <GL/freeglut.h>
 #include <chrono>
 #include <thread>
 #include <filesystem>
@@ -285,7 +272,7 @@ void EB_Debug::Refresh() {
 
 void EB_Debug::OnMouseScr(bool up) {
 	scrollOffset += up ? 17 : -17;
-	scrollOffset = clamp(scrollOffset, 0, max(maxScroll - (Display::height*(editor->yPoss[y2] - editor->yPoss[y1]) - EB_HEADER_SIZE - 1), 0));
+	scrollOffset = clamp(scrollOffset, 0, max(maxScroll - (Display::height*(editor->yPoss[y2] - editor->yPoss[y1]) - EB_HEADER_SIZE - 1), 0.0f));
 }
 
 
@@ -426,7 +413,7 @@ void EB_Hierarchy::Draw() {
 
 void EB_Hierarchy::OnMouseScr(bool up) {
 	scrollOffset += up ? -17 : 17;
-	scrollOffset = clamp(scrollOffset, 0, max(maxScroll - (Display::height*(editor->yPoss[y2] - editor->yPoss[y1]) - EB_HEADER_SIZE - 1), 0));
+	scrollOffset = clamp(scrollOffset, 0, max(maxScroll - (Display::height*(editor->yPoss[y2] - editor->yPoss[y1]) - EB_HEADER_SIZE - 1), 0.0f));
 }
 
 HICON GetHighResolutionIcon(LPTSTR pszPath)
@@ -1164,11 +1151,11 @@ void EB_Viewer::OnMousePress(int i) {
 void EB_Viewer::OnMouseScr(bool up) {
 	if (Input::KeyHold(Key_Alt)) {
 		fov += (up ? 5 : -5);
-		fov = min(max(fov, 1), 179);
+		fov = min(max(fov, 1.0f), 179.0f);
 	}
 	else {
 		scale += (up ? 0.1f : -0.1f);
-		scale = min(max(scale, -10), 10);
+		scale = min(max(scale, -10.0f), 10.0f);
 	}
 }
 
@@ -1395,7 +1382,7 @@ void EB_Inspector::Draw() {
 
 void EB_Inspector::OnMouseScr(bool up) {
 	scrollOffset += up ? -17 : 17;
-	scrollOffset = clamp(scrollOffset, 0, max(maxScroll - (Display::height*(editor->yPoss[y2] - editor->yPoss[y1]) - EB_HEADER_SIZE - 1), 0));
+	scrollOffset = clamp(scrollOffset, 0, max(maxScroll - (Display::height*(editor->yPoss[y2] - editor->yPoss[y1]) - EB_HEADER_SIZE - 1), 0.0f));
 }
 
 void EB_Inspector::DrawGlobal(Vec4 v) {
@@ -1560,7 +1547,7 @@ void EB_AnimEditor::Draw() {
 
 void EB_AnimEditor::OnMouseScr(bool up) {
 	scale += (up ? 0.1f : -0.1f);
-	scale = min(max(scale, 1), 5);
+	scale = min(max(scale, 1.0f), 5.0f);
 }
 
 GLuint EB_Previewer::d_fbo = 0;
@@ -1705,7 +1692,7 @@ void PB_ProceduralGenerator::Draw() {
 template<typename T>
 bool EPS_RWMem(bool write, Editor_PlaySyncer* syncer, T* val, uint loc, ulong sz = 0) {
 	assert(syncer && val && !!loc);
-	sz = max(sz, sizeof(T));
+	sz = max<ulong>(sz, sizeof(T));
 	SIZE_T c;
 	bool ok;
 	if (write) ok = !!WriteProcessMemory(syncer->pInfo.hProcess, (LPVOID)loc, val, sz, &c);

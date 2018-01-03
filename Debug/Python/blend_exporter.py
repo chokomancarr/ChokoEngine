@@ -52,6 +52,8 @@ class KTMExporter():
                     self.write(file2, "\x01")
                 if obj.parent:
                     self.write(file2, " \x00prt " + obj.parent.name)
+                    if obj.parent_type == "BONE":
+                        self.write(file2, "\x02" + obj.parent_bone)
                 poss = obj.location
                 self.write(file2, " \x00pos {:f} {:f} {:f}".format(poss[0], poss[2], poss[1]))
                 rott = obj.rotation_quaternion
@@ -200,7 +202,7 @@ class KTMExporter():
                 i = 0
                 for bn in abones:
                     mat = self.bonelocalmat(bn)
-                    mats[f-fr0].append([mat.to_translation(), mat.to_quaternion(), mat.to_scale()]);
+                    mats[f-fr0].append([mat.to_translation(), mat.to_quaternion(), mat.to_scale()])
                     i += 1
             
             print ("!writing to: " + path + action.name + ".animclip")

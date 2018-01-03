@@ -2,14 +2,21 @@
 #define _ITERATOR_DEBUG_LEVEL 0
 
 #include <gl/glew.h>
+#include <gl/GLUT.h>
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <vector>
+#include <unordered_map>
 #include <array>
 #include <memory>
-#include <unordered_map>
+#include <jpeglib.h>
+#include <jerror.h>
+#include <lodepng.h>
+#include <math.h>
 #include <glm/glm.hpp>
+#include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -84,6 +91,15 @@ template <typename T> T Repeat(T t, T a, T b) {
 	return t;
 }
 
+template <typename T> T min(const T& a, const T& b) {
+	if (a > b) return b;
+	return a;
+}
+template <typename T> T max(const T& a, const T& b) {
+	if (a > b) return a;
+	return b;
+}
+
 typedef unsigned char byte;
 typedef unsigned int uint;
 typedef unsigned long ulong;
@@ -103,8 +119,6 @@ string to_string(uint f);
 string to_string(int f);
 string to_string(Vec2 v), to_string(Vec3 v), to_string(Vec4 v), to_string(Quat v);
 std::vector<string> string_split(string s, char c);
-
-Vec3 to_vec3(Vec4 v);
 
 int TryParse(string str, int defVal);
 uint TryParse(string str, uint defVal);

@@ -227,7 +227,8 @@ public:
 	static void _D2AddComCam(EditorBlock*), _D2AddComMrd(EditorBlock*), _D2AddComAnm(EditorBlock*), _D2AddComLht(EditorBlock*), _D2AddComRfq(EditorBlock*), _D2AddComRdp(EditorBlock*), _D2AddComMft(EditorBlock*);
 	
 	static void _AddObjAsI(EditorBlock*); //, _AddObjAsC(EditorBlock*), _AddObjAsP(EditorBlock*);
-	
+	static bool _AddObjAsCh(SceneObject* sc, const string& nm, std::vector<SceneObject*>& os, const string& bn);
+
 	static void _TooltipT(EditorBlock*), _TooltipR(EditorBlock*), _TooltipS(EditorBlock*);
 	static void _SelectAll(EditorBlock*), _ViewInvis(EditorBlock*), _ViewPersp(EditorBlock*);
 	static void _OrientG(EditorBlock*), _OrientL(EditorBlock*), _OrientV(EditorBlock*);

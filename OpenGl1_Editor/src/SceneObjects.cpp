@@ -1,7 +1,5 @@
-//#include "SceneObjects.h"
 #include "Engine.h"
 #include "Editor.h"
-#include <sstream>
 
 Object::Object(string nm) : id(Engine::GetNewId()), name(nm) {}
 Object::Object(ulong id, string nm) : id(id), name(nm) {}
@@ -210,7 +208,7 @@ void Camera::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 		float dh = ((v.b*0.35f - 1)*Display::height / Display::width) - 1;
 		Engine::DrawQuad(v.r + v.b*0.65f, v.g + pos + 35, v.b*0.35f - 1, dh, grey1());
 		Engine::DrawQuad(v.r + v.b*0.65f + ((v.b*0.35f - 1)*screenPos.x), v.g + pos + 35 + dh*screenPos.y, (v.b*0.35f - 1)*screenPos.w, dh*screenPos.h, grey2());
-		pos += (uint)max(37 + dh, 87);
+		pos += (uint)max(37 + dh, 87.0f);
 		UI::Label(v.r + 2, v.g + pos + 1, 12, "Filtering", e->font, white());
 		std::vector<string> clearNames = { "None", "Color and Depth", "Depth only", "Skybox" };
 		if (Engine::EButton(e->editorLayer == 0, v.r + v.b * 0.3f, v.g + pos + 1, v.b * 0.7f - 1, 14, grey2(), clearNames[clearType], 12, e->font, white()) == MOUSE_PRESS) {
@@ -580,7 +578,7 @@ void SkinnedMeshRenderer::InitWeights() {
 	skinBufPoss->Set(&_mesh->vertices[0].x, sizeof(Vec4), sizeof(Vec3));
 	skinBufNrms->Set(&_mesh->normals[0].x, sizeof(Vec4), sizeof(Vec3));
 	skinBufDats->Set(&dats[0]);
-	skinDispatchGroups = ceil(((float)_mesh->vertexCount) / SKINNED_THREADS_PER_GROUP);
+	skinDispatchGroups = (uint)ceilf(((float)_mesh->vertexCount) / SKINNED_THREADS_PER_GROUP);
 
 	if (!!noweights.size()) 
 		Debug::Warning("SMR", to_string(noweights.size()) + " vertices in \"" + _mesh->name + "\" have no weights assigned!");
@@ -1333,10 +1331,9 @@ void Armature::Animate() {
 			Vec4 loc = anm->Get(id);
 			Vec4 rot = anm->Get(id + 1);
 			Vec4 scl = anm->Get(id + 2);
-			bn->tr->localPosition(loc);
+			bn->tr->localPosition(loc / animationScale);
 			bn->tr->localRotation(*(Quat*)&rot);
 			bn->tr->localScale(scl);
-			//bm.second->tr->_localMatrix = MatFunc::FromTRS(bm.second->tr->_localPosition, bm.second->tr->_localRotation, bm.second->tr->_localScale);
 		}
 		i++;
 	}
@@ -1372,8 +1369,14 @@ void Armature::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
 	Armature* cam = (Armature*)c;
 	if (DrawComponentHeader(e, v, pos, this)) {
 		pos += 17;
-		UI::Label(v.r + 2, v.g + pos, 12, "XRay", e->font, white());
-		xray = Engine::Toggle(v.r + v.b*0.3f, v.g + pos, 12, e->tex_checkbox, xray, white(), ORIENT_HORIZONTAL);
+		UI::Label(v.r + 2, v.g + pos, 12, "Anim Scale", e->font, white());
+		try {
+			animationScale = std::stof(UI::EditText(v.r + v.b*0.33f, v.g + pos, v.b*0.66f, 14, 12, grey2(), to_string(animationScale), e->font, true));
+		}
+		catch (std::logic_error e) {
+			animationScale = 1;
+		}
+		animationScale = max(animationScale, 0.0001f);
 		pos += 17;
 	}
 	else pos += 17;
@@ -1682,9 +1685,9 @@ Transform& Transform::Rotate(Vec3 v, TransformSpace sp) {
 		Vec4 vx = im*Vec4(1, 0, 0, 0);
 		Vec4 vy = im*Vec4(0, 1, 0, 0);
 		Vec4 vz = im*Vec4(0, 0, 1, 0);
-		Quat qx = QuatFunc::FromAxisAngle(Normalize(to_vec3(vx)), v.x);
-		Quat qy = QuatFunc::FromAxisAngle(Normalize(to_vec3(vy)), v.y);
-		Quat qz = QuatFunc::FromAxisAngle(Normalize(to_vec3(vz)), v.z);
+		Quat qx = QuatFunc::FromAxisAngle(vx, v.x);
+		Quat qy = QuatFunc::FromAxisAngle(vy, v.y);
+		Quat qz = QuatFunc::FromAxisAngle(vz, v.z);
 		_rotation = qx * qy * qz * _rotation;
 		_UpdateWEuler();
 		_W2LQuat();
@@ -1819,10 +1822,20 @@ void SceneObject::SetParent(SceneObject* nparent, bool retainLocal) {
 }
 
 SceneObject* SceneObject::AddChild(SceneObject* child, bool retainLocal) {
+	Vec3 t;
+	Quat r;
+	if (!retainLocal) {
+		t = child->transform._position;
+		r = child->transform._rotation;
+	}
 	children.push_back(child);
 	childCount++;
 	child->parent = this;
 	child->transform._UpdateWMatrix(transform._worldMatrix);
+	if (!retainLocal) {
+		child->transform.position(t);
+		child->transform.rotation(r);
+	}
 	return this;
 }
 

@@ -987,6 +987,7 @@ public:
 	Vec3 restPosition;
 	Quat restRotation;
 	Vec3 restScale;
+	float animationScale = 1;
 	const std::vector<ArmatureBone*>& bones() { return _bones; }
 
 	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;

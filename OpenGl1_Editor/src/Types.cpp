@@ -54,7 +54,7 @@ Quat QuatFunc::LookAt(const Vec3& tarr, const Vec3& up) {
 	Vec3 tar = Normalize(tarr);
 	Vec3 fw = Vec3(0,0,1);
 	Vec3 axis = cross(tar, fw);
-	float angle = rad2deg*acos(Clamp(dot(tar,fw), -1, 1));
+	float angle = rad2deg*acos(Clamp(dot(tar,fw), -1.0f, 1.0f));
 	Vec3 tr = cross(axis, fw);
 	if (dot(tr, tar) < 0) angle *= -1;
 	Quat q1 = FromAxisAngle(axis, angle);
@@ -63,7 +63,7 @@ Quat QuatFunc::LookAt(const Vec3& tarr, const Vec3& up) {
 	Vec3 mup = q1*Vec3(0, 1, 0);//QuatFunc::ToMatrix(q1)*Vec4(0, 1, 0, 0);
 	Vec3 mrt = q1*Vec3(1, 0, 0);
 	Vec3 rt = Normalize(cross(up, tar));
-	float angle2 = rad2deg*acos(Clamp(dot(mrt, rt), -1, 1));
+	float angle2 = rad2deg*acos(Clamp(dot(mrt, rt), -1.0f, 1.0f));
 	if (dot(mup, rt) < 0) angle2 *= -1;
 	Quat q2 = FromAxisAngle(tar, angle2);
 	if (abs(angle2) < 0.000001f) q2 = Quat();

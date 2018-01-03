@@ -48,7 +48,7 @@ AnimClip::AnimClip(string p) : AssetObject(ASSETTYPE_ANIMCLIP) {
 
 	AnimKeyType tp;
 	byte ul;
-	char nm[100];
+	char nm[300];
 	ushort fc;
 
 	_Strm2Val(stream, keyCount);
@@ -64,7 +64,7 @@ AnimClip::AnimClip(string p) : AssetObject(ASSETTYPE_ANIMCLIP) {
 			return;
 		}
 		_Strm2Val(stream, tp);
-		stream.getline(nm, 100, 0);
+		stream.getline(nm, 300, 0);
 		_Strm2Val(stream, ul);
 
 		AnimClip_Key* key = new AnimClip_Key(nm, tp);

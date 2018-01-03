@@ -1,30 +1,12 @@
 #include "Engine.h"
 #include "Editor.h"
 #include "hdr.h"
-#include <GL/glew.h>
-#include <gl/GLUT.h>
-#include <vector>
-#include <string>
-#include <sstream>
 #include <iomanip>
-#include <iostream>
 #include <algorithm>
-#include <fstream>
-#include <sstream>
 #include <climits>
 #include <ctime>
 #include <shellapi.h>
-#include <Windows.h>
-#include <math.h>
 #include <thread>
-#include <jpeglib.h>
-#include <jerror.h>
-#include <lodepng.h>
-#include <glm/glm.hpp>
-#include <glm/gtx/quaternion.hpp>
-#include <glm/gtx/transform.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 #include "Defines.h"
 #include "SceneScriptResolver.h"
 
@@ -56,11 +38,6 @@ std::vector<string> string_split(string s, char c) {
 		o.push_back(s.substr(0, pos));
 	} while (pos != string::npos);
 	return o;
-}
-
-Vec3 to_vec3(Vec4 v) {
-	if (v.w != 0) v /= v.w;
-	return Vec3(v.x, v.y, v.z);
 }
 
 int TryParse (string str, int defVal) {
@@ -649,7 +626,7 @@ string UI::EditText(float x, float y, float w, float h, float s, Vec4 bcol, cons
 			if (!delayed) _editTextString = str;
 			if (!!_editTextCursorPos) _editTextCursorPos -= Input::KeyDown(Key_LeftArrow);
 			_editTextCursorPos += Input::KeyDown(Key_RightArrow);
-			_editTextCursorPos = Clamp(_editTextCursorPos, 0, _editTextString.size());
+			_editTextCursorPos = Clamp(_editTextCursorPos, 0U, _editTextString.size());
 			if (!Input::KeyHold(Key_Shift) && (Input::KeyDown(Key_LeftArrow) || Input::KeyDown(Key_RightArrow))) {
 				_editTextCursorPos2 = _editTextCursorPos;
 				_editTextBlinkTime = 0;
@@ -1421,15 +1398,15 @@ void Input::UpdateMouseNKeyboard(bool* src) {
 	if (KeyDown(Key_Space)) inputString += " ";
 
 	if (mouse0)
-		mouse0State = min(mouse0State+1, MOUSE_HOLD);
+		mouse0State = min<byte>(mouse0State+1U, MOUSE_HOLD);
 	else
 		mouse0State = ((mouse0State == MOUSE_UP) | (mouse0State == 0)) ? 0 : MOUSE_UP;
 	if (mouse1)
-		mouse1State = min(mouse1State + 1, MOUSE_HOLD);
+		mouse1State = min<byte>(mouse1State + 1U, MOUSE_HOLD);
 	else
 		mouse1State = ((mouse1State == MOUSE_UP) | (mouse1State == 0)) ? 0 : MOUSE_UP;
 	if (mouse2)
-		mouse2State = min(mouse2State + 1, MOUSE_HOLD);
+		mouse2State = min<byte>(mouse2State + 1U, MOUSE_HOLD);
 	else
 		mouse2State = ((mouse2State == MOUSE_UP) | (mouse2State == 0)) ? 0 : MOUSE_UP;
 

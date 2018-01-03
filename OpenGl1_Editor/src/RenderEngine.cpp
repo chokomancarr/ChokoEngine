@@ -1,6 +1,5 @@
 #include "Engine.h"
 #include "Editor.h"
-#include <sstream>
 #include <random>
 
 void CheckGLOK() {

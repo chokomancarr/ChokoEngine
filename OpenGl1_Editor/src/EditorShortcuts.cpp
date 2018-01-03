@@ -223,17 +223,28 @@ void EB_Viewer::_AddComRend(EditorBlock* b) {
 	b->editor->RegisterMenu(b, "Add Rendering", std::vector<string>({ "Camera", "Mesh Renderer", "Light", "Reflective Quad", "Render Probe" }), std::vector<shortcutFunc>({ _D2AddComCam, _D2AddComMrd, _D2AddComLht, _D2AddComRfq, _D2AddComRdp }), 0);
 }
 
-void AsCh(SceneObject* sc, const string& nm, std::vector<SceneObject*>& os, bool& found) {
+bool EB_Viewer::_AddObjAsCh(SceneObject* sc, const string& nm, std::vector<SceneObject*>& os, const string& bn) {
 	for (SceneObject* oo : os) {
 		if (oo->name == nm) {
-			oo->AddChild(sc);
-			found = true;
-			return;
+			if (bn != "") {
+				auto arm = oo->GetComponent<Armature>();
+				for (auto b : arm->_allbones) {
+					if (b->name == bn) {
+						auto p = sc->transform.position();
+						b->tr->object->AddChild(sc);
+						sc->transform.position(p);
+						return true;
+					}
+				}
+			}
+			else oo->AddChild(sc);
+			return true;
 		}
 		else {
-			AsCh(sc, nm, oo->children, found);
+			if (_AddObjAsCh(sc, nm, oo->children, bn)) return true;
 		}
 	}
+	return false;
 }
 void LoadMeshMeta(std::vector<SceneObject*>& os, string& path) {
 	for (SceneObject* o : os) {
@@ -371,8 +382,8 @@ void EB_Viewer::_DoAddObjectBl(EditorBlock* b, void* v) {
 				if (prt == "")
 					o->AddChild(new SceneObject(nm, tr, rt, sc));
 				else {
-					bool found;
-					AsCh(new SceneObject(nm, tr, rt, sc), prt, o->children, found);
+					auto bpos = prt.find(2);
+					_AddObjAsCh(new SceneObject(nm, tr, rt, sc), prt.substr(0, bpos), o->children, (bpos != string::npos)? prt.substr(bpos+1) : "");
 				}
 			}
 			else {
