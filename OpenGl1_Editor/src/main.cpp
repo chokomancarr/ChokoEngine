@@ -10,15 +10,13 @@
 #include <type_traits>
 #include "Compressors.h"
 #include <shellapi.h>
-//#include <GLFW\glfw3.h>
 
 //#include "MD.h"
 
-void TimerGL(int i);
-void MouseGL(int button, int state, int x, int y);
-void MotionGL(int x, int y);
-void MotionGLP(int x, int y);
-void ReshapeGL(int w, int h);
+void MouseGL(GLFWwindow* window, int button, int state, int mods);
+void MouseScrGL(GLFWwindow* window, double xoff, double yoff);
+void MotionGL(GLFWwindow* window, double x, double y);
+void ReshapeGL(GLFWwindow* window, int w, int h);
 
 void UpdateLoop();
 void OnDie();
@@ -56,10 +54,8 @@ char Get(std::istream& strm) {
 
 int main(int argc, char **argv)
 {
-	//auto qt = QuatFunc::LookAt(Vec3(-0.016894f, -1.029442f, 3.475262f), Vec3(-0.000585f, 0.958819f, 0.284018f));
 	path = argv[0];
 	editor = new Editor();
-	//editor->hwnd = GetForegroundWindow();
 	editor->dataPath = path.substr(0, path.find_last_of('\\') + 1);
 	editor->lockMutex = &lockMutex;
 
@@ -71,8 +67,6 @@ int main(int argc, char **argv)
 	
 	editor->scrW = info.rcMonitor.right - info.rcMonitor.left;
 	editor->scrH = info.rcMonitor.bottom - info.rcMonitor.top;
-	//editor->scrW = 1024;
-	//editor->scrH = 600;
 
 	//std::cout << "Enter project folder path" << std::endl;
 	//std::getline(std::cin, editor->projectFolder);
@@ -102,23 +96,20 @@ int main(int argc, char **argv)
 	editor->yLimits.push_back(Int2(0, 2));
 	editor->yLimits.push_back(Int2(2, 1));
 
-	/*
-	string ip = editor->dataPath + "1.ico";
-	LPARAM hIcon = (LPARAM)LoadImage(NULL, ip.c_str(), IMAGE_ICON, 16, 16, LR_LOADFROMFILE);
-	SendMessage(hwnd, WM_SETICON, ICON_SMALL, hIcon);
-	SendMessage(hwnd, WM_SETICON, ICON_BIG, hIcon);
-	SendMessage(GetWindow(hwnd, GW_OWNER), WM_SETICON, ICON_SMALL, hIcon);
-	SendMessage(GetWindow(hwnd, GW_OWNER), WM_SETICON, ICON_BIG, hIcon);
-
-	*/
-	glutInit(&argc, argv);
-	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
-	glutInitWindowSize(1024, 600);
-	glutInitWindowPosition(0, GetSystemMetrics(SM_CYVIRTUALSCREEN));
-	glutCreateWindow("ChokoEngine");
+	if (!glfwInit()) {
+		std::cerr << "Fatal: Cannot init glfw!" << std::endl;
+		abort();
+	}
+	glfwWindowHint(GLFW_VISIBLE, 0);
+	auto* window = glfwCreateWindow(1024, 600, "ChokoEngine", NULL, NULL);
+	glfwSetWindowPos(window, info.rcMonitor.left + editor->scrW / 2 - 512, info.rcMonitor.top + editor->scrH / 2 - 300);
+	Display::window = window;
+	if (!window) {
+		std::cerr << "Fatal: Cannot create glfw window!" << std::endl;
+		abort();
+	}
+	glfwMakeContextCurrent(window);
 	editor->hwnd2 = GetActiveWindow();
-	glutHideWindow();
-	//ShowWindow(editor->hwnd2, SW_MAXIMIZE);
 
 	//SendMessage(hwnd2, WM_SETICON, ICON_SMALL, hIcon);
 	//SendMessage(hwnd2, WM_SETICON, ICON_BIG, hIcon);
@@ -153,17 +144,9 @@ int main(int argc, char **argv)
 	editor->SetBackground(editor->dataPath + "res\\bg.jpg", 0.3f);
 	font = editor->font;
 
-	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glFrontFace(GL_CW);
 	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
-	glutDisplayFunc(renderScene);
-	glutTimerFunc(1000, TimerGL, 0);
-	glutMouseFunc(MouseGL);
-	glutReshapeFunc(ReshapeGL);
-	glutMotionFunc(MotionGL);
-	glutPassiveMotionFunc(MotionGLP);
-
 	Time::startMillis = milliseconds();
 
 	updateThread = std::thread(UpdateLoop);
@@ -175,11 +158,35 @@ int main(int argc, char **argv)
 	//new MD("D:\\md.compute", 4, 1, 1);
 
 
-	glutPositionWindow(info.rcMonitor.left + editor->scrW / 2 - 512, info.rcMonitor.top + editor->scrH / 2 - 300);
-	glutShowWindow();
 	KillSplash();
-	
-	glutMainLoop();
+
+	glfwSetFramebufferSizeCallback(window, ReshapeGL);
+	ReshapeGL(window, 1024, 600);
+	glfwShowWindow(window);
+
+	glfwSetCursorPosCallback(window, MotionGL);
+	glfwSetMouseButtonCallback(window, MouseGL);
+	glfwSetScrollCallback(window, MouseScrGL);
+
+	auto mills = milliseconds();
+
+	while (!glfwWindowShouldClose(window)) {
+		renderScene();
+		glfwSwapBuffers(window);
+		glfwPollEvents();
+
+		auto mills2 = milliseconds();
+		if (mills2 - mills > 1000) {
+			mills = mills2;
+
+			PROCESS_MEMORY_COUNTERS pmc;
+			GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc));
+			SIZE_T virtualMemUsedByMe = pmc.WorkingSetSize;
+			string str("ChokoEngine (about " + to_string((uint)round(virtualMemUsedByMe / 1024 / 1024)) + "Mb used, " + to_string(fps) + "fps)");
+			glfwSetWindowTitle(window, &str[0]);
+			fps = 0;
+		}
+	}
 	return 0;
 }
 
@@ -357,65 +364,41 @@ void renderScene()
 		DrawOverlay();
 
 		//MD::me->DrawUI();
-
-		glutSwapBuffers();
 		redrawn = true;
 	}
-	glutPostRedisplay();
 }
 
-void TimerGL(int i)
-{
-	glutTimerFunc(1000, TimerGL, 1);
-	PROCESS_MEMORY_COUNTERS pmc;
-	GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc));
-	SIZE_T virtualMemUsedByMe = pmc.WorkingSetSize;
-	string str("ChokoEngine (about " + to_string((uint)round(virtualMemUsedByMe/1024/1024)) + "Mb used, " + to_string(fps) + "fps)");
-	SetWindowText(editor->hwnd2, str.c_str());
-	fps = 0;
-	//glutPostRedisplay();
-}
-
-void MouseGL(int button, int state, int x, int y) {
+void MouseGL(GLFWwindow* window, int button, int state, int mods) {
 	switch (button) {
-	case 0:
-		Input::mouse0 = (state == 0);
+	case GLFW_MOUSE_BUTTON_LEFT:
+		Input::mouse0 = (state == GLFW_PRESS);
 		break;
-	case 1:
-		Input::mouse1 = (state == 0);
+	case GLFW_MOUSE_BUTTON_MIDDLE:
+		Input::mouse1 = (state == GLFW_PRESS);
 		break;
-	case 2:
-		Input::mouse2 = (state == 0);
+	case GLFW_MOUSE_BUTTON_RIGHT:
+		Input::mouse2 = (state == GLFW_PRESS);
 		break;
-	case 3:
-		if (state == GLUT_DOWN && editor->editorLayer == 0) editor->blocks[editor->mouseOnP]->OnMouseScr(true);
-		return;
-	case 4:
-		if (state == GLUT_DOWN && editor->editorLayer == 0) editor->blocks[editor->mouseOnP]->OnMouseScr(false);
-		return;
 	}
 }
 
-void ReshapeGL(int w, int h) {
+void MouseScrGL(GLFWwindow* window, double xoff, double yoff) {
+	if (yoff != 0 && editor->editorLayer == 0) {
+		editor->blocks[editor->mouseOnP]->OnMouseScr(yoff > 0);
+	}
+}
+
+void MotionGL(GLFWwindow* window, double x, double y) {
+	if (editor->editorLayer == 0)
+		editor->blocks[editor->mouseOn]->OnMouseM(Vec2(x, y) - Input::mousePos);
+	Input::mousePos = Vec2(x, y);
+	Input::mousePosRelative = Vec2(x*1.0f / Display::width, y*1.0f / Display::height);
+}
+
+void ReshapeGL(GLFWwindow* window, int w, int h) {
 	glViewport(0, 0, w, h);
 	Display::width = w;
 	Display::height = h;
-	glutPostRedisplay();
-}
-
-//void MouseGL(int button, int state, int x, int y);
-void MotionGLP(int x, int y) {
-	if (editor->editorLayer == 0)
-		editor->blocks[editor->mouseOn]->OnMouseM(Vec2(x, y) - Input::mousePos);
-	Input::mousePos = Vec2(x, y);
-	Input::mousePosRelative = Vec2(x*1.0f / Display::width, y*1.0f / Display::height);
-}
-
-void MotionGL(int x, int y) {
-	if (editor->editorLayer == 0)
-		editor->blocks[editor->mouseOn]->OnMouseM(Vec2(x, y) - Input::mousePos);
-	Input::mousePos = Vec2(x, y);
-	Input::mousePosRelative = Vec2(x*1.0f / Display::width, y*1.0f / Display::height);
 }
 
 void ShowSplash(string bitmap, uint cx, uint cy, uint sw, uint sh) {

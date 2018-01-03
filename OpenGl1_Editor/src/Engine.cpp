@@ -1421,7 +1421,7 @@ void Input::UpdateMouseNKeyboard(bool* src) {
 
 void Display::Resize(int x, int y, bool maximize) {
 	ShowWindow(GetActiveWindow(), maximize? SW_MAXIMIZE : SW_NORMAL);
-	glutReshapeWindow(x, y);
+	glfwSetWindowSize(window, x, y);
 }
 
 ulong Engine::idCounter = 0;
@@ -1798,6 +1798,7 @@ Font* Font::Align(ALIGNMENT a) {
 int Display::width = 512;
 int Display::height = 512;
 glm::mat3 Display::uiMatrix = glm::mat3();
+GLFWwindow* Display::window = nullptr;
 
 //--------------------Input class--------------
 Vec2 Input::mousePos = Vec2(0, 0);

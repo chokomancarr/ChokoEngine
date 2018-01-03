@@ -1,8 +1,9 @@
 #pragma once
 #define _ITERATOR_DEBUG_LEVEL 0
 
+#include <Windows.h>
 #include <gl/glew.h>
-#include <gl/GLUT.h>
+#include <GLFW\glfw3.h>
 #include <string>
 #include <iostream>
 #include <fstream>
@@ -20,7 +21,6 @@
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <Windows.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
 extern "C" {
@@ -451,6 +451,10 @@ public:
 	static glm::mat3 uiMatrix;
 
 	static void Resize(int x, int y, bool maximize = false);
+
+	friend int main(int argc, char **argv);
+protected:
+	static GLFWwindow* window;
 };
 
 class Object {

@@ -3243,7 +3243,6 @@ void Editor::AddBuildLog(Editor* e, string s, bool forceE) {
 		string ii = s.substr(i + 1, s.find_first_of(')') - i - 1);
 		buildErrorLine = stoi(ii);
 	}
-	//glutPostRedisplay();
 }
 
 AssetObject* Editor::GetCache(ASSETTYPE type, int i) {
