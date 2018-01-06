@@ -1100,7 +1100,6 @@ public:
 	
 	Component* GetComponent(COMPONENT_TYPE type);
 	template<class T> T* GetComponent() {
-		//static_assert(is_base_of(Component, T), "GetComponent requires a component type!");
 		(void)static_cast<Component*>((T*)0);
 		for (Component* cc : _components)
 		{
@@ -1129,7 +1128,7 @@ protected:
 	SceneObject(byte* data);
 	static pSceneObject New(byte* data) {
 		auto p = pSceneObject(new SceneObject(data));
-		p->transform.Init(p, data + _offsets.transform);
+		p->transform.Init(p, data + offsetof(SceneObject, transform));
 		return p;
 	}
 
