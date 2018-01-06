@@ -11,6 +11,10 @@
 #include "Compressors.h"
 #include <shellapi.h>
 
+#define GLFW_EXPOSE_NATIVE_WIN32
+#define GLFW_EXPOSE_NATIVE_WGL
+#include <GLFW\glfw3native.h>
+
 //#include "MD.h"
 
 void MouseGL(GLFWwindow* window, int button, int state, int mods);
@@ -44,7 +48,6 @@ void KillSplash();
 //{
 //	MessageBox(hwnd, "aaa", "title", MB_OK);
 //}
-
 
 char Get(std::istream& strm) {
 	char c;
@@ -109,7 +112,7 @@ int main(int argc, char **argv)
 		abort();
 	}
 	glfwMakeContextCurrent(window);
-	editor->hwnd2 = GetActiveWindow();
+	editor->hwnd2 = glfwGetWin32Window(window);
 
 	//SendMessage(hwnd2, WM_SETICON, ICON_SMALL, hIcon);
 	//SendMessage(hwnd2, WM_SETICON, ICON_BIG, hIcon);

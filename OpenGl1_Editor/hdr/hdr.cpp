@@ -267,3 +267,17 @@ unsigned char *hdr::read_hdr(const char *filename, unsigned int *w, unsigned int
 
     return imagergbe;
 }
+
+std::vector<float> hdr::to_float(unsigned char imagergbe[], int w, int h) {
+	std::vector<float> image(w * h * 3, 0);
+	for (int i = 0; i < w*h; i++) {
+		unsigned char exponent = imagergbe[i * 4 + 3];
+		if (exponent != 0) {
+			double v = (1.0f / 256.0f) * pow(2, (float)(exponent - 128));
+			image[i * 3 + 0] = (float)((imagergbe[i * 4 + 0] + 0.5f) * v);
+			image[i * 3 + 1] = (float)((imagergbe[i * 4 + 1] + 0.5f) * v);
+			image[i * 3 + 2] = (float)((imagergbe[i * 4 + 2] + 0.5f) * v);
+		}
+	}
+	return image;
+}

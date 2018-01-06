@@ -505,8 +505,8 @@ SkinnedMeshRenderer::SkinnedMeshRenderer(SceneObject* o) : Component("Skinned Me
 	if (!o) {
 		Debug::Error("SMR", "SceneObject cannot be null!");
 	}
-	SceneObject* par = object->parent;
-	while (par) {
+	rSceneObject& par = object->parent;
+	while (par.ok()) {
 		armature = par->GetComponent<Armature>();
 		if (armature) break;
 		else par = par->parent;
@@ -809,7 +809,7 @@ void ParticleSystem::Update() {
 }
 
 void Light::DrawEditor(EB_Viewer* ebv, GLuint shader) {
-	if (ebv->editor->selected != object) return;
+	if (ebv->editor->selected().get() != object) return;
 	switch (_lightType) { 
 	case LIGHTTYPE_POINT:
 		if (minDist > 0) {
@@ -839,7 +839,7 @@ void Light::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 		Engine::DrawCircleW(Vec3(), Vec3(0, 1, 0), Vec3(0, 0, 1), 0.2f, 12, color, 1);
 		break;
 	case LIGHTTYPE_SPOT:
-		if (ebv->editor->selected == object) {
+		if (ebv->editor->selected().get() == object) {
 			Engine::DrawLineWDotted(Vec3(0, 0, 1) * minDist, Vec3(0, 0, 1) * maxDist, white(0.5f, 0.5f), 1, 0.2f, true);
 			float rd = minDist*tan(deg2rad*angle*0.5f);
 			float rd2 = maxDist*tan(deg2rad*angle*0.5f);
@@ -1078,7 +1078,7 @@ void ReflectionProbe::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 	Engine::DrawCircleW(Vec3(), Vec3(0, 1, 0), Vec3(0, 0, 1), 0.2f, 12, Vec4(1, 0.76f, 0.80, 1), 1);
 	Engine::DrawCircleW(Vec3(), Vec3(0, 0, 1), Vec3(1, 0, 0), 0.2f, 12, Vec4(1, 0.76f, 0.80, 1), 1);
 
-	if (ebv->editor->selected == object) {
+	if (ebv->editor->selected().get() == object) {
 		Engine::DrawLineWDotted(range*Vec3(1, 1, -1), range*Vec3(1, 1, 1), white(), 1, 0.1f);
 		Engine::DrawLineWDotted(range*Vec3(1, 1, 1), range*Vec3(-1, 1, 1), white(), 1, 0.1f);
 		Engine::DrawLineWDotted(range*Vec3(-1, 1, 1), range*Vec3(-1, 1, -1), white(), 1, 0.1f);
@@ -1212,7 +1212,7 @@ Armature::~Armature() {
 }
 
 void ArmatureBone::Draw(EB_Viewer* ebv) {
-	bool sel = (ebv->editor->selected == tr->object);
+	bool sel = (ebv->editor->selected().get() == tr->object);
 	glPushMatrix();
 	glMultMatrixf(glm::value_ptr(tr->localMatrix()));
 	glPushMatrix();
@@ -1271,7 +1271,7 @@ void Armature::AddBone(std::ifstream& strm, std::vector<ArmatureBone*>& bones, s
 	rot = QuatFunc::LookAt((tal - pos), fwd);
 	std::vector<ArmatureBone*>& bnv = (prt)? prt->_children : bones;
 	SceneObject* scp = (prt) ? prt->tr->object : o;
-	SceneObject* oo = new SceneObject(nm, pos, rot, Vec3(1.0f));
+	pSceneObject oo = SceneObject::New(nm, pos, rot, Vec3(1.0f));
 	ArmatureBone* bn = new ArmatureBone(id++, (prt) ? pos + Vec3(0, 0, 1)*prt->length : pos, rot, Vec3(1.0f), glm::length(tal-pos), (mask & 0xf0) != 0, &oo->transform, prt);
 	bnv.push_back(bn);
 	scp->AddChild(oo);
@@ -1290,7 +1290,7 @@ void Armature::AddBone(std::ifstream& strm, std::vector<ArmatureBone*>& bones, s
 	char b = strm.get();
 	if (b == 'b') return;
 	else while (b == 'B') {
-		AddBone(strm, bn->_children, blist, oo, id);
+		AddBone(strm, bn->_children, blist, oo.get(), id);
 		b = strm.get();
 	}
 }
@@ -1313,7 +1313,7 @@ void Armature::UpdateAnimIds() {
 }
 
 void Armature::Animate() {
-	if (!object->parent) return;
+	if (!object->parent()) return;
 	Animator* anm = object->parent->GetComponent<Animator>();
 	if (!anm || !anm->animation) return;
 
@@ -1672,7 +1672,7 @@ Transform& Transform::Translate(Vec3 v, TransformSpace sp) {
 	return *this;
 }
 Transform& Transform::Rotate(Vec3 v, TransformSpace sp) {
-	if ((sp == Space_Self) || (!object->parent)) {
+	if ((sp == Space_Self) || (!object->parent())) {
 		Quat qx = QuatFunc::FromAxisAngle(Vec3(1, 0, 0), v.x);
 		Quat qy = QuatFunc::FromAxisAngle(Vec3(0, 1, 0), v.y);
 		Quat qz = QuatFunc::FromAxisAngle(Vec3(0, 0, 1), v.z);
@@ -1721,14 +1721,14 @@ void Transform::_UpdateLEuler() {
 }
 
 void Transform::_L2WPos() {
-	if (!object->parent) _position = _localPosition;
+	if (!object->parent.ok()) _position = _localPosition;
 	else {
 		auto pos = object->parent->transform._worldMatrix*Vec4(_localPosition, 1);
 		_position = Vec3(pos.x, pos.y, pos.z);
 	}
 }
 void Transform::_W2LPos() {
-	if (!object->parent) _localPosition = _position;
+	if (!object->parent.ok()) _localPosition = _position;
 	else {
 		auto pos = glm::inverse(object->parent->transform._worldMatrix)*Vec4(_position, 1);
 		_localPosition = Vec3(pos.x, pos.y, pos.z);
@@ -1736,14 +1736,14 @@ void Transform::_W2LPos() {
 }
 
 void Transform::_L2WQuat() {
-	if (!object->parent) _rotation = _localRotation;
+	if (!object->parent.ok()) _rotation = _localRotation;
 	else {
 		_rotation = object->parent->transform._rotation*_localRotation;
 	}
 	_UpdateWEuler();
 }
 void Transform::_W2LQuat() {
-	if (!object->parent) _localRotation = _rotation;
+	if (!object->parent.ok()) _localRotation = _rotation;
 	else {
 		_localRotation = glm::inverse(object->parent->transform._rotation)*_rotation;
 	}
@@ -1752,7 +1752,7 @@ void Transform::_W2LQuat() {
 
 void Transform::_UpdateLMatrix() {
 	_localMatrix = MatFunc::FromTRS(_localPosition, _localRotation, _localScale);
-	_UpdateWMatrix(object->parent ? object->parent->transform._worldMatrix : Mat4x4());
+	_UpdateWMatrix(object->parent() ? object->parent->transform._worldMatrix : Mat4x4());
 }
 
 void Transform::_UpdateWMatrix(const Mat4x4& mat) {
@@ -1761,7 +1761,7 @@ void Transform::_UpdateWMatrix(const Mat4x4& mat) {
 	_L2WPos();
 	_L2WQuat();
 
-	for (uint a = 0; a < object->childCount; a++) //using iterators cause error
+	for (uint a = 0; a < object->children.size(); a++) //using iterators cause error
 		object->children[a]->transform._UpdateWMatrix(_worldMatrix);
 }
 
@@ -1778,14 +1778,13 @@ SceneObject::SceneObject(byte* data) : transform(this, data + SceneObject::_offs
 
 SceneObject::~SceneObject() {
 	for (Component* c : _components) delete(c);
-	for (auto a : children) delete(a);
 }
 
 void SceneObject::SetActive(bool a, bool enableAll) {
 	active = a;
 }
 
-bool SO_DoFromId(const std::vector<SceneObject*>& objs, uint id, SceneObject*& res) {
+bool SO_DoFromId(const std::vector<pSceneObject>& objs, uint id, pSceneObject& res) {
 	for (auto a : objs) {
 		if (a->id == id) {
 			res = a;
@@ -1796,9 +1795,9 @@ bool SO_DoFromId(const std::vector<SceneObject*>& objs, uint id, SceneObject*& r
 	return false;
 }
 
-SceneObject* SceneObject::_FromId(const std::vector<SceneObject*>& objs, ulong id) {
+pSceneObject SceneObject::_FromId(const std::vector<pSceneObject>& objs, ulong id) {
 	if (!id) return nullptr;
-	SceneObject* res = 0;
+	pSceneObject res = 0;
 	SO_DoFromId(objs, id, res);
 	return res;
 }
@@ -1815,13 +1814,13 @@ Component* ComponentFromType (COMPONENT_TYPE t){
 	}
 }
 
-void SceneObject::SetParent(SceneObject* nparent, bool retainLocal) {
-	if (parent) parent->children.erase(std::find(parent->children.begin(), parent->children.end(), this));
+void SceneObject::SetParent(pSceneObject nparent, bool retainLocal) {
+	if (parent()) parent->children.erase(std::find_if(parent->children.begin(), parent->children.end(), [this](pSceneObject o)-> bool {return o.get() == this; }));
 	parent->childCount--;
-	if (nparent) parent->AddChild(this, retainLocal);
+	if (nparent) parent->AddChild(pSceneObject(this), retainLocal);
 }
 
-SceneObject* SceneObject::AddChild(SceneObject* child, bool retainLocal) {
+pSceneObject SceneObject::AddChild(pSceneObject child, bool retainLocal) {
 	Vec3 t;
 	Quat r;
 	if (!retainLocal) {
@@ -1830,13 +1829,13 @@ SceneObject* SceneObject::AddChild(SceneObject* child, bool retainLocal) {
 	}
 	children.push_back(child);
 	childCount++;
-	child->parent = this;
+	child->parent(this->shared_from_this());
 	child->transform._UpdateWMatrix(transform._worldMatrix);
 	if (!retainLocal) {
 		child->transform.position(t);
 		child->transform.rotation(r);
 	}
-	return this;
+	return this->shared_from_this();
 }
 
 Component* SceneObject::AddComponent(Component* c) {

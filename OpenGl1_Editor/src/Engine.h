@@ -1,7 +1,10 @@
 #pragma once
 #define _ITERATOR_DEBUG_LEVEL 0
 
+#include "Defines.h"
+
 #include <Windows.h>
+
 #include <gl/glew.h>
 #include <GLFW\glfw3.h>
 #include <string>
@@ -27,7 +30,6 @@ extern "C" {
 //#include "libavcodec\avcodec.h"
 //#include "libavutil\avutil.h"
 }
-#include "Defines.h"
 
 #ifndef IS_EDITOR
 extern bool _pipemode;
@@ -197,6 +199,19 @@ public:
 	Rect Intersection(const Rect& r2);
 };
 
+class Int2 {
+public:
+	Int2() : x(0), y(0) {}
+	Int2(int x, int y) : x(x), y(y) {}
+
+	int x, y;
+
+	bool operator==(const Int2& rhs)
+	{
+		return (x == rhs.x) && (y == rhs.y);
+	}
+};
+
 class Random {
 public:
 	static int seed;
@@ -288,7 +303,6 @@ ASSETID _Strm2H(std::istream& strm);
 
 string _Strm2Asset(std::istream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int maxL = 100);
 
-//void* __GetCacheE(ASSETTYPE t, ASSETID i);
 template<typename T> T* _GetCache(ASSETTYPE t, ASSETID i) {
 #ifdef IS_EDITOR
 	return static_cast<T*>(Editor::instance->GetCache(t, i));
@@ -296,48 +310,82 @@ template<typename T> T* _GetCache(ASSETTYPE t, ASSETID i) {
 	return static_cast<T*>(AssetManager::GetCache(t, i));
 #endif
 }
-std::vector<float> hdr2float(byte imagergbe[], int w, int h);
 
-//see SceneObjects.h
 class Object;
-class Component;
-class Transform;
-class Camera;
-class MeshFilter;
-class MeshRenderer;
-class SkinnedMeshRenderer;
-class Light;
-class ParticleSystem;
+template <class T>
+class Ref {
+public:
+	Ref(bool suppress = false) : _suppress(suppress) {
+		static_assert(std::is_base_of<Object, T>::value, "Ref class must be derived from Object!");
+	}
 
-//see Assetmanager
+	std::shared_ptr<T> operator()() { //get
+		if (_empty) {
+			if (!_suppress) Debug::Error("Object Reference", "Reference is null!");
+			return nullptr;
+		}
+		else if (_object.expired()) {
+			if (!_suppress) Debug::Error("Object Reference", "Reference is deleted!");
+			return nullptr;
+		}
+		else return _object.lock();
+	}
+
+	std::shared_ptr<T> operator->() { return this->operator()(); }
+
+	void operator()(const std::shared_ptr<T>& ref) { //set
+		_object = ref;
+		_empty = false;
+	}
+
+	void operator()(const Ref<T>& ref) { //set
+		_object = ref._object;
+		_empty = false;
+	}
+
+	void clear() {
+		_empty = true;
+	}
+
+	bool ok() {
+		return !(_empty || _object.expired());
+	}
+
+private:
+	std::weak_ptr<T> _object;
+	bool _empty = true, _suppress = false;
+};
+
+#define _canref(obj) class obj; \
+typedef std::shared_ptr<obj> p ## obj; \
+typedef Ref<obj> r ## obj;
+
+//SceneObjects.h
+_canref(Component);
+_canref(Transform);
+_canref(Camera);
+_canref(MeshFilter);
+_canref(SkinnedMeshRenderer);
+_canref(Light);
+_canref(ParticleSystem);
+
+//AssetObjects.h
 class AssetItem;
 class AssetManager;
 class AssetObject;
-class Mesh;
-class Texture;
-class Background;
-class SceneScript;
-class SceneObject;
 
-class Int2 {
-public:	
-	Int2(): x(0), y(0){}
-	Int2(int x, int y): x(x), y(y) {}
-
-	int x, y;
-
-	bool operator==(const Int2& rhs)
-	{
-		return (x == rhs.x) && (y == rhs.y);
-	}
-};
+_canref(Mesh);
+_canref(Texture);
+_canref(Background);
+_canref(SceneScript);
+_canref(SceneObject);
 
 class Debug {
 public:
 	static void Message(string c, string s);
 	static void Warning(string c, string s);
 	static void Error(string c, string s);
-	static void ObjectTree(std::vector<SceneObject*> o);
+	static void ObjectTree(const std::vector<pSceneObject>& o);
 
 	friend int main(int argc, char **argv);
 protected:
@@ -345,7 +393,7 @@ protected:
 	static void Init(string path);
 
 private:
-	static void DoDebugObjectTree(std::vector<SceneObject*> o, int i);
+	static void DoDebugObjectTree(const std::vector<pSceneObject>& o, int i);
 };
 
 class EB_Browser_File;
@@ -455,6 +503,12 @@ public:
 	friend int main(int argc, char **argv);
 protected:
 	static GLFWwindow* window;
+};
+
+enum OBJECT_STATUS {
+	OBJECT_UNDEF,
+	OBJECT_ALIVE,
+	OBJECT_DEAD
 };
 
 class Object {
@@ -897,15 +951,15 @@ public:
 	string sceneName;
 	int sceneId;
 	uint objectCount = 0;
-	std::vector<SceneObject*> objects;
+	std::vector<pSceneObject> objects;
 	SceneSettings settings;
 	std::vector<Component*> _preUpdateComps;
 	std::vector<Component*> _preLUpdateComps;
 	std::vector<Component*> _preRenderComps;
 
 	static void Load(uint i), Load(string name);
-	static void AddObject(SceneObject* object, SceneObject* parent = nullptr);
-	static void DeleteObject(SceneObject* object);
+	static void AddObject(pSceneObject object, pSceneObject parent = nullptr);
+	static void DeleteObject(pSceneObject object);
 
 	friend int main(int argc, char **argv);
 	friend class Editor;

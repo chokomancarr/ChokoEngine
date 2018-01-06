@@ -334,10 +334,10 @@ void EB_Console::Draw() {
 	Engine::EndStencil();
 }
 
-void EBH_DrawItem(SceneObject* sc, Editor* e, Vec4* v, int& i, const float& offset, int indent) {
+void EBH_DrawItem(pSceneObject sc, Editor* e, Vec4* v, int& i, const float& offset, int indent) {
 	int xo = indent * 20;
 	if (Engine::EButton((e->editorLayer == 0), v->r + xo, v->g + EB_HEADER_SIZE + 1 + 17 * i + offset, v->b - xo, 16, grey2()) == MOUSE_RELEASE) {
-		e->selected = sc;
+		e->selected(sc);
 		e->selectGlobal = false;
 		e->DeselectFile();
 	}
@@ -348,11 +348,11 @@ void EBH_DrawItem(SceneObject* sc, Editor* e, Vec4* v, int& i, const float& offs
 			sc->_expanded = !sc->_expanded;
 		}
 	}
-	if (e->selected == sc) {
+	if (e->selected() == sc) {
 		Engine::DrawQuad(v->r + xo, v->g + EB_HEADER_SIZE + 1 + 17 * (i - 1) + offset, v->b - xo, 16, white(0.3f));
 	}
 	if (sc->childCount > 0 && sc->_expanded) {
-		for (SceneObject* scc : sc->children)
+		for (auto& scc : sc->children)
 		{
 			EBH_DrawItem(scc, e, v, i, offset, indent + 1);
 		}
@@ -370,13 +370,13 @@ void EB_Hierarchy::Draw() {
 	if (editor->playSyncer.status == Editor_PlaySyncer::EPS_Offline) {
 		if (editor->sceneLoaded()) {
 			if (Engine::EButton((editor->editorLayer == 0), v.r, v.g + EB_HEADER_SIZE + 1 - scrollOffset, v.b, 16, Vec4(0.2f, 0.2f, 0.4f, 1)) == MOUSE_RELEASE) {
-				editor->selected = nullptr;
+				editor->selected.clear();
 				editor->selectGlobal = true;
 				editor->selectedFileType = ASSETTYPE_UNDEF;
 			}
 			UI::Label(v.r + 19, v.g + EB_HEADER_SIZE + 1 - scrollOffset, 12, "Global", editor->font, white());
 			int i = 1;
-			for (SceneObject* sc : editor->activeScene->objects)
+			for (auto& sc : editor->activeScene->objects)
 			{
 				EBH_DrawItem(sc, editor, &v, i, -scrollOffset, 0);
 			}
@@ -389,13 +389,13 @@ void EB_Hierarchy::Draw() {
 	}
 	else if (!!editor->playSyncer.syncedSceneSz) {
 		if (Engine::EButton((editor->editorLayer == 0), v.r, v.g + EB_HEADER_SIZE + 1 - scrollOffset, v.b, 16, Vec4(0.2f, 0.2f, 0.4f, 1)) == MOUSE_RELEASE) {
-			editor->selected = nullptr;
+			editor->selected.clear();
 			//editor->selectGlobal = true;
 			editor->selectedFileType = ASSETTYPE_UNDEF;
 		}
 		UI::Label(v.r + 19, v.g + EB_HEADER_SIZE + 1 - scrollOffset, 12, "Global", editor->font, white());
 		int i = 1;
-		for (SceneObject* sc : editor->playSyncer.syncedScene)
+		for (auto& sc : editor->playSyncer.syncedScene)
 		{
 			EBH_DrawItem(sc, editor, &v, i, -scrollOffset, 0);
 		}
@@ -680,8 +680,8 @@ Vec2 xy(Vec3 v) {
 	return Vec2(v.x, v.y);
 }
 
-void DrawSceneObjectsOpaque(EB_Viewer* ebv, const std::vector<SceneObject*>& oo) {
-	for (SceneObject* sc : oo)
+void EB_Viewer::DrawSceneObjectsOpaque(EB_Viewer* ebv, const std::vector<pSceneObject>& oo) {
+	for (auto& sc : oo)
 	{
 		glPushMatrix();
 		glMultMatrixf(glm::value_ptr(sc->transform._localMatrix));
@@ -692,7 +692,7 @@ void DrawSceneObjectsOpaque(EB_Viewer* ebv, const std::vector<SceneObject*>& oo)
 		}
 		DrawSceneObjectsOpaque(ebv, sc->children);
 
-		if (sc == ebv->editor->selected) {
+		if (sc == ebv->editor->selected()) {
 			GLfloat matrix[16];
 			glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
 			ebv->editor->selectedMvMatrix = (Mat4x4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]));
@@ -702,9 +702,10 @@ void DrawSceneObjectsOpaque(EB_Viewer* ebv, const std::vector<SceneObject*>& oo)
 	}
 }
 
-void DrawSceneObjectsGizmos(EB_Viewer* ebv, const std::vector<SceneObject*>& oo) {
-	for (SceneObject* sc : oo)
+void EB_Viewer::DrawSceneObjectsGizmos(EB_Viewer* ebv, const std::vector<pSceneObject>& oo) {
+	for (auto& psc : oo)
 	{
+		SceneObject* sc = psc.get();
 		glPushMatrix();
 		//Vec3 v = sc->transform.position;
 		//Vec3 vv = sc->transform.scale;
@@ -724,7 +725,7 @@ void DrawSceneObjectsGizmos(EB_Viewer* ebv, const std::vector<SceneObject*>& oo)
 	}
 }
 
-void DrawSceneObjectsTrans(EB_Viewer* ebv, std::vector<SceneObject*> oo) {
+void EB_Viewer::DrawSceneObjectsTrans(EB_Viewer* ebv, const std::vector<pSceneObject>& oo) {
 
 }
 
@@ -828,9 +829,10 @@ void EB_Viewer::Draw() {
 	}
 
 	//draw tooltip
-	if (editor->selected != nullptr) {
+	auto sel = editor->selected();
+	if (sel) {
 		if (modifying == 0) {
-			Vec3 wpos = editor->selected->transform.position();
+			Vec3 wpos = sel->transform.position();
 			if (selectedTooltip == 0) DrawTArrows(wpos, 2);
 			else if (selectedTooltip == 1) DrawRArrows(wpos, 2);
 			else DrawSArrows(wpos, 2);
@@ -838,23 +840,23 @@ void EB_Viewer::Draw() {
 		else {
 			byte bb = modifying & 0xf0;
 			if (bb == 0x10)
-				Engine::DrawLineW(editor->selected->transform.position() + modAxisDir*-100000.0f, editor->selected->transform.position() + modAxisDir*100000.0f, white(), 2);
+				Engine::DrawLineW(sel->transform.position() + modAxisDir*-100000.0f, sel->transform.position() + modAxisDir*100000.0f, white(), 2);
 			else if (bb == 0x20) {
 				bb = modifying & 0x0f;
 				if (bb == 0) {
 					Vec4 rx = invMatrix*Vec4(1, 0, 0, 0);
 					Vec4 ry = invMatrix*Vec4(0, 1, 0, 0);
-					Engine::DrawCircleW(editor->selected->transform.position(), Normalize(Vec3(rx.x, rx.y, rx.z)), Normalize(Vec3(ry.x, ry.y, ry.z)), 2 / scale, 32, white(), 2);
+					Engine::DrawCircleW(sel->transform.position(), Normalize(Vec3(rx.x, rx.y, rx.z)), Normalize(Vec3(ry.x, ry.y, ry.z)), 2 / scale, 32, white(), 2);
 				}
 				else if (bb == 1)
-					Engine::DrawCircleW(editor->selected->transform.position(), Vec3(0, 1, 0), Vec3(0, 0, 1), 2 / scale, 32, white(), 2);
+					Engine::DrawCircleW(sel->transform.position(), Vec3(0, 1, 0), Vec3(0, 0, 1), 2 / scale, 32, white(), 2);
 				else if (bb == 2)
-					Engine::DrawCircleW(editor->selected->transform.position(), Vec3(1, 0, 0), Vec3(0, 0, 1), 2 / scale, 32, white(), 2);
+					Engine::DrawCircleW(sel->transform.position(), Vec3(1, 0, 0), Vec3(0, 0, 1), 2 / scale, 32, white(), 2);
 				else
-					Engine::DrawCircleW(editor->selected->transform.position(), Vec3(0, 1, 0), Vec3(1, 0, 0), 2 / scale, 32, white(), 2);
+					Engine::DrawCircleW(sel->transform.position(), Vec3(0, 1, 0), Vec3(1, 0, 0), 2 / scale, 32, white(), 2);
 			}
 			else if ((modifying & 0x0f) != 0)
-				Engine::DrawLineW(editor->selected->transform.position() + modAxisDir*-100000.0f, editor->selected->transform.position() + modAxisDir*100000.0f, white(), 2);
+				Engine::DrawLineW(sel->transform.position() + modAxisDir*-100000.0f, sel->transform.position() + modAxisDir*100000.0f, white(), 2);
 		}
 	}
 	glDepthFunc(GL_ALWAYS);
@@ -891,7 +893,7 @@ void EB_Viewer::Draw() {
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
-	if (editor->selected != nullptr) {
+	if (editor->selected()) {
 		editor->selectedSpos = projMatrix*editor->selectedMvMatrix*Vec4(0, 0, 0, 1);
 		editor->selectedSpos /= editor->selectedSpos.w;
 		Engine::DrawCircleW(Vec3(editor->selectedSpos.x, editor->selectedSpos.y, 0), Vec3(1.0f / Display::width, 0, 0), Vec3(0, 1.0f / Display::height, 0), 20, 24, white(), 2, true);
@@ -1075,18 +1077,19 @@ void EB_Viewer::OnMouseM(Vec2 d) {
 		}
 	}
 	else if (modifying > 0) {
+		auto& sel = editor->selected();
 		float scl = (float)pow(2, scale);
 		modVal += Vec2(Input::mouseDelta.x / Display::width, Input::mouseDelta.y / Display::height);
 		if (modifying >> 4 == 1) {
 			switch (modifying & 0x0f) {
 			case 1:
-				editor->selected->transform.Translate(Vec3((Input::mouseDelta.x / Display::width) * 40 / scl, 0, 0));
+				sel->transform.Translate(Vec3((Input::mouseDelta.x / Display::width) * 40 / scl, 0, 0));
 				break;
 			case 2:
-				editor->selected->transform.Translate(Vec3(0, (Input::mouseDelta.x / Display::width) * 40 / scl, 0));
+				sel->transform.Translate(Vec3(0, (Input::mouseDelta.x / Display::width) * 40 / scl, 0));
 				break;
 			case 3:
-				editor->selected->transform.Translate(Vec3(0, 0, (Input::mouseDelta.x / Display::width) * 40 / scl));
+				sel->transform.Translate(Vec3(0, 0, (Input::mouseDelta.x / Display::width) * 40 / scl));
 				break;
 			}
 		}
@@ -1096,32 +1099,32 @@ void EB_Viewer::OnMouseM(Vec2 d) {
 			case 0:
 				r = Vec4(0, 0, -1, 0);
 				r = invMatrix*r;
-				editor->selected->transform.Rotate(Normalize(Vec3(r.x, r.y, r.z))*(Input::mouseDelta.x / Display::width)*360.0f, Space_World);
+				sel->transform.Rotate(Normalize(Vec3(r.x, r.y, r.z))*(Input::mouseDelta.x / Display::width)*360.0f, Space_World);
 				break;
 			case 1:
-				editor->selected->transform.Rotate(Vec3((Input::mouseDelta.x / Display::width) * 360, 0, 0), selectedOrient == 0 ? Space_World : Space_Self);
+				sel->transform.Rotate(Vec3((Input::mouseDelta.x / Display::width) * 360, 0, 0), selectedOrient == 0 ? Space_World : Space_Self);
 				break;
 			case 2:
-				editor->selected->transform.Rotate(Vec3(0, (Input::mouseDelta.x / Display::width) * 360, 0), selectedOrient == 0 ? Space_World : Space_Self);
+				sel->transform.Rotate(Vec3(0, (Input::mouseDelta.x / Display::width) * 360, 0), selectedOrient == 0 ? Space_World : Space_Self);
 				break;
 			case 3:
-				editor->selected->transform.Rotate(Vec3(0, 0, (Input::mouseDelta.x / Display::width) * 360), selectedOrient == 0 ? Space_World : Space_Self);
+				sel->transform.Rotate(Vec3(0, 0, (Input::mouseDelta.x / Display::width) * 360), selectedOrient == 0 ? Space_World : Space_Self);
 				break;
 			}
 		}
 		else {
 			switch (modifying & 0x0f) {
 			case 0:
-				editor->selected->transform.localScale(Vec3(preModVals + Vec3(1, 1, 1)*((modVal.x) * 40 / scl)));
+				sel->transform.localScale(Vec3(preModVals + Vec3(1, 1, 1)*((modVal.x) * 40 / scl)));
 				break;
 			case 1:
-				editor->selected->transform.localScale(Vec3(preModVals + Vec3((modVal.x) * 40 / scl, 0, 0)));
+				sel->transform.localScale(Vec3(preModVals + Vec3((modVal.x) * 40 / scl, 0, 0)));
 				break;
 			case 2:
-				editor->selected->transform.localScale(Vec3(preModVals + Vec3(0, (modVal.x) * 40 / scl, 0)));
+				sel->transform.localScale(Vec3(preModVals + Vec3(0, (modVal.x) * 40 / scl, 0)));
 				break;
 			case 3:
-				editor->selected->transform.localScale(Vec3(preModVals + Vec3(0, 0, (modVal.x) * 40 / scl)));
+				sel->transform.localScale(Vec3(preModVals + Vec3(0, 0, (modVal.x) * 40 / scl)));
 				break;
 			}
 		}
@@ -1130,20 +1133,21 @@ void EB_Viewer::OnMouseM(Vec2 d) {
 
 void EB_Viewer::OnMousePress(int i) {
 	if (modifying > 0) {
+		auto& sel = editor->selected();
 		if (i != 0) {
 			switch (modifying >> 4) {
 			case 1:
-				editor->selected->transform.localPosition(preModVals);
+				sel->transform.localPosition(preModVals);
 				break;
 			case 2:
-				editor->selected->transform.localEulerRotation(preModVals);
+				sel->transform.localEulerRotation(preModVals);
 				break;
 			case 3:
-				editor->selected->transform.localScale(preModVals);
+				sel->transform.localScale(preModVals);
 				break;
 			}
 		}
-		editor->selected->transform._UpdateLMatrix();
+		sel->transform._UpdateLMatrix();
 		modifying = 0;
 	}
 }
@@ -1302,9 +1306,9 @@ void EB_Inspector::Draw() {
 	DrawHeaders(editor, this, &v, "Inspector");// isAsset ? (loaded ? label : "No object selected") : nm);
 	string nm;
 	if (lock)
-		nm = (lockGlobal == 1) ? lockedObj->name : (lockGlobal == 2) ? "Scene settings" : "No object selected";
+		nm = (lockGlobal == 1) ? lockedObj()->name : (lockGlobal == 2) ? "Scene settings" : "No object selected";
 	else
-		nm = (editor->selected != nullptr) ? editor->selected->name : editor->selectGlobal ? "Scene settings" : "No object selected";
+		nm = (editor->selected()) ? editor->selected->name : editor->selectGlobal ? "Scene settings" : "No object selected";
 	lock = Engine::Toggle(v.r + v.b - EB_HEADER_PADDING - EB_HEADER_SIZE - 2, v.g, EB_HEADER_SIZE, editor->tex_keylock, lock, lock ? Vec4(1, 1, 0, 1) : white(0.5f), ORIENT_HORIZONTAL);
 	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
 	if (!lock) {
@@ -1315,9 +1319,9 @@ void EB_Inspector::Draw() {
 		if (lockGlobal == 0) {
 			if (editor->selectGlobal)
 				lockGlobal = 2;
-			else if (editor->selected != nullptr) {
+			else if (editor->selected()) {
 				lockGlobal = 1;
-				lockedObj = editor->selected;
+				lockedObj(editor->selected);
 			}
 			else UI::Label(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 12, "Select object to inspect.", editor->font, white());
 		}
@@ -1325,7 +1329,7 @@ void EB_Inspector::Draw() {
 			DrawGlobal(v);
 		}
 		else if (lockGlobal == 1) {
-			DrawObj(v, editor, this, lockedObj);
+			DrawObj(v, editor, this, lockedObj().get());
 		}
 	}
 	else if (editor->selectedFileType != ASSETTYPE_UNDEF) {
@@ -1365,8 +1369,8 @@ void EB_Inspector::Draw() {
 	else if (editor->selectGlobal) {
 		DrawGlobal(v);
 	}
-	else if (editor->selected != nullptr){
-		DrawObj(v, editor, this, editor->selected);
+	else if (editor->selected()){
+		DrawObj(v, editor, this, editor->selected().get());
 	}
 	else if (editor->selectedFileTexts.size() > 0) {
 		UI::Label(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 12, editor->selectedFileName, editor->font, white());
@@ -1867,14 +1871,13 @@ void Editor_PlaySyncer::Update() {
 #endif
 }
 
-bool Editor_PlaySyncer::DoSyncObj(const std::vector<uint>& locs, const uint sz, std::vector<SceneObject*>& objs) {
-	for (auto a : objs) delete(a);
+bool Editor_PlaySyncer::DoSyncObj(const std::vector<uint>& locs, const uint sz, std::vector<pSceneObject>& objs) {
 	objs.clear();
 	objs.reserve(sz);
 	for (uint i = 0; i < sz; i++) {
 		byte dat[sizeof(SceneObject)];
 		if (!EPS_RWMem(false, this, dat, locs[i], sizeof(SceneObject))) return false;
-		SceneObject* obj = new SceneObject(dat);
+		auto& obj = SceneObject::New(dat);
 		objs.push_back(obj);
 		obj->_componentCount = *((int*)(dat + SceneObject::_offsets.components) - 1);
 		if (!!obj->_componentCount) {
@@ -1895,15 +1898,14 @@ bool Editor_PlaySyncer::DoSyncObj(const std::vector<uint>& locs, const uint sz, 
 }
 
 bool Editor_PlaySyncer::SyncScene() {
-	auto sid = Editor::instance->selected ? Editor::instance->selected->id : 0UL;
+	auto sid = Editor::instance->selected() ? Editor::instance->selected->id : 0UL;
 	if (!EPS_RWMem(false, this, &pointers.sceneLoc, pointerLoc + offsetof(_PipeModeObj, sceneLoc))) return false;
-	for (auto a : syncedScene) delete(a);
 	syncedScene.clear();
 	std::vector<uint> locs; //SceneObject*
 	if (!EPS_ReadVec(locs, syncedSceneSz, this, pointers.sceneLoc + Scene::_offsets.objs)) return false;
 	if (!DoSyncObj(locs, syncedSceneSz, syncedScene)) return false;
-	if (Editor::instance->selected)
-		Editor::instance->selected = SceneObject::_FromId(syncedScene, sid);
+	if (Editor::instance->selected())
+		Editor::instance->selected(SceneObject::_FromId(syncedScene, sid));
 	return true;
 }
 
@@ -1923,10 +1925,9 @@ bool Editor_PlaySyncer::Connect() {
 	timer = 0.2f;
 	status = EPS_Starting;
 	syncStatus = 0;
-	for (auto a : syncedScene) delete(a);
 	syncedScene.clear();
 	syncedSceneSz = 0;
-	Editor::instance->selected = nullptr;
+	Editor::instance->selected.clear();
 	Debug::Message("Player", "Starting...");
 	Resize(600, 400);
 	return 1;
@@ -1941,10 +1942,9 @@ bool Editor_PlaySyncer::Disconnect() {
 bool Editor_PlaySyncer::Terminate() {
 	TerminateProcess(pInfo.hProcess, 0);
 	status = EPS_Offline;
-	for (auto a : syncedScene) delete(a);
 	syncedScene.clear();
 	syncedSceneSz = 0;
-	Editor::instance->selected = nullptr;
+	Editor::instance->selected.clear();
 	return 1;
 }
 
@@ -1977,7 +1977,7 @@ bool Editor_PlaySyncer::ReloadTex() {
 void Editor::DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASSETTYPE type, float labelSize, Font* labelFont, ASSETID* tar, callbackFunc func, void* param) {
 	if (*tar > -1) {
 		if (Engine::EButton(editorLayer == 0, x, y, h, h, tex_browse, white()) == MOUSE_RELEASE) {
-			selected = nullptr;
+			selected.clear();
 			selectedFilePath = normalAssets[type][*tar];
 			size_t p0 = selectedFilePath.find_last_of('\\');
 			if (p0 != string::npos) selectedFileName = selectedFilePath.substr(p0 + 1);
@@ -3209,14 +3209,14 @@ void DoScanBrowseComp(SceneObject* o, COMPONENT_TYPE t, string p, std::vector<Co
 		vs.push_back(nm);
 	}
 	for (auto oo : o->children)
-		DoScanBrowseComp(oo, t, nm, vc, vs);
+		DoScanBrowseComp(oo.get(), t, nm, vc, vs);
 }
 
 void Editor::ScanBrowseComp() {
 	browseCompList.clear();
 	browseCompListNames.clear();
 	for (auto o : activeScene->objects)
-		DoScanBrowseComp(o, browseTargetComp->type, "", browseCompList, browseCompListNames);
+		DoScanBrowseComp(o.get(), browseTargetComp->type, "", browseCompList, browseCompListNames);
 }
 
 void Editor::RegisterPopup(PopupBlock* blk, Vec2 pos) {

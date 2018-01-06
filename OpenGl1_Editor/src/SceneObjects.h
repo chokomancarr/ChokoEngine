@@ -101,8 +101,6 @@ public:
 	friend class EB_Inspector;
 	friend struct Editor_PlaySyncer;
 	friend class Armature;
-	friend void DrawSceneObjectsOpaque(EB_Viewer*, const std::vector<SceneObject*>&);
-	friend void DrawSceneObjectsGizmos(EB_Viewer*, const std::vector<SceneObject*>&);
 private:
 	Transform(SceneObject* sc, Vec3 pos, Quat rot, Vec3 scl);
 	Transform(SceneObject* sc, byte* data);
@@ -556,14 +554,14 @@ protected:
 
 	std::vector<ASSETID> _effects;
 
-	static void DrawSceneObjectsOpaque(std::vector<SceneObject*> oo, GLuint shader = 0);
+	static void DrawSceneObjectsOpaque(std::vector<pSceneObject> oo, GLuint shader = 0);
 	void RenderLights(GLuint targetFbo = 0);
 	void DumpBuffers();
 
-	void _RenderProbesMask(std::vector<SceneObject*>& objs, Mat4x4 mat, std::vector<ReflectionProbe*>& probes), _RenderProbes(std::vector<ReflectionProbe*>& probes, Mat4x4 mat);
+	void _RenderProbesMask(std::vector<pSceneObject>& objs, Mat4x4 mat, std::vector<ReflectionProbe*>& probes), _RenderProbes(std::vector<ReflectionProbe*>& probes, Mat4x4 mat);
 	void _DoRenderProbeMask(ReflectionProbe* p, Mat4x4& ip), _DoRenderProbe(ReflectionProbe* p, Mat4x4& ip);
 	static void _RenderSky(Mat4x4 ip, GLuint d_texs[], GLuint d_depthTex, float w = (float)Display::width, float h = (float)Display::height);
-	void _DrawLights(std::vector<SceneObject*>& oo, Mat4x4& ip, GLuint targetFbo = 0);
+	void _DrawLights(std::vector<pSceneObject>& oo, Mat4x4& ip, GLuint targetFbo = 0);
 	static void _ApplyEmission(GLuint d_fbo, GLuint d_texs[], float w = (float)Display::width, float h = (float)Display::height, GLuint targetFbo = 0);
 	static void _DoDrawLight_Point(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs[], GLuint d_depthTex, GLuint ctar, GLuint c_tex, float w = (float)Display::width, float h = (float)Display::height, GLuint targetFbo = 0);
 	static void _DoDrawLight_Spot(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs[], GLuint d_depthTex, GLuint ctar, GLuint c_tex, float w = (float)Display::width, float h = (float)Display::height, GLuint targetFbo = 0);
@@ -615,7 +613,7 @@ public:
 
 	friend class MeshRenderer;
 	friend class Editor;
-	friend void LoadMeshMeta(std::vector<SceneObject*>& os, string& path);
+	friend void LoadMeshMeta(std::vector<pSceneObject>& os, string& path);
 	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
 protected:
 	bool showBoundingBox;
@@ -690,7 +688,7 @@ public:
 	friend class Editor;
 	friend class Camera;
 	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
-	friend void LoadMeshMeta(std::vector<SceneObject*>& os, string& path);
+	friend void LoadMeshMeta(std::vector<pSceneObject>& os, string& path);
 protected:
 	SkinnedMeshRenderer(std::ifstream& stream, SceneObject* o, long pos = -1);
 
@@ -1064,28 +1062,41 @@ protected:
 
 #pragma endregion
 
-class SceneObject : public Object {
+class SceneObject : public Object, public std::enable_shared_from_this<SceneObject> {
 public:
 	SceneObject();
 	SceneObject(string s);
 	SceneObject(Vec3 pos, Quat rot, Vec3 scale);
 	SceneObject(string s, Vec3 pos, Quat rot, Vec3 scale);
 	~SceneObject();
+	static pSceneObject New() {
+		return std::make_shared<SceneObject>();
+	}
+	static pSceneObject New(string s) {
+		return std::make_shared<SceneObject>(s);
+	}
+	static pSceneObject New(Vec3 pos, Quat rot, Vec3 scale) {
+		return std::make_shared<SceneObject>(pos, rot, scale);
+	}
+	static pSceneObject New(string s, Vec3 pos, Quat rot, Vec3 scale) {
+		return std::make_shared<SceneObject>(s, pos, rot, scale);
+	}
+
 	bool active = true;
 	Transform transform;
 
 	void SetActive(bool active, bool enableAll = false);
 
-	SceneObject* parent;
+	rSceneObject parent;
 	uint childCount = 0;
-	std::vector<SceneObject*> children;
+	std::vector<pSceneObject> children;
 
-	void SetParent(SceneObject* parent, bool retainLocal = false);
+	void SetParent(pSceneObject parent, bool retainLocal = false);
 	///Add child to this SceneObject.
 	///@param child The child SceneObject to add.
 	///@param retainLocal If true, the child's local transform is retained. If false, the child's world transform is retained.
-	SceneObject* AddChild(SceneObject* child, bool retainLocal = false);
-	SceneObject* GetChild(int i) { return children[i]; }
+	pSceneObject AddChild(pSceneObject child, bool retainLocal = false);
+	pSceneObject GetChild(int i) { return children[i]; }
 	Component* AddComponent(Component* c);
 	template <typename T> T* AddComponent() {
 		return (T*)AddComponent(new T());
@@ -1117,8 +1128,11 @@ public:
 	friend struct Editor_PlaySyncer;
 protected:
 	SceneObject(byte* data);
+	static pSceneObject New(byte* data) {
+		return pSceneObject(new SceneObject(data));
+	}
 
-	static SceneObject* _FromId(const std::vector<SceneObject*>& objs, ulong id);
+	static pSceneObject _FromId(const std::vector<pSceneObject>& objs, ulong id);
 
 	static struct _offset_map {
 		uint name = offsetof(SceneObject, name),

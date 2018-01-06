@@ -1455,11 +1455,11 @@ void Debug::Error(string c, string s) {
 #endif
 	std::cout << "[e]" << c << " says: " << s << std::endl;
 	__debugbreak();
-	abort();
+	//abort();
 }
 
-void Debug::DoDebugObjectTree(std::vector<SceneObject*> o, int i) {
-	for (SceneObject* oo : o) {
+void Debug::DoDebugObjectTree(const std::vector<pSceneObject>& o, int i) {
+	for (auto& oo : o) {
 		string s("");
 		for (int a = 0; a < i; a++)
 			s += " ";
@@ -1476,7 +1476,7 @@ void Debug::DoDebugObjectTree(std::vector<SceneObject*> o, int i) {
 	}
 }
 
-void Debug::ObjectTree(std::vector<SceneObject*> o) {
+void Debug::ObjectTree(const std::vector<pSceneObject>& o) {
 	Message("ObjectTree", "Start");
 	DoDebugObjectTree(o, 0);
 	Message("ObjectTree", "End");
@@ -1909,29 +1909,6 @@ string _Strm2Asset(std::istream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int 
 	return s;
 }
 
-std::vector<float> hdr2float(byte imagergbe[], int w, int h) {
-	std::vector<float> image(w * h * 3, 0);
-	for (int i = 0; i < w*h; i++) {
-		unsigned char exponent = imagergbe[i * 4 + 3];
-		if (exponent != 0) {
-			double v = (1.0f / 256.0f) * pow(2, (float)(exponent - 128));
-			image[i * 3 + 0] = (float)((imagergbe[i * 4 + 0] + 0.5f) * v);
-			image[i * 3 + 1] = (float)((imagergbe[i * 4 + 1] + 0.5f) * v);
-			image[i * 3 + 2] = (float)((imagergbe[i * 4 + 2] + 0.5f) * v);
-		}
-	}
-	return image;
-}
-
-float B2F(char c[]) {
-	float ff;
-	*((char*)(&ff) + 0) = c[0];
-	*((char*)(&ff) + 1) = c[1];
-	*((char*)(&ff) + 2) = c[2];
-	*((char*)(&ff) + 3) = c[3];
-	return ff;
-}
-
 void Serialize(Editor* e, SceneObject* o, std::ofstream* stream) {
 	/*
 	Object data
@@ -1959,9 +1936,9 @@ void Serialize(Editor* e, SceneObject* o, std::ofstream* stream) {
 		c->Serialize(e, stream);
 		stream->write("c", 1);
 	}
-	for (SceneObject* oo : o->children)
+	for (auto& oo : o->children)
 	{
-		Serialize(e, oo, stream);
+		Serialize(e, oo.get(), stream);
 	}
 	*stream << "o";
 }
@@ -1985,9 +1962,9 @@ void Deserialize(std::ifstream& stream, SceneObject* obj) {
 	while (c != 'o') {
 		//Debug::Message("Object Deserializer", to_string(c) + " " + to_string(stream.tellg()));
 		if (c == 'O') {
-			SceneObject* sc = new SceneObject();
+			auto sc = SceneObject::New();
 			obj->AddChild(sc);
-			Deserialize(stream, sc);
+			Deserialize(stream, sc.get());
 		}
 		else if (c == 'C') {
 			c = stream.get(); //component type
@@ -2083,7 +2060,7 @@ Scene::_offset_map Scene::_offsets = {};
 
 Scene::Scene(std::ifstream& stream, long pos) : sceneName("") {
 	Debug::Message("SceneLoader", "Begin Loading Scene...");
-	std::vector<SceneObject*>().swap(objects);
+	std::vector<pSceneObject>().swap(objects);
 	stream.seekg(pos);
 	char h1, h2;
 	stream >> h1 >> h2;
@@ -2104,10 +2081,10 @@ Scene::Scene(std::ifstream& stream, long pos) : sceneName("") {
 	char o;
 	stream >> o;
 	while (!stream.eof() && o == 'O') {
-		SceneObject* sc = new SceneObject();
+		auto sc = SceneObject::New();
 		objects.push_back(sc);
 		objectCount++;
-		Deserialize(stream, sc);
+		Deserialize(stream, sc.get());
 		sc->Refresh();
 		stream >> o;
 	}
@@ -2125,10 +2102,10 @@ Scene::~Scene() {
 }
 */
 
-void Scene::AddObject(SceneObject* object, SceneObject* parent) {
-	if (active == nullptr)
+void Scene::AddObject(pSceneObject object, pSceneObject parent) {
+	if (!active)
 		return;
-	if (parent == nullptr) {
+	if (!parent) {
 		active->objects.push_back(object);
 		active->objectCount++;
 	}
@@ -2136,8 +2113,8 @@ void Scene::AddObject(SceneObject* object, SceneObject* parent) {
 		parent->AddChild(object);
 }
 
-void Scene::DeleteObject(SceneObject* o) {
-	if (active == nullptr)
+void Scene::DeleteObject(pSceneObject o) {
+	if (!active)
 		return;
 	o->_pendingDelete = true;
 }
@@ -2185,8 +2162,8 @@ void Scene::Save(Editor* e) {
 	sw << "SN";
 	sw << sceneName << (char)0;
 	_StreamWriteAsset(e, &sw, ASSETTYPE_HDRI, settings.skyId);
-	for (SceneObject* sc : objects) {
-		Serialize(e, sc, &sw);
+	for (auto& sc : objects) {
+		Serialize(e, sc.get(), &sw);
 	}
 	sw.close();
 	int a = 0;

@@ -7,11 +7,8 @@
 Editor functions
 */
 
-#include <string>
-#include <vector>
 #include <mutex>
 #include <memory>
-#include <unordered_map>
 
 #define EB_HEADER_SIZE 16
 #define EB_HEADER_PADDING 16
@@ -212,6 +209,10 @@ public:
 	void OnMousePress(int i) override;
 	void OnMouseScr(bool up) override;
 
+	static void DrawSceneObjectsOpaque(EB_Viewer* ebv, const std::vector<pSceneObject>& oo);
+	static void DrawSceneObjectsGizmos(EB_Viewer* ebv, const std::vector<pSceneObject>& oo);
+	static void DrawSceneObjectsTrans(EB_Viewer* ebv, const std::vector<pSceneObject>& oo);
+
 	static void _Grab(EditorBlock*), _Rotate(EditorBlock*), _Scale(EditorBlock*);
 	static void _X(EditorBlock*), _Y(EditorBlock*), _Z(EditorBlock*);
 
@@ -227,7 +228,7 @@ public:
 	static void _D2AddComCam(EditorBlock*), _D2AddComMrd(EditorBlock*), _D2AddComAnm(EditorBlock*), _D2AddComLht(EditorBlock*), _D2AddComRfq(EditorBlock*), _D2AddComRdp(EditorBlock*), _D2AddComMft(EditorBlock*);
 	
 	static void _AddObjAsI(EditorBlock*); //, _AddObjAsC(EditorBlock*), _AddObjAsP(EditorBlock*);
-	static bool _AddObjAsCh(SceneObject* sc, const string& nm, std::vector<SceneObject*>& os, const string& bn);
+	static bool _AddObjAsCh(pSceneObject sc, const string& nm, std::vector<pSceneObject>& os, const string& bn);
 
 	static void _TooltipT(EditorBlock*), _TooltipR(EditorBlock*), _TooltipS(EditorBlock*);
 	static void _SelectAll(EditorBlock*), _ViewInvis(EditorBlock*), _ViewPersp(EditorBlock*);
@@ -252,7 +253,7 @@ public:
 	string label;
 
 	bool lock = false;
-	SceneObject* lockedObj;
+	rSceneObject lockedObj = rSceneObject(true);
 	byte lockGlobal;
 	float previewMip;
 
@@ -315,7 +316,7 @@ protected:
 	void _InitDebugPrograms();
 	void DrawPreview(Vec4 v);
 	void _RenderLights(Vec4 v);
-	void _RenderSky(Mat4x4 mat), _DrawLights(std::vector<SceneObject*> oo, Mat4x4 ip);
+	void _RenderSky(Mat4x4 mat), _DrawLights(std::vector<pSceneObject> oo, Mat4x4 ip);
 
 	static void _ToggleBuffers(EditorBlock* v), _ToggleLumi(EditorBlock* v);
 
@@ -437,7 +438,7 @@ struct Editor_PlaySyncer {
 			transform = offsetof(Transform, _offsets),
 			sceneobject = offsetof(SceneObject, _offsets);
 	} offsets;
-	std::vector<SceneObject*> syncedScene;
+	std::vector<pSceneObject> syncedScene;
 	uint syncedSceneSz;
 	uint pointerLoc;
 	int playW, playH;
@@ -448,7 +449,7 @@ struct Editor_PlaySyncer {
 	std::vector<uint> eCacheLocs, eCacheSzLocs;
 
 	void Update();
-	bool SyncScene(), DoSyncObj(const std::vector<uint>& locs, const uint sz, std::vector<SceneObject*>& objs);
+	bool SyncScene(), DoSyncObj(const std::vector<uint>& locs, const uint sz, std::vector<pSceneObject>& objs);
 	bool Connect(), Disconnect(), Terminate();
 	bool Resize(int w, int h), ReloadTex();
 	byte* pixels;
@@ -574,7 +575,7 @@ public:
 
 	Scene* activeScene = nullptr;
 	bool sceneLoaded() { return activeScene != nullptr; }
-	SceneObject* selected;
+	rSceneObject selected = rSceneObject(true);
 	Mat4x4 selectedMvMatrix;
 	Vec4 selectedSpos;
 	bool selectGlobal = false;

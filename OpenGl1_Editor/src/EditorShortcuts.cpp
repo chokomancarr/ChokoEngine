@@ -84,7 +84,7 @@ void EB_Browser::_DoAddAssetEff(EditorBlock* b) {
 byte EB_Viewer::preAddType = 0;
 
 void EB_Viewer::_Grab(EditorBlock* b) {
-	if (b->editor->selected != 0) {
+	if (b->editor->selected()) {
 		EB_Viewer* v = (EB_Viewer*)b;
 		if (v->modifying > 0) {
 			switch (v->modifying >> 4) {
@@ -105,7 +105,7 @@ void EB_Viewer::_Grab(EditorBlock* b) {
 	}
 }
 void EB_Viewer::_Rotate(EditorBlock* b) {
-	if (b->editor->selected != 0) {
+	if (b->editor->selected()) {
 		EB_Viewer* v = (EB_Viewer*)b;
 		if (v->modifying > 0) {
 			switch (v->modifying >> 4) {
@@ -126,7 +126,7 @@ void EB_Viewer::_Rotate(EditorBlock* b) {
 	}
 }
 void EB_Viewer::_Scale(EditorBlock* b) {
-	if (b->editor->selected != 0) {
+	if (b->editor->selected()) {
 		EB_Viewer* v = (EB_Viewer*)b;
 		if (v->modifying > 0) {
 			switch (v->modifying >> 4) {
@@ -180,11 +180,11 @@ void EB_Viewer::_OpenMenuAdd(EditorBlock* b) {
 		b->editor->RegisterMenu(b, "Add Scene Object", { "Empty", "Procedural Object", "Blender Object", "Camera", "Audio Source" }, { _AddObjectE, _AddObjectPr, _AddObjectBl, _AddObjectCam, _AddObjectAud }, 5);
 }
 void EB_Viewer::_OpenMenuCom(EditorBlock* b) {
-	if (b->editor->selected != nullptr)
+	if (b->editor->selected())
 		b->editor->RegisterMenu(b, "Add Component", { "Script", "Audio", "Mesh", "Animation", "Rendering" }, { _AddComScr, _AddComAud, _AddComMesh, _AddComAnim, _AddComRend }, 3);
 }
 void EB_Viewer::_OpenMenuW(EditorBlock* b) {
-	if (b->editor->activeScene != nullptr)
+	if (b->editor->activeScene)
 		b->editor->RegisterMenu(b, "Special Commands", { "(De)Select All (A)", "Dummy", "Dummy" }, { _SelectAll, nullptr, nullptr }, 2);
 }
 
@@ -197,7 +197,7 @@ void EB_Viewer::_OpenMenuChgOrient(EditorBlock* b) {
 }
 
 void DoPreAdd(EditorBlock* b) {
-	if (b->editor->selected != nullptr)
+	if (b->editor->selected())
 		b->editor->RegisterMenu(b, "Add as", std::vector<string>({ "Independant", "Child", "Parent" }), std::vector<shortcutFunc>({ ((EB_Viewer*)b)->_AddObjAsI, nullptr, nullptr }), 0);
 	else
 		((EB_Viewer*)b)->_AddObjAsI(b);
@@ -223,8 +223,8 @@ void EB_Viewer::_AddComRend(EditorBlock* b) {
 	b->editor->RegisterMenu(b, "Add Rendering", std::vector<string>({ "Camera", "Mesh Renderer", "Light", "Reflective Quad", "Render Probe" }), std::vector<shortcutFunc>({ _D2AddComCam, _D2AddComMrd, _D2AddComLht, _D2AddComRfq, _D2AddComRdp }), 0);
 }
 
-bool EB_Viewer::_AddObjAsCh(SceneObject* sc, const string& nm, std::vector<SceneObject*>& os, const string& bn) {
-	for (SceneObject* oo : os) {
+bool EB_Viewer::_AddObjAsCh(pSceneObject sc, const string& nm, std::vector<pSceneObject>& os, const string& bn) {
+	for (auto& oo : os) {
 		if (oo->name == nm) {
 			if (bn != "") {
 				auto arm = oo->GetComponent<Armature>();
@@ -246,8 +246,8 @@ bool EB_Viewer::_AddObjAsCh(SceneObject* sc, const string& nm, std::vector<Scene
 	}
 	return false;
 }
-void LoadMeshMeta(std::vector<SceneObject*>& os, string& path) {
-	for (SceneObject* o : os) {
+void LoadMeshMeta(std::vector<pSceneObject>& os, string& path) {
+	for (auto& o : os) {
 		string nn(path.substr(Editor::instance->projectFolder.size() + 7, string::npos));
 		int r = 0;
 		bool skinned = false;
@@ -258,7 +258,7 @@ void LoadMeshMeta(std::vector<SceneObject*>& os, string& path) {
 		for (string ss : Editor::instance->normalAssets[ASSETTYPE_MESH]) {
 			if (ss == (nn + o->name)) {
 				if (skinned) {
-					auto skn = new SkinnedMeshRenderer(o);
+					auto skn = new SkinnedMeshRenderer(o.get());
 					o->AddComponent(skn);
 					skn->SetMesh(r);
 				}
@@ -283,7 +283,7 @@ void EB_Viewer::_DoAddObjectBl(EditorBlock* b, void* v) {
 	string name = *((string*)v);
 	string path = b->editor->projectFolder + "Assets\\" + name + ".meta";
 	name = name.substr(name.find_last_of('\\') + 1, string::npos).substr(0, name.find_last_of('.'));
-	SceneObject* o = new SceneObject(name, ((EB_Viewer*)b)->rotCenter, Quat(), Vec3(1,1,1));
+	auto& o = SceneObject::New(name, ((EB_Viewer*)b)->rotCenter, Quat(), Vec3(1,1,1));
 	b->editor->activeScene->objects.push_back(o);
 	std::ifstream file(path.c_str(), std::ios::in | std::ios::binary);
 	bool hasarm = false;
@@ -380,17 +380,17 @@ void EB_Viewer::_DoAddObjectBl(EditorBlock* b, void* v) {
 			sc.z = stof(ss);
 			if (d == "obj") {
 				if (prt == "")
-					o->AddChild(new SceneObject(nm, tr, rt, sc));
+					o->AddChild(SceneObject::New(nm, tr, rt, sc));
 				else {
 					auto bpos = prt.find(2);
-					_AddObjAsCh(new SceneObject(nm, tr, rt, sc), prt.substr(0, bpos), o->children, (bpos != string::npos)? prt.substr(bpos+1) : "");
+					_AddObjAsCh(SceneObject::New(nm, tr, rt, sc), prt.substr(0, bpos), o->children, (bpos != string::npos)? prt.substr(bpos+1) : "");
 				}
 			}
 			else {
-				auto so = new SceneObject(nm, tr, rt, sc);
+				auto so = SceneObject::New(nm, tr, rt, sc);
 				o->AddChild(so);
 				//std::ifstream astrm(path.substr(0, path.size() - 11) + "_blend\\" + nm + ".arma.meta", std::ios::in | sd::ios::bin);
-				so->AddComponent(new Armature(path.substr(0, path.size() - 11) + "_blend\\" + nm + ".arma.meta", so));
+				so->AddComponent(new Armature(path.substr(0, path.size() - 11) + "_blend\\" + nm + ".arma.meta", so.get()));
 				if (!hasarm) {
 					hasarm = true;
 					o->AddComponent<Animator>();
@@ -455,31 +455,33 @@ void EB_Viewer::_AddObjectAud(EditorBlock* b) {
 	DoPreAdd(b);
 }
 
-SceneObject* DoAdd(EditorBlock* b) {
+pSceneObject DoAdd(EditorBlock* b) {
 	switch (((EB_Viewer*)b)->preAddType) {
 	case 0:
-		b->editor->activeScene->objects.push_back(new SceneObject("Empty Object"));
-		b->editor->selected = b->editor->activeScene->objects[b->editor->activeScene->objects.size() - 1];
+		b->editor->activeScene->objects.push_back(SceneObject::New("Empty Object"));
+		b->editor->selected(b->editor->activeScene->objects[b->editor->activeScene->objects.size() - 1]);
 		break;
 	case 5:
-		b->editor->activeScene->objects.push_back(new SceneObject("Camera"));
-		b->editor->selected = b->editor->activeScene->objects[b->editor->activeScene->objects.size() - 1]->AddComponent(new Camera())->object;
+		b->editor->activeScene->objects.push_back(SceneObject::New("Camera"));
+		b->editor->selected(b->editor->activeScene->objects[b->editor->activeScene->objects.size() - 1]);
+		b->editor->selected->AddComponent(new Camera());
 		break;
 	case 10:
-		b->editor->activeScene->objects.push_back(new SceneObject("Audio Source"));
-		b->editor->selected = b->editor->activeScene->objects[b->editor->activeScene->objects.size() - 1]->AddComponent(new Camera())->object;
+		b->editor->activeScene->objects.push_back(SceneObject::New("Audio Source"));
+		b->editor->selected(b->editor->activeScene->objects[b->editor->activeScene->objects.size() - 1]);
+		b->editor->selected->AddComponent(new Camera());
 		break;
 	}
-	return b->editor->selected;
+	return b->editor->selected();
 }
 
 void EB_Viewer::_AddObjAsI(EditorBlock* b) {
-	SceneObject* o = DoAdd(b);
+	pSceneObject o = DoAdd(b);
 }
 
 void EB_Viewer::_SelectAll(EditorBlock* b) {
 	if (((EB_Viewer*)b)->modifying == 0)
-		b->editor->selected = nullptr;
+		b->editor->selected.clear();
 }
 void EB_Viewer::_ViewInvis(EditorBlock* b) {
 	((EB_Viewer*)b)->selectedShading = (((EB_Viewer*)b)->selectedShading == 1) ? 0 : 1;
@@ -537,12 +539,12 @@ void EB_Viewer::_ViewBottom(EditorBlock* b) {
 	((EB_Viewer*)b)->MakeMatrix();
 }
 void EB_Viewer::_ViewCam(EditorBlock* b) {
-	if (b->editor->selected != nullptr) {
+	if (b->editor->selected()) {
 		((EB_Viewer*)b)->seeingCamera = (Camera*)b->editor->selected->GetComponent(COMP_CAM);
 	}
 }
 void EB_Viewer::_SnapCenter(EditorBlock* b) {
-	if (b->editor->selected == nullptr) {
+	if (b->editor->selected()) {
 		((EB_Viewer*)b)->rotCenter = Vec3();
 	}
 	else {
@@ -605,7 +607,7 @@ void EB_Console::Cmd_editor_playmode_disconnect(string s) {
 }
 
 void Editor::DeleteActive(Editor* e) {
-	if (e->selected)
+	if (e->selected())
 		e->RegisterMenu(e->blocks[0], "Confirm?", { "Delete" }, { &DoDeleteActive }, 0);
 }
 void Editor::DoDeleteActive(EditorBlock* b) {

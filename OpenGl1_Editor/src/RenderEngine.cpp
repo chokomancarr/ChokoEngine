@@ -16,8 +16,8 @@ Mat4x4 GetMatrix(GLenum type) {
 	return Mat4x4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
 }
 
-void Camera::DrawSceneObjectsOpaque(std::vector<SceneObject*> oo, GLuint shader) {
-	for (SceneObject* sc : oo)
+void Camera::DrawSceneObjectsOpaque(std::vector<pSceneObject> oo, GLuint shader) {
+	for (auto& sc : oo)
 	{
 		glPushMatrix();
 		glMultMatrixf(glm::value_ptr(sc->transform.localMatrix()));
@@ -423,8 +423,8 @@ void EB_Previewer::_RenderLights(Vec4 v) {
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
-void EB_Previewer::_DrawLights(std::vector<SceneObject*> oo, Mat4x4 ip) {
-	for (SceneObject* o : oo) {
+void EB_Previewer::_DrawLights(std::vector<pSceneObject> oo, Mat4x4 ip) {
+	for (auto& o : oo) {
 		if (!o->active)
 			continue;
 		for (Component* c : o->_components) {
@@ -547,8 +547,8 @@ void Camera::_DoRenderProbeMask(ReflectionProbe* p, Mat4x4& ip) {
 }
 
 //mask shaded parts with alpha += influence/4
-void Camera::_RenderProbesMask(std::vector<SceneObject*>& objs, Mat4x4 mat, std::vector<ReflectionProbe*>& probes) {
-	for (SceneObject* o : objs) {
+void Camera::_RenderProbesMask(std::vector<pSceneObject>& objs, Mat4x4 mat, std::vector<ReflectionProbe*>& probes) {
+	for (auto& o : objs) {
 		if (!o->active)
 			continue;
 		for (Component* c : o->_components) {
@@ -1004,8 +1004,8 @@ void Camera::_DoDrawLight_ReflQuad(ReflectiveQuad* l, Mat4x4& ip, GLuint d_fbo, 
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
-void Camera::_DrawLights(std::vector<SceneObject*>& oo, Mat4x4& ip, GLuint targetFbo) {
-	for (SceneObject* o : oo) {
+void Camera::_DrawLights(std::vector<pSceneObject>& oo, Mat4x4& ip, GLuint targetFbo) {
+	for (auto& o : oo) {
 		if (!o->active)
 			continue;
 		for (Component* c : o->_components) {

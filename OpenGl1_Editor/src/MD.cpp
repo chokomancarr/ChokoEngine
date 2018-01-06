@@ -4,7 +4,7 @@
 
 MD* MD::me = nullptr;
 
-MD::MD(const string& path, uint _c, float d, float t): particlecount(pow(_c, 3)*4), threads((uint)ceilf(particlecount/64.0f)), dens(d), temp(t), tempo(t), pen(1000), pes(std::vector<Vec3>(1000)), per(-2000, 0) {
+MD::MD(const string& path, uint _c, float d, float t): particlecount((uint)pow(_c, 3)*4), threads((uint)ceilf(particlecount/64.0f)), dens(d), temp(t), tempo(t), pen(1000), pes(std::vector<Vec3>(1000)), per(-2000, 0) {
 	me = this;
 	frb = new ComputeBuffer<Vec4>(particlecount);
 
