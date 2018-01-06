@@ -22,10 +22,12 @@ bool DrawComponentHeader(Editor* e, Vec4 v, uint pos, Component* c) {
 	return c->_expanded;
 }
 
-Component::Component(string name, COMPONENT_TYPE t, DRAWORDER drawOrder, SceneObject* o, std::vector<COMPONENT_TYPE> dep) : Object(name), componentType(t), active(true), drawOrder(drawOrder), _expanded(true), dependancies(dep), object(o) {
+Component::Component(string name, COMPONENT_TYPE t, DRAWORDER drawOrder, SceneObject* o, std::vector<COMPONENT_TYPE> dep)
+	: Object(name), componentType(t), active(true), drawOrder(drawOrder), _expanded(true), dependancies(dep) {
 	for (COMPONENT_TYPE t : dependancies) {
 		dependacyPointers.push_back(nullptr);
 	}
+	if (o) object(o);
 }
 
 COMPONENT_TYPE Component::Name2Type(string nm) {
@@ -809,7 +811,7 @@ void ParticleSystem::Update() {
 }
 
 void Light::DrawEditor(EB_Viewer* ebv, GLuint shader) {
-	if (ebv->editor->selected().get() != object) return;
+	if (ebv->editor->selected != object) return;
 	switch (_lightType) { 
 	case LIGHTTYPE_POINT:
 		if (minDist > 0) {
@@ -839,7 +841,7 @@ void Light::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 		Engine::DrawCircleW(Vec3(), Vec3(0, 1, 0), Vec3(0, 0, 1), 0.2f, 12, color, 1);
 		break;
 	case LIGHTTYPE_SPOT:
-		if (ebv->editor->selected().get() == object) {
+		if (ebv->editor->selected == object) {
 			Engine::DrawLineWDotted(Vec3(0, 0, 1) * minDist, Vec3(0, 0, 1) * maxDist, white(0.5f, 0.5f), 1, 0.2f, true);
 			float rd = minDist*tan(deg2rad*angle*0.5f);
 			float rd2 = maxDist*tan(deg2rad*angle*0.5f);
@@ -1078,7 +1080,7 @@ void ReflectionProbe::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 	Engine::DrawCircleW(Vec3(), Vec3(0, 1, 0), Vec3(0, 0, 1), 0.2f, 12, Vec4(1, 0.76f, 0.80, 1), 1);
 	Engine::DrawCircleW(Vec3(), Vec3(0, 0, 1), Vec3(1, 0, 0), 0.2f, 12, Vec4(1, 0.76f, 0.80, 1), 1);
 
-	if (ebv->editor->selected().get() == object) {
+	if (ebv->editor->selected == object) {
 		Engine::DrawLineWDotted(range*Vec3(1, 1, -1), range*Vec3(1, 1, 1), white(), 1, 0.1f);
 		Engine::DrawLineWDotted(range*Vec3(1, 1, 1), range*Vec3(-1, 1, 1), white(), 1, 0.1f);
 		Engine::DrawLineWDotted(range*Vec3(-1, 1, 1), range*Vec3(-1, 1, -1), white(), 1, 0.1f);
@@ -1195,7 +1197,7 @@ Armature::Armature(string path, SceneObject* o) : Component("Armature", COMP_ARM
 	uint i = 0;
 	while (b == 'B') {
 		//std::cout << " >" << to_string(strm.tellg());
-		AddBone(strm, _bones, boneList, object, i);
+		AddBone(strm, _bones, boneList, object.raw(), i);
 		b = strm.get();
 		//std::cout << " " << to_string(strm.tellg()) << std::endl;
 	}
@@ -1212,7 +1214,7 @@ Armature::~Armature() {
 }
 
 void ArmatureBone::Draw(EB_Viewer* ebv) {
-	bool sel = (ebv->editor->selected().get() == tr->object);
+	bool sel = (ebv->editor->selected == tr->object);
 	glPushMatrix();
 	glMultMatrixf(glm::value_ptr(tr->localMatrix()));
 	glPushMatrix();
@@ -1270,7 +1272,7 @@ void Armature::AddBone(std::ifstream& strm, std::vector<ArmatureBone*>& bones, s
 	mask = strm.get();
 	rot = QuatFunc::LookAt((tal - pos), fwd);
 	std::vector<ArmatureBone*>& bnv = (prt)? prt->_children : bones;
-	SceneObject* scp = (prt) ? prt->tr->object : o;
+	SceneObject* scp = (prt) ? prt->tr->object.raw() : o;
 	pSceneObject oo = SceneObject::New(nm, pos, rot, Vec3(1.0f));
 	ArmatureBone* bn = new ArmatureBone(id++, (prt) ? pos + Vec3(0, 0, 1)*prt->length : pos, rot, Vec3(1.0f), glm::length(tal-pos), (mask & 0xf0) != 0, &oo->transform, prt);
 	bnv.push_back(bn);
@@ -1582,17 +1584,19 @@ void SceneScript::Parse(string s, Editor* e) {
 //-----------------transform class-------------------
 Transform::_offset_map Transform::_offsets = {};
 
-Transform::Transform(SceneObject* sc, Vec3 pos, Quat rot, Vec3 scl) : object(sc), _rotation(rot) {
+void Transform::Init(pSceneObject& sc, Vec3 pos, Quat rot, Vec3 scl) {
+	object(sc);
+	_rotation = rot;
 	Translate(pos).Scale(scl);
 	_UpdateWEuler();
 	_W2LQuat();
 	_UpdateLMatrix();
 }
 
-Transform::Transform(SceneObject* sc, byte* data) :
-	Transform(sc, *((Vec3*)(data + Transform::_offsets.position)), 
-		*((Quat*)(data + Transform::_offsets.rotation)), 
-		*((Vec3*)(data + Transform::_offsets.scale))) {}
+void Transform::Init(pSceneObject& sc, byte* data) {
+	Transform* tr = (Transform*)data;
+	Init(sc, tr->_position, tr->_rotation, tr->_localScale);
+}
 
 void Transform::position(const Vec3& r) {
 	_position = r;
@@ -1752,7 +1756,7 @@ void Transform::_W2LQuat() {
 
 void Transform::_UpdateLMatrix() {
 	_localMatrix = MatFunc::FromTRS(_localPosition, _localRotation, _localScale);
-	_UpdateWMatrix(object->parent() ? object->parent->transform._worldMatrix : Mat4x4());
+	_UpdateWMatrix(object->parent.ok() ? object->parent->transform._worldMatrix : Mat4x4());
 }
 
 void Transform::_UpdateWMatrix(const Mat4x4& mat) {
@@ -1768,13 +1772,11 @@ void Transform::_UpdateWMatrix(const Mat4x4& mat) {
 
 SceneObject::_offset_map SceneObject::_offsets = {};
 
-SceneObject::SceneObject() : SceneObject(Vec3(), Quat(), Vec3(1, 1, 1)) {}
-SceneObject::SceneObject(string s) : SceneObject(s, Vec3(), Quat(), Vec3(1, 1, 1)) {}
 SceneObject::SceneObject(Vec3 pos, Quat rot, Vec3 scale) : SceneObject("New Object", pos, rot, scale) {}
-SceneObject::SceneObject(string s, Vec3 pos, Quat rot, Vec3 scale) : transform(this, pos, rot, scale), _expanded(true), Object(s) {
+SceneObject::SceneObject(string s, Vec3 pos, Quat rot, Vec3 scale) : _expanded(true), Object(s) {
 	id = Engine::GetNewId();
 }
-SceneObject::SceneObject(byte* data) : transform(this, data + SceneObject::_offsets.transform), _expanded(true), Object(*((uint*)data + 1), string((char*)data + SceneObject::_offsets.name)) {}
+SceneObject::SceneObject(byte* data) : _expanded(true), Object(*((uint*)data + 1), string((char*)data + SceneObject::_offsets.name)) {}
 
 SceneObject::~SceneObject() {
 	for (Component* c : _components) delete(c);
@@ -1829,7 +1831,7 @@ pSceneObject SceneObject::AddChild(pSceneObject child, bool retainLocal) {
 	}
 	children.push_back(child);
 	childCount++;
-	child->parent(this->shared_from_this());
+	child->parent(this);
 	child->transform._UpdateWMatrix(transform._worldMatrix);
 	if (!retainLocal) {
 		child->transform.position(t);
@@ -1839,7 +1841,7 @@ pSceneObject SceneObject::AddChild(pSceneObject child, bool retainLocal) {
 }
 
 Component* SceneObject::AddComponent(Component* c) {
-	c->object = this;
+	c->object(this);
 	int i = 0;
 	for (COMPONENT_TYPE t : c->dependancies) {
 		c->dependacyPointers[i] = GetComponent(t);

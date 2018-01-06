@@ -330,17 +330,27 @@ public:
 		}
 		else return _object.lock();
 	}
-
 	std::shared_ptr<T> operator->() { return this->operator()(); }
 
 	void operator()(const std::shared_ptr<T>& ref) { //set
 		_object = ref;
 		_empty = false;
 	}
-
-	void operator()(const Ref<T>& ref) { //set
+	void operator()(const Ref<T>& ref) {
 		_object = ref._object;
 		_empty = false;
+	}
+	void operator()(const T* ref) {
+		_object = ref->shared_from_this();
+		_empty = false;
+	}
+
+	bool operator ==(const Ref<T>& rhs) const {
+		return this->_object.lock() == rhs._object.lock();
+	}
+
+	bool operator !=(const Ref<T>& rhs) const {
+		return this->_object.lock() != rhs._object.lock();
 	}
 
 	void clear() {
@@ -349,6 +359,11 @@ public:
 
 	bool ok() {
 		return !(_empty || _object.expired());
+	}
+
+	T* raw() {
+		if (ok()) return _object.lock().get();
+		else return nullptr;
 	}
 
 private:
@@ -363,22 +378,34 @@ typedef Ref<obj> r ## obj;
 //SceneObjects.h
 _canref(Component);
 _canref(Transform);
+_canref(SceneObject);
+_canref(Animator);
+_canref(Armature);
 _canref(Camera);
-_canref(MeshFilter);
-_canref(SkinnedMeshRenderer);
 _canref(Light);
+_canref(MeshFilter);
+_canref(MeshRenderer);
 _canref(ParticleSystem);
+_canref(ReflectionProbe);
+_canref(ReflectiveQuad);
+_canref(SceneScript);
+_canref(SkinnedMeshRenderer);
+_canref(TextureRenderer);
 
 //AssetObjects.h
 class AssetItem;
 class AssetManager;
 class AssetObject;
 
-_canref(Mesh);
-_canref(Texture);
+_canref(Animation);
+_canref(AnimClip);
 _canref(Background);
-_canref(SceneScript);
-_canref(SceneObject);
+_canref(CameraEffect);
+_canref(CubeMap);
+_canref(Material);
+_canref(Mesh);
+_canref(Shader);
+_canref(Texture);
 
 class Debug {
 public:

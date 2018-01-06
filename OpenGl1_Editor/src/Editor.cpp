@@ -1329,7 +1329,7 @@ void EB_Inspector::Draw() {
 			DrawGlobal(v);
 		}
 		else if (lockGlobal == 1) {
-			DrawObj(v, editor, this, lockedObj().get());
+			DrawObj(v, editor, this, lockedObj.raw());
 		}
 	}
 	else if (editor->selectedFileType != ASSETTYPE_UNDEF) {
@@ -1370,7 +1370,7 @@ void EB_Inspector::Draw() {
 		DrawGlobal(v);
 	}
 	else if (editor->selected()){
-		DrawObj(v, editor, this, editor->selected().get());
+		DrawObj(v, editor, this, editor->selected.raw());
 	}
 	else if (editor->selectedFileTexts.size() > 0) {
 		UI::Label(v.r + 2, v.g + 2 + EB_HEADER_SIZE, 12, editor->selectedFileName, editor->font, white());

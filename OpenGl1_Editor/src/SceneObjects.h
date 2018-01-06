@@ -33,7 +33,7 @@ public:
 	const COMPONENT_TYPE componentType = COMP_UNDEF;
 	const DRAWORDER drawOrder;
 	bool active;
-	SceneObject* object;
+	rSceneObject object;
 
 	virtual void OnPreUpdate() {}
 	virtual void OnPreLUpdate() {}
@@ -70,7 +70,8 @@ protected:
 
 class Transform : public Object {
 public:
-	SceneObject* object;
+	rSceneObject object;
+
 	const Vec3& position() { return _position; }
 	const Vec3& localPosition() { return _localPosition; }
 	const Quat& rotation() { return _rotation; }
@@ -102,8 +103,10 @@ public:
 	friend struct Editor_PlaySyncer;
 	friend class Armature;
 private:
-	Transform(SceneObject* sc, Vec3 pos, Quat rot, Vec3 scl);
-	Transform(SceneObject* sc, byte* data);
+	Transform() {}
+	void Init(pSceneObject& sc, Vec3 pos, Quat rot, Vec3 scl);
+	void Init(pSceneObject& sc, byte* data);
+
 	Vec3 _position, _localPosition;
 	Quat _rotation, _localRotation;
 	Vec3 _eulerRotation, _localEulerRotation;
@@ -122,8 +125,7 @@ private:
 	void _UpdateLMatrix();
 	void _UpdateWMatrix(const Mat4x4& mat);
 
-	//never call Transform constructor directly. Use SceneObject().transform instead.
-	Transform();
+	//never call Transform constructor directly.
 	Transform(const Transform& rhs);
 };
 
@@ -1064,22 +1066,16 @@ protected:
 
 class SceneObject : public Object, public std::enable_shared_from_this<SceneObject> {
 public:
-	SceneObject();
-	SceneObject(string s);
-	SceneObject(Vec3 pos, Quat rot, Vec3 scale);
-	SceneObject(string s, Vec3 pos, Quat rot, Vec3 scale);
 	~SceneObject();
-	static pSceneObject New() {
-		return std::make_shared<SceneObject>();
+	static pSceneObject New(Vec3 pos, Quat rot = Quat(), Vec3 scale = Vec3(1, 1, 1)) {
+		auto p = pSceneObject(new SceneObject(pos, rot, scale));
+		p->transform.Init(p, pos, rot, scale);
+		return p;
 	}
-	static pSceneObject New(string s) {
-		return std::make_shared<SceneObject>(s);
-	}
-	static pSceneObject New(Vec3 pos, Quat rot, Vec3 scale) {
-		return std::make_shared<SceneObject>(pos, rot, scale);
-	}
-	static pSceneObject New(string s, Vec3 pos, Quat rot, Vec3 scale) {
-		return std::make_shared<SceneObject>(s, pos, rot, scale);
+	static pSceneObject New(string s = "New Object", Vec3 pos = Vec3(), Quat rot = Quat(), Vec3 scale = Vec3(1, 1, 1)) {
+		auto p = pSceneObject(new SceneObject(s, pos, rot, scale));
+		p->transform.Init(p, pos, rot, scale);
+		return p;
 	}
 
 	bool active = true;
@@ -1127,9 +1123,14 @@ public:
 	friend class Editor;
 	friend struct Editor_PlaySyncer;
 protected:
+	//set transform.object after construction
+	SceneObject(Vec3 pos, Quat rot = Quat(), Vec3 scale = Vec3(1, 1, 1));
+	SceneObject(string s = "New Object", Vec3 pos = Vec3(), Quat rot = Quat(), Vec3 scale = Vec3(1, 1, 1));
 	SceneObject(byte* data);
 	static pSceneObject New(byte* data) {
-		return pSceneObject(new SceneObject(data));
+		auto p = pSceneObject(new SceneObject(data));
+		p->transform.Init(p, data + _offsets.transform);
+		return p;
 	}
 
 	static pSceneObject _FromId(const std::vector<pSceneObject>& objs, ulong id);
