@@ -188,7 +188,7 @@ void Animator::OnPreLUpdate() {
 	animation->keyvals = animation->states[0]->keyvals;
 }
 
-void Animator::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
+void Animator::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 	if (DrawComponentHeader(e, v, pos, this)) {
 		pos += 17;
 		UI::Label(v.r + 2, v.g + pos, 12, "Animation", e->font, white());

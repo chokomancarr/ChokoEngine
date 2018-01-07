@@ -13,7 +13,7 @@ bool DrawComponentHeader(Editor* e, Vec4 v, uint pos, Component* c) {
 	//UI::Texture(v.r, v.g + pos, 16, 16, c->_expanded ? e->collapse : e->expand);
 	if (Engine::EButton(e->editorLayer == 0, v.r + v.b - 16, v.g + pos, 16, 16, e->tex_buttonX, white(1, 0.7f)) == MOUSE_RELEASE) {
 		//delete
-		c->object->RemoveComponent(c);
+		c->object->RemoveComponent(get_shared<Component>(c));
 		if (!c)
 			e->flags |= WAITINGREFRESHFLAG;
 		return false;
@@ -25,7 +25,7 @@ bool DrawComponentHeader(Editor* e, Vec4 v, uint pos, Component* c) {
 Component::Component(string name, COMPONENT_TYPE t, DRAWORDER drawOrder, SceneObject* o, std::vector<COMPONENT_TYPE> dep)
 	: Object(name), componentType(t), active(true), drawOrder(drawOrder), _expanded(true), dependancies(dep) {
 	for (COMPONENT_TYPE t : dependancies) {
-		dependacyPointers.push_back(nullptr);
+		dependacyPointers.push_back(rComponent());
 	}
 	if (o) object(o);
 }
@@ -192,7 +192,7 @@ void Camera::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
-void Camera::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
+void Camera::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 	Camera* cam = (Camera*)c;
 	if (DrawComponentHeader(e, v, pos, this)) {
 		UI::Label(v.r + 2, v.g + pos + 17, 12, "Field of view", e->font, white());
@@ -269,7 +269,7 @@ MeshFilter::MeshFilter() : Component("Mesh Filter", COMP_MFT, DRAWORDER_NONE), _
 
 }
 
-void MeshFilter::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
+void MeshFilter::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 	//MeshFilter* mft = (MeshFilter*)c;
 	if (DrawComponentHeader(e, v, pos, this)) {
 		UI::Label(v.r + 2, v.g + pos + 20, 12, "Mesh", e->font, white());
@@ -339,7 +339,7 @@ MeshRenderer::MeshRenderer(std::ifstream& stream, SceneObject* o, long pos) : Co
 }
 
 void MeshRenderer::DrawEditor(EB_Viewer* ebv, GLuint shader) {
-	MeshFilter* mf = (MeshFilter*)dependacyPointers[0];
+	MeshFilter* mf = (MeshFilter*)dependacyPointers[0].raw();
 	if (!mf->mesh || !mf->mesh->loaded)
 		return;
 	bool isE = (ebv != nullptr);
@@ -388,9 +388,9 @@ void MeshRenderer::DrawDeferred(GLuint shader) {
 	DrawEditor(nullptr, shader);
 }
 
-void MeshRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
+void MeshRenderer::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 	if (DrawComponentHeader(e, v, pos, this)) {
-		MeshFilter* mft = (MeshFilter*)dependacyPointers[0];
+		MeshFilter* mft = (MeshFilter*)dependacyPointers[0].raw();
 		if (!mft->mesh) {
 			UI::Label(v.r + 2, v.g + pos + 20, 12, "No Mesh Assigned!", e->font, white());
 			pos += 34;
@@ -467,7 +467,7 @@ void MeshRenderer::Serialize(Editor* e, std::ofstream* stream) {
 }
 
 void MeshRenderer::Refresh() {
-	MeshFilter* mf = (MeshFilter*)dependacyPointers[0];
+	MeshFilter* mf = (MeshFilter*)dependacyPointers[0].raw();
 	if (!mf || !mf->mesh || !mf->mesh->loaded) {
 		materials.clear();
 		_materials.clear();
@@ -478,7 +478,7 @@ void MeshRenderer::Refresh() {
 	}
 }
 
-void TextureRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
+void TextureRenderer::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 	//MeshRenderer* mrd = (MeshRenderer*)c;
 	if (DrawComponentHeader(e, v, pos, this)) {
 		UI::Label(v.r + 2, v.g + pos + 20, 12, "Texture", e->font, white());
@@ -508,8 +508,8 @@ SkinnedMeshRenderer::SkinnedMeshRenderer(SceneObject* o) : Component("Skinned Me
 		Debug::Error("SMR", "SceneObject cannot be null!");
 	}
 	rSceneObject& par = object->parent;
-	while (par.ok()) {
-		armature = par->GetComponent<Armature>();
+	while (par) {
+		armature = par->GetComponent<Armature>().get();
 		if (armature) break;
 		else par = par->parent;
 	}
@@ -586,7 +586,7 @@ void SkinnedMeshRenderer::InitWeights() {
 		Debug::Warning("SMR", to_string(noweights.size()) + " vertices in \"" + _mesh->name + "\" have no weights assigned!");
 }
 
-void SkinnedMeshRenderer::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
+void SkinnedMeshRenderer::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 	if (DrawComponentHeader(e, v, pos, this)) {
 		UI::Label(v.r + 2, v.g + pos + 20, 12, "Mesh", e->font, white());
 		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 17, v.b*0.7f, 16, grey1(), ASSETTYPE_MESH, 12, e->font, &_meshId, &_UpdateMesh, this);
@@ -857,7 +857,7 @@ void Light::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 	}
 }
 
-void Light::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
+void Light::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 	if (DrawComponentHeader(e, v, pos, this)) {
 		pos += 17;
 		if (Engine::EButton(e->editorLayer == 0, v.r, v.g + pos, v.b * 0.33f - 1, 16, (_lightType == LIGHTTYPE_POINT) ? white(1, 0.5f) : grey1(), "Point", 12, e->font, white()) == MOUSE_RELEASE)
@@ -1042,7 +1042,7 @@ void ReflectiveQuad::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 	Engine::DrawLineW(Vec3(origin.x, origin.y, 0), Vec3(origin.x, origin.y + size.y, 0), yellow(), 2);
 }
 
-void ReflectiveQuad::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
+void ReflectiveQuad::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 	if (DrawComponentHeader(e, v, pos, this)) {
 		pos += 17;
 		UI::Label(v.r + 2, v.g + pos, 12, "Texture", e->font, white());
@@ -1109,7 +1109,7 @@ void ReflectionProbe::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 	*/
 }
 
-void ReflectionProbe::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
+void ReflectionProbe::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 	if (DrawComponentHeader(e, v, pos, this)) {
 		pos += 17;
 		
@@ -1273,7 +1273,7 @@ void Armature::AddBone(std::ifstream& strm, std::vector<ArmatureBone*>& bones, s
 	rot = QuatFunc::LookAt((tal - pos), fwd);
 	std::vector<ArmatureBone*>& bnv = (prt)? prt->_children : bones;
 	SceneObject* scp = (prt) ? prt->tr->object.raw() : o;
-	pSceneObject oo = SceneObject::New(nm, pos, rot, Vec3(1.0f));
+	auto oo = SceneObject::New(nm, pos, rot, Vec3(1.0f));
 	ArmatureBone* bn = new ArmatureBone(id++, (prt) ? pos + Vec3(0, 0, 1)*prt->length : pos, rot, Vec3(1.0f), glm::length(tal-pos), (mask & 0xf0) != 0, &oo->transform, prt);
 	bnv.push_back(bn);
 	scp->AddChild(oo);
@@ -1316,7 +1316,7 @@ void Armature::UpdateAnimIds() {
 
 void Armature::Animate() {
 	if (!object->parent()) return;
-	Animator* anm = object->parent->GetComponent<Animator>();
+	Animator* anm = object->parent->GetComponent<Animator>().get();
 	if (!anm || !anm->animation) return;
 
 	anm->OnPreLUpdate();
@@ -1367,7 +1367,7 @@ void Armature::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
-void Armature::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
+void Armature::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 	Armature* cam = (Armature*)c;
 	if (DrawComponentHeader(e, v, pos, this)) {
 		pos += 17;
@@ -1545,7 +1545,7 @@ void SceneScript::Serialize(Editor* e, std::ofstream* stream) {
 	}
 }
 
-void SceneScript::DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) {
+void SceneScript::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 	SceneScript* scr = (SceneScript*)c;
 	if (DrawComponentHeader(e, v, pos, this)) {
 		for (auto& p : _vals){
@@ -1725,14 +1725,14 @@ void Transform::_UpdateLEuler() {
 }
 
 void Transform::_L2WPos() {
-	if (!object->parent.ok()) _position = _localPosition;
+	if (!object->parent) _position = _localPosition;
 	else {
 		auto pos = object->parent->transform._worldMatrix*Vec4(_localPosition, 1);
 		_position = Vec3(pos.x, pos.y, pos.z);
 	}
 }
 void Transform::_W2LPos() {
-	if (!object->parent.ok()) _localPosition = _position;
+	if (!object->parent) _localPosition = _position;
 	else {
 		auto pos = glm::inverse(object->parent->transform._worldMatrix)*Vec4(_position, 1);
 		_localPosition = Vec3(pos.x, pos.y, pos.z);
@@ -1740,14 +1740,14 @@ void Transform::_W2LPos() {
 }
 
 void Transform::_L2WQuat() {
-	if (!object->parent.ok()) _rotation = _localRotation;
+	if (!object->parent) _rotation = _localRotation;
 	else {
 		_rotation = object->parent->transform._rotation*_localRotation;
 	}
 	_UpdateWEuler();
 }
 void Transform::_W2LQuat() {
-	if (!object->parent.ok()) _localRotation = _rotation;
+	if (!object->parent) _localRotation = _rotation;
 	else {
 		_localRotation = glm::inverse(object->parent->transform._rotation)*_rotation;
 	}
@@ -1756,7 +1756,7 @@ void Transform::_W2LQuat() {
 
 void Transform::_UpdateLMatrix() {
 	_localMatrix = MatFunc::FromTRS(_localPosition, _localRotation, _localScale);
-	_UpdateWMatrix(object->parent.ok() ? object->parent->transform._worldMatrix : Mat4x4());
+	_UpdateWMatrix(object->parent ? object->parent->transform._worldMatrix : Mat4x4());
 }
 
 void Transform::_UpdateWMatrix(const Mat4x4& mat) {
@@ -1779,7 +1779,7 @@ SceneObject::SceneObject(string s, Vec3 pos, Quat rot, Vec3 scale) : _expanded(t
 SceneObject::SceneObject(byte* data) : _expanded(true), Object(*((uint*)data + 1), string((char*)data + SceneObject::_offsets.name)) {}
 
 SceneObject::~SceneObject() {
-	for (Component* c : _components) delete(c);
+	
 }
 
 void SceneObject::SetActive(bool a, bool enableAll) {
@@ -1805,12 +1805,12 @@ pSceneObject SceneObject::_FromId(const std::vector<pSceneObject>& objs, ulong i
 }
 
 
-Component* ComponentFromType (COMPONENT_TYPE t){
+pComponent ComponentFromType (COMPONENT_TYPE t){
 	switch (t) {
 	case COMP_CAM:
-		return new Camera();
+		return std::make_shared<Camera>();
 	case COMP_MFT:
-		return new MeshFilter();
+		return std::make_shared<MeshFilter>();
 	default:
 		return nullptr;
 	}
@@ -1837,24 +1837,23 @@ pSceneObject SceneObject::AddChild(pSceneObject child, bool retainLocal) {
 		child->transform.position(t);
 		child->transform.rotation(r);
 	}
-	return this->shared_from_this();
+	return get_shared<SceneObject>(this);
 }
 
-Component* SceneObject::AddComponent(Component* c) {
+pComponent SceneObject::AddComponent(pComponent c) {
 	c->object(this);
 	int i = 0;
 	for (COMPONENT_TYPE t : c->dependancies) {
 		c->dependacyPointers[i] = GetComponent(t);
 		if (!c->dependacyPointers[i]) {
-			c->dependacyPointers[i] = AddComponent(ComponentFromType(t));
+			c->dependacyPointers[i](AddComponent(ComponentFromType(t)));
 		}
 		i++;
 	}
-	for (Component* cc : _components)
+	for (pComponent cc : _components)
 	{
 		if ((cc->componentType == c->componentType) && cc->componentType != COMP_SCR) {
-			Debug::Message("Add Component", "Same component already exists!");
-			delete(c);
+			Debug::Warning("Add Component", "Same component already exists!");
 			return cc;
 		}
 	}
@@ -1863,9 +1862,8 @@ Component* SceneObject::AddComponent(Component* c) {
 	return c;
 }
 
-/// <summary>you should probably use GetComponent&lt;T&gt;() instead.</summary>
-Component* SceneObject::GetComponent(COMPONENT_TYPE type) {
-	for (Component* cc : _components)
+pComponent SceneObject::GetComponent(COMPONENT_TYPE type) {
+	for (pComponent cc : _components)
 	{
 		if (cc->componentType == type) {
 			return cc;
@@ -1874,7 +1872,7 @@ Component* SceneObject::GetComponent(COMPONENT_TYPE type) {
 	return nullptr;
 }
 
-void SceneObject::RemoveComponent(Component*& c) {
+void SceneObject::RemoveComponent(pComponent c) {
 	for (int a = _components.size()-1; a >= 0; a--) {
 		if (_components[a] == c) {
 			for (int aa = _components.size()-1; aa >= 0; aa--) {
@@ -1886,7 +1884,6 @@ void SceneObject::RemoveComponent(Component*& c) {
 				}
 			}
 			_components.erase(_components.begin() + a);
-			c = nullptr;
 			return;
 		}
 	}
@@ -1894,7 +1891,7 @@ void SceneObject::RemoveComponent(Component*& c) {
 }
 
 void SceneObject::Refresh() {
-	for (Component* c : _components) {
+	for (pComponent c : _components) {
 		c->Refresh();
 	}
 }

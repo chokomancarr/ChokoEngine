@@ -685,7 +685,7 @@ void EB_Viewer::DrawSceneObjectsOpaque(EB_Viewer* ebv, const std::vector<pSceneO
 	{
 		glPushMatrix();
 		glMultMatrixf(glm::value_ptr(sc->transform._localMatrix));
-		for (Component* com : sc->_components)
+		for (auto& com : sc->_components)
 		{
 			if (com->componentType == COMP_MRD || com->componentType == COMP_SRD || com->componentType == COMP_CAM)
 				com->DrawEditor(ebv);
@@ -715,7 +715,7 @@ void EB_Viewer::DrawSceneObjectsGizmos(EB_Viewer* ebv, const std::vector<pSceneO
 		//glScalef(vv.x, vv.y, vv.z);
 		//glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(vvv)));
 		glMultMatrixf(glm::value_ptr(sc->transform._localMatrix));
-		for (Component* com : sc->_components)
+		for (auto& com : sc->_components)
 		{
 			if (com->componentType != COMP_MRD && com->componentType != COMP_CAM)
 				com->DrawEditor(ebv);
@@ -1200,9 +1200,9 @@ void EB_Inspector::DrawObj(Vec4 v, Editor* editor, EB_Inspector* b, SceneObject*
 	}
 	//draw components
 	uint off = 74 + EB_HEADER_SIZE;
-	for (Component* c : o->_components)
+	for (auto& c : o->_components)
 	{
-		c->DrawInspector(editor, c, v, off);
+		c->DrawInspector(editor, c.get(), v, off);
 		if (!!(editor->flags & WAITINGREFRESHFLAG)) //deleted
 			return;
 	}
@@ -3202,7 +3202,7 @@ void Editor::SetBackground(string s, float a) {
 }
 
 void DoScanBrowseComp(SceneObject* o, COMPONENT_TYPE t, string p, std::vector<Component*>& vc, std::vector<string>& vs) {
-	Component* c = o->GetComponent(t);
+	auto c = o->GetComponent(t).get();
 	string nm = p + ((p == "") ? "" : "/") + o->name;
 	if (c != nullptr) {
 		vc.push_back(c);

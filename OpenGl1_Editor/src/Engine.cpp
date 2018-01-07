@@ -6,7 +6,6 @@
 #include <climits>
 #include <ctime>
 #include <shellapi.h>
-#include <thread>
 #include "Defines.h"
 #include "SceneScriptResolver.h"
 
@@ -417,7 +416,7 @@ void Engine::Init(string path) {
 		if (!fallbackTex->loaded)
 			std::cout << "cannot load fallback texture!" << std::endl;
 	}
-	Engine::_mainThreadId = std::this_thread::get_id().hash();
+	Engine::_mainThreadId = std::this_thread::get_id();
 
 	Material::LoadOris();
 	Light::InitShadow();
@@ -457,7 +456,7 @@ std::vector<std::ifstream*> Engine::assetStreams = std::vector<std::ifstream*>()
 std::unordered_map<byte, std::vector<string>> Engine::assetData = std::unordered_map<byte, std::vector<string>>();
 //std::unordered_map<string, byte[]> Engine::assetDataLoaded = std::unordered_map<string, byte[]>();
 
-size_t Engine::_mainThreadId = 0;
+std::thread::id Engine::_mainThreadId = std::thread::id();
 
 bool Engine::LoadDatas(string path) {
 	std::ifstream* d0 = new std::ifstream(path + "\\data0");
@@ -585,7 +584,7 @@ void UI::PreLoop() {
 #define _checkdraw assert(UI::CanDraw() && "UI functions can only be called from the Overlay function!");
 
 bool UI::CanDraw() {
-	return (std::this_thread::get_id().hash() == Engine::_mainThreadId);
+	return (std::this_thread::get_id() == Engine::_mainThreadId);
 }
 
 void UI::Texture(float x, float y, float w, float h, ::Texture* texture, DrawTex_Scaling scl, float miplevel) {
@@ -1464,7 +1463,7 @@ void Debug::DoDebugObjectTree(const std::vector<pSceneObject>& o, int i) {
 		for (int a = 0; a < i; a++)
 			s += " ";
 		s += "o \"" + oo->name + "\" (";
-		for (Component* cc : oo->_components) {
+		for (auto& cc : oo->_components) {
 			s += cc->name + ", ";
 		}
 		s += ")";
@@ -1928,7 +1927,7 @@ void Serialize(Editor* e, SceneObject* o, std::ofstream* stream) {
 	_StreamWrite(&rot, stream, 12);
 	auto& scl = o->transform.localScale();
 	_StreamWrite(&scl, stream, 12);
-	for (Component* c : o->_components)
+	for (auto& c : o->_components)
 	{
 		stream->write("C", 1);
 		byte t = c->componentType;
@@ -1971,26 +1970,26 @@ void Deserialize(std::ifstream& stream, SceneObject* obj) {
 			Debug::Message("Object Deserializer", "component " + to_string(c) + " " + to_string((int)c));
 			switch (c) {
 			case COMP_CAM:
-				obj->AddComponent(new Camera(stream, obj));
+				obj->AddComponent<Camera>(stream, obj);
 				break;
 			case COMP_MFT:
-				obj->AddComponent(new MeshFilter(stream, obj));
+				obj->AddComponent<MeshFilter>(stream, obj);
 				break;
 			case COMP_MRD:
-				obj->AddComponent(new MeshRenderer(stream, obj));
+				obj->AddComponent<MeshRenderer>(stream, obj);
 				break;
 			case COMP_TRD:
-				obj->AddComponent(new TextureRenderer(stream, obj));
+				obj->AddComponent<TextureRenderer>(stream, obj);
 				break;
 			case (char)COMP_LHT:
-				obj->AddComponent(new Light(stream, obj));
+				obj->AddComponent<Light>(stream, obj);
 				break;
 			case (char)COMP_RDP:
-				obj->AddComponent(new ReflectionProbe(stream, obj));
+				obj->AddComponent<ReflectionProbe>(stream, obj);
 				break;
 			case (char)COMP_SCR:
 #ifdef IS_EDITOR
-				obj->AddComponent(new SceneScript(stream, obj));
+				obj->AddComponent<SceneScript>(stream, obj);
 #else
 				obj->AddComponent(SceneScriptResolver::instance->Resolve(stream, obj));
 #endif
@@ -2093,14 +2092,6 @@ Scene::Scene(std::ifstream& stream, long pos) : sceneName("") {
 	settings.sky = _GetCache<Background>(t, settings.skyId);
 	Debug::Message("SceneLoader", "Scene Loaded.");
 }
-
-/*
-Scene::~Scene() {
-	for (SceneObject* o : objects)
-		delete(o);
-	objects.resize(0);
-}
-*/
 
 void Scene::AddObject(pSceneObject object, pSceneObject parent) {
 	if (!active)

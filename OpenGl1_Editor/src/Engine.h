@@ -15,6 +15,7 @@
 #include <unordered_map>
 #include <array>
 #include <memory>
+#include <thread>
 #include <jpeglib.h>
 #include <jerror.h>
 #include <lodepng.h>
@@ -312,10 +313,12 @@ template<typename T> T* _GetCache(ASSETTYPE t, ASSETID i) {
 }
 
 class Object;
-template <class T>
-class Ref {
+template <class T> class Ref {
 public:
 	Ref(bool suppress = false) : _suppress(suppress) {
+		static_assert(std::is_base_of<Object, T>::value, "Ref class must be derived from Object!");
+	}
+	Ref(std::shared_ptr<T> ref, bool suppress = false) : _suppress(suppress), _object(ref), _empty(false) {
 		static_assert(std::is_base_of<Object, T>::value, "Ref class must be derived from Object!");
 	}
 
@@ -341,14 +344,16 @@ public:
 		_empty = false;
 	}
 	void operator()(const T* ref) {
-		_object = ref->shared_from_this();
+		_object = get_shared<T>((Object*)ref);
 		_empty = false;
+	}
+	operator bool() const {
+		return !(_empty || _object.expired());
 	}
 
 	bool operator ==(const Ref<T>& rhs) const {
 		return this->_object.lock() == rhs._object.lock();
 	}
-
 	bool operator !=(const Ref<T>& rhs) const {
 		return this->_object.lock() != rhs._object.lock();
 	}
@@ -356,11 +361,9 @@ public:
 	void clear() {
 		_empty = true;
 	}
-
 	bool ok() {
 		return !(_empty || _object.expired());
 	}
-
 	T* raw() {
 		if (ok()) return _object.lock().get();
 		else return nullptr;
@@ -370,6 +373,12 @@ private:
 	std::weak_ptr<T> _object;
 	bool _empty = true, _suppress = false;
 };
+
+template <class T> std::shared_ptr<T> get_shared(Object* ref) {
+	return std::dynamic_pointer_cast<T> (ref->shared_from_this());
+}
+
+#define _allowshared(T) friend class std::_Ref_count_obj<T>
 
 #define _canref(obj) class obj; \
 typedef std::shared_ptr<obj> p ## obj; \
@@ -538,7 +547,7 @@ enum OBJECT_STATUS {
 	OBJECT_DEAD
 };
 
-class Object {
+class Object : public std::enable_shared_from_this<Object> {
 public:
 	Object(string nm = "");
 	Object(ulong id, string nm);
@@ -929,7 +938,7 @@ public:
 	static std::vector<std::ifstream*> assetStreams;
 	static std::unordered_map<byte, std::vector<string>> assetData;
 
-	static size_t _mainThreadId;
+	static std::thread::id _mainThreadId;
 	//static std::unordered_map<string, byte[]> assetDataLoaded;
 	//byte GetAsset(string name);
 	friend int main(int argc, char **argv);

@@ -25,7 +25,7 @@ typedef unsigned char DRAWORDER;
 #define DRAWORDER_LIGHT 0x08
 
 #define ECACHESZ_PADDING 1
-class Component : public Object {
+class Component: public Object {
 public:
 	Component(string name, COMPONENT_TYPE t, DRAWORDER drawOrder = 0x00, SceneObject* o = nullptr, std::vector<COMPONENT_TYPE> dep = {});
 	virtual  ~Component() {}
@@ -48,10 +48,9 @@ public:
 	friend class SceneObject;
 	friend bool DrawComponentHeader(Editor* e, Vec4 v, uint pos, Component* c);
 	friend void DrawSceneObjectsOpaque(EB_Viewer* ebv, const std::vector<SceneObject*> &oo), DrawSceneObjectsGizmos(EB_Viewer* ebv, const std::vector<SceneObject*> &oo), DrawSceneObjectsTrans(EB_Viewer* ebv, std::vector<SceneObject*> oo);
-
 protected:
 	std::vector<COMPONENT_TYPE> dependancies;
-	std::vector<Component*> dependacyPointers;
+	std::vector<rComponent> dependacyPointers;
 
 	//bool serializable;
 	//std::vector<pair<void*, void*>> serializedValues;
@@ -62,13 +61,13 @@ protected:
 
 	virtual void LoadDefaultValues() {} //also loads assets
 	virtual void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) {} //trs matrix not applied, apply before calling
-	virtual void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) = 0;
+	virtual void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) = 0;
 	//virtual void DrawGameCamera() {}
 	virtual void Serialize(Editor* e, std::ofstream* stream) = 0;
 	virtual void Refresh() {}
 };
 
-class Transform : public Object {
+class Transform: public Object {
 public:
 	rSceneObject object;
 
@@ -102,6 +101,7 @@ public:
 	friend class EB_Inspector;
 	friend struct Editor_PlaySyncer;
 	friend class Armature;
+	_allowshared(Transform);
 private:
 	Transform() {}
 	void Init(pSceneObject& sc, Vec3 pos, Quat rot, Vec3 scl);
@@ -551,6 +551,7 @@ public:
 	friend class ReflectionProbe;
 	friend class CubeMap;
 	friend class Color;
+	_allowshared(Camera);
 protected:
 	Camera(std::ifstream& stream, SceneObject* o, long pos = -1);
 
@@ -597,7 +598,7 @@ protected:
 	void UpdateCamVerts();
 	void InitGBuffer();
 	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
-	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, std::ofstream* stream) override;
 
 	static void _SetClear0(EditorBlock* b), _SetClear1(EditorBlock* b), _SetClear2(EditorBlock* b), _SetClear3(EditorBlock* b);
@@ -607,24 +608,25 @@ class MeshFilter : public Component {
 public:
 	MeshFilter();
 	
-	Mesh* mesh;
+	Mesh* mesh = 0;
 	//void LoadDefaultValues() override;
 
-	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, std::ofstream* stream) override;
 
 	friend class MeshRenderer;
 	friend class Editor;
 	friend void LoadMeshMeta(std::vector<pSceneObject>& os, string& path);
 	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
+	_allowshared(MeshFilter);
 protected:
-	bool showBoundingBox;
+	bool showBoundingBox = false;
 
 	MeshFilter(std::ifstream& stream, SceneObject* o, long pos = -1);
 
 	void SetMesh(int i);
 	static void _UpdateMesh(void* i);
-	ASSETID _mesh;
+	ASSETID _mesh = -1;
 };
 
 class MeshRenderer : public Component {
@@ -633,7 +635,7 @@ public:
 	std::vector<Material*> materials;
 
 	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
-	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
 
 	void Serialize(Editor* e, std::ofstream* stream) override;
 	void Refresh() override;
@@ -641,13 +643,14 @@ public:
 	friend class Camera;
 	friend class Editor;
 	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
+	_allowshared(MeshRenderer);
 protected:
 	MeshRenderer(std::ifstream& stream, SceneObject* o, long pos = -1);
 
 	void DrawDeferred(GLuint shader = 0);
 
 	std::vector<ASSETID> _materials;
-	bool overwriteWriteMask;
+	bool overwriteWriteMask = false;
 	std::vector<bool> writeMask;
 	static void _UpdateMat(void* i);
 	static void _UpdateTex(void* i);
@@ -659,12 +662,13 @@ public:
 	
 	Texture* texture;
 
-	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, std::ofstream* stream) override;
 
 	friend int main(int argc, char **argv);
 	friend void Serialize(Editor* e, SceneObject* o, std::ofstream* stream);
 	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
+	_allowshared(TextureRenderer);
 protected:
 	TextureRenderer(std::ifstream& stream, SceneObject* o, long pos = -1);
 	int _texture;
@@ -682,7 +686,7 @@ public:
 	Mesh* mesh() { return _mesh; }
 	void mesh(Mesh*);
 	//void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
-	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, std::ofstream* stream) override {}
 	//void Refresh() override;
 
@@ -691,6 +695,7 @@ public:
 	friend class Camera;
 	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
 	friend void LoadMeshMeta(std::vector<pSceneObject>& os, string& path);
+	_allowshared(SkinnedMeshRenderer);
 protected:
 	SkinnedMeshRenderer(std::ifstream& stream, SceneObject* o, long pos = -1);
 
@@ -700,13 +705,13 @@ protected:
 	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0);
 	void DrawDeferred(GLuint shader = 0);
 
-	Mesh* _mesh;
+	Mesh* _mesh = 0;
 	ASSETID _meshId = -1;
 	Armature* armature;
 	std::vector<ASSETID> _materials;
-	bool overwriteWriteMask;
+	bool overwriteWriteMask = false;
 	std::vector<bool> writeMask;
-	bool showBoundingBox;
+	bool showBoundingBox = false;
 
 	struct SkinDats {
 		SkinDats() {
@@ -719,7 +724,7 @@ protected:
 		uint mats[4];
 		Vec4 weights;
 	};
-	ComputeBuffer<Vec4>* skinBufPoss, *skinBufNrms;
+	ComputeBuffer<Vec4>* skinBufPoss = 0, *skinBufNrms;
 	ComputeBuffer<Vec4>*skinBufPossO, *skinBufNrmsO;
 	ComputeBuffer<SkinDats>* skinBufDats;
 	ComputeBuffer<Mat4x4>* skinBufMats;
@@ -823,6 +828,7 @@ public:
 	friend class Camera;
 	friend class Engine;
 	friend class EB_Previewer;
+	_allowshared(Light);
 protected:
 	LIGHTTYPE _lightType;
 	Light(std::ifstream& stream, SceneObject* o, long pos = -1);
@@ -831,7 +837,7 @@ protected:
 	static void _SetCookie(void* v), _SetHsvMap(void* v);
 
 	void Serialize(Editor* e, std::ofstream* stream) override;
-	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
 
 	static void InitShadow(), InitRSM();
 	void CalcShadowMatrix();
@@ -860,6 +866,7 @@ public:
 	friend class Camera;
 	friend class Light;
 	friend class Engine;
+	_allowshared(ReflectiveQuad);
 protected:
 	ASSETID _texture;
 	static std::vector<GLint> paramLocs;
@@ -869,7 +876,7 @@ protected:
 
 	static void ScanParams();
 	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
-	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, std::ofstream* stream) override;
 };
 
@@ -900,6 +907,7 @@ public:
 	friend void Serialize(Editor* e, SceneObject* o, std::ofstream* stream);
 	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
 	friend class Camera;
+	_allowshared(ReflectionProbe);
 protected:
 	ReflectionProbe(std::ifstream& stream, SceneObject* o, long pos = -1);
 	bool _pendingUpdate;
@@ -907,7 +915,7 @@ protected:
 	GLuint mipFbos[7];
 
 	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
-	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, std::ofstream* stream) override;
 
 	void _DoUpdate();
@@ -939,12 +947,13 @@ public:
 	friend void Serialize(Editor* e, SceneObject* o, std::ofstream* stream);
 	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
 	friend class Engine;
+	_allowshared(Animator);
 protected:
 	ASSETID _animation = -1;
 
 	static void _SetAnim(void* v);
 	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override {}
-	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, std::ofstream* stream) override {}
 };
 
@@ -991,7 +1000,7 @@ public:
 	const std::vector<ArmatureBone*>& bones() { return _bones; }
 
 	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
-	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, std::ofstream* stream) override {}
 
 	virtual void OnPreRender() override;
@@ -1004,6 +1013,7 @@ public:
 	friend class EB_Viewer;
 	friend class EB_Previewer;
 	friend class SkinnedMeshRenderer;
+	_allowshared(Armature);
 protected:
 	Armature(string s, SceneObject* o);
 	Armature(std::ifstream& stream, SceneObject* o, long pos = -1);
@@ -1050,6 +1060,7 @@ public:
 	friend class Editor;
 	friend class EB_Viewer;
 	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
+	_allowshared(SceneScript);
 protected:
 	SceneScript(Editor* e, ASSETID id);
 	SceneScript(std::ifstream& strm, SceneObject* o);
@@ -1058,13 +1069,13 @@ protected:
 	ASSETID _script;
 	std::vector<std::pair<string, std::pair<SCR_VARTYPE, void*>>> _vals;
 
-	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override; //we want c to be null if deleted
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override; //we want c to be null if deleted
 	void Serialize(Editor* e, std::ofstream* stream) override;
 };
 
 #pragma endregion
 
-class SceneObject : public Object, public std::enable_shared_from_this<SceneObject> {
+class SceneObject: public Object {
 public:
 	~SceneObject();
 	static pSceneObject New(Vec3 pos, Quat rot = Quat(), Vec3 scale = Vec3(1, 1, 1)) {
@@ -1088,34 +1099,38 @@ public:
 	std::vector<pSceneObject> children;
 
 	void SetParent(pSceneObject parent, bool retainLocal = false);
-	///Add child to this SceneObject.
-	///@param child The child SceneObject to add.
-	///@param retainLocal If true, the child's local transform is retained. If false, the child's world transform is retained.
+	/*! Add child to this SceneObject.
+	 *  @param child The child SceneObject to add.
+	 *  @param retainLocal If true, the child's local transform is retained. If false, the child's world transform is retained.
+	 */
 	pSceneObject AddChild(pSceneObject child, bool retainLocal = false);
 	pSceneObject GetChild(int i) { return children[i]; }
-	Component* AddComponent(Component* c);
-	template <typename T> T* AddComponent() {
-		return (T*)AddComponent(new T());
+	pComponent AddComponent(pComponent c);
+	template <typename T, class ...Args> std::shared_ptr<T> AddComponent(Args&& ...args) {
+		auto c = std::make_shared<T>(std::forward<Args>(args)...);
+		AddComponent(std::static_pointer_cast<Component>(c));
+		return c;
 	}
-	
-	Component* GetComponent(COMPONENT_TYPE type);
-	template<class T> T* GetComponent() {
-		(void)static_cast<Component*>((T*)0);
-		for (Component* cc : _components)
+
+	/*! you should probably use GetComponent<T>() instead.
+	 */
+	pComponent GetComponent(COMPONENT_TYPE type);
+	template<class T> std::shared_ptr<T> GetComponent() {
+		static_assert(std::is_base_of<Component, T>::value, "T is not a Component type!");
+		for (pComponent cc : _components)
 		{
-			T* xx = dynamic_cast<T*>(cc);
+			auto xx = std::dynamic_pointer_cast<T>(cc);
 			if (xx != nullptr) {
-			//if (typeid(&cc) == typeid(T)) {
 				return xx;
 			}
 		}
 		return nullptr;
 	}
-	void RemoveComponent(Component*& c);
+	void RemoveComponent(pComponent c);
 
 	bool _expanded;
 	int _componentCount;
-	std::vector<Component*> _components;
+	std::vector<pComponent> _components;
 
 	friend class MeshFilter;
 	friend class Scene;
@@ -1145,3 +1160,5 @@ protected:
 
 	bool _pendingDelete;
 };
+
+#undef _shareable

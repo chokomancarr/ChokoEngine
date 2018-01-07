@@ -21,13 +21,13 @@ void Camera::DrawSceneObjectsOpaque(std::vector<pSceneObject> oo, GLuint shader)
 	{
 		glPushMatrix();
 		glMultMatrixf(glm::value_ptr(sc->transform.localMatrix()));
-		MeshRenderer* mrd = sc->GetComponent<MeshRenderer>();
-		if (mrd != nullptr) {
+		auto& mrd = sc->GetComponent<MeshRenderer>();
+		if (mrd) {
 			//Debug::Message("Cam", "Drawing " + sc->name);
 			mrd->DrawDeferred(shader);
 		}
-		SkinnedMeshRenderer* smd = sc->GetComponent<SkinnedMeshRenderer>();
-		if (smd != nullptr) {
+		auto& smd = sc->GetComponent<SkinnedMeshRenderer>();
+		if (smd) {
 			//Debug::Message("Cam", "Drawing " + sc->name);
 			smd->DrawDeferred(shader);
 		}
@@ -427,9 +427,9 @@ void EB_Previewer::_DrawLights(std::vector<pSceneObject> oo, Mat4x4 ip) {
 	for (auto& o : oo) {
 		if (!o->active)
 			continue;
-		for (Component* c : o->_components) {
+		for (auto& c : o->_components) {
 			if (c->componentType == COMP_LHT) {
-				Light* l = (Light*)c;
+				Light* l = (Light*)c.get();
 				switch (l->_lightType) {
 				case LIGHTTYPE_POINT:
 					Camera::_DoDrawLight_Point(l, ip, d_fbo, d_texs, d_depthTex, bb_fbo, bb_tex, previewWidth, previewHeight, b_fbo);
@@ -440,7 +440,7 @@ void EB_Previewer::_DrawLights(std::vector<pSceneObject> oo, Mat4x4 ip) {
 				}
 			}
 			else if (c->componentType == COMP_RFQ) {
-				Camera::_DoDrawLight_ReflQuad((ReflectiveQuad*)c, ip, d_fbo, d_texs, d_depthTex, bb_fbo, bb_tex, previewWidth, previewHeight, b_fbo);
+				Camera::_DoDrawLight_ReflQuad((ReflectiveQuad*)c.get(), ip, d_fbo, d_texs, d_depthTex, bb_fbo, bb_tex, previewWidth, previewHeight, b_fbo);
 			}
 		}
 
@@ -551,10 +551,11 @@ void Camera::_RenderProbesMask(std::vector<pSceneObject>& objs, Mat4x4 mat, std:
 	for (auto& o : objs) {
 		if (!o->active)
 			continue;
-		for (Component* c : o->_components) {
+		for (auto& c : o->_components) {
 			if (c->componentType == COMP_RDP) {
-				probes.push_back((ReflectionProbe*)c);
-				_DoRenderProbeMask((ReflectionProbe*)c, mat);
+				ReflectionProbe* cc = (ReflectionProbe*)c.get();
+				probes.push_back(cc);
+				_DoRenderProbeMask(cc, mat);
 			}
 		}
 		_RenderProbesMask(o->children, mat, probes);
@@ -1008,9 +1009,9 @@ void Camera::_DrawLights(std::vector<pSceneObject>& oo, Mat4x4& ip, GLuint targe
 	for (auto& o : oo) {
 		if (!o->active)
 			continue;
-		for (Component* c : o->_components) {
+		for (auto c : o->_components) {
 			if (c->componentType == COMP_LHT) {
-				Light* l = (Light*)c;
+				Light* l = (Light*)c.get();
 				switch (l->_lightType) {
 				case LIGHTTYPE_POINT:
 					_DoDrawLight_Point(l, ip, d_fbo, d_texs, d_depthTex, 0, 0, (float)Display::width, (float)Display::height, targetFbo);
@@ -1021,7 +1022,7 @@ void Camera::_DrawLights(std::vector<pSceneObject>& oo, Mat4x4& ip, GLuint targe
 				}
 			}
 			else if (c->componentType == COMP_RFQ) {
-				_DoDrawLight_ReflQuad((ReflectiveQuad*)c, ip, d_fbo, d_texs, d_depthTex, 0, 0, (float)Display::width, (float)Display::height, targetFbo);
+				_DoDrawLight_ReflQuad((ReflectiveQuad*)c.get(), ip, d_fbo, d_texs, d_depthTex, 0, 0, (float)Display::width, (float)Display::height, targetFbo);
 			}
 		}
 

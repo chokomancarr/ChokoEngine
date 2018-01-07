@@ -258,14 +258,12 @@ void LoadMeshMeta(std::vector<pSceneObject>& os, string& path) {
 		for (string ss : Editor::instance->normalAssets[ASSETTYPE_MESH]) {
 			if (ss == (nn + o->name)) {
 				if (skinned) {
-					auto skn = new SkinnedMeshRenderer(o.get());
-					o->AddComponent(skn);
+					auto skn = o->AddComponent<SkinnedMeshRenderer>(o.get());
 					skn->SetMesh(r);
 				}
 				else {
-					MeshFilter* mft = new MeshFilter();
-					o->AddComponent(mft);
-					o->AddComponent(new MeshRenderer());
+					auto mft = o->AddComponent<MeshFilter>();
+					o->AddComponent<MeshRenderer>();
 					mft->SetMesh(r);
 				}
 				break;
@@ -390,7 +388,7 @@ void EB_Viewer::_DoAddObjectBl(EditorBlock* b, void* v) {
 				auto so = SceneObject::New(nm, tr, rt, sc);
 				o->AddChild(so);
 				//std::ifstream astrm(path.substr(0, path.size() - 11) + "_blend\\" + nm + ".arma.meta", std::ios::in | sd::ios::bin);
-				so->AddComponent(new Armature(path.substr(0, path.size() - 11) + "_blend\\" + nm + ".arma.meta", so.get()));
+				so->AddComponent<Armature>(path.substr(0, path.size() - 11) + "_blend\\" + nm + ".arma.meta", so.get());
 				if (!hasarm) {
 					hasarm = true;
 					o->AddComponent<Animator>();
@@ -407,29 +405,29 @@ void EB_Viewer::_DoAddObjectBl(EditorBlock* b, void* v) {
 	}
 }
 void EB_Viewer::_DoAddComScr(EditorBlock* b, void* v) {
-	b->editor->selected->AddComponent(new SceneScript(b->editor, b->editor->GetAssetInfoH(*(string*)v)));
+	b->editor->selected->AddComponent<SceneScript>(b->editor, b->editor->GetAssetInfoH(*(string*)v));
 }
 
 void EB_Viewer::_D2AddComCam(EditorBlock* b) {
-	b->editor->selected->AddComponent(new Camera());
+	b->editor->selected->AddComponent<Camera>();
 }
 void EB_Viewer::_D2AddComMft(EditorBlock* b) {
-	b->editor->selected->AddComponent(new MeshFilter());
+	b->editor->selected->AddComponent<MeshFilter>();
 }
 void EB_Viewer::_D2AddComMrd(EditorBlock* b) {
-	b->editor->selected->AddComponent(new MeshRenderer());
+	b->editor->selected->AddComponent<MeshRenderer>();
 }
 void EB_Viewer::_D2AddComAnm(EditorBlock* b) {
-	b->editor->selected->AddComponent(new Animator());
+	b->editor->selected->AddComponent<Animator>();
 }
 void EB_Viewer::_D2AddComLht(EditorBlock* b) {
-	b->editor->selected->AddComponent(new Light());
+	b->editor->selected->AddComponent<Light>();
 }
 void EB_Viewer::_D2AddComRfq(EditorBlock* b) {
-	b->editor->selected->AddComponent(new ReflectiveQuad());
+	b->editor->selected->AddComponent<ReflectiveQuad>();
 }
 void EB_Viewer::_D2AddComRdp(EditorBlock* b) {
-	b->editor->selected->AddComponent(new ReflectionProbe());
+	b->editor->selected->AddComponent<ReflectionProbe>();
 }
 
 void EB_Viewer::_AddObjectE(EditorBlock* b) {
@@ -464,12 +462,12 @@ pSceneObject DoAdd(EditorBlock* b) {
 	case 5:
 		b->editor->activeScene->objects.push_back(SceneObject::New("Camera"));
 		b->editor->selected(b->editor->activeScene->objects[b->editor->activeScene->objects.size() - 1]);
-		b->editor->selected->AddComponent(new Camera());
+		b->editor->selected->AddComponent<Camera>();
 		break;
 	case 10:
 		b->editor->activeScene->objects.push_back(SceneObject::New("Audio Source"));
 		b->editor->selected(b->editor->activeScene->objects[b->editor->activeScene->objects.size() - 1]);
-		b->editor->selected->AddComponent(new Camera());
+		b->editor->selected->AddComponent<Camera>();
 		break;
 	}
 	return b->editor->selected();
@@ -540,7 +538,7 @@ void EB_Viewer::_ViewBottom(EditorBlock* b) {
 }
 void EB_Viewer::_ViewCam(EditorBlock* b) {
 	if (b->editor->selected()) {
-		((EB_Viewer*)b)->seeingCamera = (Camera*)b->editor->selected->GetComponent(COMP_CAM);
+		((EB_Viewer*)b)->seeingCamera = (Camera*)b->editor->selected->GetComponent(COMP_CAM).get();
 	}
 }
 void EB_Viewer::_SnapCenter(EditorBlock* b) {
