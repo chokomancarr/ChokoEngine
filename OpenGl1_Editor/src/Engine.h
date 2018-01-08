@@ -1,10 +1,10 @@
 #pragma once
+
 #define _ITERATOR_DEBUG_LEVEL 0
 
 #include "Defines.h"
 
 #include <Windows.h>
-
 #include <gl/glew.h>
 #include <GLFW\glfw3.h>
 #include <string>
@@ -16,8 +16,6 @@
 #include <array>
 #include <memory>
 #include <thread>
-#include <jpeglib.h>
-#include <jerror.h>
 #include <lodepng.h>
 #include <math.h>
 #include <glm/glm.hpp>
@@ -31,6 +29,13 @@ extern "C" {
 //#include "libavcodec\avcodec.h"
 //#include "libavutil\avutil.h"
 }
+
+//jpeglib is built in vs2013
+extern FILE __iob[3];
+extern "C" FILE * __cdecl _imp___iob(void);
+#define _iob (*_imp___iob)	/* An array of FILE */
+#include <jpeglib.h>
+#include <jerror.h>
 
 #ifndef IS_EDITOR
 extern bool _pipemode;

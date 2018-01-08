@@ -9,6 +9,12 @@
 #include "Defines.h"
 #include "SceneScriptResolver.h"
 
+FILE __iob[3] = { *stdin, *stdout, *stderr };
+extern "C" FILE * __cdecl _imp___iob(void)
+{
+	return __iob;
+}
+
 string to_string(float f) { return std::to_string(f); }
 string to_string(double f) { return std::to_string(f); }
 string to_string(ulong f) { return std::to_string(f); }

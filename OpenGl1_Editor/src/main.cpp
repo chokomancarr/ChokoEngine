@@ -14,7 +14,6 @@
 #define GLFW_EXPOSE_NATIVE_WIN32
 #define GLFW_EXPOSE_NATIVE_WGL
 #include <GLFW\glfw3native.h>
-
 //#include "MD.h"
 
 void MouseGL(GLFWwindow* window, int button, int state, int mods);
