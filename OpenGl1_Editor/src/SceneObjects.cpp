@@ -285,20 +285,20 @@ void MeshFilter::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 void MeshFilter::SetMesh(int i) {
 	_mesh = i;
 	if (i >= 0) {
-		mesh = _GetCache<Mesh>(ASSETTYPE_MESH, i);
+		mesh(_GetCache<Mesh>(ASSETTYPE_MESH, i));
 	}
 	else
-		mesh = nullptr;
+		mesh.clear();
 	object->Refresh();
 }
 
 void MeshFilter::_UpdateMesh(void* i) {
 	MeshFilter* mf = (MeshFilter*)i;
 	if (mf->_mesh != -1) {
-		mf->mesh = _GetCache<Mesh>(ASSETTYPE_MESH, mf->_mesh);
+		mf->mesh(_GetCache<Mesh>(ASSETTYPE_MESH, mf->_mesh));
 	}
 	else
-		mf->mesh = nullptr;
+		mf->mesh.clear();
 	mf->object->Refresh();
 }
 
@@ -450,7 +450,7 @@ void MeshRenderer::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 void MeshRenderer::_UpdateMat(void* i) {
 	MeshRenderer* mf = (MeshRenderer*)i;
 	for (int q = mf->_materials.size() - 1; q >= 0; q--) {
-		mf->materials[q] = _GetCache<Material>(ASSETTYPE_MATERIAL, mf->_materials[q]);
+		mf->materials[q](_GetCache<Material>(ASSETTYPE_MATERIAL, mf->_materials[q]));
 	}
 }
 
@@ -1155,6 +1155,44 @@ void ReflectionProbe::Serialize(Editor* e, std::ofstream* stream) {
 	_StreamWrite(&range.y, stream, 4);
 	_StreamWrite(&range.z, stream, 4);
 	_StreamWrite(&softness, stream, 4);
+}
+
+
+InverseKinematics::InverseKinematics() : Component("InverseKinematics", COMP_INK) {
+	target(Scene::active->objects[0]->children[0]->children[0]->children[1]);
+}
+
+void InverseKinematics::Apply() {
+	for (byte i = 0; i < iterations; i++) {
+		auto& o = object();
+		for (byte a = 0; a < 2; a++) {
+			if (!o->parent) return;
+
+			auto p = object->transform.position();
+			auto pp = o->parent->transform.position();
+			auto t = target->transform.position();
+
+			o = o->parent();
+
+			auto x = Normalize(t - pp);
+			auto r = Normalize(p - pp);
+			auto dt = glm::dot(x, r);
+			if (dt > 0.9999999f) return;
+			o->transform.rotation(QuatFunc::FromAxisAngle(glm::cross(r, x), acos(dt)) * o->transform.rotation());
+		}
+	}
+}
+
+void InverseKinematics::DrawEditor(EB_Viewer* ebv, GLuint shader) {
+	Apply();
+}
+
+void InverseKinematics::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
+	if (DrawComponentHeader(e, v, pos, this)) {
+		pos += 17;
+		UI::Label(v.r + 2, v.g + pos, 12, target? target->name : "No bone", e->font, white());
+	}
+	else pos += 17;
 }
 
 

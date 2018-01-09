@@ -45,7 +45,7 @@ std::vector<string> string_split(string s, char c) {
 	return o;
 }
 
-int TryParse (string str, int defVal) {
+int TryParse(string str, int defVal) {
 	try {
 		return std::stoi(str);
 	}
@@ -2164,9 +2164,9 @@ void Scene::Save(Editor* e) {
 	}
 	sw.close();
 	int a = 0;
-	for (void* v : e->normalAssetCaches[ASSETTYPE_MATERIAL]) {
-		if (v != nullptr) {
-			Material* m = (Material*)v;
+	for (auto& v : e->normalAssetCaches[ASSETTYPE_MATERIAL]) {
+		if (v.get()) {
+			Material* m = (Material*)v.get();
 			//if (m->_changed) {
 				m->Save(e->projectFolder + "Assets\\" + e->normalAssets[ASSETTYPE_MATERIAL][a]);
 			//}

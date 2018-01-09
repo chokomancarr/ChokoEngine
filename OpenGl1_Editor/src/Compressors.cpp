@@ -7,7 +7,7 @@
 #include <bitset>
 
 int IndexInDic (std::string& str, std::vector<std::string>& dic) {
-    for (unsigned short x = dic.size(); x > 0; x--) {
+    for (uint x = dic.size(); x > 0; x--) {
         if (strcmp(dic[x-1].c_str(), str.c_str()) == 0)
             return x-1;
     }
@@ -187,7 +187,7 @@ std::vector<byte> Compressors::Compress_Huffman(byte* input, uint inSize) {
 			nodes2.erase(nodes2.begin() + i);
 		}
 	}
-	byte x = nodes2.size()-1;
+	uint x = nodes2.size()-1;
 	while (x > 0) {
 		std::sort(nodes2.begin(), nodes2.end(), [](ch_node* a, ch_node* b) {
 			return (a->weight > b->weight);

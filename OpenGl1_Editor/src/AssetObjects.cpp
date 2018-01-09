@@ -697,7 +697,7 @@ void Texture::GenECache(byte* b, byte chn, bool isrgb, std::vector<RenderTexture
 	CPY(&bb, 1);
 	CPY(b, width*height*chn);
 	if (_blurmips) {
-		byte s = rts->size();
+		byte s = (byte)rts->size();
 		CPY(&s, 1);
 		for (byte m = 1; m < s; m++) {
 			auto r = (*rts)[m];
@@ -1123,7 +1123,7 @@ void Background::GenECache(const std::vector<Vec2>& szs, const std::vector<Rende
 #ifdef IS_EDITOR
 #define CPY(pt, sz) memcpy(_eCache + off, pt, sz); off += sz;
 	if (_eCache) return;
-	byte mipn = rts.size();
+	byte mipn = (byte)rts.size();
 	_eCacheSz = sizeof(byte) + sizeof(uint)*2*mipn;
 	for (auto& a : rts) _eCacheSz += sizeof(float)*a->width*a->height * 3;
 	_eCache = (byte*)malloc(_eCacheSz+1);

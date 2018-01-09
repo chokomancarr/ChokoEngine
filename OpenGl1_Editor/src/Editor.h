@@ -225,7 +225,7 @@ public:
 	
 	static void _DoAddObjectBl(EditorBlock* b, void* v);
 	static void _DoAddComScr(EditorBlock* b, void* v), _DoAddComRend(EditorBlock* b, void* v);
-	static void _D2AddComCam(EditorBlock*), _D2AddComMrd(EditorBlock*), _D2AddComAnm(EditorBlock*), _D2AddComLht(EditorBlock*), _D2AddComRfq(EditorBlock*), _D2AddComRdp(EditorBlock*), _D2AddComMft(EditorBlock*);
+	static void _D2AddComCam(EditorBlock*), _D2AddComMrd(EditorBlock*), _D2AddComAnm(EditorBlock*), _D2AddComInk(EditorBlock*), _D2AddComLht(EditorBlock*), _D2AddComRfq(EditorBlock*), _D2AddComRdp(EditorBlock*), _D2AddComMft(EditorBlock*);
 	
 	static void _AddObjAsI(EditorBlock*); //, _AddObjAsC(EditorBlock*), _AddObjAsP(EditorBlock*);
 	static bool _AddObjAsCh(pSceneObject sc, const string& nm, std::vector<pSceneObject>& os, const string& bn);
@@ -612,7 +612,7 @@ public:
 	std::vector<string> headerAssets, cppAssets, blendAssets;
 	std::unordered_map<ASSETTYPE, std::vector<string>> normalAssets, internalAssets, proceduralAssets;
 	std::unordered_map <ASSETTYPE, std::pair<ASSETTYPE, std::vector<uint>>> derivedAssets;
-	std::unordered_map<ASSETTYPE, std::vector<AssetObject*>> normalAssetCaches, internalAssetCaches, proceduralAssetCaches;
+	std::unordered_map<ASSETTYPE, std::vector<pAssetObject>> normalAssetCaches, internalAssetCaches, proceduralAssetCaches;
 	std::unordered_map<ASSETTYPE, std::vector<std::pair<byte*, uint>>> normalAssetBuffers;
 	bool internalAssetsLoaded;
 

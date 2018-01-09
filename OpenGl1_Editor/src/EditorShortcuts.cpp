@@ -214,7 +214,7 @@ void EB_Viewer::_AddComAud(EditorBlock* b) {
 
 }
 void EB_Viewer::_AddComAnim(EditorBlock* b) {
-	b->editor->RegisterMenu(b, "Add Animation", std::vector<string>({ "Animator" }), std::vector<shortcutFunc>({ _D2AddComAnm }), 0);
+	b->editor->RegisterMenu(b, "Add Animation", std::vector<string>({ "Animator", "IK Controller" }), std::vector<shortcutFunc>({ _D2AddComAnm, _D2AddComInk }), 0);
 }
 void EB_Viewer::_AddComMesh(EditorBlock* b) {
 	b->editor->RegisterMenu(b, "Add Mesh", std::vector<string>({ "Mesh Filter", "Mesh Renderer" }), std::vector<shortcutFunc>({ _D2AddComMft, _D2AddComMrd }), 0);
@@ -419,6 +419,9 @@ void EB_Viewer::_D2AddComMrd(EditorBlock* b) {
 }
 void EB_Viewer::_D2AddComAnm(EditorBlock* b) {
 	b->editor->selected->AddComponent<Animator>();
+}
+void EB_Viewer::_D2AddComInk(EditorBlock* b) {
+	b->editor->selected->AddComponent<InverseKinematics>();
 }
 void EB_Viewer::_D2AddComLht(EditorBlock* b) {
 	b->editor->selected->AddComponent<Light>();

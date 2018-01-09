@@ -450,7 +450,7 @@ void ShowSplash(string bitmap, uint cx, uint cy, uint sw, uint sh) {
 	POINT pt, pt0 = {};
 	pt.x = cx - pw/2;
 	pt.y = cy - ph/2;
-	SIZE sz = { pw, ph };
+	SIZE sz = { (LONG)pw, (LONG)ph };
 	BLENDFUNCTION func = {};
 	func.BlendOp = AC_SRC_OVER;
 	func.SourceConstantAlpha = 255;

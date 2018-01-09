@@ -2106,7 +2106,7 @@ ASSETID Editor::GetAssetId(AssetObject* i, ASSETTYPE&) {
 	else {
 		for (auto& a : normalAssetCaches) {
 			for (int b = a.second.size()-1; b >= 0; b--) {
-				if (a.second[b] == i){
+				if (a.second[b].get() == i){
 					return b;
 				}
 			}
@@ -2175,7 +2175,7 @@ void Editor::ReadPrefs() {
 					uint xc = (uint)std::stoi(sx);
 					uint yc = (uint)std::stoi(sy);
 					proceduralAssets[t].push_back(fn + "(x=" + sx + ",y=" + sy + ")");
-					proceduralAssetCaches[t].push_back(Procedurals::Plane(xc, yc));
+					proceduralAssetCaches[t].push_back(std::shared_ptr<AssetObject>(Procedurals::Plane(xc, yc)));
 				}
 				else if (nm == "sphere") {
 					string sx = s.substr(is + 1, 2);
@@ -2183,7 +2183,7 @@ void Editor::ReadPrefs() {
 					uint xc = (uint)std::stoi(sx);
 					uint yc = (uint)std::stoi(sy);
 					proceduralAssets[t].push_back(fn + "(u=" + sx + ",v=" + sy + ")");
-					proceduralAssetCaches[t].push_back(Procedurals::UVSphere(xc, yc));
+					proceduralAssetCaches[t].push_back(std::shared_ptr<AssetObject>(Procedurals::UVSphere(xc, yc)));
 				}
 				break;
 			}
@@ -2197,7 +2197,7 @@ void Editor::SavePrefs() {
 		ss = ss.substr(0, ss.size() - 1);
 	string s = projectFolder + "\\" + ss.substr(ss.find_last_of('\\'), string::npos) + ".Bordom";
 	std::ofstream strm(s, std::ios::out | std::ios::binary | std::ios::trunc);
-	ushort u = includedScenes.size();
+	ushort u = (ushort)includedScenes.size();
 	_StreamWrite(&u, &strm, 2);
 	for (int a = 0; a < u; a++) {
 		if (includedScenesUse[a])
@@ -2207,7 +2207,7 @@ void Editor::SavePrefs() {
 		strm << includedScenes[a] << (char)0;
 	}
 
-	savedIncludedScenes = includedScenes.size();
+	savedIncludedScenes = (ushort)includedScenes.size();
 }
 
 void Editor::LoadDefaultAssets() {
@@ -3089,19 +3089,19 @@ void Editor::ResetAssetMap() {
 
 	derivedAssets[ASSETTYPE_TEXTURE_REND] = std::pair<ASSETTYPE, std::vector<uint>>(ASSETTYPE_TEXTURE, std::vector<uint>());
 
-	normalAssetCaches[ASSETTYPE_TEXTURE] = std::vector<AssetObject*>(); //Texture*
-	normalAssetCaches[ASSETTYPE_HDRI] = std::vector<AssetObject*>(); //Background*
-	normalAssetCaches[ASSETTYPE_MATERIAL] = std::vector<AssetObject*>(); //Material*
-	normalAssetCaches[ASSETTYPE_MESH] = std::vector<AssetObject*>(); //Mesh*
-	normalAssetCaches[ASSETTYPE_ANIMCLIP] = std::vector<AssetObject*>(); //AnimClip*
-	normalAssetCaches[ASSETTYPE_ANIMATION] = std::vector<AssetObject*>(); //Animator*
-	normalAssetCaches[ASSETTYPE_CAMEFFECT] = std::vector<AssetObject*>(); //CameraEffect*
+	normalAssetCaches[ASSETTYPE_TEXTURE] = std::vector<pAssetObject>(); //Texture*
+	normalAssetCaches[ASSETTYPE_HDRI] = std::vector<pAssetObject>(); //Background*
+	normalAssetCaches[ASSETTYPE_MATERIAL] = std::vector<pAssetObject>(); //Material*
+	normalAssetCaches[ASSETTYPE_MESH] = std::vector<pAssetObject>(); //Mesh*
+	normalAssetCaches[ASSETTYPE_ANIMCLIP] = std::vector<pAssetObject>(); //AnimClip*
+	normalAssetCaches[ASSETTYPE_ANIMATION] = std::vector<pAssetObject>(); //Animator*
+	normalAssetCaches[ASSETTYPE_CAMEFFECT] = std::vector<pAssetObject>(); //CameraEffect*
 
 	if (!internalAssetsLoaded) {
 		internalAssets = std::unordered_map<ASSETTYPE, std::vector<string>>(normalAssets);
-		internalAssetCaches = std::unordered_map<ASSETTYPE, std::vector<AssetObject*>>(normalAssetCaches);
+		internalAssetCaches = std::unordered_map<ASSETTYPE, std::vector<pAssetObject>>(normalAssetCaches);
 		proceduralAssets = std::unordered_map<ASSETTYPE, std::vector<string>>(normalAssets);
-		proceduralAssetCaches = std::unordered_map<ASSETTYPE, std::vector<AssetObject*>>(normalAssetCaches);
+		proceduralAssetCaches = std::unordered_map<ASSETTYPE, std::vector<pAssetObject>>(normalAssetCaches);
 		LoadInternalAssets();
 	}
 }
@@ -3250,12 +3250,12 @@ AssetObject* Editor::GetCache(ASSETTYPE type, int i) {
 		return nullptr;
 	else if (i < 0) {
 		if (i <= -(1 << 8))
-			return proceduralAssetCaches[type][(-i) - (1 << 8)];
+			return proceduralAssetCaches[type][(-i) - (1 << 8)].get();
 		else
-			return internalAssetCaches[type][-i - 2];
+			return internalAssetCaches[type][-i - 2].get();
 	}
 	else {
-		AssetObject *data = normalAssetCaches[type][i];
+		AssetObject *data = normalAssetCaches[type][i].get();
 		if (data != nullptr)
 			return data;
 		else {
@@ -3268,33 +3268,33 @@ AssetObject* Editor::GenCache(ASSETTYPE type, int i) {
 	string pth = projectFolder + "Assets\\" + normalAssets[type][i];
 	switch (type) {
 	case ASSETTYPE_MESH:
-		normalAssetCaches[type][i] = new Mesh(pth + ".mesh.meta");
+		normalAssetCaches[type][i] = std::make_shared<Mesh>(pth + ".mesh.meta");
 		break;
 	case ASSETTYPE_ANIMCLIP:
-		normalAssetCaches[type][i] = new AnimClip(pth);
+		normalAssetCaches[type][i] = std::make_shared<AnimClip>(pth);
 		break;
 	case ASSETTYPE_ANIMATION:
-		normalAssetCaches[type][i] = new Animation(pth);
+		normalAssetCaches[type][i] = std::make_shared<Animation>(pth);
 		break;
 	case ASSETTYPE_SHADER:
-		normalAssetCaches[type][i] = new Shader(pth + ".meta");
+		normalAssetCaches[type][i] = std::make_shared<Shader>(pth + ".meta");
 		break;
 	case ASSETTYPE_MATERIAL:
-		normalAssetCaches[type][i] = new Material(pth);
+		normalAssetCaches[type][i] = std::make_shared<Material>(pth);
 		break;
 	case ASSETTYPE_TEXTURE:
-		normalAssetCaches[type][i] = new Texture(i, this);
+		normalAssetCaches[type][i] = std::make_shared<Texture>(i, this);
 		break;
 	case ASSETTYPE_HDRI:
-		normalAssetCaches[type][i] = new Background(i, this);
+		normalAssetCaches[type][i] = std::make_shared<Background>(i, this);
 		break;
 	case ASSETTYPE_CAMEFFECT:
-		normalAssetCaches[type][i] = new CameraEffect(pth);
+		normalAssetCaches[type][i] = std::make_shared<CameraEffect>(pth);
 		break;
 	default:
 		return nullptr;
 	}
-	return normalAssetCaches[type][i];
+	return normalAssetCaches[type][i].get();
 }
 
 /*

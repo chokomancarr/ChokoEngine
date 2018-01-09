@@ -1231,10 +1231,10 @@ void Light::InitRSM() {
 	}
 
 	std::default_random_engine generator;
-	std::normal_distribution<float> distri(5, 2);
+	std::normal_distribution<double> distri(5, 2);
 	for (uint a = 0; a < 1024; a++) {
-		_rsmBuffer.xPos[a] = (distri(generator)*10.0f);
-		_rsmBuffer.yPos[a] = (distri(generator)*10.0f);
+		_rsmBuffer.xPos[a] = (float)(distri(generator)*10.0);
+		_rsmBuffer.yPos[a] = (float)(distri(generator)*10.0);
 		float sz = sqrt(pow(_rsmBuffer.xPos[a], 2) + pow(_rsmBuffer.yPos[a], 2))*0.001f;
 		_rsmBuffer.size[a] = 0.5f;// sz;
 	}

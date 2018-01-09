@@ -199,9 +199,11 @@ public:
 	Rect(Vec4 v) : x(v.r), y(v.g), w(v.b), h(v.a) {}
 	float x, y, w, h;
 
-	/// Check if v is inside this rect.
+	/*! Check if v is inside this rect.
+	 */
 	bool Inside(const Vec2& v);
-	/// Returns a new Rect covered by both this rect and r2
+	/*! Returns a new Rect covered by both this rect and r2
+	 */
 	Rect Intersection(const Rect& r2);
 };
 
@@ -318,6 +320,11 @@ template<typename T> T* _GetCache(ASSETTYPE t, ASSETID i) {
 }
 
 class Object;
+
+template <class T> std::shared_ptr<T> get_shared(Object* ref) {
+	return std::dynamic_pointer_cast<T> (ref->shared_from_this());
+}
+
 template <class T> class Ref {
 public:
 	Ref(bool suppress = false) : _suppress(suppress) {
@@ -349,8 +356,11 @@ public:
 		_empty = false;
 	}
 	void operator()(const T* ref) {
-		_object = get_shared<T>((Object*)ref);
-		_empty = false;
+		if (!ref) clear();
+		else {
+			_object = get_shared<T>((Object*)ref);
+			_empty = false;
+		}
 	}
 	operator bool() const {
 		return !(_empty || _object.expired());
@@ -379,10 +389,6 @@ private:
 	bool _empty = true, _suppress = false;
 };
 
-template <class T> std::shared_ptr<T> get_shared(Object* ref) {
-	return std::dynamic_pointer_cast<T> (ref->shared_from_this());
-}
-
 #define _allowshared(T) friend class std::_Ref_count_obj<T>
 
 #define _canref(obj) class obj; \
@@ -409,7 +415,7 @@ _canref(TextureRenderer);
 //AssetObjects.h
 class AssetItem;
 class AssetManager;
-class AssetObject;
+_canref(AssetObject);
 
 _canref(Animation);
 _canref(AnimClip);
@@ -420,6 +426,7 @@ _canref(Material);
 _canref(Mesh);
 _canref(Shader);
 _canref(Texture);
+_canref(RenderTexture);
 
 class Debug {
 public:
@@ -689,8 +696,9 @@ public:
 
 	void Set(void* data, uint padding = 0, uint stride = 1);
 	
-	/// Returns a copy of the compute buffer data.
-	/// The lhs pointer will be overwritten if target is null. Use Get(T*) to prevent memory leaks.
+	/*! Returns a copy of the compute buffer data.
+	 * The lhs pointer will be overwritten if target is null. Use Get(T*) to use a preallocated buffer.
+	 */
 	template <typename T> T* Get(T* target = nullptr) {
 		byte* tar;
 		if (!target) tar = new byte[size];
@@ -791,6 +799,7 @@ public:
 	friend class RenderTexture;
 	friend int main(int argc, char **argv);
 	friend void EBI_DrawAss_Mat(Vec4 v, Editor* editor, EB_Inspector* b, float &off);
+	_allowshared(Material);
 protected:
 	Material(string s);
 	Material(std::istream& stream, uint offset = 0);

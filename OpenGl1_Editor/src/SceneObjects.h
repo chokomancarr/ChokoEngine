@@ -15,6 +15,7 @@ enum COMPONENT_TYPE : byte {
 	COMP_RDP = 0x25,
 	COMP_ARM = 0x30,
 	COMP_ANM = 0x31,
+	COMP_INK = 0x35,
 	COMP_SCR = 0xff
 };
 typedef unsigned char DRAWORDER;
@@ -155,6 +156,7 @@ public:
 	friend class MeshRenderer;
 	friend class SkinnedMeshRenderer;
 	friend class AssetManager;
+	_allowshared(Mesh);
 protected:
 	Mesh(Editor* e, int i);
 	Mesh(std::istream& strm, uint offset = 0);
@@ -223,6 +225,7 @@ public:
 
 	friend class Editor;
 	friend class AssetManager;
+	_allowshared(AnimClip);
 protected:
 	AnimClip(Editor* e, int i);
 	AnimClip(std::ifstream& strm, uint offset);
@@ -287,6 +290,7 @@ class Animation : public AssetObject {
 	friend class Editor;
 	friend class SkinnedMeshRenderer;
 	friend class Animator;
+	_allowshared(Animation);
 protected:
 	Animation();
 	Animation(string s);
@@ -344,6 +348,7 @@ public:
 	friend class AssetManager;
 	friend class RenderTexture;
 	friend void EBI_DrawAss_Tex(Vec4 v, Editor* editor, EB_Inspector* b, float &off);
+	_allowshared(Texture);
 protected:
 	Texture() : AssetObject(ASSETTYPE_TEXTURE) {}
 	Texture(int i, Editor* e); //for caches
@@ -414,6 +419,7 @@ public:
 	friend class Editor;
 	friend class Background;
 	friend int main(int argc, char **argv);
+	_allowshared(RenderTexture);
 protected:
 	GLuint d_fbo;
 	void Load(string path);
@@ -432,6 +438,7 @@ public:
 	friend int main(int argc, char **argv);
 	friend class Editor;
 	friend class AssetManager;
+	_allowshared(Background);
 private:
 	Background(int i, Editor* editor);
 	Background(std::istream& strm, uint offset);
@@ -452,6 +459,7 @@ public:
 	friend class Camera;
 	friend class RenderCubeMap;
 	friend class ReflectionProbe;
+	_allowshared(CubeMap);
 protected:
 	CubeMap(ushort size, bool mips = false, GLenum type = GL_RGBA, byte dataSize = 4, GLenum format = GL_RGBA, GLenum dataType = GL_UNSIGNED_BYTE);
 	
@@ -500,6 +508,7 @@ public:
 	friend class EB_Browser;
 	friend class EB_Inspector;
 	friend void EBI_DrawAss_Eff(Vec4 v, Editor* editor, EB_Inspector* b, float &off);
+	_allowshared(CameraEffect);
 protected:
 	Material* material;
 	int _material = -1;
@@ -528,8 +537,8 @@ public:
 	Vec4 clearColor;
 	float nearClip;
 	float farClip;
-	RenderTexture* targetRT;
-	std::vector<CameraEffect*> effects;
+	rRenderTexture targetRT;
+	std::vector<rCameraEffect> effects;
 	
 	void Render(RenderTexture* target = nullptr);
 
@@ -608,7 +617,7 @@ class MeshFilter : public Component {
 public:
 	MeshFilter();
 	
-	Mesh* mesh = 0;
+	rMesh mesh = 0;
 	//void LoadDefaultValues() override;
 
 	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
@@ -620,19 +629,19 @@ public:
 	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
 	_allowshared(MeshFilter);
 protected:
-	bool showBoundingBox = false;
-
 	MeshFilter(std::ifstream& stream, SceneObject* o, long pos = -1);
+
+	bool showBoundingBox = false;
+	ASSETID _mesh = -1;
 
 	void SetMesh(int i);
 	static void _UpdateMesh(void* i);
-	ASSETID _mesh = -1;
 };
 
 class MeshRenderer : public Component {
 public:
 	MeshRenderer();
-	std::vector<Material*> materials;
+	std::vector<rMaterial> materials;
 
 	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
 	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
@@ -919,6 +928,24 @@ protected:
 	void Serialize(Editor* e, std::ofstream* stream) override;
 
 	void _DoUpdate();
+};
+
+class InverseKinematics : public Component {
+public:
+	InverseKinematics();
+
+	rSceneObject target;
+	byte length = 2, iterations = 5;
+
+	void Apply();
+
+	friend void Serialize(Editor* e, SceneObject* o, std::ofstream* stream);
+	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
+	_allowshared(InverseKinematics);
+protected:
+	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
+	void Serialize(Editor* e, std::ofstream* stream) override {}
 };
 
 class Animator : public Component {
