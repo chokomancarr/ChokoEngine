@@ -1177,8 +1177,12 @@ void InverseKinematics::Apply() {
 			auto x = Normalize(t - pp);
 			auto r = Normalize(p - pp);
 			auto dt = glm::dot(x, r);
-			if (dt > 0.9999999f) return;
-			o->transform.rotation(QuatFunc::FromAxisAngle(glm::cross(r, x), acos(dt)) * o->transform.rotation());
+			if (dt > 0.9999999f) {
+				if (!a) return;
+				else continue;
+			}
+
+			o->transform.rotation(QuatFunc::FromAxisAngle(glm::cross(r, x), rad2deg*acos(dt)) * o->transform.rotation());
 		}
 	}
 }

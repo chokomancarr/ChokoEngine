@@ -159,6 +159,8 @@ int main(int argc, char **argv)
 
 	//new MD("D:\\md.compute", 4, 1, 1);
 
+	PopupSelector::Init();
+	glfwMakeContextCurrent(window);
 
 	KillSplash();
 
@@ -173,6 +175,16 @@ int main(int argc, char **argv)
 	auto mills = milliseconds();
 
 	while (!glfwWindowShouldClose(window)) {
+		if (PopupSelector::show) {
+			glfwMakeContextCurrent(PopupSelector::window);
+
+			PopupSelector::Draw();
+
+			glfwSwapBuffers(PopupSelector::window);
+			glfwPollEvents();
+			glfwMakeContextCurrent(window);
+		}
+
 		renderScene();
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -398,6 +410,7 @@ void MotionGL(GLFWwindow* window, double x, double y) {
 }
 
 void ReshapeGL(GLFWwindow* window, int w, int h) {
+	glfwMakeContextCurrent(window);
 	glViewport(0, 0, w, h);
 	Display::width = w;
 	Display::height = h;

@@ -1693,6 +1693,93 @@ void PB_ProceduralGenerator::Draw() {
 	Engine::DrawQuad(x(), y(), (float)w, (float)h, white(0.8f, 0.1f));
 }
 
+
+Editor* PopupSelector::editor = nullptr;
+bool PopupSelector::show = false;
+uint PopupSelector::width, PopupSelector::height;
+
+POPUP_SELECT_TYPE PopupSelector::_type;
+ASSETTYPE PopupSelector::assettype;
+int* PopupSelector::_browseTarget;
+callbackFunc PopupSelector::_browseCallback;
+void* PopupSelector::_browseCallbackParam;
+
+GLFWwindow* PopupSelector::window;
+
+void PopupSelector::Init() {
+	glfwWindowHint(GLFW_VISIBLE, 0);
+	window = glfwCreateWindow(1024, 600, "Selector", NULL, Display::window);
+	glfwMakeContextCurrent(window);
+	glfwSetWindowPos(window, 200, 200);
+	glfwSetWindowSize(window, 200, 500);
+	editor = Editor::instance;
+
+	glViewport(0, 0, 200, 500);
+	glfwSetFramebufferSizeCallback(window, Reshape);
+
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glFrontFace(GL_CW);
+}
+
+void PopupSelector::Enable_Asset(ASSETTYPE type, int* target, callbackFunc callback, void* param) {
+	_type = POPUP_TYPE_ASSET;
+	assettype = type;
+	_browseTarget = target;
+	_browseCallback = callback;
+	_browseCallbackParam = param;
+
+	show = true;
+	glfwShowWindow(window);
+}
+
+void PopupSelector::Draw() {
+	if (!glfwWindowShouldClose(window)) {
+		auto w = Display::width;
+		auto h = Display::height;
+		Display::width = width;
+		Display::height = height;
+
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glClearColor(0, 0, 0, 1.0f);
+		glDisable(GL_DEPTH_TEST);
+		glDepthFunc(GL_LEQUAL);
+		glEnable(GL_BLEND);
+
+		if (editor->backgroundTex != nullptr)
+			UI::Texture(0, 0, (float)width, (float)height, editor->backgroundTex, editor->backgroundAlpha*0.01f, DrawTex_Crop);
+
+		switch (_type) {
+		case POPUP_TYPE_ASSET:
+			Draw_Asset();
+			break;
+		}
+		Display::width = w;
+		Display::height = h;
+	}
+	else Close(nullptr);
+}
+
+void PopupSelector::Draw_Asset() {
+	for (uint a = 0; a < editor->normalAssets[assettype].size(); a++) {
+		Engine::Button(1, 20 + 17 * a, width - 2, 16, grey1(), editor->normalAssets[assettype][a], 12, editor->font, white());
+	}
+}
+
+void PopupSelector::Close(Object* o) {
+	show = false;
+	glfwHideWindow(window);
+}
+
+void PopupSelector::Reshape(GLFWwindow* window, int w, int h) {
+	glfwMakeContextCurrent(window);
+	glViewport(0, 0, w, h);
+	width = w;
+	height = h;
+}
+
+
+#pragma region Editor PlaySyncer
+
 template<typename T>
 bool EPS_RWMem(bool write, Editor_PlaySyncer* syncer, T* val, uint loc, ulong sz = 0) {
 	assert(syncer && val && !!loc);
@@ -1973,6 +2060,9 @@ bool Editor_PlaySyncer::ReloadTex() {
 	return 1;
 }
 
+#pragma endregion
+
+#pragma region Editor
 
 void Editor::DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASSETTYPE type, float labelSize, Font* labelFont, ASSETID* tar, callbackFunc func, void* param) {
 	if (*tar > -1) {
@@ -1996,11 +2086,13 @@ void Editor::DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASS
 			previewId = *tar;
 		}
 		if (b == MOUSE_RELEASE) {
-			editorLayer = 3;
-			browseType = type;
+			//editorLayer = 3;
+			//browseType = type;
 			browseTarget = tar;
 			browseCallback = func;
 			browseCallbackParam = param;
+
+			PopupSelector::Enable_Asset(type, tar, func, param);
 		}
 	}
 	ALIGNMENT al = labelFont->alignment;
@@ -3717,6 +3809,8 @@ void Editor::DoCompile() {
 	buildEnd = true;
 	//else SetBuildFail(this);
 }
+
+#pragma endregion
 
 void BlockCombo::Set() {
 	for (EditorBlock* b : blocks) {

@@ -457,6 +457,36 @@ struct Editor_PlaySyncer {
 	GLuint texPointer;
 };
 
+enum POPUP_SELECT_TYPE {
+	POPUP_TYPE_OBJECT,
+	POPUP_TYPE_ASSET,
+	POPUP_TYPE_COMPONENT,
+	POPUP_TYPE_TEXTURE
+};
+
+class PopupSelector {
+public:
+	static bool show;
+	static uint width, height;
+	static Editor* editor;
+
+	static POPUP_SELECT_TYPE _type;
+	static ASSETTYPE assettype;
+	static int* _browseTarget;
+	static callbackFunc _browseCallback;
+	static void* _browseCallbackParam;
+
+	static GLFWwindow* window;
+
+	static void Enable_Asset(ASSETTYPE type, int* target, callbackFunc callback, void* param);
+
+	static void Init(), Draw(), Close(Object*);
+	static void Draw_Object(), Draw_Asset(), Draw_Component();
+	static void Do_Draw_Object();
+
+	static void Reshape(GLFWwindow* window, int w, int h);
+};
+
 class Editor {
 public:
 	Editor();

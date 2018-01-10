@@ -549,6 +549,7 @@ public:
 	static void Resize(int x, int y, bool maximize = false);
 
 	friend int main(int argc, char **argv);
+	friend class PopupSelector;
 protected:
 	static GLFWwindow* window;
 };

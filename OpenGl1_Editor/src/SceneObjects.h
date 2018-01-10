@@ -935,7 +935,7 @@ public:
 	InverseKinematics();
 
 	rSceneObject target;
-	byte length = 2, iterations = 5;
+	byte length = 1, iterations = 10;
 
 	void Apply();
 
