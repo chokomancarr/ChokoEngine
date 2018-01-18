@@ -516,6 +516,7 @@ uint UI::_editingEditText[UI_MAX_EDIT_TEXT_FRAMES] = {};
 ushort UI::_activeEditTextId = 0;
 ushort UI::_editingEditTextId = 0;
 uint UI::drawFuncLoc = 0;
+bool UI::focused = true;
 uint UI::_editTextCursorPos = 0;
 uint UI::_editTextCursorPos2 = 0;
 string UI::_editTextString = "";
@@ -801,6 +802,7 @@ void UI::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4, floa
 }
 
 MOUSE_STATUS Engine::Button(float x, float y, float w, float h) {
+	if (!UI::focused) return MOUSE_NONE;
 	if (stencilRect) {
 		if (!stencilRect->Intersection(Rect(x, y, w, h)).Inside(Input::mousePos)) return MOUSE_NONE;
 	}
@@ -813,7 +815,7 @@ MOUSE_STATUS Engine::Button(float x, float y, float w, float h, Vec4 normalVec4,
 	return Button(x, y, w, h, normalVec4, LerpVec4(normalVec4, white(), 0.5f), LerpVec4(normalVec4, black(), 0.5f), label, labelSize, labelFont, labelVec4, labelCenter);
 }
 MOUSE_STATUS Engine::Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4) {
-	if (Input::mouse0State != 0 && !Rect(x, y, w, h).Inside(Input::mouseDownPos)) {
+	if (!UI::focused || (Input::mouse0State != 0 && !Rect(x, y, w, h).Inside(Input::mouseDownPos))) {
 		DrawQuad(x, y, w, h, normalVec4);
 		return MOUSE_NONE;
 	}
@@ -835,7 +837,7 @@ MOUSE_STATUS Engine::Button(float x, float y, float w, float h, Vec4 normalVec4,
 	return inside ? MOUSE_STATUS(MOUSE_HOVER_FLAG | Input::mouse0State) : MOUSE_NONE;
 }
 MOUSE_STATUS Engine::Button(float x, float y, float w, float h, Texture* texture, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, float uvx, float uvy, float uvw, float uvh) {
-	if (Input::mouse0State != 0 && !Rect(x, y, w, h).Inside(Input::mouseDownPos)) {
+	if (!UI::focused || (Input::mouse0State != 0 && !Rect(x, y, w, h).Inside(Input::mouseDownPos))) {
 		DrawQuad(x, y, w, h, (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer, Vec2(uvx, 1 - uvy), Vec2(uvx + uvw, 1 - uvy), Vec2(uvx, 1 - uvy - uvh), Vec2(uvx + uvw, 1 - uvy - uvh), false, normalVec4);
 		return MOUSE_NONE;
 	}

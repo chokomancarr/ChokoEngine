@@ -20,6 +20,7 @@ void MouseGL(GLFWwindow* window, int button, int state, int mods);
 void MouseScrGL(GLFWwindow* window, double xoff, double yoff);
 void MotionGL(GLFWwindow* window, double x, double y);
 void ReshapeGL(GLFWwindow* window, int w, int h);
+void FocusGL(GLFWwindow* window, int focus);
 
 void UpdateLoop();
 void OnDie();
@@ -171,6 +172,14 @@ int main(int argc, char **argv)
 	glfwSetCursorPosCallback(window, MotionGL);
 	glfwSetMouseButtonCallback(window, MouseGL);
 	glfwSetScrollCallback(window, MouseScrGL);
+
+	glfwSetWindowFocusCallback(window, FocusGL);
+
+	glfwSetCursorPosCallback(PopupSelector::window, MotionGL);
+	glfwSetMouseButtonCallback(PopupSelector::window, MouseGL);
+	glfwSetScrollCallback(PopupSelector::window, MouseScrGL);
+
+	glfwSetWindowFocusCallback(PopupSelector::window, FocusGL);
 
 	auto mills = milliseconds();
 
@@ -383,16 +392,31 @@ void renderScene()
 }
 
 void MouseGL(GLFWwindow* window, int button, int state, int mods) {
-	switch (button) {
-	case GLFW_MOUSE_BUTTON_LEFT:
-		Input::mouse0 = (state == GLFW_PRESS);
-		break;
-	case GLFW_MOUSE_BUTTON_MIDDLE:
-		Input::mouse1 = (state == GLFW_PRESS);
-		break;
-	case GLFW_MOUSE_BUTTON_RIGHT:
-		Input::mouse2 = (state == GLFW_PRESS);
-		break;
+	if (window == Display::window) {
+		switch (button) {
+		case GLFW_MOUSE_BUTTON_LEFT:
+			Input::mouse0 = (state == GLFW_PRESS);
+			break;
+		case GLFW_MOUSE_BUTTON_MIDDLE:
+			Input::mouse1 = (state == GLFW_PRESS);
+			break;
+		case GLFW_MOUSE_BUTTON_RIGHT:
+			Input::mouse2 = (state == GLFW_PRESS);
+			break;
+		}
+	}
+	else {
+		switch (button) {
+		case GLFW_MOUSE_BUTTON_LEFT:
+			PopupSelector::mouse0 = (state == GLFW_PRESS);
+			break;
+		case GLFW_MOUSE_BUTTON_MIDDLE:
+			PopupSelector::mouse1 = (state == GLFW_PRESS);
+			break;
+		case GLFW_MOUSE_BUTTON_RIGHT:
+			PopupSelector::mouse2 = (state == GLFW_PRESS);
+			break;
+		}
 	}
 }
 
@@ -403,10 +427,15 @@ void MouseScrGL(GLFWwindow* window, double xoff, double yoff) {
 }
 
 void MotionGL(GLFWwindow* window, double x, double y) {
-	if (editor->editorLayer == 0)
-		editor->blocks[editor->mouseOn]->OnMouseM(Vec2(x, y) - Input::mousePos);
-	Input::mousePos = Vec2(x, y);
-	Input::mousePosRelative = Vec2(x*1.0f / Display::width, y*1.0f / Display::height);
+	if (window == Display::window) {
+		if (editor->editorLayer == 0)
+			editor->blocks[editor->mouseOn]->OnMouseM(Vec2(x, y) - Input::mousePos);
+		Input::mousePos = Vec2(x, y);
+		Input::mousePosRelative = Vec2(x*1.0f / Display::width, y*1.0f / Display::height);
+	}
+	else {
+		PopupSelector::mousePos = Vec2(x, y);
+	}
 }
 
 void ReshapeGL(GLFWwindow* window, int w, int h) {
@@ -414,6 +443,16 @@ void ReshapeGL(GLFWwindow* window, int w, int h) {
 	glViewport(0, 0, w, h);
 	Display::width = w;
 	Display::height = h;
+}
+
+
+void FocusGL(GLFWwindow* window, int focus) {
+	if (window == Display::window) {
+		UI::focused = !!focus;
+	}
+	else {
+		PopupSelector::focused = !!focus;
+	}
 }
 
 void ShowSplash(string bitmap, uint cx, uint cy, uint sw, uint sh) {

@@ -549,6 +549,10 @@ public:
 	static void Resize(int x, int y, bool maximize = false);
 
 	friend int main(int argc, char **argv);
+	//move all functions in here please
+	friend void MouseGL(GLFWwindow* window, int button, int state, int mods);
+	friend void MotionGL(GLFWwindow* window, double x, double y);
+	friend void FocusGL(GLFWwindow* window, int focus);
 	friend class PopupSelector;
 protected:
 	static GLFWwindow* window;
@@ -879,7 +883,10 @@ public:
 	};
 
 	friend class Engine;
+	friend void FocusGL(GLFWwindow* window, int focus);
+	friend class PopupSelector;
 protected:
+	static bool focused;
 	static uint _editTextCursorPos, _editTextCursorPos2;
 	static string _editTextString;
 	static float _editTextBlinkTime;

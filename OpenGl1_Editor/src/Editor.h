@@ -466,11 +466,17 @@ enum POPUP_SELECT_TYPE {
 
 class PopupSelector {
 public:
-	static bool show;
+	static bool focused, show;
 	static uint width, height;
+	static bool mouse0, mouse1, mouse2;
+	static byte mouse0State, mouse1State, mouse2State;
+	static Vec2 mousePos, mouseDownPos;
 	static Editor* editor;
 
 	static POPUP_SELECT_TYPE _type;
+
+	static rSceneObject* _browseTargetObj;
+
 	static ASSETTYPE assettype;
 	static int* _browseTarget;
 	static callbackFunc _browseCallback;
@@ -478,11 +484,12 @@ public:
 
 	static GLFWwindow* window;
 
+	static void Enable_Object(rSceneObject* target);
 	static void Enable_Asset(ASSETTYPE type, int* target, callbackFunc callback, void* param);
 
-	static void Init(), Draw(), Close(Object*);
+	static void Init(), Draw(), Close();
 	static void Draw_Object(), Draw_Asset(), Draw_Component();
-	static void Do_Draw_Object();
+	static bool Do_Draw_Object(const std::vector<pSceneObject>& objs, uint& off, uint inc);
 
 	static void Reshape(GLFWwindow* window, int w, int h);
 };
@@ -649,6 +656,7 @@ public:
 	static void InitShaders();
 	void ResetAssetMap(), LoadInternalAssets();
 
+	void DrawObjectSelector(float x, float y, float w, float h, Vec4 col, float labelSize, Font* labelFont, rSceneObject* tar);
 	void DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASSETTYPE type, float labelSize, Font* labelFont, ASSETID* tar, callbackFunc func = nullptr, void* param = nullptr);
 	void DrawCompSelector(float x, float y, float w, float h, Vec4 col, float labelSize, Font* labelFont, CompRef* tar, callbackFunc func = nullptr, void* param = nullptr);
 	void DrawColorSelector(float x, float y, float w, float h, Vec4 col, float labelSize, Font* labelFont, Vec4* tar);

@@ -1695,16 +1695,25 @@ void PB_ProceduralGenerator::Draw() {
 
 
 Editor* PopupSelector::editor = nullptr;
+bool PopupSelector::focused = false;
 bool PopupSelector::show = false;
 uint PopupSelector::width, PopupSelector::height;
+Vec2 PopupSelector::mousePos, PopupSelector::mouseDownPos;
+bool PopupSelector::mouse0, PopupSelector::mouse1, PopupSelector::mouse2;
+byte PopupSelector::mouse0State, PopupSelector::mouse1State, PopupSelector::mouse2State;
 
 POPUP_SELECT_TYPE PopupSelector::_type;
+rSceneObject* PopupSelector::_browseTargetObj;
 ASSETTYPE PopupSelector::assettype;
 int* PopupSelector::_browseTarget;
 callbackFunc PopupSelector::_browseCallback;
 void* PopupSelector::_browseCallbackParam;
 
 GLFWwindow* PopupSelector::window;
+
+#define GLFW_EXPOSE_NATIVE_WIN32
+#define GLFW_EXPOSE_NATIVE_WGL
+#include <GLFW\glfw3native.h>
 
 void PopupSelector::Init() {
 	glfwWindowHint(GLFW_VISIBLE, 0);
@@ -1714,11 +1723,24 @@ void PopupSelector::Init() {
 	glfwSetWindowSize(window, 200, 500);
 	editor = Editor::instance;
 
+	auto hwnd = glfwGetWin32Window(window);
+	auto style = GetWindowLong(hwnd, GWL_STYLE);
+	style &= ~(WS_MAXIMIZEBOX | WS_MINIMIZEBOX);
+	SetWindowLong(hwnd, GWL_STYLE, style);
+
 	glViewport(0, 0, 200, 500);
 	glfwSetFramebufferSizeCallback(window, Reshape);
 
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glFrontFace(GL_CW);
+}
+
+void PopupSelector::Enable_Object(rSceneObject* target) {
+	_type = POPUP_TYPE_OBJECT;
+	_browseTargetObj = target;
+
+	show = true;
+	glfwShowWindow(window);
 }
 
 void PopupSelector::Enable_Asset(ASSETTYPE type, int* target, callbackFunc callback, void* param) {
@@ -1734,10 +1756,48 @@ void PopupSelector::Enable_Asset(ASSETTYPE type, int* target, callbackFunc callb
 
 void PopupSelector::Draw() {
 	if (!glfwWindowShouldClose(window)) {
+		if (mouse0)
+			mouse0State = min<byte>(mouse0State + 1U, MOUSE_HOLD);
+		else
+			mouse0State = ((mouse0State == MOUSE_UP) | (mouse0State == 0)) ? 0 : MOUSE_UP;
+		if (mouse1)
+			mouse1State = min<byte>(mouse1State + 1U, MOUSE_HOLD);
+		else
+			mouse1State = ((mouse1State == MOUSE_UP) | (mouse1State == 0)) ? 0 : MOUSE_UP;
+		if (mouse2)
+			mouse2State = min<byte>(mouse2State + 1U, MOUSE_HOLD);
+		else
+			mouse2State = ((mouse2State == MOUSE_UP) | (mouse2State == 0)) ? 0 : MOUSE_UP;
+
+		if (mouse0State == MOUSE_DOWN)
+			mouseDownPos = mousePos;
+		else if (!mouse0State)
+			mouseDownPos = Vec2(-1, -1);
+
+		bool foc = UI::focused;
 		auto w = Display::width;
 		auto h = Display::height;
+		auto p1 = Input::mousePos;
+		auto p2 = Input::mousePosRelative;
+		auto m0 = Input::mouse0;
+		auto m1 = Input::mouse1;
+		auto m2 = Input::mouse2;
+		auto m0s = Input::mouse0State;
+		auto m1s = Input::mouse1State;
+		auto m2s = Input::mouse2State;
+		auto mdp = Input::mouseDownPos;
+		UI::focused = focused;
 		Display::width = width;
 		Display::height = height;
+		Input::mousePos = mousePos;
+		Input::mousePosRelative = Vec2(mousePos.x*1.0f / width, mousePos.y*1.0f / height);
+		Input::mouse0 = mouse0;
+		Input::mouse1 = mouse1;
+		Input::mouse2 = mouse2;
+		Input::mouse0State = mouse0State;
+		Input::mouse1State = mouse1State;
+		Input::mouse2State = mouse2State;
+		Input::mouseDownPos = mouseDownPos;
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glClearColor(0, 0, 0, 1.0f);
@@ -1749,14 +1809,53 @@ void PopupSelector::Draw() {
 			UI::Texture(0, 0, (float)width, (float)height, editor->backgroundTex, editor->backgroundAlpha*0.01f, DrawTex_Crop);
 
 		switch (_type) {
+		case POPUP_TYPE_OBJECT:
+			Draw_Object();
+			break;
 		case POPUP_TYPE_ASSET:
 			Draw_Asset();
 			break;
 		}
+
+		UI::focused = foc;
 		Display::width = w;
 		Display::height = h;
+		Input::mousePos = p1;
+		Input::mousePosRelative = p2;
+		Input::mouse0 = m0;
+		Input::mouse1 = m1;
+		Input::mouse2 = m2;
+		Input::mouse0State = m0s;
+		Input::mouse1State = m1s;
+		Input::mouse2State = m2s;
+		Input::mouseDownPos = mdp;
+
+		if (!show) Close();
 	}
-	else Close(nullptr);
+	else Close();
+}
+
+void PopupSelector::Draw_Object() {
+	uint off = 0;
+	if (Do_Draw_Object(Scene::active->objects, off, 0)) {
+		show = false;
+	}
+}
+
+bool PopupSelector::Do_Draw_Object(const std::vector<pSceneObject>& objs, uint& off, uint inc) {
+	for (auto& o : objs) {
+		auto r = Engine::Button(1 + inc * 5, 20 + 17 * off, width - 2 - 5 * inc, 16, grey1(), o->name, 12, editor->font, white());
+		if (r == MOUSE_RELEASE) {
+			(*_browseTargetObj)(o);
+			return true;
+			if (!!r) std::cout << (int)r << std::endl;
+		}
+		off++;
+		if (!!o->childCount) 
+			if (Do_Draw_Object(o->children, off, inc + 1))
+				return true;
+	}
+	return false;
 }
 
 void PopupSelector::Draw_Asset() {
@@ -1765,9 +1864,10 @@ void PopupSelector::Draw_Asset() {
 	}
 }
 
-void PopupSelector::Close(Object* o) {
+void PopupSelector::Close() {
 	show = false;
 	glfwHideWindow(window);
+	glfwSetWindowShouldClose(window, false);
 }
 
 void PopupSelector::Reshape(GLFWwindow* window, int w, int h) {
@@ -2064,6 +2164,21 @@ bool Editor_PlaySyncer::ReloadTex() {
 
 #pragma region Editor
 
+void Editor::DrawObjectSelector(float x, float y, float w, float h, Vec4 col, float labelSize, Font* labelFont, rSceneObject* tar) {
+	if (editorLayer == 0) {
+		if (Engine::Button(x, y, w, h, col, LerpVec4(col, white(), 0.5f), LerpVec4(col, black(), 0.5f)) == MOUSE_RELEASE) {
+
+			PopupSelector::Enable_Object(tar);
+		}
+	}
+	else
+		Engine::DrawQuad(x, y, w, h, col);
+	ALIGNMENT al = labelFont->alignment;
+	labelFont->alignment = ALIGN_MIDLEFT;
+	UI::Label(round(x + 2), round(y + 0.4f*h), labelSize, (!(*tar)) ? "undefined" : (*tar)->name, labelFont, (!(*tar)) ? Vec4(0.7f, 0.4f, 0.4f, 1) : Vec4(0.4f, 0.4f, 0.7f, 1));
+	labelFont->alignment = al;
+}
+
 void Editor::DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASSETTYPE type, float labelSize, Font* labelFont, ASSETID* tar, callbackFunc func, void* param) {
 	if (*tar > -1) {
 		if (Engine::EButton(editorLayer == 0, x, y, h, h, tex_browse, white()) == MOUSE_RELEASE) {
@@ -2116,7 +2231,7 @@ void Editor::DrawCompSelector(float x, float y, float w, float h, Vec4 col, floa
 		Engine::DrawQuad(x, y, w, h, col);
 	ALIGNMENT al = labelFont->alignment;
 	labelFont->alignment = ALIGN_MIDLEFT;
-	UI::Label(round(x + 2), round(y + 0.5f*h), labelSize, (tar->comp == nullptr) ? "undefined" : tar->path + " (" + tar->comp->name + ")", labelFont, (tar->comp == nullptr) ? Vec4(0.7f, 0.4f, 0.4f, 1) : Vec4(0.4f, 0.4f, 0.7f, 1));
+	UI::Label(round(x + 2), round(y + 0.4f*h), labelSize, (tar->comp == nullptr) ? "undefined" : tar->path + " (" + tar->comp->name + ")", labelFont, (tar->comp == nullptr) ? Vec4(0.7f, 0.4f, 0.4f, 1) : Vec4(0.4f, 0.4f, 0.7f, 1));
 	labelFont->alignment = al;
 }
 
