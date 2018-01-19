@@ -31,14 +31,40 @@ Component::Component(string name, COMPONENT_TYPE t, DRAWORDER drawOrder, SceneOb
 }
 
 COMPONENT_TYPE Component::Name2Type(string nm) {
-	if (nm == "Camera")
-		return COMP_CAM;
-	if (nm == "MeshFilter")
-		return COMP_MFT;
-	if (nm == "MeshRenderer")
-		return COMP_MRD;
-	if (nm == "TextureRenderer")
-		return COMP_TRD;
+	static const string names[] = {
+		"Camera",
+		"MeshFilter",
+		"MeshRenderer",
+		"TextureRenderer",
+		"SkinnedMeshRenderer",
+		"ParticleSystem",
+		"Light",
+		"ReflectiveQuad",
+		"RenderProbe",
+		"Armature",
+		"Animator",
+		"InverseKinematics",
+		"Script"
+	};
+	static const COMPONENT_TYPE types[] = {
+		COMP_CAM,
+		COMP_MFT,
+		COMP_MRD,
+		COMP_TRD,
+		COMP_SRD,
+		COMP_PST,
+		COMP_LHT,
+		COMP_RFQ,
+		COMP_RDP,
+		COMP_ARM,
+		COMP_ANM,
+		COMP_INK,
+		COMP_SCR
+	};
+	
+	for (uint i = 0; i < sizeof(types); i++) {
+		if ((nm) == names[i]) return types[i];
+	}
 	return COMP_UNDEF;
 }
 

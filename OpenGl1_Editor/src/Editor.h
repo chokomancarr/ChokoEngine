@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Windows.h>
 #include "Defines.h"
 #include "Engine.h"
 #include "Xml.h"
@@ -651,6 +652,7 @@ public:
 	std::unordered_map <ASSETTYPE, std::pair<ASSETTYPE, std::vector<uint>>> derivedAssets;
 	std::unordered_map<ASSETTYPE, std::vector<pAssetObject>> normalAssetCaches, internalAssetCaches, proceduralAssetCaches;
 	std::unordered_map<ASSETTYPE, std::vector<std::pair<byte*, uint>>> normalAssetBuffers;
+	std::unordered_map<ASSETTYPE, std::vector<bool>> normalAssetMakings;
 	bool internalAssetsLoaded;
 
 	static void InitShaders();
@@ -697,8 +699,8 @@ public:
 
 	void ReloadAssets(string path, bool recursive);
 	bool ParseAsset(string path);
-	AssetObject* GetCache(ASSETTYPE type, int id);
-	AssetObject* GenCache(ASSETTYPE type, int id);
+	AssetObject* GetCache(ASSETTYPE type, int id, bool async = false);
+	AssetObject* GenCache(ASSETTYPE type, int id, bool async = false);
 
 	static void Compile(Editor* e);
 	static void ShowPrefs(Editor* e);

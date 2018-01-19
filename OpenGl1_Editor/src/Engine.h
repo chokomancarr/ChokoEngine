@@ -4,7 +4,9 @@
 
 #include "Defines.h"
 
+#if defined(IS_EDITOR) || defined(PLATFORM_WIN)
 #include <Windows.h>
+#endif
 #include <gl/glew.h>
 #include <GLFW\glfw3.h>
 #include <string>
@@ -311,9 +313,9 @@ ASSETID _Strm2H(std::istream& strm);
 
 string _Strm2Asset(std::istream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int maxL = 100);
 
-template<typename T> T* _GetCache(ASSETTYPE t, ASSETID i) {
+template<typename T> T* _GetCache(ASSETTYPE t, ASSETID i, bool async = false) {
 #ifdef IS_EDITOR
-	return static_cast<T*>(Editor::instance->GetCache(t, i));
+	return static_cast<T*>(Editor::instance->GetCache(t, i, async));
 #else
 	return static_cast<T*>(AssetManager::GetCache(t, i));
 #endif
@@ -454,7 +456,9 @@ public:
 	static bool HasDirectory(string szPath);
 	static bool HasFile(string szPath);
 	static string ReadFile(const string& path);
+#if defined(IS_EDITOR) || defined(PLATFORM_WIN)
 	static std::vector<string> GetRegistryKeys(HKEY key);
+#endif
 	static string GetText(const string& path);
 	static std::vector<byte> GetBytes(const string& path);
 };
@@ -1051,7 +1055,7 @@ class AssetManager {
 	friend class SceneObject;
 	friend class Material;
 	friend struct Editor_PlaySyncer;
-	template<typename T> friend T* _GetCache(ASSETTYPE t, ASSETID i);
+	template<typename T> friend T* _GetCache(ASSETTYPE t, ASSETID i, bool async);
 	friend string _Strm2Asset(std::istream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int max);
 protected:
 	static std::unordered_map<ASSETTYPE, std::vector<string>> names;

@@ -930,12 +930,30 @@ protected:
 	void _DoUpdate();
 };
 
+enum IK_TYPE : byte {
+	IK_TARGET_ONLY,
+	IK_JOINT_ONLY,
+	IK_GENERIC
+};
+
+enum IK_AXIAL_CONSTRAINT : byte {
+	IK_AXIAL_FREE,
+	IK_AXIAL_ONLY,
+	IK_NON_AXIAL_ONLY
+};
+
 class InverseKinematics : public Component {
 public:
 	InverseKinematics();
 
+	IK_TYPE type;
+
 	rSceneObject target;
 	byte length = 1, iterations = 20;
+
+	bool jointIsAxial;
+	bool allowRotation[3];
+	IK_AXIAL_CONSTRAINT axialType;
 
 	void Apply();
 

@@ -1844,7 +1844,7 @@ void PopupSelector::Draw_Object() {
 
 bool PopupSelector::Do_Draw_Object(const std::vector<pSceneObject>& objs, uint& off, uint inc) {
 	for (auto& o : objs) {
-		auto r = Engine::Button(1 + inc * 5, 20 + 17 * off, width - 2 - 5 * inc, 16, grey1(), o->name, 12, editor->font, white());
+		auto r = Engine::Button(1.0f + inc * 5.0f, 20.0f + 17.0f * off, width - 2.0f - 5.0f * inc, 16.0f, grey1(), o->name, 12, editor->font, white());
 		if (r == MOUSE_RELEASE) {
 			(*_browseTargetObj)(o);
 			return true;
@@ -1860,7 +1860,7 @@ bool PopupSelector::Do_Draw_Object(const std::vector<pSceneObject>& objs, uint& 
 
 void PopupSelector::Draw_Asset() {
 	for (uint a = 0; a < editor->normalAssets[assettype].size(); a++) {
-		Engine::Button(1, 20 + 17 * a, width - 2, 16, grey1(), editor->normalAssets[assettype][a], 12, editor->font, white());
+		Engine::Button(1.0f, 20.0f + 17 * a, width - 2.0f, 16.0f, grey1(), editor->normalAssets[assettype][a], 12, editor->font, white());
 	}
 }
 
@@ -3173,6 +3173,7 @@ void DoScanAssetsGet(Editor* e, std::vector<string>& list, string p, bool rec) {
 			else {
 				e->normalAssets[type].push_back(ww.substr(0, ww.find_last_of('\\')) + ww.substr(ww.find_last_of('\\') + 1, string::npos));
 				e->normalAssetCaches[type].push_back(nullptr);
+				e->normalAssetMakings[type].push_back(false);
 			}
 			if (type == ASSETTYPE_MATERIAL || type == ASSETTYPE_CAMEFFECT || type == ASSETTYPE_SCENE || type == ASSETTYPE_ANIMATION) //no meta file
 				continue;
@@ -3215,6 +3216,7 @@ void DoScanMeshesGet(Editor* e, std::vector<string>& list, string p, bool rec) {
 			ww = ww.substr(0, ww.find_last_of('\\')) + ww.substr(ww.find_last_of('\\') + 1, string::npos);
 			e->normalAssets[ASSETTYPE_MESH].push_back(ww.substr(0, ww.size()-10));
 			e->normalAssetCaches[ASSETTYPE_MESH].push_back(nullptr);
+			e->normalAssetMakings[ASSETTYPE_MESH].push_back(nullptr);
 		}
 	}
 	if (rec) {
@@ -3303,6 +3305,15 @@ void Editor::ResetAssetMap() {
 	normalAssetCaches[ASSETTYPE_ANIMCLIP] = std::vector<pAssetObject>(); //AnimClip*
 	normalAssetCaches[ASSETTYPE_ANIMATION] = std::vector<pAssetObject>(); //Animator*
 	normalAssetCaches[ASSETTYPE_CAMEFFECT] = std::vector<pAssetObject>(); //CameraEffect*
+
+	normalAssetMakings[ASSETTYPE_TEXTURE] = std::vector<bool>();
+	normalAssetMakings[ASSETTYPE_HDRI] = std::vector<bool>();
+	normalAssetMakings[ASSETTYPE_MATERIAL] = std::vector<bool>();
+	normalAssetMakings[ASSETTYPE_MESH] = std::vector<bool>();
+	normalAssetMakings[ASSETTYPE_BLEND] = std::vector<bool>();
+	normalAssetMakings[ASSETTYPE_ANIMCLIP] = std::vector<bool>();
+	normalAssetMakings[ASSETTYPE_ANIMATION] = std::vector<bool>();
+	normalAssetMakings[ASSETTYPE_CAMEFFECT] = std::vector<bool>();
 
 	if (!internalAssetsLoaded) {
 		internalAssets = std::unordered_map<ASSETTYPE, std::vector<string>>(normalAssets);
@@ -3452,7 +3463,7 @@ void Editor::AddBuildLog(Editor* e, string s, bool forceE) {
 	}
 }
 
-AssetObject* Editor::GetCache(ASSETTYPE type, int i) {
+AssetObject* Editor::GetCache(ASSETTYPE type, int i, bool async) {
 	if (i == -1)
 		return nullptr;
 	else if (i < 0) {
@@ -3462,16 +3473,27 @@ AssetObject* Editor::GetCache(ASSETTYPE type, int i) {
 			return internalAssetCaches[type][-i - 2].get();
 	}
 	else {
+		bool making = !normalAssetMakings[type][i];
 		AssetObject *data = normalAssetCaches[type][i].get();
-		if (data != nullptr)
+		if (!making && data)
 			return data;
 		else {
-			return GenCache(type, i);
+			if (async) {
+				if (!making) GenCache(type, i, true);
+				return nullptr;
+			}
+			else {
+				if (!making)
+					return GenCache(type, i);
+				else {
+					return nullptr;
+				}
+			}
 		}
 	}
 }
 
-AssetObject* Editor::GenCache(ASSETTYPE type, int i) {
+AssetObject* Editor::GenCache(ASSETTYPE type, int i, bool async) {
 	string pth = projectFolder + "Assets\\" + normalAssets[type][i];
 	switch (type) {
 	case ASSETTYPE_MESH:
