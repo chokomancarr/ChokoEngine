@@ -15,6 +15,9 @@ layout (std140, binding=5) buffer Vel {
 layout (std140, binding=6) buffer IO {
     ivec4 bonds[]; //is oxygen, p1, p2
 };
+layout(std140, binding = 7) buffer Prm {
+	float params[];
+};
 
 layout( local_size_x = 64, local_size_y = 1, local_size_z = 1 ) in;
 
@@ -27,21 +30,25 @@ void main()
     const float BOND_ANGLE = 109.47 * deg2rad;
     const float K_LINEAR = 345000; //kJ / mol nm^2
     const float K_RADIAL = 383; //kJ / mol rad^2
-    const float dt = 1e-4; //0.1fs
+    const float DT = 1e-4; //0.1fs
 
     const float MASS_H = 1.0;
     const float MASS_O = 15.99;
 
-    const float wall = 5;
+	const float wall = params[0];
     const vec3 wall3 = vec3(wall,wall,wall);
 
-    uint gid = gl_GlobalInvocationID.x;
+    const uint gid = gl_GlobalInvocationID.x;
     
     const float mass = mix(MASS_H, MASS_O, bonds[gid].x);
+	const uint num = uint(params[3]);
 
     vec3 fo = fors[gid].xyz;
     vec3 po = poss[gid].xyz;
     vec3 vo = vels[gid].xyz;
+
+	uint bid1 = gid;
+	uint bid2 = gid + 2;
 
     //------------- poss ------------------
 
@@ -70,32 +77,36 @@ void main()
     dir2 *= wall3;
     float dst2 = length(dir2);
     
-    vec3 f = K_LINEAR * normalize(dir) * (dst1 - BOND_LENGTH);
+    vec3 f = K_LINEAR * normalize(dir1) * (dst1 - BOND_LENGTH);
     
-    if (bonds.x == 1) {
-        force += K_LINEAR * Normalize(dir2) * (dst2 - BOND_LENGTH);
+    if (bonds[gid].x == 1) {
+		
+        f += K_LINEAR * normalize(dir2) * (dst2 - BOND_LENGTH);
         
         //H <--dir1-- me --dir2--> H
         vec3 t1 = normalize(cross(dir2, dir1));
         vec3 rdir1 = normalize(cross(dir1, t1));
         vec3 rdir2 = normalize(cross(t1, dir2));
         float angle = acos(clamp(dot(normalize(dir1), normalize(dir2)), -1, 1));
-        force += (rdir1/dst1 + rdir2/dst2)*K_RADIAL*(angle - BOND_ANGLE);
-    }
+        f += (rdir1/dst1 + rdir2/dst2)*K_RADIAL*(angle - BOND_ANGLE);
+	}
     else {
+		bid1 = bonds[gid].y;
+		bid2 = max(gid, bonds[gid].z);
+
         dir1 *= -1;
         dir2 -= dir1;
         //me <--dir1-- O --dir2--> H
         vec3 t1H = normalize(cross(dir2, dir1));
         vec3 rdir = normalize(cross(dir1, t1H));
         float angleH = acos(clamp(dot(normalize(dir1), normalize(dir2)), -1, 1));
-        force += (rdir / dst1)*K_RADIAL*(angleH - BOND_ANGLE);
+        f += (rdir / dst1)*K_RADIAL*(angleH - BOND_ANGLE);
     }
     
     //lennard-jones
-    /*
+    //*
     for (uint i = 0; i < num; i++) {
-        if (i != gid) {
+        if (i < bid1 || i > bid2) {
             vec3 dp = (pn - poss[i].xyz) / wall3;
             dp -= round(dp);
             dp *= wall3;
@@ -104,7 +115,7 @@ void main()
             f += dp * 24 * (2 / pow(len, 14) - 1 / pow(len, 8));
         }
     }
-    */
+    //*/
     fors[gid].xyz = f;
     
     //------------- velo ------------------

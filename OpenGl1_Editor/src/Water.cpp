@@ -64,7 +64,7 @@ struct iVec4 {
 	int x, y, z, w;
 };
 
-Water::Water(uint _c, float d, float t): particlecount((uint)pow(_c, 3) * 4 * 3), threads((uint)ceilf(particlecount / 64.0f)), dens(d), temp(t) {
+Water::Water(string path, uint _c, float d, float t): particlecount((uint)pow(_c, 3) * 4 * 3), threads((uint)ceilf(particlecount / 64.0f)), dens(d), temp(t) {
 	me = this;
 
 	frb = new ComputeBuffer<Vec4>(particlecount);
@@ -88,19 +88,19 @@ Water::Water(uint _c, float d, float t): particlecount((uint)pow(_c, 3) * 4 * 3)
 					pts[i] = pss[d];
 					ios[i].x = 1;
 					ios[i].y = i + 1;
-					ios[i].y = i + 2;
+					ios[i].z = i + 2;
 
 					Vec3 d1 = Normalize(Vec3(_rand, _rand, _rand));
 					Vec3 d2 = Normalize(Vec3(_rand, _rand, _rand));
 
 					pts[i + 1] = pss[d] + Vec4(d1 * BOND_LENGTH, 0);
-					ios[i].y = i;
-					ios[i].y = i + 2;
+					ios[i + 1].y = i;
+					ios[i + 1].z = i + 2;
 					Vec3 d3 = Normalize(cross(d1, d2));
 					Vec3 d4 = d1 * cos(BOND_ANGLE) + d3 * sin(BOND_ANGLE);
 					pts[i + 2] = pss[d] + Vec4(d4 * BOND_LENGTH, 0);
-					ios[i].y = i;
-					ios[i].y = i + 1;
+					ios[i + 2].y = i;
+					ios[i + 2].z = i + 1;
 
 					i += 3;
 				}
@@ -108,19 +108,65 @@ Water::Water(uint _c, float d, float t): particlecount((uint)pow(_c, 3) * 4 * 3)
 		}
 	}
 	psb = new ComputeBuffer<Vec4>(particlecount, pts);
+	iob = new ComputeBuffer<iVec4>(particlecount, ios);
+
+	Vec4* vls = new Vec4[particlecount];
+	Vec4 tot;
+	for (uint a = 0; a < particlecount; a++) {
+		vls[a] = Vec4(Random::Value() * 2 - 1, Random::Value() * 2 - 1, Random::Value() * 2 - 1, 0);
+		tot += vls[a];
+	}
+	tot /= (float)particlecount;
+	float myt = 0;
+	for (uint a = 0; a < particlecount; a++) {
+		vls[a] = vls[a] / tot;
+		myt += pow(vls[a].x, 2) + pow(vls[a].y, 2) + pow(vls[a].z, 2);
+	}
+	myt /= (particlecount * 3);
+	for (uint a = 0; a < particlecount; a++) {
+		vls[a] = vls[a] * sqrt(temp / myt);
+	}
+	vlb = new ComputeBuffer<Vec4>(particlecount, vls);
+
+	float* prm = new float[4];
+	prm[0] = wall;
+	prm[1] = temp;
+	prm[2] = dens;
+	prm[3] = particlecount + 0.1f;
+	prb = new ComputeBuffer<float>(4, prm);
+
+	shader = new ComputeShader(IO::GetText(path));
+	shader->SetBuffer(3, frb);
+	shader->SetBuffer(4, psb);
+	shader->SetBuffer(5, vlb);
+	shader->SetBuffer(6, iob);
+	shader->SetBuffer(7, prb);
 }
 
 double ta = 0, to = 0;
 
 void Water::Update() {
 
-	GLint bufmask = GL_MAP_READ_BIT | GL_MAP_WRITE_BIT;
-	for (uint n = 0; n < 5; n++) {
-
+	//GLint bufmask = GL_MAP_READ_BIT | GL_MAP_WRITE_BIT;
+	//for (uint n = 0; n < 5; n++) {
 		shader->Dispatch(threads, 1, 1);
-	}
+	//}
 }
 
 void Water::Draw() {
+	glBindBuffer(GL_ARRAY_BUFFER, psb->pointer);
+	glUseProgram(0);
 
+	glTranslatef(-wall / 2, -wall / 2, -wall / 2);
+
+	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+	glPointSize(4);
+	glEnableClientState(GL_VERTEX_ARRAY);
+	//glEnableClientState(GL_COLOR_ARRAY);
+	glVertexPointer(3, GL_FLOAT, 16, 0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	//glColorPointer(4, GL_FLOAT, 0, MD::me->colors);
+	glDrawArrays(GL_POINTS, 0, particlecount);
+	glDisableClientState(GL_VERTEX_ARRAY);
+	//glDisableClientState(GL_COLOR_ARRAY);
 }

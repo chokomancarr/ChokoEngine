@@ -1,4 +1,6 @@
 #pragma once
+#define _WATERY
+
 #include "Engine.h"
 
 const float _si_l = 1e-9;
@@ -35,14 +37,14 @@ class Water {
 public:
 	static Water* me;
 
-	Water(uint cnt, float d, float t);
+	Water(string path, uint cnt, float d, float t);
 
 	//std::vector<WaterParticle*> particles;
 
 	//static const WaterParticle* Get(uint i);
 	void Update(), Draw();
 
-	IComputeBuffer* frb, *psb, *vlb;
+	IComputeBuffer* frb, *psb, *vlb, *iob, *prb;
 	ComputeShader* shader;
 
 	float dens, temp, wall;

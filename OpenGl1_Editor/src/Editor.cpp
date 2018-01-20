@@ -17,6 +17,7 @@
 #include <GLFW\glfw3native.h>
 
 //#include "MD.h"
+#include "Water.h"
 
 UndoStack::UndoObj::UndoObj(void* loc, uint sz, uint nsz, UNDO_TYPE type, void* val, bool* dirty, string desc) :
 	loc(loc), type(type), sz(sz), nsz(nsz), desc(desc), dirty(dirty) {
@@ -890,6 +891,11 @@ void EB_Viewer::Draw() {
 
 	Engine::DrawCubeLinesW(0, MD::me->wall, 0, MD::me->wall, 0, MD::me->wall, 1, white());
 	*/
+
+#ifdef _WATERY
+	Water::me->Update();
+	Water::me->Draw();
+#endif
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();

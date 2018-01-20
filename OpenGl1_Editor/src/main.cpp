@@ -1,5 +1,6 @@
 #define _USE_MATH_DEFINES
 #define _ITERATOR_DEBUG_LEVEL 0
+
 #include "Engine.h"
 #include "Editor.h"
 #include <ctime>
@@ -15,6 +16,7 @@
 #define GLFW_EXPOSE_NATIVE_WGL
 #include <GLFW\glfw3native.h>
 //#include "MD.h"
+#include "Water.h"
 
 void MouseGL(GLFWwindow* window, int button, int state, int mods);
 void MouseScrGL(GLFWwindow* window, double xoff, double yoff);
@@ -159,6 +161,9 @@ int main(int argc, char **argv)
 	//vt = new VideoTexture("D:\\bg.mp4");
 
 	//new MD("D:\\md.compute", 4, 1, 1);
+#ifdef _WATERY
+	new Water("D:\\water.compute", 4, 1, 1);
+#endif
 
 	PopupSelector::Init();
 	glfwMakeContextCurrent(window);
