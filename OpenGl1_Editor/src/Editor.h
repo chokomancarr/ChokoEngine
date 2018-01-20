@@ -483,6 +483,9 @@ public:
 	static callbackFunc _browseCallback;
 	static void* _browseCallbackParam;
 
+	static bool drawIcons;
+	static float minIconSize;
+
 	static GLFWwindow* window;
 
 	static void Enable_Object(rSceneObject* target);

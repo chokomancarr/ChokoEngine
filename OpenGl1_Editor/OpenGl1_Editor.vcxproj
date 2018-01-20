@@ -157,6 +157,7 @@ xcopy /y "$(SolutionDir)Debug\Library\include\*" "D:\TestProject2\System\"</Comm
     <ClCompile Include="src\SceneObjects.cpp" />
     <ClCompile Include="src\Shader.cpp" />
     <ClCompile Include="src\Types.cpp" />
+    <ClCompile Include="src\Water.cpp" />
     <ClCompile Include="src\Xml.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -172,6 +173,7 @@ xcopy /y "$(SolutionDir)Debug\Library\include\*" "D:\TestProject2\System\"</Comm
     <ClInclude Include="src\MD.h" />
     <ClInclude Include="src\SceneObjects.h" />
     <ClInclude Include="src\SceneScriptResolver.h" />
+    <ClInclude Include="src\Water.h" />
     <ClInclude Include="src\Xml.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -189,6 +189,8 @@ int main(int argc, char **argv)
 
 			PopupSelector::Draw();
 
+			if (Input::KeyDown(Key_Escape)) PopupSelector::Close();
+
 			glfwSwapBuffers(PopupSelector::window);
 			glfwPollEvents();
 			glfwMakeContextCurrent(window);

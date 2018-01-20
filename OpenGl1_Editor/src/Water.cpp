@@ -1,6 +1,7 @@
 #include "Water.h"
 #include "Editor.h"
 
+/*
 void WaterParticle::repos() {
 	auto dp = velocity * dt + (force / (is_oxygen? MASS_O : MASS_H)) * dt * dt * 0.5;
 	position = position + dp;
@@ -51,49 +52,75 @@ void WaterParticle::f_bond() {
 		energy += 0.5 * MASS_H * glm::dot(velocity, velocity);
 	}
 }
-
+*/
 
 Water* Water::me = 0;
 
-const WaterParticle* Water::Get(uint i) {
-	return me->particles[i];
-}
+#define _rand (rand()%100 - 50)*0.02f
 
-void Water::Init() {
-	me = new Water();
-	me->particles.push_back(new WaterParticle());
-	me->particles.push_back(new WaterParticle());
-	me->particles.push_back(new WaterParticle());
-	//h1
-	me->particles[0]->p1 = 2;
-	me->particles[0]->p2 = 1;
-	me->particles[0]->position = dVec3(_ast * 1.05f, 0, 0);
-	me->particles[2]->is_oxygen = false;
-	//h2
-	me->particles[1]->p1 = 2;
-	me->particles[1]->p2 = 0;
-	me->particles[1]->position = dVec3(0, _ast*1.1f, 0);
-	me->particles[2]->is_oxygen = false;
-	//o
-	me->particles[2]->p1 = 0;
-	me->particles[2]->p2 = 1;
-	me->particles[2]->is_oxygen = true;
+struct iVec4 {
+	iVec4() : x(0), y(0), z(0), w(0) {}
+
+	int x, y, z, w;
+};
+
+Water::Water(uint _c, float d, float t): particlecount((uint)pow(_c, 3) * 4 * 3), threads((uint)ceilf(particlecount / 64.0f)), dens(d), temp(t) {
+	me = this;
+
+	frb = new ComputeBuffer<Vec4>(particlecount);
+
+	Vec4* pts = new Vec4[particlecount];
+	iVec4* ios = new iVec4[particlecount];
+
+	uint i = 0;
+	wall = pow(particlecount / d, 0.333f);
+	const float ds = wall / _c;
+	const float dds = ds / 4;
+	for (uint a = 0; a < _c; a++) {
+		for (uint b = 0; b < _c; b++) {
+			for (uint c = 0; c < _c; c++) {
+				Vec4 bp = Vec4(a, b, c, 0)*ds;
+				Vec4 pss[] = { bp + Vec4(dds, dds, dds, 0),
+					bp + Vec4(dds * 3, dds * 3, dds, 0),
+					bp + Vec4(dds * 3, dds, dds * 3, 0),
+					bp + Vec4(dds, dds * 3, dds * 3, 0) };
+				for (uint d = 0; d < 4; d++) {
+					pts[i] = pss[d];
+					ios[i].x = 1;
+					ios[i].y = i + 1;
+					ios[i].y = i + 2;
+
+					Vec3 d1 = Normalize(Vec3(_rand, _rand, _rand));
+					Vec3 d2 = Normalize(Vec3(_rand, _rand, _rand));
+
+					pts[i + 1] = pss[d] + Vec4(d1 * BOND_LENGTH, 0);
+					ios[i].y = i;
+					ios[i].y = i + 2;
+					Vec3 d3 = Normalize(cross(d1, d2));
+					Vec3 d4 = d1 * cos(BOND_ANGLE) + d3 * sin(BOND_ANGLE);
+					pts[i + 2] = pss[d] + Vec4(d4 * BOND_LENGTH, 0);
+					ios[i].y = i;
+					ios[i].y = i + 1;
+
+					i += 3;
+				}
+			}
+		}
+	}
+	psb = new ComputeBuffer<Vec4>(particlecount, pts);
 }
 
 double ta = 0, to = 0;
 
 void Water::Update() {
-	to = ta;
-	ta = 0;
-	for (auto& a : me->particles) {
-		a->repos();
-	}
-	for (auto& a : me->particles) {
-		a->f_bond();
-		ta += a->energy;
-		Engine::DrawQuad(Display::width*0.5f + (float)a->position.x * 1000, Display::height*0.5f + (float)a->position.y * 1000, 5, 5, white());
-	}
 
-	UI::Label(10, 10, 20, "Energy (J/mol):" + to_string(ta), Editor::instance->font, white());
-	UI::Label(10, 40, 20, "Energy change (d(J/mol)/dstep):" + to_string((ta-to)*Time::delta), Editor::instance->font, white());
+	GLint bufmask = GL_MAP_READ_BIT | GL_MAP_WRITE_BIT;
+	for (uint n = 0; n < 5; n++) {
+
+		shader->Dispatch(threads, 1, 1);
+	}
+}
+
+void Water::Draw() {
+
 }

@@ -12,6 +12,10 @@
 #include <thread>
 #include <filesystem>
 
+#define GLFW_EXPOSE_NATIVE_WIN32
+#define GLFW_EXPOSE_NATIVE_WGL
+#include <GLFW\glfw3native.h>
+
 //#include "MD.h"
 
 UndoStack::UndoObj::UndoObj(void* loc, uint sz, uint nsz, UNDO_TYPE type, void* val, bool* dirty, string desc) :
@@ -1709,11 +1713,10 @@ int* PopupSelector::_browseTarget;
 callbackFunc PopupSelector::_browseCallback;
 void* PopupSelector::_browseCallbackParam;
 
-GLFWwindow* PopupSelector::window;
+bool PopupSelector::drawIcons = false;
+float PopupSelector::minIconSize = 100;
 
-#define GLFW_EXPOSE_NATIVE_WIN32
-#define GLFW_EXPOSE_NATIVE_WGL
-#include <GLFW\glfw3native.h>
+GLFWwindow* PopupSelector::window;
 
 void PopupSelector::Init() {
 	glfwWindowHint(GLFW_VISIBLE, 0);
@@ -1805,7 +1808,7 @@ void PopupSelector::Draw() {
 		glDepthFunc(GL_LEQUAL);
 		glEnable(GL_BLEND);
 
-		if (editor->backgroundTex != nullptr)
+		if (editor->backgroundTex)
 			UI::Texture(0, 0, (float)width, (float)height, editor->backgroundTex, editor->backgroundAlpha*0.01f, DrawTex_Crop);
 
 		switch (_type) {
@@ -1848,7 +1851,6 @@ bool PopupSelector::Do_Draw_Object(const std::vector<pSceneObject>& objs, uint& 
 		if (r == MOUSE_RELEASE) {
 			(*_browseTargetObj)(o);
 			return true;
-			if (!!r) std::cout << (int)r << std::endl;
 		}
 		off++;
 		if (!!o->childCount) 
@@ -1859,8 +1861,24 @@ bool PopupSelector::Do_Draw_Object(const std::vector<pSceneObject>& objs, uint& 
 }
 
 void PopupSelector::Draw_Asset() {
-	for (uint a = 0; a < editor->normalAssets[assettype].size(); a++) {
-		Engine::Button(1.0f, 20.0f + 17 * a, width - 2.0f, 16.0f, grey1(), editor->normalAssets[assettype][a], 12, editor->font, white());
+	if (drawIcons) {
+		uint nx = (uint)ceil(width / minIconSize);
+		uint sx = width / nx;
+		for (uint a = 0; a < editor->normalAssets[assettype].size(); a++) {
+			//Engine::Button(1.0f, 20.0f + 17 * a, width - 2.0f, 16.0f, grey1(), editor->normalAssets[assettype][a], 12, editor->font, white());
+			uint px = a % nx;
+			uint py = a / nx;
+			Engine::DrawQuad(px * sx + 1, py * sx + 1, sx - 1, sx - 1, white());
+		}
+	}
+	else {
+		for (uint a = 0; a < editor->normalAssets[assettype].size(); a++) {
+			if (Engine::Button(1.0f, 20.0f + 17 * a, width - 2.0f, 16.0f, grey1(), editor->normalAssets[assettype][a], 12, editor->font, white()) == MOUSE_RELEASE) {
+				(*_browseTarget) = a;
+				if (_browseCallback) _browseCallback(_browseCallbackParam);
+				show = false;
+			}
+		}
 	}
 }
 
@@ -3473,7 +3491,7 @@ AssetObject* Editor::GetCache(ASSETTYPE type, int i, bool async) {
 			return internalAssetCaches[type][-i - 2].get();
 	}
 	else {
-		bool making = !normalAssetMakings[type][i];
+		bool making = normalAssetMakings[type][i];
 		AssetObject *data = normalAssetCaches[type][i].get();
 		if (!making && data)
 			return data;
