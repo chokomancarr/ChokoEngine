@@ -39,6 +39,17 @@ extern "C" FILE * __cdecl _imp___iob(void);
 #include <jpeglib.h>
 #include <jerror.h>
 
+
+enum PLATFORM : byte {
+	PLATFORM_WINDOWS,
+	PLATFORM_ANDROID
+};
+#if defined(PLATFORM_WIN)
+const PLATFORM platform = PLATFORM_WINDOWS;
+#elif defined(PLATFORM_ADR)
+const PLATFORM platform = PLATFORM_ANDROID;
+#endif
+
 #ifndef IS_EDITOR
 extern bool _pipemode;
 #endif
@@ -84,31 +95,7 @@ __asm mov nm, ebx }
 
 #pragma endregion
 
-const float PI = 3.1415926535f;
-const float rad2deg = 57.2958f;
-const float deg2rad = 0.0174533f;
-const char char0 = 0;
-
-#define Lerp(a, b, c) ((a)*(1-(c)) + (b)*(c))
-#define InverseLerp(a,b,c) (clamp( (c - a)/(b - a) , 0, 1))
-#define Normalize(a) glm::normalize(a)
-#define Distance(a, b) glm::distance(a, b)
-template <typename T> T Repeat(T t, T a, T b) {
-	while (t > b)
-		t -= (b - a);
-	while (t < a)
-		t += (b - a);
-	return t;
-}
-
-template <typename T> T min(const T& a, const T& b) {
-	if (a > b) return b;
-	return a;
-}
-template <typename T> T max(const T& a, const T& b) {
-	if (a > b) return a;
-	return b;
-}
+#pragma region Type Extensions
 
 typedef unsigned char byte;
 typedef unsigned int uint;
@@ -120,6 +107,45 @@ typedef glm::vec3 Vec3;
 typedef glm::vec4 Vec4;
 typedef glm::quat Quat;
 typedef glm::mat4 Mat4x4;
+
+const float PI = 3.1415926535f;
+const float rad2deg = 57.2958f;
+const float deg2rad = 0.0174533f;
+const char char0 = 0;
+
+template <typename T> T Lerp(T a, T b, float c) {
+	if (c < 0) return a;
+	else if (c > 1) return b;
+	else return a*(1 - c) + b*c;
+}
+#define InverseLerp(a,b,c) (Clamp( (float)((c - a)/(b - a)) , 0.0f, 1.0f))
+#define Normalize(a) glm::normalize(a)
+#define Distance(a, b) glm::distance(a, b)
+
+template <typename T> const T& min(const T& a, const T& b) {
+	if (a > b) return b;
+	return a;
+}
+template <typename T> const T& max(const T& a, const T& b) {
+	if (a > b) return a;
+	return b;
+}
+template <typename T> T Repeat(T t, T a, T b) {
+	while (t > b)
+		t -= (b - a);
+	while (t < a)
+		t += (b - a);
+	return t;
+}
+template <typename T> T Clamp(T t, T a, T b) {
+	return min(b, max(t, a));
+}
+
+//shorthands
+Vec4 black(float f = 1);
+Vec4 red(float f = 1, float i = 1), green(float f = 1, float i = 1), blue(float f = 1, float i = 1), cyan(float f = 1, float i = 1), yellow(float f = 1, float i = 1), white(float f = 1, float i = 1);
+
+#define push_val(var, nm, val) auto var = nm; nm = val;
 
 string to_string(float f);
 string to_string(double f);
@@ -134,7 +160,6 @@ int TryParse(string str, int defVal);
 uint TryParse(string str, uint defVal);
 float TryParse(string str, float defVal);
 
-class Mesh;
 class MatFunc {
 public:
 	static Mat4x4 FromTRS(const Vec3& t, const Quat& r, const Vec3& s);
@@ -142,7 +167,6 @@ public:
 class QuatFunc {
 public:
 	static Quat Inverse(const Quat&);
-	//static Vec3 Rotate(const Vec3&, const Quat&); //just use Q*V
 	static Vec3 ToEuler(const Quat&);
 	static Mat4x4 ToMatrix(const Quat&);
 	static Quat FromAxisAngle(Vec3, float);
@@ -188,12 +212,6 @@ protected:
 	static void DrawH(float x, float y, float w, float h);
 };
 
-class Procedurals {
-public:
-	static Mesh* Plane(uint xCount, uint yCount);
-	static Mesh* UVSphere(uint uCount, uint vCount);
-};
-
 class Rect {
 public:
 	Rect() : x(0), y(0), w(1), h(1) {}
@@ -202,13 +220,14 @@ public:
 	float x, y, w, h;
 
 	/*! Check if v is inside this rect.
-	 */
+	*/
 	bool Inside(const Vec2& v);
 	/*! Returns a new Rect covered by both this rect and r2
-	 */
+	*/
 	Rect Intersection(const Rect& r2);
 };
 
+/*
 class Int2 {
 public:
 	Int2() : x(0), y(0) {}
@@ -220,6 +239,17 @@ public:
 	{
 		return (x == rhs.x) && (y == rhs.y);
 	}
+};
+*/
+typedef glm::tvec2<int, glm::highp> Int2;
+
+#pragma endregion
+
+class Mesh;
+class Procedurals {
+public:
+	static Mesh* Plane(uint xCount, uint yCount);
+	static Mesh* UVSphere(uint uCount, uint vCount);
 };
 
 class Random {
@@ -268,7 +298,6 @@ class Editor;
 class EditorBlock;
 class EB_Inspector;
 
-//typedef unsigned char ASSETTYPE;
 enum ASSETTYPE : byte {
 	ASSETTYPE_UNDEF = 0x00,
 
@@ -290,13 +319,6 @@ enum ASSETTYPE : byte {
 };
 typedef int ASSETID;
 
-//shorthands
-Vec4 black(float f = 1);
-Vec4 red(float f = 1, float i = 1), green(float f = 1, float i = 1), blue(float f = 1, float i = 1), cyan(float f = 1, float i = 1), yellow(float f = 1, float i = 1), white(float f = 1, float i = 1);
-Vec4 LerpVec4(Vec4 a, Vec4 b, float f);
-float clamp(float f, float a, float b);
-#define Clamp(f,a,b) min(b, max(f, a))
-float repeat(float f, float a, float b);
 //Vec3 rotate(Vec3 v, Quat q);
 void _StreamWrite(const void* val, std::ofstream* stream, int size);
 void _StreamWriteAsset(Editor* e, std::ofstream* stream, ASSETTYPE t, ASSETID i);
@@ -451,7 +473,9 @@ class EB_Browser_File;
 class IO {
 public:
 	static std::vector<string> GetFiles(const string& path, string ext = "");
+#ifdef IS_EDITOR
 	static std::vector<EB_Browser_File> GetFilesE(Editor* e, const string& path);
+#endif
 	static void GetFolders(const string& path, std::vector<string>* names, bool hidden = false);
 	static bool HasDirectory(string szPath);
 	static bool HasFile(string szPath);

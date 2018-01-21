@@ -34,6 +34,14 @@ string to_string(Quat v) {
 	return "(" + to_string(v.w) + ", " + to_string(v.x) + ", " + to_string(v.y) + ", " + to_string(v.z) + ")";
 }
 
+Vec4 black(float f) { return Vec4(0, 0, 0, f); }
+Vec4 red(float f, float i) { return Vec4(i, 0, 0, f); }
+Vec4 green(float f, float i) { return Vec4(0, i, 0, f); }
+Vec4 blue(float f, float i) { return Vec4(0, 0, i, f); }
+Vec4 cyan(float f, float i) { return Vec4(i*0.09f, i*0.706f, i, f); }
+Vec4 yellow(float f, float i) { return Vec4(i, i, 0, f); }
+Vec4 white(float f, float i) { return Vec4(i, i, i, f); }
+
 std::vector<string> string_split(string s, char c) {
 	std::vector<string> o = std::vector<string>();
 	size_t pos = -1;
@@ -129,7 +137,7 @@ void Color::Rgb2Hsv(byte r, byte g, byte b, float& h, float& s, float& v) {
 
 void Color::Hsv2Rgb(float h, float s, float v, byte& r, byte& g, byte& b) {
 	Vec4 cb = HueBaseCol(h);
-	Vec4 c(LerpVec4(LerpVec4(cb, Vec4(1, 1, 1, 1), 1 - s), Vec4(), 1-v));
+	Vec4 c(Lerp(Lerp(cb, Vec4(1, 1, 1, 1), 1 - s), Vec4(), 1 - v));
 	r = (byte)round(c.r*255);
 	g = (byte)round(c.g*255);
 	b = (byte)round(c.b*255);
@@ -200,9 +208,9 @@ void Color::DrawPicker(float x, float y, Color& c) {
 Vec4 Color::HueBaseCol(float hue) {
 	hue *= 6;
 	Vec4 v;
-	v.r = clamp(abs(hue - 3) - 1, 0, 1);
-	v.g = 1 - clamp(abs(hue - 2) - 1, 0, 1);
-	v.b = 1 - clamp(abs(hue - 4) - 1, 0, 1);
+	v.r = Clamp(abs(hue - 3) - 1, 0.0f, 1.0f);
+	v.g = 1 - Clamp(abs(hue - 2) - 1, 0.0f, 1.0f);
+	v.b = 1 - Clamp(abs(hue - 4) - 1, 0.0f, 1.0f);
 	v.a = 1;
 	return v;
 }
@@ -809,10 +817,10 @@ MOUSE_STATUS Engine::Button(float x, float y, float w, float h) {
 	return Rect(x, y, w, h).Inside(Input::mousePos) ? MOUSE_STATUS(MOUSE_HOVER_FLAG | Input::mouse0State) : MOUSE_NONE;
 }
 MOUSE_STATUS Engine::Button(float x, float y, float w, float h, Vec4 normalVec4) {
-	return Button(x, y, w, h, normalVec4, LerpVec4(normalVec4, white(), 0.5f), LerpVec4(normalVec4, black(), 0.5f));
+	return Button(x, y, w, h, normalVec4, Lerp(normalVec4, white(), 0.5f), Lerp(normalVec4, black(), 0.5f));
 }
 MOUSE_STATUS Engine::Button(float x, float y, float w, float h, Vec4 normalVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4, bool labelCenter) {
-	return Button(x, y, w, h, normalVec4, LerpVec4(normalVec4, white(), 0.5f), LerpVec4(normalVec4, black(), 0.5f), label, labelSize, labelFont, labelVec4, labelCenter);
+	return Button(x, y, w, h, normalVec4, Lerp(normalVec4, white(), 0.5f), Lerp(normalVec4, black(), 0.5f), label, labelSize, labelFont, labelVec4, labelCenter);
 }
 MOUSE_STATUS Engine::Button(float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4) {
 	if (!UI::focused || (Input::mouse0State != 0 && !Rect(x, y, w, h).Inside(Input::mouseDownPos))) {
@@ -868,7 +876,7 @@ MOUSE_STATUS Engine::Button(float x, float y, float w, float h, Vec4 normalVec4,
 }
 
 MOUSE_STATUS Engine::EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4) {
-	return EButton(a, x, y, w, h, normalVec4, LerpVec4(normalVec4, white(), 0.5f), LerpVec4(normalVec4, black(), 0.5f));
+	return EButton(a, x, y, w, h, normalVec4, Lerp(normalVec4, white(), 0.5f), Lerp(normalVec4, black(), 0.5f));
 }
 MOUSE_STATUS Engine::EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4) {
 	if (Input::mouse0State != 0 && !Rect(x, y, w, h).Inside(Input::mouseDownPos)) {
@@ -899,10 +907,10 @@ MOUSE_STATUS Engine::EButton(bool a, float x, float y, float w, float h, Vec4 no
 	}
 }
 MOUSE_STATUS Engine::EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4) {
-	return EButton(a, x, y, w, h, normalVec4, LerpVec4(normalVec4, white(), 0.5f), LerpVec4(normalVec4, black(), 0.5f), label, labelSize, labelFont, labelVec4);
+	return EButton(a, x, y, w, h, normalVec4, Lerp(normalVec4, white(), 0.5f), Lerp(normalVec4, black(), 0.5f), label, labelSize, labelFont, labelVec4);
 }
 MOUSE_STATUS Engine::EButton(bool a, float x, float y, float w, float h, Texture* texture, Vec4 Vec4) {
-	return EButton(a, x, y, w, h, texture, Vec4, LerpVec4(Vec4, white(), 0.5f), LerpVec4(Vec4, black(), 0.5f));
+	return EButton(a, x, y, w, h, texture, Vec4, Lerp(Vec4, white(), 0.5f), Lerp(Vec4, black(), 0.5f));
 }
 MOUSE_STATUS Engine::EButton(bool a, float x, float y, float w, float h, Texture* texture, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4) {
 	if (Input::mouse0State != 0 && !Rect(x, y, w, h).Inside(Input::mouseDownPos)) {
@@ -933,7 +941,7 @@ MOUSE_STATUS Engine::EButton(bool a, float x, float y, float w, float h, Texture
 	}
 }
 MOUSE_STATUS Engine::EButton(bool a, float x, float y, float w, float h, Vec4 normalVec4, Vec4 highlightVec4, Vec4 pressVec4, string label, float labelSize, Font* labelFont, Vec4 labelVec4) {
-	MOUSE_STATUS b = EButton(a, x, y, w, h, normalVec4, LerpVec4(normalVec4, white(), 0.5f), LerpVec4(normalVec4, black(), 0.5f));
+	MOUSE_STATUS b = EButton(a, x, y, w, h, normalVec4, Lerp(normalVec4, white(), 0.5f), Lerp(normalVec4, black(), 0.5f));
 	ALIGNMENT al = labelFont->alignment;
 	labelFont->alignment = ALIGN_MIDLEFT;
 	UI::Label(round(x + 2), round(y + 0.4f*h), labelSize, label, labelFont, labelVec4);
@@ -950,11 +958,11 @@ bool Engine::Toggle(float x, float y, float s, Vec4 col, bool t) {
 bool Engine::Toggle(float x, float y, float s, Texture* texture, bool t, Vec4 col, ORIENTATION o) {
 	byte b;
 	if (o == 0)
-		b = Button(x, y, s, s, texture, col, LerpVec4(col, white(), 0.5f), LerpVec4(col, black(), 0.5f));
+		b = Button(x, y, s, s, texture, col, Lerp(col, white(), 0.5f), Lerp(col, black(), 0.5f));
 	else if (o == 1)
-		b = Button(x, y, s, s, texture, col, LerpVec4(col, white(), 0.5f), LerpVec4(col, black(), 0.5f), t ? 0.5f : 0, 0, 0.5f, 1);
+		b = Button(x, y, s, s, texture, col, Lerp(col, white(), 0.5f), Lerp(col, black(), 0.5f), t ? 0.5f : 0, 0, 0.5f, 1);
 	else
-		b = Button(x, y, s, s, texture, col, LerpVec4(col, white(), 0.5f), LerpVec4(col, black(), 0.5f), 0, t ? 0.5f : 0, 1, 0.5f);
+		b = Button(x, y, s, s, texture, col, Lerp(col, white(), 0.5f), Lerp(col, black(), 0.5f), 0, t ? 0.5f : 0, 1, 0.5f);
 	if (b == MOUSE_RELEASE)
 		t = !t;
 	return t;
@@ -962,11 +970,11 @@ bool Engine::Toggle(float x, float y, float s, Texture* texture, bool t, Vec4 co
 
 float Engine::DrawSliderFill(float x, float y, float w, float h, float min, float max, float val, Vec4 background, Vec4 foreground) {
 	DrawQuad(x, y, w, h, background);
-	val = clamp(val, min, max);
+	val = Clamp(val, min, max);
 	float v = val, vv = (val - min)/(max-min);
 	if (Rect(x, y, w, h).Inside(Input::mouseDownPos)) {
 		if (Input::mouse0) {
-			vv = clamp((Input::mousePos.x - (x+1)) / (w-2), 0, 1);
+			vv = Clamp((Input::mousePos.x - (x+1)) / (w-2), 0.0f, 1.0f);
 			v = vv*(max - min) + min;
 			DrawQuad(x + 1, y + 1, (w - 2)*vv, h - 2, foreground*white(1, 0.4f));
 			return v;
@@ -977,11 +985,11 @@ float Engine::DrawSliderFill(float x, float y, float w, float h, float min, floa
 }
 float Engine::DrawSliderFillY(float x, float y, float w, float h, float min, float max, float val, Vec4 background, Vec4 foreground) {
 	DrawQuad(x, y, w, h, background);
-	val = clamp(val, min, max);
+	val = Clamp(val, min, max);
 	float v = val, vv = (val - min) / (max - min);
 	if (Rect(x, y, w, h).Inside(Input::mouseDownPos)) {
 		if (Input::mouse0) {
-			vv = clamp((Input::mousePos.y - (y + 1)) / (h - 2), 0, 1);
+			vv = Clamp((Input::mousePos.y - (y + 1)) / (h - 2), 0.0f, 1.0f);
 			v = vv*(max - min) + min;
 			DrawQuad(x + 1, y + 1 + (h-2)*(1-vv), w - 2, (h - 2)*vv, foreground*white(1, 0.4f));
 			return v;
@@ -1010,7 +1018,7 @@ Vec2 Engine::DrawSliderFill2D(float x, float y, float w, float h, Vec2 min, Vec2
 
 void Engine::DrawProgressBar(float x, float y, float w, float h, float progress, Vec4 background, Texture* foreground, Vec4 tint, int padding, byte clip) {
 	DrawQuad(x, y, w, h, background);
-	progress = clamp(progress, 0, 100)*0.01f;
+	progress = Clamp(progress, 0.0f, 100.0f)*0.01f;
 	float tx = (clip == 0) ? 1 : ((clip == 1) ? progress : w*progress / h);
 	DrawQuad(x + padding, y + padding, w*progress - 2 * padding, h - 2 * padding, foreground->pointer, Vec2(0, 1), Vec2(tx, 1), Vec2(0, 0), Vec2(tx, 0), false, tint);
 }
@@ -1646,14 +1654,9 @@ double Time::time = 0;
 float Time::delta = 0;
 
 //-----------------Vec4s--------------------------
-Vec4 black(float f) { return Vec4(0, 0, 0, f); }
-Vec4 red(float f, float i) { return Vec4(i, 0, 0, f); }
-Vec4 green(float f, float i) { return Vec4(0, i, 0, f); }
-Vec4 blue(float f, float i) { return Vec4(0, 0, i, f); }
-Vec4 cyan(float f, float i) { return Vec4(i*0.09f, i*0.706f, i, f); }
-Vec4 yellow(float f, float i) { return Vec4(i, i, 0, f); }
-Vec4 white(float f, float i) { return Vec4(i, i, i, f); }
-Vec4 LerpVec4(Vec4 a, Vec4 b, float f) {
+
+/*
+Vec4 Lerp(Vec4 a, Vec4 b, float f) {
 	if (f > 1)
 		return b;
 	else if (f < 0)
@@ -1684,6 +1687,8 @@ float repeat(float f, float a, float b) {
 	}
 	return fn;
 }
+
+*/
 
 //-----------------font class---------------------
 FT_Library Font::_ftlib = nullptr;

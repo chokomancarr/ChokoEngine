@@ -277,7 +277,7 @@ void EB_Debug::Refresh() {
 
 void EB_Debug::OnMouseScr(bool up) {
 	scrollOffset += up ? 17 : -17;
-	scrollOffset = clamp(scrollOffset, 0, max(maxScroll - (Display::height*(editor->yPoss[y2] - editor->yPoss[y1]) - EB_HEADER_SIZE - 1), 0.0f));
+	scrollOffset = Clamp(scrollOffset, 0.0f, max(maxScroll - (Display::height*(editor->yPoss[y2] - editor->yPoss[y1]) - EB_HEADER_SIZE - 1), 0.0f));
 }
 
 
@@ -418,7 +418,7 @@ void EB_Hierarchy::Draw() {
 
 void EB_Hierarchy::OnMouseScr(bool up) {
 	scrollOffset += up ? -17 : 17;
-	scrollOffset = clamp(scrollOffset, 0, max(maxScroll - (Display::height*(editor->yPoss[y2] - editor->yPoss[y1]) - EB_HEADER_SIZE - 1), 0.0f));
+	scrollOffset = Clamp(scrollOffset, 0.0f, max(maxScroll - (Display::height*(editor->yPoss[y2] - editor->yPoss[y1]) - EB_HEADER_SIZE - 1), 0.0f));
 }
 
 HICON GetHighResolutionIcon(LPTSTR pszPath)
@@ -1220,7 +1220,7 @@ void EB_Inspector::DrawObj(Vec4 v, Editor* editor, EB_Inspector* b, SceneObject*
 
 void EBI_DrawAss_Tex(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 	Texture* tex = (Texture*)editor->selectedFileCache;
-	float sz = min(v.b - 2.0f, clamp((float)max(tex->width, tex->height), 16.0f, editor->_maxPreviewSize));
+	float sz = min(v.b - 2.0f, Clamp((float)max(tex->width, tex->height), 16.0f, (float)editor->_maxPreviewSize));
 	UI::Texture(v.r + 1 + 0.5f*(v.b - sz), off + 15, sz, sz, tex, DrawTex_Fit, b->previewMip);
 	if (tex->_mipmap) {
 		UI::Texture(v.r + 2, off + sz + 17, 16, 16, editor->tex_mipLow);
@@ -1283,7 +1283,7 @@ void EBI_DrawAss_Mat(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 
 void EBI_DrawAss_Hdr(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 	Background* tex = (Background*)editor->selectedFileCache;
-	float sz = min(v.b - 2.0f, clamp((float)max(tex->width, tex->height), 16.0f, editor->_maxPreviewSize));
+	float sz = min(v.b - 2.0f, Clamp((float)max(tex->width, tex->height), 16.0f, (float)editor->_maxPreviewSize));
 	float x = v.r + 1 + 0.5f*(v.b - sz);
 	float y = off + 15;
 	float w2h = ((float)tex->width) / tex->height;
@@ -1396,7 +1396,7 @@ void EB_Inspector::Draw() {
 
 void EB_Inspector::OnMouseScr(bool up) {
 	scrollOffset += up ? -17 : 17;
-	scrollOffset = clamp(scrollOffset, 0, max(maxScroll - (Display::height*(editor->yPoss[y2] - editor->yPoss[y1]) - EB_HEADER_SIZE - 1), 0.0f));
+	scrollOffset = Clamp(scrollOffset, 0.0f, max(maxScroll - (Display::height*(editor->yPoss[y2] - editor->yPoss[y1]) - EB_HEADER_SIZE - 1), 0.0f));
 }
 
 void EB_Inspector::DrawGlobal(Vec4 v) {
@@ -1874,7 +1874,7 @@ void PopupSelector::Draw_Asset() {
 			//Engine::Button(1.0f, 20.0f + 17 * a, width - 2.0f, 16.0f, grey1(), editor->normalAssets[assettype][a], 12, editor->font, white());
 			uint px = a % nx;
 			uint py = a / nx;
-			Engine::DrawQuad(px * sx + 1, py * sx + 1, sx - 1, sx - 1, white());
+			Engine::DrawQuad(px * sx + 1.0f, py * sx + 1.0f, sx - 1.0f, sx - 1.0f, white());
 		}
 	}
 	else {
@@ -2190,7 +2190,7 @@ bool Editor_PlaySyncer::ReloadTex() {
 
 void Editor::DrawObjectSelector(float x, float y, float w, float h, Vec4 col, float labelSize, Font* labelFont, rSceneObject* tar) {
 	if (editorLayer == 0) {
-		if (Engine::Button(x, y, w, h, col, LerpVec4(col, white(), 0.5f), LerpVec4(col, black(), 0.5f)) == MOUSE_RELEASE) {
+		if (Engine::Button(x, y, w, h, col, Lerp(col, white(), 0.5f), Lerp(col, black(), 0.5f)) == MOUSE_RELEASE) {
 
 			PopupSelector::Enable_Object(tar);
 		}
@@ -2217,7 +2217,7 @@ void Editor::DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASS
 			selectedFile = *tar;
 		}
 	}
-	byte b = Engine::EButton(editorLayer == 0, (*tar == -1) ? x : x + h + 1, y, w, h, col, LerpVec4(col, white(), 0.1f), LerpVec4(col, black(), 0.5f));
+	byte b = Engine::EButton(editorLayer == 0, (*tar == -1) ? x : x + h + 1, y, w, h, col, Lerp(col, white(), 0.1f), Lerp(col, black(), 0.5f));
 	if (b & MOUSE_HOVER_FLAG) {
 		if (*tar > -1) {
 			pendingPreview = true;
@@ -2242,7 +2242,7 @@ void Editor::DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASS
 
 void Editor::DrawCompSelector(float x, float y, float w, float h, Vec4 col, float labelSize, Font* labelFont, CompRef* tar, callbackFunc func, void* param) {
 	if (editorLayer == 0) {
-		if (Engine::Button(x, y, w, h, col, LerpVec4(col, white(), 0.5f), LerpVec4(col, black(), 0.5f)) == MOUSE_RELEASE) {
+		if (Engine::Button(x, y, w, h, col, Lerp(col, white(), 0.5f), Lerp(col, black(), 0.5f)) == MOUSE_RELEASE) {
 			editorLayer = 3;
 			browseIsComp = true;
 			browseTargetComp = tar;
@@ -2891,7 +2891,7 @@ dh = 1.0f / Display::height;
 			}
 			else {
 				Engine::DrawQuad(Input::mousePosRelative.x*Display::width - 2, 0.0f, 4.0f, (float)Display::height, white(0.7f, 1));
-				xPoss[activeX] = clamp(Input::mousePosRelative.x, dw * 2, 1 - dw * 5);
+				xPoss[activeX] = Clamp(Input::mousePosRelative.x, dw * 2, 1 - dw * 5);
 			}
 			moused = true;
 		}
@@ -2901,7 +2901,7 @@ dh = 1.0f / Display::height;
 			}
 			else {
 				Engine::DrawQuad(0.0f, Input::mousePosRelative.y*Display::height - 2, (float)Display::width, 4.0f, white(0.7f, 1));
-				yPoss[activeY] = clamp(Input::mousePosRelative.y, dh * 2, 1 - dh * 5);
+				yPoss[activeY] = Clamp(Input::mousePosRelative.y, dh * 2, 1 - dh * 5);
 			}
 			moused = true;
 		}
