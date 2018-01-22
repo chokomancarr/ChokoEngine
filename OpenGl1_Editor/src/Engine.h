@@ -26,8 +26,8 @@ Global stuff, normally not macro-protected
 #if defined(IS_EDITOR) || defined(PLATFORM_WIN)
 #include <Windows.h>
 #endif
-#include <gl/glew.h>
-#include <GLFW\glfw3.h>
+#include <glew.h>
+#include <glfw3.h>
 #include <string>
 #include <iostream>
 #include <fstream>
@@ -563,7 +563,6 @@ ASSETID _Strm2H(std::istream& strm);
 
 string _Strm2Asset(std::istream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int maxL = 100);
 
-#ifndef CHOKO_LAIT
 template<typename T> T* _GetCache(ASSETTYPE t, ASSETID i, bool async = false) {
 #ifdef IS_EDITOR
 	return static_cast<T*>(Editor::instance->GetCache(t, i, async));
@@ -571,7 +570,6 @@ template<typename T> T* _GetCache(ASSETTYPE t, ASSETID i, bool async = false) {
 	return static_cast<T*>(AssetManager::GetCache(t, i));
 #endif
 }
-#endif
 
 template <class T> std::shared_ptr<T> get_shared(Object* ref) {
 	return std::dynamic_pointer_cast<T> (ref->shared_from_this());
@@ -587,6 +585,7 @@ public:
 	static void ObjectTree(const std::vector<pSceneObject>& o);
 
 	friend int main(int argc, char **argv);
+	friend class ChokoLait;
 protected:
 	static std::ofstream* stream;
 	static void Init(string path);
@@ -607,14 +606,14 @@ public:
 	static bool HasDirectory(string szPath);
 	static bool HasFile(string szPath);
 	static string ReadFile(const string& path);
-#if defined(IS_EDITOR) || defined(H_PLATFORM_WIN)
+#if defined(IS_EDITOR) || defined(PLATFORM_WIN)
 	static std::vector<string> GetRegistryKeys(HKEY key);
 #endif
 	static string GetText(const string& path);
 	static std::vector<byte> GetBytes(const string& path);
 };
 
-#ifdef H_PLATFORM_WIN
+#ifdef PLATFORM_WIN
 class WinFunc {
 public:
 	static HWND GetHwndFromProcessID(DWORD id);
@@ -697,6 +696,7 @@ public:
 	friend void MotionGL(GLFWwindow* window, double x, double y);
 	friend void FocusGL(GLFWwindow* window, int focus);
 	friend class PopupSelector;
+	friend class ChokoLait;
 protected:
 	static GLFWwindow* window;
 };
@@ -902,6 +902,7 @@ public:
 	//static std::unordered_map<string, byte[]> assetDataLoaded;
 	//byte GetAsset(string name);
 	friend int main(int argc, char **argv);
+	friend class ChokoLait;
 protected:
 	static void Init(string path = "");
 	static bool LoadDatas(string path);

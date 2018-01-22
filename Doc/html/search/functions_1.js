@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['get',['Get',['../classIComputeBuffer.html#ac2692887d2ba08baa0185c7dfefb5dee',1,'IComputeBuffer']]]
+  ['computeshader',['ComputeShader',['../classComputeShader.html#a7250a23735682e8b8d787a80bd63cd15',1,'ComputeShader']]]
 ];

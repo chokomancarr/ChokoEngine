@@ -64,14 +64,14 @@ $(function() {
 <a href="#pub-static-methods">Static Public Member Functions</a> &#124;
 <a href="#pub-attribs">Data Fields</a> &#124;
 <a href="#pub-static-attribs">Static Public Attributes</a> &#124;
-<a href="#pro-methods">Protected Member Functions</a> &#124;
-<a href="#pro-static-methods">Static Protected Member Functions</a> &#124;
 <a href="#pro-static-attribs">Static Protected Attributes</a> &#124;
 <a href="#friends">Friends</a>  </div>
   <div class="headertitle">
 <div class="title">Scene Class Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
+
+<p><code>#include &lt;<a class="el" href="SceneObjects_8h_source.html">SceneObjects.h</a>&gt;</code></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
 Data Structures</h2></td></tr>
@@ -131,24 +131,8 @@ std::vector&lt; <a class="el" href="classComponent.html">Component</a> * &gt;&#1
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-attribs"></a>
 Static Public Attributes</h2></td></tr>
-<tr class="memitem:aea44855802273b76c57d18d15b262a04"><td class="memItemLeft" align="right" valign="top"><a id="aea44855802273b76c57d18d15b262a04"></a>
-static <a class="el" href="classScene.html">Scene</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>active</b></td></tr>
+<tr class="memitem:aea44855802273b76c57d18d15b262a04"><td class="memItemLeft" align="right" valign="top">static <a class="el" href="classScene.html">Scene</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classScene.html#aea44855802273b76c57d18d15b262a04">active</a></td></tr>
 <tr class="separator:aea44855802273b76c57d18d15b262a04"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table><table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pro-methods"></a>
-Protected Member Functions</h2></td></tr>
-<tr class="memitem:a2effbeaac8f6dcdb54279d3fc73ee86b"><td class="memItemLeft" align="right" valign="top"><a id="a2effbeaac8f6dcdb54279d3fc73ee86b"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>Save</b> (Editor *e)</td></tr>
-<tr class="separator:a2effbeaac8f6dcdb54279d3fc73ee86b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table><table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pro-static-methods"></a>
-Static Protected Member Functions</h2></td></tr>
-<tr class="memitem:a9d5d059417414a47b2c4c15d9130d0d6"><td class="memItemLeft" align="right" valign="top"><a id="a9d5d059417414a47b2c4c15d9130d0d6"></a>
-static void&#160;</td><td class="memItemRight" valign="bottom"><b>ReadD0</b> ()</td></tr>
-<tr class="separator:a9d5d059417414a47b2c4c15d9130d0d6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a97f1a4098b1f91a52fd9ea8e69a2f7b1"><td class="memItemLeft" align="right" valign="top"><a id="a97f1a4098b1f91a52fd9ea8e69a2f7b1"></a>
-static void&#160;</td><td class="memItemRight" valign="bottom"><b>Unload</b> ()</td></tr>
-<tr class="separator:a97f1a4098b1f91a52fd9ea8e69a2f7b1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pro-static-attribs"></a>
 Static Protected Attributes</h2></td></tr>
@@ -186,8 +170,34 @@ class&#160;</td><td class="memItemRight" valign="bottom"><b>Component</b></td></
 int&#160;</td><td class="memItemRight" valign="bottom"><b>main</b> (int argc, char **argv)</td></tr>
 <tr class="separator:a3c04138a5bfe5d72780bb7e82a18e627"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>A scene contains everything in a level. </p>
+</div><h2 class="groupheader">Field Documentation</h2>
+<a id="aea44855802273b76c57d18d15b262a04"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aea44855802273b76c57d18d15b262a04">&#9670;&nbsp;</a></span>active</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classScene.html">Scene</a>* Scene::active</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">static</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>The current active scene. In Lait versions, this value cannot be changed. </p>
+
+</div>
+</div>
 <hr/>The documentation for this class was generated from the following file:<ul>
-<li>C:/Users/Pua Kai/Documents/GitHub/ChokoEngine/OpenGl1_Editor/src/<a class="el" href="Engine_8h_source.html">Engine.h</a></li>
+<li>C:/Users/Pua Kai/Documents/GitHub/ChokoEngine/OpenGl1_Editor/src/<a class="el" href="SceneObjects_8h_source.html">SceneObjects.h</a></li>
 </ul>
 </div><!-- contents -->
 <!-- start footer part -->

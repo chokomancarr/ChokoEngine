@@ -247,6 +247,7 @@ bool EB_Viewer::_AddObjAsCh(pSceneObject sc, const string& nm, std::vector<pScen
 	return false;
 }
 void LoadMeshMeta(std::vector<pSceneObject>& os, string& path) {
+#ifndef CHOKO_LAIT
 	for (auto& o : os) {
 		string nn(path.substr(Editor::instance->projectFolder.size() + 7, string::npos));
 		int r = 0;
@@ -276,7 +277,9 @@ void LoadMeshMeta(std::vector<pSceneObject>& os, string& path) {
 		//}
 		LoadMeshMeta(o->children, path);
 	}
+#endif
 }
+
 void EB_Viewer::_DoAddObjectBl(EditorBlock* b, void* v) {
 	string name = *((string*)v);
 	string path = b->editor->projectFolder + "Assets\\" + name + ".meta";
@@ -639,10 +642,14 @@ void Editor::TogglePlay(Editor* e) {
 }
 
 void Editor::Undo(Editor* e) {
+#ifdef IS_EDITOR
 	UndoStack::Undo();
+#endif
 }
 void Editor::Redo(Editor* e) {
+#ifdef IS_EDITOR
 	UndoStack::Redo();
+#endif
 }
 
 void GetSceneFiles(string path, string sub, std::vector<string>& list) {
@@ -659,6 +666,7 @@ void GetSceneFiles(string path, string sub, std::vector<string>& list) {
 }
 
 void Editor::OpenScene(Editor* e) {
+#ifdef IS_EDITOR
 	std::vector<string> scenes;
 	GetSceneFiles(e->projectFolder + "Assets\\", "", scenes);
 	std::vector<void*> v;
@@ -666,9 +674,11 @@ void Editor::OpenScene(Editor* e) {
 		v.push_back(new string(s));
 	}
 	e->RegisterMenu(nullptr, "Open Scene", scenes, &DoOpenScene, v, 0);
+#endif
 }
 
 void Editor::DoOpenScene(EditorBlock* b, void* v) {
+#ifdef IS_EDITOR
 	//if (Editor::instance->sceneLoaded)
 	//	delete(&Editor::instance->activeScene);
 	if (Scene::active != nullptr) Scene::active->Unload();
@@ -677,4 +687,5 @@ void Editor::DoOpenScene(EditorBlock* b, void* v) {
 	if (Editor::instance->activeScene) delete(Editor::instance->activeScene);
 	Editor::instance->activeScene = new Scene(s, 0);
 	Scene::active = Editor::instance->activeScene;
+#endif
 }

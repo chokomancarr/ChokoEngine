@@ -295,20 +295,7 @@ MeshFilter::MeshFilter() : Component("Mesh Filter", COMP_MFT, DRAWORDER_NONE), _
 
 }
 
-
 #ifdef IS_EDITOR
-void MeshFilter::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
-	//MeshFilter* mft = (MeshFilter*)c;
-	if (DrawComponentHeader(e, v, pos, this)) {
-		UI::Label(v.r + 2, v.g + pos + 20, 12, "Mesh", e->font, white());
-		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 17, v.b*0.7f, 16, grey1(), ASSETTYPE_MESH, 12, e->font, &_mesh, &_UpdateMesh, this);
-		pos += 34;
-		UI::Label(v.r + 2, v.g + pos, 12, "Show Bounding Box", e->font, white());
-		showBoundingBox = Engine::Toggle(v.r + v.b*0.3f, v.g + pos, 12, e->tex_checkbox, showBoundingBox, white(), ORIENT_HORIZONTAL);
-		pos += 17;
-	}
-	else pos += 17;
-}
 void MeshFilter::SetMesh(int i) {
 	_mesh = i;
 	if (i >= 0) {
@@ -339,6 +326,21 @@ MeshFilter::MeshFilter(std::ifstream& stream, SceneObject* o, long pos) : Compon
 	object->Refresh();
 }
 #endif
+
+void MeshFilter::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
+#ifdef IS_EDITOR
+	//MeshFilter* mft = (MeshFilter*)c;
+	if (DrawComponentHeader(e, v, pos, this)) {
+		UI::Label(v.r + 2, v.g + pos + 20, 12, "Mesh", e->font, white());
+		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 17, v.b*0.7f, 16, grey1(), ASSETTYPE_MESH, 12, e->font, &_mesh, &_UpdateMesh, this);
+		pos += 34;
+		UI::Label(v.r + 2, v.g + pos, 12, "Show Bounding Box", e->font, white());
+		showBoundingBox = Engine::Toggle(v.r + v.b*0.3f, v.g + pos, 12, e->tex_checkbox, showBoundingBox, white(), ORIENT_HORIZONTAL);
+		pos += 17;
+	}
+	else pos += 17;
+#endif
+}
 
 void MeshFilter::Serialize(Editor* e, std::ofstream* stream) {
 	_StreamWriteAsset(e, stream, ASSETTYPE_MESH, _mesh);

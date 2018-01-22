@@ -19,7 +19,6 @@ std::stringstream StreamFromBuffer(const std::vector<char>& buf) {
 }
 
 #pragma region AssetManager
-#ifndef CHOKO_LAIT
 
 std::unordered_map<ASSETTYPE, std::vector<string>> AssetManager::names = {};
 std::unordered_map<ASSETTYPE, std::vector<std::pair<byte, std::pair<uint, uint>>>> AssetManager::dataLocs = {};
@@ -34,7 +33,7 @@ std::vector<uint> AssetManager::dataECacheSzLocs = {};
 #endif
 std::vector<std::pair<ASSETTYPE, ASSETID>> AssetManager::dataECacheIds = {};
 void AssetManager::Init(string dpath) {
-#ifndef IS_EDITOR
+#if !defined(IS_EDITOR) && !defined(CHOKO_LAIT)
 	names.clear();
 	dataLocs.clear();
 	std::vector<std::ifstream*>().swap(streams);
@@ -201,7 +200,7 @@ AssetObject* AssetManager::GetCache(ASSETTYPE t, ASSETID i) {
 		return GenCache(t, i);
 }
 AssetObject* AssetManager::GenCache(ASSETTYPE t, ASSETID i) {
-#ifndef IS_EDITOR
+#if !defined(IS_EDITOR) && !defined(CHOKO_LAIT)
 	std::ifstream* fstrm = nullptr;
 	std::stringstream sstrm;
 	uint off = 0, cnt = -1;
@@ -257,7 +256,6 @@ AssetObject* AssetManager::GenCache(ASSETTYPE t, ASSETID i) {
 #endif
 }
 
-#endif
 #pragma endregion
 
 #pragma region Texture

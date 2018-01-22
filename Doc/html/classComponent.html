@@ -75,19 +75,21 @@ Inheritance diagram for Component:</div>
  <div class="center">
   <img src="classComponent.png" usemap="#Component_map" alt=""/>
   <map id="Component_map" name="Component_map">
-<area href="classObject.html" alt="Object" shape="rect" coords="0,0,141,24"/>
-<area href="classAnimator.html" alt="Animator" shape="rect" coords="151,112,292,136"/>
-<area href="classArmature.html" alt="Armature" shape="rect" coords="151,168,292,192"/>
-<area href="classCamera.html" alt="Camera" shape="rect" coords="151,224,292,248"/>
-<area href="classLight.html" alt="Light" shape="rect" coords="151,280,292,304"/>
-<area href="classMeshFilter.html" alt="MeshFilter" shape="rect" coords="151,336,292,360"/>
-<area href="classMeshRenderer.html" alt="MeshRenderer" shape="rect" coords="151,392,292,416"/>
-<area href="classParticleSystem.html" alt="ParticleSystem" shape="rect" coords="151,448,292,472"/>
-<area href="classReflectionProbe.html" alt="ReflectionProbe" shape="rect" coords="151,504,292,528"/>
-<area href="classReflectiveQuad.html" alt="ReflectiveQuad" shape="rect" coords="151,560,292,584"/>
-<area href="classSceneScript.html" alt="SceneScript" shape="rect" coords="151,616,292,640"/>
-<area href="classSkinnedMeshRenderer.html" alt="SkinnedMeshRenderer" shape="rect" coords="151,672,292,696"/>
-<area href="classTextureRenderer.html" alt="TextureRenderer" shape="rect" coords="151,728,292,752"/>
+<area href="classObject.html" alt="Object" shape="rect" coords="0,56,237,80"/>
+<area href="classAnimator.html" alt="Animator" shape="rect" coords="247,168,484,192"/>
+<area href="classArmature.html" alt="Armature" shape="rect" coords="247,224,484,248"/>
+<area href="classArrayRenderer.html" alt="ArrayRenderer" shape="rect" coords="247,280,484,304"/>
+<area href="classCamera.html" alt="Camera" shape="rect" coords="247,336,484,360"/>
+<area href="classInverseKinematics.html" alt="InverseKinematics" shape="rect" coords="247,392,484,416"/>
+<area href="classLight.html" alt="Light" shape="rect" coords="247,448,484,472"/>
+<area href="classMeshFilter.html" alt="MeshFilter" shape="rect" coords="247,504,484,528"/>
+<area href="classMeshRenderer.html" alt="MeshRenderer" shape="rect" coords="247,560,484,584"/>
+<area href="classParticleSystem.html" alt="ParticleSystem" shape="rect" coords="247,616,484,640"/>
+<area href="classReflectionProbe.html" alt="ReflectionProbe" shape="rect" coords="247,672,484,696"/>
+<area href="classReflectiveQuad.html" alt="ReflectiveQuad" shape="rect" coords="247,728,484,752"/>
+<area href="classSceneScript.html" alt="SceneScript" shape="rect" coords="247,784,484,808"/>
+<area href="classSkinnedMeshRenderer.html" alt="SkinnedMeshRenderer" shape="rect" coords="247,840,484,864"/>
+<area href="classTextureRenderer.html" alt="TextureRenderer" shape="rect" coords="247,896,484,920"/>
 </map>
  </div></div>
 <table class="memberdecls">
@@ -152,9 +154,9 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>LoadDefaultVa
 <tr class="memitem:a5e94ecf330d45ffdadd7f791ab8fe3ee"><td class="memItemLeft" align="right" valign="top"><a id="a5e94ecf330d45ffdadd7f791ab8fe3ee"></a>
 virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>DrawEditor</b> (EB_Viewer *ebv, GLuint shader=0)</td></tr>
 <tr class="separator:a5e94ecf330d45ffdadd7f791ab8fe3ee"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa567c50fe98ac4634445932e6fe08c59"><td class="memItemLeft" align="right" valign="top"><a id="aa567c50fe98ac4634445932e6fe08c59"></a>
-virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>DrawInspector</b> (Editor *e, <a class="el" href="classComponent.html">Component</a> *&amp;c, Vec4 v, uint &amp;pos)=0</td></tr>
-<tr class="separator:aa567c50fe98ac4634445932e6fe08c59"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a02635c7104a1c654cf66988fcd79d825"><td class="memItemLeft" align="right" valign="top"><a id="a02635c7104a1c654cf66988fcd79d825"></a>
+virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>DrawInspector</b> (Editor *e, <a class="el" href="classComponent.html">Component</a> *c, Vec4 v, uint &amp;pos)=0</td></tr>
+<tr class="separator:a02635c7104a1c654cf66988fcd79d825"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af32ebf75478a17e8394381d8a58a6940"><td class="memItemLeft" align="right" valign="top"><a id="af32ebf75478a17e8394381d8a58a6940"></a>
 virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>Serialize</b> (Editor *e, std::ofstream *stream)=0</td></tr>
 <tr class="separator:af32ebf75478a17e8394381d8a58a6940"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -173,9 +175,9 @@ Protected Attributes</h2></td></tr>
 <tr class="memitem:af08917ae15196878699d77233866fc65"><td class="memItemLeft" align="right" valign="top"><a id="af08917ae15196878699d77233866fc65"></a>
 std::vector&lt; COMPONENT_TYPE &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>dependancies</b></td></tr>
 <tr class="separator:af08917ae15196878699d77233866fc65"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a69c5879e24249cae3563fce81826f0d2"><td class="memItemLeft" align="right" valign="top"><a id="a69c5879e24249cae3563fce81826f0d2"></a>
-std::vector&lt; <a class="el" href="classComponent.html">Component</a> * &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>dependacyPointers</b></td></tr>
-<tr class="separator:a69c5879e24249cae3563fce81826f0d2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8bb475a81355e1075a7be6c1c56f3bc3"><td class="memItemLeft" align="right" valign="top"><a id="a8bb475a81355e1075a7be6c1c56f3bc3"></a>
+std::vector&lt; rComponent &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>dependacyPointers</b></td></tr>
+<tr class="separator:a8bb475a81355e1075a7be6c1c56f3bc3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a04b016d73dbb0fad9c7ac44fd76be1f0"><td class="memItemLeft" align="right" valign="top"><a id="a04b016d73dbb0fad9c7ac44fd76be1f0"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>_expanded</b></td></tr>
 <tr class="separator:a04b016d73dbb0fad9c7ac44fd76be1f0"><td class="memSeparator" colspan="2">&#160;</td></tr>

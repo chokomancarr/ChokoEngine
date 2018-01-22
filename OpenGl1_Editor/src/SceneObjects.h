@@ -4,7 +4,9 @@
 
 class SceneSettings {
 public:
-	SceneSettings() : sky(nullptr), skyId(-1), skyStrength(1) {}
+	SceneSettings() : sky(nullptr), skyId(-1), skyStrength(1) {
+		sky = 0;
+	}
 
 	Background* sky;
 	float skyStrength;
@@ -28,7 +30,7 @@ protected:
 class Scene {
 public:
 #ifndef CHOKO_LAIT
-	Scene() : sceneName("newScene") {}
+	Scene() : sceneName("newScene"), settings() {}
 	Scene(std::ifstream& stream, long pos);
 	~Scene() {}
 	static bool loaded() {

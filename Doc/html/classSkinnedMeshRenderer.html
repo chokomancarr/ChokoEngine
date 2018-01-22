@@ -77,8 +77,8 @@ Inheritance diagram for SkinnedMeshRenderer:</div>
  <div class="center">
   <img src="classSkinnedMeshRenderer.png" usemap="#SkinnedMeshRenderer_map" alt=""/>
   <map id="SkinnedMeshRenderer_map" name="SkinnedMeshRenderer_map">
-<area href="classComponent.html" alt="Component" shape="rect" coords="0,56,141,80"/>
-<area href="classObject.html" alt="Object" shape="rect" coords="0,0,141,24"/>
+<area href="classComponent.html" alt="Component" shape="rect" coords="0,112,237,136"/>
+<area href="classObject.html" alt="Object" shape="rect" coords="0,56,237,80"/>
 </map>
  </div></div>
 <table class="memberdecls">
@@ -93,17 +93,20 @@ Public Member Functions</h2></td></tr>
 &#160;</td><td class="memItemRight" valign="bottom"><b>SkinnedMeshRenderer</b> (<a class="el" href="classSceneObject.html">SceneObject</a> *o)</td></tr>
 <tr class="separator:a743cdd448a246a29c5249ce4b0aeb0de"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2fc255142a812b2cbb03e7e7db583454"><td class="memItemLeft" align="right" valign="top"><a id="a2fc255142a812b2cbb03e7e7db583454"></a>
-<a class="el" href="classMesh.html">Mesh</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>mesh</b> ()</td></tr>
+Mesh *&#160;</td><td class="memItemRight" valign="bottom"><b>mesh</b> ()</td></tr>
 <tr class="separator:a2fc255142a812b2cbb03e7e7db583454"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aad66381728dcb5e1e586a4a510090831"><td class="memItemLeft" align="right" valign="top"><a id="aad66381728dcb5e1e586a4a510090831"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>mesh</b> (<a class="el" href="classMesh.html">Mesh</a> *)</td></tr>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>mesh</b> (Mesh *)</td></tr>
 <tr class="separator:aad66381728dcb5e1e586a4a510090831"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af7a4bd2f0cd5f9b1681fc9cd38da7508"><td class="memItemLeft" align="right" valign="top"><a id="af7a4bd2f0cd5f9b1681fc9cd38da7508"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>DrawInspector</b> (Editor *e, <a class="el" href="classComponent.html">Component</a> *&amp;c, Vec4 v, uint &amp;pos) override</td></tr>
-<tr class="separator:af7a4bd2f0cd5f9b1681fc9cd38da7508"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a901230b4ffa877d4ef8c42649e6787cd"><td class="memItemLeft" align="right" valign="top"><a id="a901230b4ffa877d4ef8c42649e6787cd"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>DrawInspector</b> (Editor *e, <a class="el" href="classComponent.html">Component</a> *c, Vec4 v, uint &amp;pos) override</td></tr>
+<tr class="separator:a901230b4ffa877d4ef8c42649e6787cd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0c360084393365eaa75e001b775b6f77"><td class="memItemLeft" align="right" valign="top"><a id="a0c360084393365eaa75e001b775b6f77"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Serialize</b> (Editor *e, std::ofstream *stream) override</td></tr>
 <tr class="separator:a0c360084393365eaa75e001b775b6f77"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a167340889bdaab7aae454c2f6eefddce"><td class="memItemLeft" align="right" valign="top"><a id="a167340889bdaab7aae454c2f6eefddce"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>_allowshared</b> (<a class="el" href="classSkinnedMeshRenderer.html">SkinnedMeshRenderer</a>)</td></tr>
+<tr class="separator:a167340889bdaab7aae454c2f6eefddce"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_methods_classComponent"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_classComponent')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="classComponent.html">Component</a></td></tr>
 <tr class="memitem:a7104ce698dfa345408161800faf950fc inherit pub_methods_classComponent"><td class="memItemLeft" align="right" valign="top"><a id="a7104ce698dfa345408161800faf950fc"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>Component</b> (string name, COMPONENT_TYPE t, DRAWORDER drawOrder=0x00, SceneObject *o=nullptr, std::vector&lt; COMPONENT_TYPE &gt; dep={})</td></tr>
@@ -131,7 +134,7 @@ virtual bool&#160;</td><td class="memItemRight" valign="bottom"><b>ReferencingOb
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-attribs"></a>
 Data Fields</h2></td></tr>
 <tr class="memitem:a16946c94dfb4a134694e9cdfc665aec8"><td class="memItemLeft" align="right" valign="top"><a id="a16946c94dfb4a134694e9cdfc665aec8"></a>
-std::vector&lt; <a class="el" href="classMaterial.html">Material</a> * &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>materials</b></td></tr>
+std::vector&lt; Material * &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>materials</b></td></tr>
 <tr class="separator:a16946c94dfb4a134694e9cdfc665aec8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_attribs_classComponent"><td colspan="2" onclick="javascript:toggleInherit('pub_attribs_classComponent')"><img src="closed.png" alt="-"/>&#160;Data Fields inherited from <a class="el" href="classComponent.html">Component</a></td></tr>
 <tr class="memitem:a9a8a67dff9cd2ae44e213bd1e00e8a48 inherit pub_attribs_classComponent"><td class="memItemLeft" align="right" valign="top"><a id="a9a8a67dff9cd2ae44e213bd1e00e8a48"></a>
@@ -213,7 +216,7 @@ Protected Attributes</h2></td></tr>
 std::vector&lt; std::array&lt; std::pair&lt; <a class="el" href="classArmatureBone.html">ArmatureBone</a> *, float &gt;, 4 &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>weights</b></td></tr>
 <tr class="separator:a547bf2fca1cd28514d3260cff0262ae8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a265753c322f71404c78dd7a44566515c"><td class="memItemLeft" align="right" valign="top"><a id="a265753c322f71404c78dd7a44566515c"></a>
-<a class="el" href="classMesh.html">Mesh</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>_mesh</b></td></tr>
+Mesh *&#160;</td><td class="memItemRight" valign="bottom"><b>_mesh</b> = 0</td></tr>
 <tr class="separator:a265753c322f71404c78dd7a44566515c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3719c89fce84077359850a882d784c89"><td class="memItemLeft" align="right" valign="top"><a id="a3719c89fce84077359850a882d784c89"></a>
 ASSETID&#160;</td><td class="memItemRight" valign="bottom"><b>_meshId</b> = -1</td></tr>
@@ -225,16 +228,16 @@ ASSETID&#160;</td><td class="memItemRight" valign="bottom"><b>_meshId</b> = -1</
 std::vector&lt; ASSETID &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>_materials</b></td></tr>
 <tr class="separator:a8965d714708a595b28f45dba0cdce59f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ace5b4425b2dac214ee6b6695f87f5b8f"><td class="memItemLeft" align="right" valign="top"><a id="ace5b4425b2dac214ee6b6695f87f5b8f"></a>
-bool&#160;</td><td class="memItemRight" valign="bottom"><b>overwriteWriteMask</b></td></tr>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>overwriteWriteMask</b> = false</td></tr>
 <tr class="separator:ace5b4425b2dac214ee6b6695f87f5b8f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aae9ae348b2c60696b22f0191b7b66e2f"><td class="memItemLeft" align="right" valign="top"><a id="aae9ae348b2c60696b22f0191b7b66e2f"></a>
 std::vector&lt; bool &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>writeMask</b></td></tr>
 <tr class="separator:aae9ae348b2c60696b22f0191b7b66e2f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a94b2a4f3cdcb886ce4dea9e6feaedbba"><td class="memItemLeft" align="right" valign="top"><a id="a94b2a4f3cdcb886ce4dea9e6feaedbba"></a>
-bool&#160;</td><td class="memItemRight" valign="bottom"><b>showBoundingBox</b></td></tr>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>showBoundingBox</b> = false</td></tr>
 <tr class="separator:a94b2a4f3cdcb886ce4dea9e6feaedbba"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2b115dde1e9126750be1ca7231aec0e4"><td class="memItemLeft" align="right" valign="top"><a id="a2b115dde1e9126750be1ca7231aec0e4"></a>
-<a class="el" href="classComputeBuffer.html">ComputeBuffer</a>&lt; Vec4 &gt; *&#160;</td><td class="memItemRight" valign="bottom"><b>skinBufPoss</b></td></tr>
+<a class="el" href="classComputeBuffer.html">ComputeBuffer</a>&lt; Vec4 &gt; *&#160;</td><td class="memItemRight" valign="bottom"><b>skinBufPoss</b> = 0</td></tr>
 <tr class="separator:a2b115dde1e9126750be1ca7231aec0e4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a672373202f358a9a86ac250b70417a60"><td class="memItemLeft" align="right" valign="top"><a id="a672373202f358a9a86ac250b70417a60"></a>
 <a class="el" href="classComputeBuffer.html">ComputeBuffer</a>&lt; Vec4 &gt; *&#160;</td><td class="memItemRight" valign="bottom"><b>skinBufNrms</b></td></tr>
@@ -258,9 +261,9 @@ uint&#160;</td><td class="memItemRight" valign="bottom"><b>skinDispatchGroups</b
 <tr class="memitem:af08917ae15196878699d77233866fc65 inherit pro_attribs_classComponent"><td class="memItemLeft" align="right" valign="top"><a id="af08917ae15196878699d77233866fc65"></a>
 std::vector&lt; COMPONENT_TYPE &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>dependancies</b></td></tr>
 <tr class="separator:af08917ae15196878699d77233866fc65 inherit pro_attribs_classComponent"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a69c5879e24249cae3563fce81826f0d2 inherit pro_attribs_classComponent"><td class="memItemLeft" align="right" valign="top"><a id="a69c5879e24249cae3563fce81826f0d2"></a>
-std::vector&lt; <a class="el" href="classComponent.html">Component</a> * &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>dependacyPointers</b></td></tr>
-<tr class="separator:a69c5879e24249cae3563fce81826f0d2 inherit pro_attribs_classComponent"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8bb475a81355e1075a7be6c1c56f3bc3 inherit pro_attribs_classComponent"><td class="memItemLeft" align="right" valign="top"><a id="a8bb475a81355e1075a7be6c1c56f3bc3"></a>
+std::vector&lt; rComponent &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>dependacyPointers</b></td></tr>
+<tr class="separator:a8bb475a81355e1075a7be6c1c56f3bc3 inherit pro_attribs_classComponent"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a04b016d73dbb0fad9c7ac44fd76be1f0 inherit pro_attribs_classComponent"><td class="memItemLeft" align="right" valign="top"><a id="a04b016d73dbb0fad9c7ac44fd76be1f0"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>_expanded</b></td></tr>
 <tr class="separator:a04b016d73dbb0fad9c7ac44fd76be1f0 inherit pro_attribs_classComponent"><td class="memSeparator" colspan="2">&#160;</td></tr>

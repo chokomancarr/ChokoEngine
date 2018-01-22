@@ -74,19 +74,22 @@ Inheritance diagram for TextureRenderer:</div>
  <div class="center">
   <img src="classTextureRenderer.png" usemap="#TextureRenderer_map" alt=""/>
   <map id="TextureRenderer_map" name="TextureRenderer_map">
-<area href="classComponent.html" alt="Component" shape="rect" coords="0,56,107,80"/>
-<area href="classObject.html" alt="Object" shape="rect" coords="0,0,107,24"/>
+<area href="classComponent.html" alt="Component" shape="rect" coords="0,112,237,136"/>
+<area href="classObject.html" alt="Object" shape="rect" coords="0,56,237,80"/>
 </map>
  </div></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a97359fbcbfe2d9f47a54cd56c47fcae0"><td class="memItemLeft" align="right" valign="top"><a id="a97359fbcbfe2d9f47a54cd56c47fcae0"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>DrawInspector</b> (Editor *e, <a class="el" href="classComponent.html">Component</a> *&amp;c, Vec4 v, uint &amp;pos) override</td></tr>
-<tr class="separator:a97359fbcbfe2d9f47a54cd56c47fcae0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a240f53be0ba5d542d914a0c3b4cda37c"><td class="memItemLeft" align="right" valign="top"><a id="a240f53be0ba5d542d914a0c3b4cda37c"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>DrawInspector</b> (Editor *e, <a class="el" href="classComponent.html">Component</a> *c, Vec4 v, uint &amp;pos) override</td></tr>
+<tr class="separator:a240f53be0ba5d542d914a0c3b4cda37c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aba7610a9147a1938e4cca8bc1c8500d9"><td class="memItemLeft" align="right" valign="top"><a id="aba7610a9147a1938e4cca8bc1c8500d9"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Serialize</b> (Editor *e, std::ofstream *stream) override</td></tr>
 <tr class="separator:aba7610a9147a1938e4cca8bc1c8500d9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac52cd6bb61fada3306481405d9151a6e"><td class="memItemLeft" align="right" valign="top"><a id="ac52cd6bb61fada3306481405d9151a6e"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>_allowshared</b> (<a class="el" href="classTextureRenderer.html">TextureRenderer</a>)</td></tr>
+<tr class="separator:ac52cd6bb61fada3306481405d9151a6e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_methods_classComponent"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_classComponent')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="classComponent.html">Component</a></td></tr>
 <tr class="memitem:a7104ce698dfa345408161800faf950fc inherit pub_methods_classComponent"><td class="memItemLeft" align="right" valign="top"><a id="a7104ce698dfa345408161800faf950fc"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>Component</b> (string name, COMPONENT_TYPE t, DRAWORDER drawOrder=0x00, SceneObject *o=nullptr, std::vector&lt; COMPONENT_TYPE &gt; dep={})</td></tr>
@@ -114,7 +117,7 @@ virtual bool&#160;</td><td class="memItemRight" valign="bottom"><b>ReferencingOb
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-attribs"></a>
 Data Fields</h2></td></tr>
 <tr class="memitem:a0a9eb2424f2cfcaa06bdc623e6daf653"><td class="memItemLeft" align="right" valign="top"><a id="a0a9eb2424f2cfcaa06bdc623e6daf653"></a>
-<a class="el" href="classTexture.html">Texture</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>texture</b></td></tr>
+Texture *&#160;</td><td class="memItemRight" valign="bottom"><b>texture</b></td></tr>
 <tr class="separator:a0a9eb2424f2cfcaa06bdc623e6daf653"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_attribs_classComponent"><td colspan="2" onclick="javascript:toggleInherit('pub_attribs_classComponent')"><img src="closed.png" alt="-"/>&#160;Data Fields inherited from <a class="el" href="classComponent.html">Component</a></td></tr>
 <tr class="memitem:a9a8a67dff9cd2ae44e213bd1e00e8a48 inherit pub_attribs_classComponent"><td class="memItemLeft" align="right" valign="top"><a id="a9a8a67dff9cd2ae44e213bd1e00e8a48"></a>
@@ -168,9 +171,9 @@ int&#160;</td><td class="memItemRight" valign="bottom"><b>_texture</b></td></tr>
 <tr class="memitem:af08917ae15196878699d77233866fc65 inherit pro_attribs_classComponent"><td class="memItemLeft" align="right" valign="top"><a id="af08917ae15196878699d77233866fc65"></a>
 std::vector&lt; COMPONENT_TYPE &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>dependancies</b></td></tr>
 <tr class="separator:af08917ae15196878699d77233866fc65 inherit pro_attribs_classComponent"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a69c5879e24249cae3563fce81826f0d2 inherit pro_attribs_classComponent"><td class="memItemLeft" align="right" valign="top"><a id="a69c5879e24249cae3563fce81826f0d2"></a>
-std::vector&lt; <a class="el" href="classComponent.html">Component</a> * &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>dependacyPointers</b></td></tr>
-<tr class="separator:a69c5879e24249cae3563fce81826f0d2 inherit pro_attribs_classComponent"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8bb475a81355e1075a7be6c1c56f3bc3 inherit pro_attribs_classComponent"><td class="memItemLeft" align="right" valign="top"><a id="a8bb475a81355e1075a7be6c1c56f3bc3"></a>
+std::vector&lt; rComponent &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>dependacyPointers</b></td></tr>
+<tr class="separator:a8bb475a81355e1075a7be6c1c56f3bc3 inherit pro_attribs_classComponent"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a04b016d73dbb0fad9c7ac44fd76be1f0 inherit pro_attribs_classComponent"><td class="memItemLeft" align="right" valign="top"><a id="a04b016d73dbb0fad9c7ac44fd76be1f0"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>_expanded</b></td></tr>
 <tr class="separator:a04b016d73dbb0fad9c7ac44fd76be1f0 inherit pro_attribs_classComponent"><td class="memSeparator" colspan="2">&#160;</td></tr>

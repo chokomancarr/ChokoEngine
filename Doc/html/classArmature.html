@@ -75,8 +75,8 @@ Inheritance diagram for Armature:</div>
  <div class="center">
   <img src="classArmature.png" usemap="#Armature_map" alt=""/>
   <map id="Armature_map" name="Armature_map">
-<area href="classComponent.html" alt="Component" shape="rect" coords="0,56,75,80"/>
-<area href="classObject.html" alt="Object" shape="rect" coords="0,0,75,24"/>
+<area href="classComponent.html" alt="Component" shape="rect" coords="0,112,237,136"/>
+<area href="classObject.html" alt="Object" shape="rect" coords="0,56,237,80"/>
 </map>
  </div></div>
 <table class="memberdecls">
@@ -88,15 +88,18 @@ const std::vector&lt; <a class="el" href="classArmatureBone.html">ArmatureBone</
 <tr class="memitem:a46e8a5c7703361d37a85f43020dc47e9"><td class="memItemLeft" align="right" valign="top"><a id="a46e8a5c7703361d37a85f43020dc47e9"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>DrawEditor</b> (EB_Viewer *ebv, GLuint shader=0) override</td></tr>
 <tr class="separator:a46e8a5c7703361d37a85f43020dc47e9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad1371932c60c831d3fcc38426b8490bf"><td class="memItemLeft" align="right" valign="top"><a id="ad1371932c60c831d3fcc38426b8490bf"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>DrawInspector</b> (Editor *e, <a class="el" href="classComponent.html">Component</a> *&amp;c, Vec4 v, uint &amp;pos) override</td></tr>
-<tr class="separator:ad1371932c60c831d3fcc38426b8490bf"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9e0e20daeabd24d6fbd72c57d9de1a57"><td class="memItemLeft" align="right" valign="top"><a id="a9e0e20daeabd24d6fbd72c57d9de1a57"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>DrawInspector</b> (Editor *e, <a class="el" href="classComponent.html">Component</a> *c, Vec4 v, uint &amp;pos) override</td></tr>
+<tr class="separator:a9e0e20daeabd24d6fbd72c57d9de1a57"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a02fa1ef16bc6e61a1f6c2edec2037b37"><td class="memItemLeft" align="right" valign="top"><a id="a02fa1ef16bc6e61a1f6c2edec2037b37"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Serialize</b> (Editor *e, std::ofstream *stream) override</td></tr>
 <tr class="separator:a02fa1ef16bc6e61a1f6c2edec2037b37"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a653a6af3d4c101dd67be985385d05e6d"><td class="memItemLeft" align="right" valign="top"><a id="a653a6af3d4c101dd67be985385d05e6d"></a>
 virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>OnPreRender</b> () override</td></tr>
 <tr class="separator:a653a6af3d4c101dd67be985385d05e6d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6ed6b83b9b6127c328853d97e1e5b74c"><td class="memItemLeft" align="right" valign="top"><a id="a6ed6b83b9b6127c328853d97e1e5b74c"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>_allowshared</b> (<a class="el" href="classArmature.html">Armature</a>)</td></tr>
+<tr class="separator:a6ed6b83b9b6127c328853d97e1e5b74c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_methods_classComponent"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_classComponent')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="classComponent.html">Component</a></td></tr>
 <tr class="memitem:a7104ce698dfa345408161800faf950fc inherit pub_methods_classComponent"><td class="memItemLeft" align="right" valign="top"><a id="a7104ce698dfa345408161800faf950fc"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>Component</b> (string name, COMPONENT_TYPE t, DRAWORDER drawOrder=0x00, SceneObject *o=nullptr, std::vector&lt; COMPONENT_TYPE &gt; dep={})</td></tr>
@@ -230,9 +233,9 @@ Mat4x4&#160;</td><td class="memItemRight" valign="bottom"><b>_animMatrices</b> [
 <tr class="memitem:af08917ae15196878699d77233866fc65 inherit pro_attribs_classComponent"><td class="memItemLeft" align="right" valign="top"><a id="af08917ae15196878699d77233866fc65"></a>
 std::vector&lt; COMPONENT_TYPE &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>dependancies</b></td></tr>
 <tr class="separator:af08917ae15196878699d77233866fc65 inherit pro_attribs_classComponent"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a69c5879e24249cae3563fce81826f0d2 inherit pro_attribs_classComponent"><td class="memItemLeft" align="right" valign="top"><a id="a69c5879e24249cae3563fce81826f0d2"></a>
-std::vector&lt; <a class="el" href="classComponent.html">Component</a> * &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>dependacyPointers</b></td></tr>
-<tr class="separator:a69c5879e24249cae3563fce81826f0d2 inherit pro_attribs_classComponent"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8bb475a81355e1075a7be6c1c56f3bc3 inherit pro_attribs_classComponent"><td class="memItemLeft" align="right" valign="top"><a id="a8bb475a81355e1075a7be6c1c56f3bc3"></a>
+std::vector&lt; rComponent &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>dependacyPointers</b></td></tr>
+<tr class="separator:a8bb475a81355e1075a7be6c1c56f3bc3 inherit pro_attribs_classComponent"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a04b016d73dbb0fad9c7ac44fd76be1f0 inherit pro_attribs_classComponent"><td class="memItemLeft" align="right" valign="top"><a id="a04b016d73dbb0fad9c7ac44fd76be1f0"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>_expanded</b></td></tr>
 <tr class="separator:a04b016d73dbb0fad9c7ac44fd76be1f0 inherit pro_attribs_classComponent"><td class="memSeparator" colspan="2">&#160;</td></tr>

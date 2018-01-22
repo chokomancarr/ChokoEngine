@@ -14,7 +14,7 @@
 
 #define GLFW_EXPOSE_NATIVE_WIN32
 #define GLFW_EXPOSE_NATIVE_WGL
-#include <GLFW\glfw3native.h>
+#include <glfw3native.h>
 //#include "MD.h"
 #include "Water.h"
 
@@ -133,6 +133,7 @@ int main(int argc, char **argv)
 	Engine::Init(path);
 	Editor::instance->activeScene = new Scene();
 	Scene::active = Editor::instance->activeScene;
+	Scene::active->settings.sky = 0;
 	editor->LoadDefaultAssets();
 	editor->ReloadAssets(editor->projectFolder + "Assets\\", true);
 	editor->ReadPrefs();

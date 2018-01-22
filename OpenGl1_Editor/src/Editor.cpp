@@ -14,11 +14,13 @@
 
 #define GLFW_EXPOSE_NATIVE_WIN32
 #define GLFW_EXPOSE_NATIVE_WGL
-#include <GLFW\glfw3native.h>
+#include <glfw3native.h>
 
 //#include "MD.h"
 #include "Water.h"
 
+#pragma region UndoStack
+#ifdef IS_EDITOR
 UndoStack::UndoObj::UndoObj(void* loc, uint sz, uint nsz, UNDO_TYPE type, void* val, bool* dirty, string desc) :
 	loc(loc), type(type), sz(sz), nsz(nsz), desc(desc), dirty(dirty) {
 	switch (type) {
@@ -66,8 +68,6 @@ void UndoStack::UndoObj::Apply() {
 	if (dirty) *dirty = true;
 }
 
-#pragma region UndoStack
-#ifdef IS_EDITOR
 byte UndoStack::maxStack = 30;
 std::vector<UndoStack::UndoObj*> UndoStack::stack = {};
 std::vector<UndoStack::UndoObj*> UndoStack::rstack = {};
@@ -442,6 +442,7 @@ HICON GetHighResolutionIcon(LPTSTR pszPath)
 }
 
 EB_Browser_File::EB_Browser_File(Editor* e, string path, string nm, string fn) : path(path), thumbnail(-1), tex(nullptr), expanded(false), name(nm), fullName(path + fn) {
+#ifdef IS_EDITOR
 	string ext = name.substr(name.find_last_of('.') + 1, string::npos);
 	canExpand = false;
 	/*
@@ -472,6 +473,7 @@ EB_Browser_File::EB_Browser_File(Editor* e, string path, string nm, string fn) :
 			}
 		}
 	}
+#endif
 }
 
 EB_Browser::EB_Browser(Editor* e, int x1, int y1, int x2, int y2, string dir) : currentDir(dir) {
@@ -615,6 +617,7 @@ void EB_Browser::Draw() {
 }
 
 void EB_Browser::Refresh() {
+#ifdef IS_EDITOR
 	dirs.clear();
 	files.clear();
 	IO::GetFolders(currentDir, &dirs);
@@ -624,6 +627,7 @@ void EB_Browser::Refresh() {
 		dirs.push_back(".");
 		dirs.push_back("..");
 	}
+#endif
 }
 
 EB_Viewer::EB_Viewer(Editor* e, int x1, int y1, int x2, int y2) : rz(45), rw(45), scale(1), fov(60), rotCenter(0, 0, 0) {
@@ -3894,7 +3898,9 @@ void Editor::ShowCompileSett(Editor* e) {
 }
 
 void Editor::SaveScene(Editor* e) {
+#ifdef IS_EDITOR
 	e->activeScene->Save(e);
+#endif
 }
 
 
