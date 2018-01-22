@@ -11,6 +11,8 @@ Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
 		Debug|x64 = Debug|x64
+		Lait|Win32 = Lait|Win32
+		Lait|x64 = Lait|x64
 		Objs|Win32 = Objs|Win32
 		Objs|x64 = Objs|x64
 		Release|Win32 = Release|Win32
@@ -20,8 +22,11 @@ Global
 		{2D5660BE-613F-4BAA-9DE4-D0373AB81D84}.Debug|Win32.ActiveCfg = Debug|Win32
 		{2D5660BE-613F-4BAA-9DE4-D0373AB81D84}.Debug|Win32.Build.0 = Debug|Win32
 		{2D5660BE-613F-4BAA-9DE4-D0373AB81D84}.Debug|x64.ActiveCfg = Debug|Win32
-		{2D5660BE-613F-4BAA-9DE4-D0373AB81D84}.Objs|Win32.ActiveCfg = Objs|Win32
-		{2D5660BE-613F-4BAA-9DE4-D0373AB81D84}.Objs|Win32.Build.0 = Objs|Win32
+		{2D5660BE-613F-4BAA-9DE4-D0373AB81D84}.Lait|Win32.ActiveCfg = Lait|Win32
+		{2D5660BE-613F-4BAA-9DE4-D0373AB81D84}.Lait|Win32.Build.0 = Lait|Win32
+		{2D5660BE-613F-4BAA-9DE4-D0373AB81D84}.Lait|x64.ActiveCfg = Lait|Win32
+		{2D5660BE-613F-4BAA-9DE4-D0373AB81D84}.Objs|Win32.ActiveCfg = Debug|Win32
+		{2D5660BE-613F-4BAA-9DE4-D0373AB81D84}.Objs|Win32.Build.0 = Debug|Win32
 		{2D5660BE-613F-4BAA-9DE4-D0373AB81D84}.Objs|x64.ActiveCfg = Objs|Win32
 		{2D5660BE-613F-4BAA-9DE4-D0373AB81D84}.Release|Win32.ActiveCfg = Release|Win32
 		{2D5660BE-613F-4BAA-9DE4-D0373AB81D84}.Release|Win32.Build.0 = Release|Win32
@@ -30,6 +35,10 @@ Global
 		{1CC6A5E7-25D6-41AF-B0F4-459CFD350AF7}.Debug|Win32.Build.0 = Debug|Win32
 		{1CC6A5E7-25D6-41AF-B0F4-459CFD350AF7}.Debug|x64.ActiveCfg = Debug|x64
 		{1CC6A5E7-25D6-41AF-B0F4-459CFD350AF7}.Debug|x64.Build.0 = Debug|x64
+		{1CC6A5E7-25D6-41AF-B0F4-459CFD350AF7}.Lait|Win32.ActiveCfg = Release|Win32
+		{1CC6A5E7-25D6-41AF-B0F4-459CFD350AF7}.Lait|Win32.Build.0 = Release|Win32
+		{1CC6A5E7-25D6-41AF-B0F4-459CFD350AF7}.Lait|x64.ActiveCfg = Lait|x64
+		{1CC6A5E7-25D6-41AF-B0F4-459CFD350AF7}.Lait|x64.Build.0 = Lait|x64
 		{1CC6A5E7-25D6-41AF-B0F4-459CFD350AF7}.Objs|Win32.ActiveCfg = Release|Win32
 		{1CC6A5E7-25D6-41AF-B0F4-459CFD350AF7}.Objs|Win32.Build.0 = Release|Win32
 		{1CC6A5E7-25D6-41AF-B0F4-459CFD350AF7}.Objs|Win32.Deploy.0 = Release|Win32

@@ -19,6 +19,7 @@ std::stringstream StreamFromBuffer(const std::vector<char>& buf) {
 }
 
 #pragma region AssetManager
+#ifndef CHOKO_LAIT
 
 std::unordered_map<ASSETTYPE, std::vector<string>> AssetManager::names = {};
 std::unordered_map<ASSETTYPE, std::vector<std::pair<byte, std::pair<uint, uint>>>> AssetManager::dataLocs = {};
@@ -256,6 +257,7 @@ AssetObject* AssetManager::GenCache(ASSETTYPE t, ASSETID i) {
 #endif
 }
 
+#endif
 #pragma endregion
 
 #pragma region Texture
@@ -834,7 +836,7 @@ void Texture::_ApplyPrefs(const string& p) {
 }
 
 bool Texture::DrawPreview(uint x, uint y, uint w, uint h) {
-	UI::Texture((float)x, (float)y, (float)w, (float)h, this, DrawTex_Fit);
+	UI::Texture((float)x, (float)y, (float)w, (float)h, this, DRAWTEX_FIT);
 	return true;
 }
 

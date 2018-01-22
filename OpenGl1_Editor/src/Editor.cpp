@@ -1221,7 +1221,7 @@ void EB_Inspector::DrawObj(Vec4 v, Editor* editor, EB_Inspector* b, SceneObject*
 void EBI_DrawAss_Tex(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 	Texture* tex = (Texture*)editor->selectedFileCache;
 	float sz = min(v.b - 2.0f, Clamp((float)max(tex->width, tex->height), 16.0f, (float)editor->_maxPreviewSize));
-	UI::Texture(v.r + 1 + 0.5f*(v.b - sz), off + 15, sz, sz, tex, DrawTex_Fit, b->previewMip);
+	UI::Texture(v.r + 1 + 0.5f*(v.b - sz), off + 15, sz, sz, tex, DRAWTEX_FIT, b->previewMip);
 	if (tex->_mipmap) {
 		UI::Texture(v.r + 2, off + sz + 17, 16, 16, editor->tex_mipLow);
 		UI::Texture(v.r + v.b - 18, off + sz + 17, 16, 16, editor->tex_mipHigh);
@@ -1815,7 +1815,7 @@ void PopupSelector::Draw() {
 		glEnable(GL_BLEND);
 
 		if (editor->backgroundTex)
-			UI::Texture(0, 0, (float)width, (float)height, editor->backgroundTex, editor->backgroundAlpha*0.01f, DrawTex_Crop);
+			UI::Texture(0, 0, (float)width, (float)height, editor->backgroundTex, editor->backgroundAlpha*0.01f, DRAWTEX_CROP);
 
 		switch (_type) {
 		case POPUP_TYPE_OBJECT:

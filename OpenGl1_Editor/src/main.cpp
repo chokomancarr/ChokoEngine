@@ -359,7 +359,7 @@ void DrawOverlay() {
 	editor->UpdateLerpers();
 	editor->playSyncer.Update();
 	if (editor->backgroundTex != nullptr)
-		UI::Texture(0, 0, (float)Display::width, (float)Display::height, editor->backgroundTex, editor->backgroundAlpha*0.01f, DrawTex_Crop);
+		UI::Texture(0, 0, (float)Display::width, (float)Display::height, editor->backgroundTex, editor->backgroundAlpha*0.01f, DRAWTEX_CROP);
 	for (int i = editor->blocks.size() - 1; i >= 0; i--) {
 		if (!editor->blocks[i]->hidden && !(editor->hasMaximize && !editor->blocks[i]->maximize)) {
 			editor->blocks[i]->Draw();

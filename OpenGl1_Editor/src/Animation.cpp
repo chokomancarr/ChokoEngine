@@ -21,7 +21,7 @@ Vec4 AnimClip_Key::Eval(float t) {
 		if (frames[f + 1].first > t) {
 			auto& fc = frames[f];
 			auto& fn = frames[f + 1];
-			return Lerp(fc.second, fn.second, InverseLerp(fc.first, fn.first, t));
+			return Lerp(fc.second, fn.second, InverseLerp<float>((float)fc.first, (float)fn.first, t));
 		}
 	}
 	return frames[frameCount - 1].second;

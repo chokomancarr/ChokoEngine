@@ -602,18 +602,18 @@ bool UI::CanDraw() {
 	return (std::this_thread::get_id() == Engine::_mainThreadId);
 }
 
-void UI::Texture(float x, float y, float w, float h, ::Texture* texture, DrawTex_Scaling scl, float miplevel) {
+void UI::Texture(float x, float y, float w, float h, ::Texture* texture, DRAWTEX_SCALING scl, float miplevel) {
 	UI::Texture(x, y, w, h, texture, white(), scl, miplevel);
 }
-void UI::Texture(float x, float y, float w, float h, ::Texture* texture, float alpha, DrawTex_Scaling scl, float miplevel) {
+void UI::Texture(float x, float y, float w, float h, ::Texture* texture, float alpha, DRAWTEX_SCALING scl, float miplevel) {
 	UI::Texture(x, y, w, h, texture, white(alpha), scl, miplevel);
 }
-void UI::Texture(float x, float y, float w, float h, ::Texture* texture, Vec4 tint, DrawTex_Scaling scl, float miplevel) {
+void UI::Texture(float x, float y, float w, float h, ::Texture* texture, Vec4 tint, DRAWTEX_SCALING scl, float miplevel) {
 	_checkdraw;
 	GLuint tex = (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer;
-	if (scl == DrawTex_Stretch)
+	if (scl == DRAWTEX_STRETCH)
 		Engine::DrawQuad(x, y, w, h, tex, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint, miplevel);
-	else if (scl == DrawTex_Fit) {
+	else if (scl == DRAWTEX_FIT) {
 		float w2h = ((float)texture->width) / texture->height;
 		if (w / h > w2h)
 			Engine::DrawQuad(x + 0.5f*(w - h*w2h), y, h*w2h, h, tex, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint, miplevel);
@@ -1525,12 +1525,9 @@ std::vector<string> IO::GetFiles(const string& folder, string ext)
 	}
 	return names;
 }
+#ifdef IS_EDITOR
 std::vector<EB_Browser_File> IO::GetFilesE (Editor* e, const string& folder)
 {
-#ifndef IS_EDITOR
-//#error you cannot call GetFilesE! (Editor Functions only)
-	abort(); //fuck you
-#endif
 	std::vector<EB_Browser_File> names;
 	string search_path = folder + "/*.*";
 	WIN32_FIND_DATA fd;
@@ -1564,6 +1561,7 @@ std::vector<EB_Browser_File> IO::GetFilesE (Editor* e, const string& folder)
 	}
 	return names;
 }
+#endif
 
 void IO::GetFolders(const string& folder, std::vector<string>* names, bool hidden)
 {
@@ -1956,6 +1954,7 @@ void Serialize(Editor* e, SceneObject* o, std::ofstream* stream) {
 }
 
 void Deserialize(std::ifstream& stream, SceneObject* obj) {
+#ifndef CHOKO_LAIT
 	char cc[100];
 	stream.getline(cc, 100, 0);
 	obj->name = string(cc);
@@ -2031,45 +2030,20 @@ void Deserialize(std::ifstream& stream, SceneObject* obj) {
 		c = stream.get();
 	}
 	Debug::Message("Object Deserializer", "-- End --");
-}
-
-void Scene::ReadD0() {
-#ifndef IS_EDITOR
-	ushort num;
-	_Strm2Val(*strm, num);
-	for (ushort a = 0; a < num; a++) {
-		uint sz;
-		char c[100];
-		if (_pipemode) {
-			strm->getline(c, 100);
-			sceneNames.push_back(c);
-			sceneEPaths.push_back(AssetManager::eBasePath + sceneNames[a]);
-			Debug::Message("AssetManager", "Registered scene " + sceneNames[a]);
-		} else {
-			_Strm2Val(*strm, sz);
-			*strm >> c[0];
-			long p1 = (long)strm->tellg();
-			scenePoss.push_back(p1);
-			*strm >> c[0] >> c[1];
-			if (c[0] != 'S' || c[1] != 'N') {
-				Debug::Error("Scene Importer", "fatal: Scene Signature wrong!");
-				return;
-			}
-			strm->getline(c, 100, 0);
-			sceneNames.push_back(c);
-			strm->seekg(p1 + sz + 1);
-			Debug::Message("AssetManager", "Registered scene " + sceneNames[a] + " (" + to_string(sz) + " bytes)");
-		}
-	}
 #endif
-}
-
-void Scene::Unload() {
-	
 }
 
 Scene::_offset_map Scene::_offsets = {};
 
+Scene* Scene::active = nullptr;
+std::ifstream* Scene::strm = nullptr;
+#ifndef IS_EDITOR
+std::vector<string> Scene::sceneEPaths = {};
+#endif
+std::vector<string> Scene::sceneNames = {};
+std::vector<long> Scene::scenePoss = {};
+
+#ifndef CHOKO_LAIT
 Scene::Scene(std::ifstream& stream, long pos) : sceneName("") {
 	Debug::Message("SceneLoader", "Begin Loading Scene...");
 	std::vector<pSceneObject>().swap(objects);
@@ -2106,6 +2080,39 @@ Scene::Scene(std::ifstream& stream, long pos) : sceneName("") {
 	Debug::Message("SceneLoader", "Scene Loaded.");
 }
 
+void Scene::Load(uint i) {
+	if (i >= sceneNames.size()) {
+		Debug::Error("Scene Loader", "Scene ID (" + to_string(i) + ") out of range!");
+		return;
+	}
+	Debug::Message("Scene Loader", "Loading scene " + to_string(i) + "...");
+#ifndef IS_EDITOR
+	if (_pipemode) {
+		std::ifstream strm2(sceneEPaths[i], std::ios::binary);
+		active = new Scene(strm2, 0);
+	}
+	else {
+#else
+	{
+#endif
+		if (active) delete(active);
+		active = new Scene(*strm, scenePoss[i]);
+	}
+	active->sceneId = i;
+	Debug::Message("Scene Loader", "Loaded scene " + to_string(i) + "(" + sceneNames[i] + ")");
+}
+
+void Scene::Load(string name) {
+	for (uint a = sceneNames.size(); a > 0; a--) {
+		if (sceneNames[a - 1] == name) {
+			Load(a - 1);
+			return;
+		}
+	}
+}
+
+#endif
+
 void Scene::AddObject(pSceneObject object, pSceneObject parent) {
 	if (!active)
 		return;
@@ -2123,42 +2130,42 @@ void Scene::DeleteObject(pSceneObject o) {
 	o->_pendingDelete = true;
 }
 
-Scene* Scene::active = nullptr;
-std::ifstream* Scene::strm = nullptr;
-#ifndef IS_EDITOR
-std::vector<string> Scene::sceneEPaths = {};
-#endif
-std::vector<string> Scene::sceneNames = {};
-std::vector<long> Scene::scenePoss = {};
+#ifdef IS_EDITOR
 
-void Scene::Load(string name) {
-	for (uint a = sceneNames.size(); a > 0; a--) {
-		if (sceneNames[a-1] == name) {
-			Load(a-1);
-			return;
+void Scene::ReadD0() {
+#ifndef IS_EDITOR
+	ushort num;
+	_Strm2Val(*strm, num);
+	for (ushort a = 0; a < num; a++) {
+		uint sz;
+		char c[100];
+		if (_pipemode) {
+			strm->getline(c, 100);
+			sceneNames.push_back(c);
+			sceneEPaths.push_back(AssetManager::eBasePath + sceneNames[a]);
+			Debug::Message("AssetManager", "Registered scene " + sceneNames[a]);
+		}
+		else {
+			_Strm2Val(*strm, sz);
+			*strm >> c[0];
+			long p1 = (long)strm->tellg();
+			scenePoss.push_back(p1);
+			*strm >> c[0] >> c[1];
+			if (c[0] != 'S' || c[1] != 'N') {
+				Debug::Error("Scene Importer", "fatal: Scene Signature wrong!");
+				return;
+			}
+			strm->getline(c, 100, 0);
+			sceneNames.push_back(c);
+			strm->seekg(p1 + sz + 1);
+			Debug::Message("AssetManager", "Registered scene " + sceneNames[a] + " (" + to_string(sz) + " bytes)");
 		}
 	}
+#endif
 }
 
-void Scene::Load(uint i) {
-	if (i >= sceneNames.size()) {
-		Debug::Error("Scene Loader", "Scene ID (" + to_string(i) + ") out of range!");
-		return;
-	}
-	Debug::Message("Scene Loader", "Loading scene " + to_string(i) + "...");
-#ifndef IS_EDITOR
-	if (_pipemode) {
-		std::ifstream strm2(sceneEPaths[i], std::ios::binary);
-		active = new Scene(strm2, 0);
-	} else {
-#else
-	{
-#endif
-		if (active) delete(active);
-		active = new Scene(*strm, scenePoss[i]);
-	}
-	active->sceneId = i;
-	Debug::Message("Scene Loader", "Loaded scene " + to_string(i) + "(" + sceneNames[i] + ")");
+void Scene::Unload() {
+
 }
 
 void Scene::Save(Editor* e) {
@@ -2184,6 +2191,7 @@ void Scene::Save(Editor* e) {
 	//e->includedScenes.clear();
 	//e->includedScenes.push_back(e->projectFolder + "Assets\\test.scene");
 }
+#endif
 
 std::vector<string> DefaultResources::names = std::vector<string>();
 std::vector<char*> DefaultResources::datas = std::vector<char*>();

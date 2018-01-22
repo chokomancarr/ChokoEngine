@@ -1,5 +1,7 @@
 #pragma once
 
-#ifndef GEN_LIB
-#define IS_EDITOR
-#endif
+#define PLATFORM_WIN
+
+//all content should be included in the library
+#define H_PLATFORM_WIN
+#define H_PLATFORM_ADR

@@ -2,30 +2,83 @@
 
 #include "Engine.h"
 
-enum COMPONENT_TYPE : byte {
-	COMP_UNDEF = 0x00,
-	COMP_CAM = 0x01,
-	COMP_MFT = 0x02,
-	COMP_MRD = 0x10,
-	COMP_TRD = 0x11,
-	COMP_SRD = 0x12,
-	COMP_PST = 0x13,
-	COMP_LHT = 0x20,
-	COMP_RFQ = 0x22,
-	COMP_RDP = 0x25,
-	COMP_ARM = 0x30,
-	COMP_ANM = 0x31,
-	COMP_INK = 0x35,
-	COMP_SCR = 0xff
-};
-typedef unsigned char DRAWORDER;
-#define DRAWORDER_NONE 0x00
-#define DRAWORDER_SOLID 0x01
-#define DRAWORDER_TRANSPARENT 0x02
-#define DRAWORDER_OVERLAY 0x04
-#define DRAWORDER_LIGHT 0x08
+class SceneSettings {
+public:
+	SceneSettings() : sky(nullptr), skyId(-1), skyStrength(1) {}
 
-#define ECACHESZ_PADDING 1
+	Background* sky;
+	float skyStrength;
+	Color ambientCol;
+	GITYPE GIType = GITYPE_RSM;
+	float rsmRadius;
+
+	bool useFog, sunFog;
+	float fogDensity, fogSunSpread;
+	Vec4 fogColor, fogSunColor;
+
+	friend class Editor;
+	friend class EB_Inspector;
+	friend class Scene;
+protected:
+	int skyId;
+};
+
+/*! A scene contains everything in a level.
+*/
+class Scene {
+public:
+#ifndef CHOKO_LAIT
+	Scene() : sceneName("newScene") {}
+	Scene(std::ifstream& stream, long pos);
+	~Scene() {}
+	static bool loaded() {
+		return active != nullptr;
+	}
+	string sceneName;
+	int sceneId;
+
+	static void Load(uint i), Load(string name);
+#endif
+
+	/*! The current active scene.
+	In Lait versions, this value cannot be changed.
+	*/
+	static Scene* active;
+
+	uint objectCount = 0;
+	std::vector<pSceneObject> objects;
+	SceneSettings settings;
+	std::vector<Component*> _preUpdateComps;
+	std::vector<Component*> _preLUpdateComps;
+	std::vector<Component*> _preRenderComps;
+	static void AddObject(pSceneObject object, pSceneObject parent = nullptr);
+	static void DeleteObject(pSceneObject object);
+
+	friend int main(int argc, char **argv);
+	friend class Editor;
+	friend struct Editor_PlaySyncer;
+	friend class AssetManager;
+	friend class Component;
+protected:
+
+	static std::ifstream* strm;
+	//#ifndef IS_EDITOR
+	static std::vector<string> sceneEPaths;
+	//#endif
+	static std::vector<string> sceneNames;
+	static std::vector<long> scenePoss;
+
+#ifdef IS_EDITOR
+	static void ReadD0();
+	static void Unload();
+	void Save(Editor* e);
+#endif
+	static struct _offset_map {
+		uint objCount = offsetof(Scene, objectCount),
+			objs = offsetof(Scene, objects);
+	} _offsets;
+};
+
 class Component: public Object {
 public:
 	Component(string name, COMPONENT_TYPE t, DRAWORDER drawOrder = 0x00, SceneObject* o = nullptr, std::vector<COMPONENT_TYPE> dep = {});
@@ -130,402 +183,6 @@ private:
 	Transform(const Transform& rhs);
 };
 
-#pragma region AssetObjects
-
-class Mesh : public AssetObject {
-public:
-	//Mesh(); //until i figure out normal recalc algorithm
-	bool loaded;
-	Mesh(const std::vector<Vec3>& verts, const std::vector<Vec3>& norms, const std::vector<int>& tris, std::vector<Vec2> uvs = std::vector<Vec2>());
-
-	std::vector<Vec3> vertices;
-	std::vector<Vec3> normals, tangents;// , bitangents;
-	std::vector<int> triangles;
-	std::vector<Vec2> uv0, uv1;
-	std::vector<std::vector<std::pair<byte, float>>> vertexGroupWeights;
-	std::vector<string> vertexGroups;
-	BBox boundingBox;
-	
-	uint vertexCount, triangleCount, materialCount;
-	
-	void RecalculateBoundingBox();
-	
-	friend int main(int argc, char **argv);
-	friend class Editor;
-	friend class MeshFilter;
-	friend class MeshRenderer;
-	friend class SkinnedMeshRenderer;
-	friend class AssetManager;
-	_allowshared(Mesh);
-protected:
-	Mesh(Editor* e, int i);
-	Mesh(std::istream& strm, uint offset = 0);
-	Mesh(string path);
-	Mesh(byte* mem);
-
-	void CalcTangents();
-	void GenECache() override;
-
-	static bool ParseBlend(Editor* e, string s);
-	std::vector<std::vector<int>> _matTriangles;
-	//void Draw(Material* mat);
-	//void Load();
-};
-
-enum Interpolation : byte {
-	Interpolation_Ease,
-	Interpolation_Linear,
-	Interpolation_Before,
-	Interpolation_Center,
-	Interpolation_After
-};
-
-enum AnimKeyType : byte {
-	AK_Undef = 0x00,
-	AK_BoneLoc = 0x10,
-	AK_BoneRot,
-	AK_BoneScl,
-	AK_Location = 0x20,
-	AK_Rotation,
-	AK_Scale,
-	AK_ShapeKey = 0x30,
-};
-
-class AnimClip_Key {
-public:
-	AnimClip_Key(string name, AnimKeyType type, uint cnt = 0, float* loc = 0) : name(name), type(type),
-		dim((type == AK_ShapeKey) ? 1 : ((type & 0x0f) == 0x01)? 4 : 3) {
-		if (!!cnt) AddFrames(cnt, loc);
-	}
-	
-	std::vector<std::pair<int, Vec4>> frames;
-	uint frameCount;
-
-	string name;
-	const AnimKeyType type;
-	const byte dim;
-
-	void AddFrames(uint cnt, float* loc);
-	Vec4 Eval(float t);
-};
-
-class AnimClip : public AssetObject {
-public:
-	std::vector<AnimClip_Key*> keys;
-	ushort keyCount;
-	ushort frameStart, frameEnd;
-	bool repeat;
-
-	std::vector<string> keynames;
-	std::vector<Vec4> keyvals;
-
-	Interpolation interpolation;
-
-	void Eval(float t);
-
-	friend class Editor;
-	friend class AssetManager;
-	_allowshared(AnimClip);
-protected:
-	AnimClip(Editor* e, int i);
-	AnimClip(std::ifstream& strm, uint offset);
-	AnimClip(string path);
-};
-
-class AnimFrameItem {
-public:
-	AnimFrameItem();
-	friend class Animation;
-	friend class Anim_State;
-protected:
-	byte type;
-	string name;
-	Vec3 transform, scale;
-	Quat rotation;
-};
-
-class Anim_State {
-public:
-	Anim_State(bool blend = false) : Anim_State(Vec2()) {}
-	
-	string name;
-	void SetClip(AnimClip* clip);
-
-	friend class Animation;
-	friend class Animator;
-	friend class EB_AnimEditor;
-protected:
-	Anim_State(Vec2 pos, bool blend = false) : name(blend ? "newBlendState" : "newState"), isBlend(blend), speed(1), length(0), time(0), _clip(-1), editorPos(pos), editorExpand(true) {}
-	bool isBlend;
-	float speed, length, time;
-
-	std::vector<string> keynames;
-	std::vector<Vec4> keyvals;
-
-	AnimClip* clip;
-	ASSETID _clip;
-	Vec2 editorPos;
-	bool editorExpand, editorShowGraph;
-
-	std::vector<AnimClip*> blendClips;
-	std::vector<ASSETID> _blendClips;
-	std::vector<float> blendOffsets;
-
-	void Eval(float dt);
-};
-
-class Anim_Transition {
-public:
-	Anim_Transition();
-	friend class Animation;
-protected:
-	bool canInterrupt;
-	float length, time;
-
-};
-
-class Animation : public AssetObject {
-
-	friend class EB_AnimEditor;
-	friend class Editor;
-	friend class SkinnedMeshRenderer;
-	friend class Animator;
-	_allowshared(Animation);
-protected:
-	Animation();
-	Animation(string s);
-	Animation(std::ifstream& stream, uint offset);
-	uint activeState, nextState;
-	float stateTransition;
-
-	std::vector<Anim_State*> states;
-	std::vector<Anim_Transition*> transitions;
-
-	std::vector<string> keynames;
-	std::vector<Vec4> keyvals;
-	
-	int IdOf(const string& s);
-
-	Vec4 Get(const string& s);
-	Vec4 Get(uint id);
-
-	void Save(string s);
-};
-
-enum TEX_FILTERING : byte {
-	TEX_FILTER_POINT = 0x00,
-	TEX_FILTER_BILINEAR,
-	TEX_FILTER_TRILINEAR
-};
-
-enum TEX_WARPING : byte {
-	TEX_WARP_CLAMP,
-	TEX_WARP_REPEAT
-};
-
-enum TEX_TYPE : byte {
-	TEX_TYPE_NORMAL = 0x00,
-	TEX_TYPE_RENDERTEXTURE,
-	TEX_TYPE_READWRITE,
-	TEX_TYPE_UNDEF
-};
-
-class Texture : public AssetObject {
-public:
-	Texture(const string& path, bool mipmap = true, TEX_FILTERING filter = TEX_FILTER_BILINEAR, byte aniso = 5, TEX_WARPING warp = TEX_WARP_REPEAT);
-	//Texture(std::ifstream& stream, long pos);
-	~Texture(){ glDeleteTextures(1, &pointer); }
-	bool loaded;
-	uint width, height;
-	GLuint pointer;
-	TEX_TYPE texType() { return _texType; }
-	
-	static byte* LoadPixels(const string& path, byte& chn, uint& w, uint& h);
-
-	friend int main(int argc, char **argv);
-	friend class Editor;
-	friend class EB_Inspector;
-	friend class AssetManager;
-	friend class RenderTexture;
-	friend void EBI_DrawAss_Tex(Vec4 v, Editor* editor, EB_Inspector* b, float &off);
-	_allowshared(Texture);
-protected:
-	Texture() : AssetObject(ASSETTYPE_TEXTURE) {}
-	Texture(int i, Editor* e); //for caches
-	Texture(std::istream& strm, uint offset = 0);
-	Texture(byte* b);
-	static TEX_TYPE _ReadStrm(Texture* tex, std::istream& strm, byte& chn, GLenum& rgb, GLenum& rgba);
-	byte _aniso = 0;
-	TEX_FILTERING _filter = TEX_FILTER_POINT;
-	TEX_TYPE _texType = TEX_TYPE_NORMAL;
-	bool _mipmap = true, _repeat = false, _blurmips = false;
-	static bool Parse(Editor* e, string path);
-	void _ApplyPrefs(const string& p);
-	bool DrawPreview(uint x, uint y, uint w, uint h) override;
-	
-	void GenECache(byte* dat, byte chn, bool isrgb, std::vector<RenderTexture*>* rts);
-};
-/*
-class VideoTexture : public Texture {
-public:
-	VideoTexture(const string& path);
-
-	void Play(), Pause(), Stop();
-//protected:
-	GLuint d_fbo;
-	std::vector<byte> buffer;
-
-	std::istream* strm;
-	AVCodec* codec;
-	AVCodecContext* codecContext;
-	AVCodecParserContext* parser;
-	AVFrame* picture;
-	int frame;
-
-	static void Init();
-	void GetFrame();
-};
-*/
-enum RT_FLAGS : byte {
-	RT_FLAG_NONE = 0U,
-	RT_FLAG_DEPTH = 1U,
-	RT_FLAG_STENCIL = 2U, //doesn't do anything for now
-	RT_FLAG_HDR = 4U
-};
-
-class RenderTexture : public Texture {
-public:
-	RenderTexture(uint w, uint h, RT_FLAGS flags = RT_FLAG_NONE, const GLvoid* pixels = NULL, GLenum pixelFormat = GL_RGBA, GLenum minFilter = GL_LINEAR, GLenum magFilter = GL_LINEAR, GLenum wrapS = GL_REPEAT, GLenum wrapT = GL_REPEAT);
-	~RenderTexture();
-
-	const bool depth, stencil, hdr;
-
-	static void Blit(Texture* src, RenderTexture* dst, Shader* shd, string texName = "mainTex");
-	static void Blit(Texture* src, RenderTexture* dst, Material* mat, string texName = "mainTex");
-	static void Blit(GLuint src, RenderTexture* dst, GLuint shd, string texName = "mainTex");
-
-	template <typename T>
-	std::vector<T> pixels(bool alpha) {
-		assert((typeid(byte).hash_code() == typeid(T).hash_code()) || (typeid(float).hash_code() == typeid(T).hash_code()));
-		std::vector<T> v = std::vector<T>(width*height * (alpha? 4 : 3));
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, d_fbo);
-		glReadPixels(0, 0, width, height, (alpha? GL_RGBA : GL_RGB), (typeid(byte).hash_code() == typeid(T).hash_code())? GL_UNSIGNED_BYTE : GL_FLOAT, &v[0]);
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-		return v;
-	}
-
-	//void Resize(uint w, uint h);
-	friend class Texture;
-	friend class Editor;
-	friend class Background;
-	friend int main(int argc, char **argv);
-	_allowshared(RenderTexture);
-protected:
-	GLuint d_fbo;
-	void Load(string path);
-	void Load(std::istream& strm);
-	static bool Parse(string path); //just tell Texture to load as rendtex
-};
-
-class Background : public AssetObject {
-public:
-	//Background() : AssetObject(ASSETTYPE_HDRI){}
-	Background(const string& path);
-
-	bool loaded;
-	unsigned int width, height;
-	GLuint pointer;
-	friend int main(int argc, char **argv);
-	friend class Editor;
-	friend class AssetManager;
-	_allowshared(Background);
-private:
-	Background(int i, Editor* editor);
-	Background(std::istream& strm, uint offset);
-	Background(byte*);
-	static bool Parse(string path);
-
-	void GenECache(const std::vector<Vec2>& szs, const std::vector<RenderTexture*>& rts);
-};
-
-class CubeMap : public AssetObject {
-public:
-	CubeMap(Texture* px, Texture* nx, Texture* py, Texture* ny, Texture* pz, Texture* nz);
-	CubeMap(Texture* tex);
-
-	const ushort size;
-	bool loaded;
-	
-	friend class Camera;
-	friend class RenderCubeMap;
-	friend class ReflectionProbe;
-	_allowshared(CubeMap);
-protected:
-	CubeMap(ushort size, bool mips = false, GLenum type = GL_RGBA, byte dataSize = 4, GLenum format = GL_RGBA, GLenum dataType = GL_UNSIGNED_BYTE);
-	
-	uint pointer;
-
-	static void _RenderCube(Vec3 pos, Vec3 xdir, GLuint fbos[], uint size, GLuint shader = 0);
-	static void _DoRenderCubeFace(GLuint fbo);
-};
-
-class RenderCubeMap {
-protected:
-	RenderCubeMap();
-
-	CubeMap map;
-	std::vector<GLuint> fbos[6]; //[face][mip]
-};
-
-
-class ReflectionProbe;
-
-enum CAM_CLEARTYPE : byte {
-	CAM_CLEAR_NONE,
-	CAM_CLEAR_COLOR,
-	CAM_CLEAR_DEPTH,
-	CAM_CLEAR_SKY
-};
-
-enum GBUFFERS {
-	GBUFFER_DIFFUSE,
-	GBUFFER_NORMAL,
-	GBUFFER_SPEC_GLOSS,
-	GBUFFER_EMISSION_AO,
-	GBUFFER_Z,
-	GBUFFER_NUM_TEXTURES
-};
-
-class CameraEffect : public AssetObject {
-public:
-	CameraEffect(Material* mat);
-
-	bool enabled = true;
-
-	friend class Camera;
-	friend class Engine;
-	friend class Editor;
-	friend class EB_Browser;
-	friend class EB_Inspector;
-	friend void EBI_DrawAss_Eff(Vec4 v, Editor* editor, EB_Inspector* b, float &off);
-	_allowshared(CameraEffect);
-protected:
-	Material* material;
-	int _material = -1;
-	bool expanded; //editor only
-	string mainTex;
-
-	void Save(string nm);
-
-	CameraEffect(string s);
-	//CameraEffect(std::ifstream& strm, uint offset);
-	//void SetShader(ShaderBase* shad);
-};
-
-#pragma endregion
-
-#pragma region Components
-
 class Camera : public Component {
 public:
 	Camera();
@@ -629,13 +286,15 @@ public:
 	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
 	_allowshared(MeshFilter);
 protected:
-	MeshFilter(std::ifstream& stream, SceneObject* o, long pos = -1);
 
 	bool showBoundingBox = false;
 	ASSETID _mesh = -1;
 
+#ifdef IS_EDITOR
+	MeshFilter(std::ifstream& stream, SceneObject* o, long pos = -1);
 	void SetMesh(int i);
 	static void _UpdateMesh(void* i);
+#endif
 };
 
 class MeshRenderer : public Component {
@@ -654,7 +313,9 @@ public:
 	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
 	_allowshared(MeshRenderer);
 protected:
+#ifdef IS_EDITOR
 	MeshRenderer(std::ifstream& stream, SceneObject* o, long pos = -1);
+#endif
 
 	void DrawDeferred(GLuint shader = 0);
 
@@ -1142,8 +803,6 @@ protected:
 	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override; //we want c to be null if deleted
 	void Serialize(Editor* e, std::ofstream* stream) override;
 };
-
-#pragma endregion
 
 class SceneObject: public Object {
 public:

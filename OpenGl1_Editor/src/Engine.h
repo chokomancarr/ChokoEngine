@@ -1,9 +1,28 @@
 #pragma once
 
+/*
+Global stuff, normally not macro-protected
+
+[av]: available in Lait version
+*/
+
 #define _ITERATOR_DEBUG_LEVEL 0
 
 #include "Defines.h"
 
+#ifdef CHOKO_LAIT
+#define LAIT_STATIC static
+#else
+#define LAIT_STATIC
+#endif
+
+#define STRINGIFY(x) #x
+#define TOSTRING(x) STRINGIFY(x)
+
+#define STRINGMRGDO(a,b) a ## b
+#define STRINGMRG(a,b) STRINGMRGDO(a,b)
+
+#pragma region includes
 #if defined(IS_EDITOR) || defined(PLATFORM_WIN)
 #include <Windows.h>
 #endif
@@ -38,7 +57,7 @@ extern "C" FILE * __cdecl _imp___iob(void);
 #define _iob (*_imp___iob)	/* An array of FILE */
 #include <jpeglib.h>
 #include <jerror.h>
-
+#pragma endregion
 
 enum PLATFORM : byte {
 	PLATFORM_WINDOWS,
@@ -53,12 +72,6 @@ const PLATFORM platform = PLATFORM_ANDROID;
 #ifndef IS_EDITOR
 extern bool _pipemode;
 #endif
-
-#define STRINGIFY(x) #x
-#define TOSTRING(x) STRINGIFY(x)
-
-#define STRINGMRGDO(a,b) a ## b
-#define STRINGMRG(a,b) STRINGMRGDO(a,b)
 
 #pragma region asm_related_functions
 
@@ -108,17 +121,23 @@ typedef glm::vec4 Vec4;
 typedef glm::quat Quat;
 typedef glm::mat4 Mat4x4;
 
+typedef int ASSETID;
+
 const float PI = 3.1415926535f;
 const float rad2deg = 57.2958f;
 const float deg2rad = 0.0174533f;
 const char char0 = 0;
+
+#define UI_MAX_EDIT_TEXT_FRAMES 8
 
 template <typename T> T Lerp(T a, T b, float c) {
 	if (c < 0) return a;
 	else if (c > 1) return b;
 	else return a*(1 - c) + b*c;
 }
-#define InverseLerp(a,b,c) (Clamp( (float)((c - a)/(b - a)) , 0.0f, 1.0f))
+template <typename T> float InverseLerp(T a, T b, T c) {
+	return Clamp((float)((c - a) / (b - a)), 0.0f, 1.0f);
+}
 #define Normalize(a) glm::normalize(a)
 #define Distance(a, b) glm::distance(a, b)
 
@@ -227,127 +246,20 @@ public:
 	Rect Intersection(const Rect& r2);
 };
 
-/*
-class Int2 {
-public:
-	Int2() : x(0), y(0) {}
-	Int2(int x, int y) : x(x), y(y) {}
-
-	int x, y;
-
-	bool operator==(const Int2& rhs)
-	{
-		return (x == rhs.x) && (y == rhs.y);
-	}
-};
-*/
 typedef glm::tvec2<int, glm::highp> Int2;
+
+typedef unsigned char DRAWORDER;
+#define DRAWORDER_NONE 0x00
+#define DRAWORDER_SOLID 0x01
+#define DRAWORDER_TRANSPARENT 0x02
+#define DRAWORDER_OVERLAY 0x04
+#define DRAWORDER_LIGHT 0x08
+
+#define ECACHESZ_PADDING 1
 
 #pragma endregion
 
-class Mesh;
-class Procedurals {
-public:
-	static Mesh* Plane(uint xCount, uint yCount);
-	static Mesh* UVSphere(uint uCount, uint vCount);
-};
-
-class Random {
-public:
-	static int seed;
-	static float Value(), Range(float min, float max);
-};
-
-enum MOUSE_STATUS : byte {
-	MOUSE_NONE = 0x00,
-	MOUSE_DOWN,
-	MOUSE_HOLD,
-	MOUSE_UP,
-	MOUSE_HOVER_FLAG = 0x10,
-	MOUSE_CLICK, //use for buttons
-	MOUSE_PRESS, //use for buttons
-	MOUSE_RELEASE  //use for buttons
-};
-
-enum ALIGNMENT : byte {
-	ALIGN_BOTLEFT = 0x00,
-	ALIGN_BOTCENTER = 0x01,
-	ALIGN_BOTRIGHT = 0x02,
-	ALIGN_MIDLEFT = 0x10,
-	ALIGN_MIDCENTER = 0x11,
-	ALIGN_MIDRIGHT = 0x12,
-	ALIGN_TOPLEFT = 0x20,
-	ALIGN_TOPCENTER = 0x21,
-	ALIGN_TOPRIGHT = 0x22
-};
-
-enum ORIENTATION : byte {
-	ORIENT_NONE,
-	ORIENT_HORIZONTAL,
-	ORIENT_VERTICAL
-};
-
-enum TransformSpace : byte {
-	Space_Self = 0x00,
-	Space_World
-};
-
-long long milliseconds();
-
-class Editor;
-class EditorBlock;
-class EB_Inspector;
-
-enum ASSETTYPE : byte {
-	ASSETTYPE_UNDEF = 0x00,
-
-	ASSETTYPE_SCENE = 0x90,
-	ASSETTYPE_TEXTURE = 0x01,
-	ASSETTYPE_HDRI = 0x02,
-	ASSETTYPE_TEXCUBE = 0x03,
-	ASSETTYPE_SHADER = 0x05,
-	ASSETTYPE_MATERIAL = 0x10,
-	ASSETTYPE_BLEND = 0x20,
-	ASSETTYPE_MESH = 0x21,
-	ASSETTYPE_ANIMCLIP = 0x30,
-	ASSETTYPE_ANIMATION = 0x31,
-	ASSETTYPE_CAMEFFECT = 0x40,
-	ASSETTYPE_SCRIPT_H = 0x9e,
-	ASSETTYPE_SCRIPT_CPP = 0x9f,
-	//derived types
-	ASSETTYPE_TEXTURE_REND = 0xa0
-};
-typedef int ASSETID;
-
-//Vec3 rotate(Vec3 v, Quat q);
-void _StreamWrite(const void* val, std::ofstream* stream, int size);
-void _StreamWriteAsset(Editor* e, std::ofstream* stream, ASSETTYPE t, ASSETID i);
-//void _Strm2Int(std::ifstream& strm, int& i), _Strm2Float(std::ifstream& strm, float& f), _Strm2Short(std::ifstream& strm, short& i);
-
-template<typename T> void _Strm2Val(std::istream& strm, T &val) {
-	long long pos = strm.tellg();
-	strm.read((char*)&val, (byte)sizeof(T));
-	if (strm.fail()) {
-		Debug::Error("Strm2Val", "Fail bit raised! (probably eof reached) " + std::to_string(pos));
-	}
-}
-ASSETID _Strm2H(std::istream& strm);
-
-string _Strm2Asset(std::istream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int maxL = 100);
-
-template<typename T> T* _GetCache(ASSETTYPE t, ASSETID i, bool async = false) {
-#ifdef IS_EDITOR
-	return static_cast<T*>(Editor::instance->GetCache(t, i, async));
-#else
-	return static_cast<T*>(AssetManager::GetCache(t, i));
-#endif
-}
-
-class Object;
-
-template <class T> std::shared_ptr<T> get_shared(Object* ref) {
-	return std::dynamic_pointer_cast<T> (ref->shared_from_this());
-}
+#pragma region class names
 
 template <class T> class Ref {
 public:
@@ -419,6 +331,8 @@ private:
 typedef std::shared_ptr<obj> p ## obj; \
 typedef Ref<obj> r ## obj;
 
+class Object;
+
 //SceneObjects.h
 _canref(Component);
 _canref(Transform);
@@ -452,6 +366,219 @@ _canref(Shader);
 _canref(Texture);
 _canref(RenderTexture);
 
+class Editor;
+class EditorBlock;
+class EB_Inspector;
+class EB_Browser_File;
+
+#pragma endregion
+
+#pragma region enums
+
+enum MOUSE_STATUS : byte {
+	MOUSE_NONE = 0x00,
+	MOUSE_DOWN,
+	MOUSE_HOLD,
+	MOUSE_UP,
+	MOUSE_HOVER_FLAG = 0x10,
+	MOUSE_CLICK, //use for buttons
+	MOUSE_PRESS, //use for buttons
+	MOUSE_RELEASE  //use for buttons
+};
+
+enum ALIGNMENT : byte {
+	ALIGN_BOTLEFT = 0x00,
+	ALIGN_BOTCENTER = 0x01,
+	ALIGN_BOTRIGHT = 0x02,
+	ALIGN_MIDLEFT = 0x10,
+	ALIGN_MIDCENTER = 0x11,
+	ALIGN_MIDRIGHT = 0x12,
+	ALIGN_TOPLEFT = 0x20,
+	ALIGN_TOPCENTER = 0x21,
+	ALIGN_TOPRIGHT = 0x22
+};
+
+enum ORIENTATION : byte {
+	ORIENT_NONE,
+	ORIENT_HORIZONTAL,
+	ORIENT_VERTICAL
+};
+
+enum TransformSpace : byte {
+	Space_Self = 0x00,
+	Space_World
+};
+
+enum ASSETTYPE : byte {
+	ASSETTYPE_UNDEF = 0x00,
+
+	ASSETTYPE_SCENE = 0x90,
+	ASSETTYPE_TEXTURE = 0x01,
+	ASSETTYPE_HDRI = 0x02,
+	ASSETTYPE_TEXCUBE = 0x03,
+	ASSETTYPE_SHADER = 0x05,
+	ASSETTYPE_MATERIAL = 0x10,
+	ASSETTYPE_BLEND = 0x20,
+	ASSETTYPE_MESH = 0x21,
+	ASSETTYPE_ANIMCLIP = 0x30,
+	ASSETTYPE_ANIMATION = 0x31,
+	ASSETTYPE_CAMEFFECT = 0x40,
+	ASSETTYPE_SCRIPT_H = 0x9e,
+	ASSETTYPE_SCRIPT_CPP = 0x9f,
+	//derived types
+	ASSETTYPE_TEXTURE_REND = 0xa0
+};
+
+enum InputKey : byte {
+	Key_None = 0x00,
+	Key_Backspace = 0x08,
+	Key_Tab = 0x09,
+	Key_Enter = 0x0D,
+	Key_Shift = 0x10,
+	Key_Control = 0x11,
+	Key_Alt = 0x12,
+	Key_CapsLock = 0x14,
+	Key_Escape = 0x1B,
+	Key_Space = 0x20,
+	Key_LeftArrow = 0x25, Key_UpArrow, Key_RightArrow, Key_DownArrow,
+	Key_Delete = 0x2E,
+	Key_0 = 0x30, Key_1, Key_2, Key_3, Key_4, Key_5, Key_6, Key_7, Key_8, Key_9,
+	Key_A = 0x41, Key_B, Key_C, Key_D, Key_E, Key_F, Key_G, Key_H, Key_I, Key_J, Key_K, Key_L, Key_M, Key_N, Key_O, Key_P, Key_Q, Key_R, Key_S, Key_T, Key_U, Key_V, Key_W, Key_X, Key_Y, Key_Z,
+	Key_NumPad0 = 0x60, Key_NumPad1, Key_NumPad2, Key_NumPad3, Key_NumPad4, Key_NumPad5, Key_NumPad6, Key_NumPad7, Key_NumPad8, Key_NumPad9,
+	Key_NumPadMultiply, Key_NumPadAdd, Key_NumPadSeparator, Key_NumPadMinus, Key_NumPadDot, Key_NumPadDivide,
+	Key_Plus = 0xBB, Key_Comma, Key_Minus, Key_Dot
+};
+
+enum OBJECT_STATUS : byte {
+	OBJECT_UNDEF,
+	OBJECT_ALIVE,
+	OBJECT_DEAD
+};
+
+enum SHADER_VARTYPE : byte {
+	SHADER_INT = 0x00,
+	SHADER_FLOAT = 0x01,
+	SHADER_VEC2 = 0x02,
+	SHADER_VEC3 = 0x03,
+	SHADER_SAMPLER = 0x10,
+	SHADER_MATRIX = 0x20
+};
+
+enum SHADER_TEST : byte {
+	SHADER_TEST_NEVER,
+	SHADER_TEST_ALWAYS,
+	SHADER_TEST_LESS,
+	SHADER_TEST_LEQUAL,
+	SHADER_TEST_EQUAL,
+	SHADER_TEST_GEQUAL,
+	SHADER_TEST_GREATER,
+	SHADER_TEST_NOTEQUAL
+};
+
+enum SHADER_CULL : byte {
+	SHADER_CULL_BACK,
+	SHADER_CULL_FRONT,
+	SHADER_CULL_NONE
+};
+
+enum DEFTEX : byte {
+	DEFTEX_BLACK,
+	DEFTEX_GREY,
+	DEFTEX_WHITE,
+	DEFTEX_RED,
+	DEFTEX_GREEN,
+	DEFTEX_BLUE,
+	DEFTEX_NORMAL
+};
+
+enum DRAWTEX_SCALING : byte {
+	DRAWTEX_FIT,
+	DRAWTEX_CROP,
+	DRAWTEX_STRETCH
+};
+
+enum GITYPE : byte {
+	GITYPE_NONE,
+	GITYPE_RSM
+};
+
+enum COMPONENT_TYPE : byte {
+	COMP_UNDEF = 0x00,
+	COMP_CAM = 0x01,
+	COMP_MFT = 0x02,
+	COMP_MRD = 0x10,
+	COMP_TRD = 0x11,
+	COMP_SRD = 0x12,
+	COMP_PST = 0x13,
+	COMP_LHT = 0x20,
+	COMP_RFQ = 0x22,
+	COMP_RDP = 0x25,
+	COMP_ARM = 0x30,
+	COMP_ANM = 0x31,
+	COMP_INK = 0x35,
+	COMP_SCR = 0xff
+};
+
+#pragma endregion
+
+/*! Run-time mesh generation.
+[av] */
+class Procedurals {
+public:
+	static Mesh* Plane(uint xCount, uint yCount);
+	static Mesh* UVSphere(uint uCount, uint vCount);
+};
+
+/*! RNG System
+[av] */
+class Random {
+public:
+	static int seed;
+	static float Value(), Range(float min, float max);
+};
+
+/*! Time information
+[av] */
+class Time {
+public:
+	static long long startMillis;
+	static long long millis;
+	static double time;
+	static float delta;
+};
+
+long long milliseconds();
+
+void _StreamWrite(const void* val, std::ofstream* stream, int size);
+void _StreamWriteAsset(Editor* e, std::ofstream* stream, ASSETTYPE t, ASSETID i);
+
+template<typename T> void _Strm2Val(std::istream& strm, T &val) {
+	long long pos = strm.tellg();
+	strm.read((char*)&val, (byte)sizeof(T));
+	if (strm.fail()) {
+		Debug::Error("Strm2Val", "Fail bit raised! (probably eof reached) " + std::to_string(pos));
+	}
+}
+ASSETID _Strm2H(std::istream& strm);
+
+string _Strm2Asset(std::istream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int maxL = 100);
+
+#ifndef CHOKO_LAIT
+template<typename T> T* _GetCache(ASSETTYPE t, ASSETID i, bool async = false) {
+#ifdef IS_EDITOR
+	return static_cast<T*>(Editor::instance->GetCache(t, i, async));
+#else
+	return static_cast<T*>(AssetManager::GetCache(t, i));
+#endif
+}
+#endif
+
+template <class T> std::shared_ptr<T> get_shared(Object* ref) {
+	return std::dynamic_pointer_cast<T> (ref->shared_from_this());
+}
+
+/*! Debugging functions. Output is saved in Log.txt beside the executable.
+[av] */
 class Debug {
 public:
 	static void Message(string c, string s);
@@ -468,8 +595,8 @@ private:
 	static void DoDebugObjectTree(const std::vector<pSceneObject>& o, int i);
 };
 
-class EB_Browser_File;
-
+/*! File/folder reading/writing functions.
+[av] */
 class IO {
 public:
 	static std::vector<string> GetFiles(const string& path, string ext = "");
@@ -480,18 +607,22 @@ public:
 	static bool HasDirectory(string szPath);
 	static bool HasFile(string szPath);
 	static string ReadFile(const string& path);
-#if defined(IS_EDITOR) || defined(PLATFORM_WIN)
+#if defined(IS_EDITOR) || defined(H_PLATFORM_WIN)
 	static std::vector<string> GetRegistryKeys(HKEY key);
 #endif
 	static string GetText(const string& path);
 	static std::vector<byte> GetBytes(const string& path);
 };
 
+#ifdef H_PLATFORM_WIN
 class WinFunc {
 public:
 	static HWND GetHwndFromProcessID(DWORD id);
 };
+#endif
 
+/*! Dynamic fonts constructed with FreeType (.ttf files)
+[av]*/
 class Font {
 public:
 	Font(const string& path, int size = 12);
@@ -526,26 +657,8 @@ protected:
 	GLuint CreateGlyph (uint size, bool recalcW2h = false);
 };
 
-enum InputKey : byte {
-	Key_None = 0x00,
-	Key_Backspace = 0x08,
-	Key_Tab = 0x09,
-	Key_Enter = 0x0D,
-	Key_Shift = 0x10,
-	Key_Control = 0x11,
-	Key_Alt = 0x12,
-	Key_CapsLock = 0x14,
-	Key_Escape = 0x1B,
-	Key_Space = 0x20,
-	Key_LeftArrow = 0x25, Key_UpArrow, Key_RightArrow, Key_DownArrow,
-	Key_Delete = 0x2E,
-	Key_0 = 0x30, Key_1, Key_2, Key_3, Key_4, Key_5, Key_6, Key_7, Key_8, Key_9,
-	Key_A = 0x41, Key_B, Key_C, Key_D, Key_E, Key_F, Key_G, Key_H, Key_I, Key_J, Key_K, Key_L, Key_M, Key_N, Key_O, Key_P, Key_Q, Key_R, Key_S, Key_T, Key_U, Key_V, Key_W, Key_X, Key_Y, Key_Z,
-	Key_NumPad0 = 0x60, Key_NumPad1, Key_NumPad2, Key_NumPad3, Key_NumPad4, Key_NumPad5, Key_NumPad6, Key_NumPad7, Key_NumPad8, Key_NumPad9,
-	Key_NumPadMultiply, Key_NumPadAdd, Key_NumPadSeparator, Key_NumPadMinus, Key_NumPadDot, Key_NumPadDivide,
-	Key_Plus = 0xBB, Key_Comma, Key_Minus, Key_Dot
-};
-
+/*! Mouse and keyboard input
+[av] */
 class Input {
 public:
 	static Vec2 mousePos, mousePosRelative, mouseDelta, mouseDownPos;
@@ -568,6 +681,8 @@ private:
 	//Input& operator= (Input const &);
 };
 
+/*! Display window properties
+[av] */
 class Display {
 public:
 	static int width, height;
@@ -586,12 +701,8 @@ protected:
 	static GLFWwindow* window;
 };
 
-enum OBJECT_STATUS {
-	OBJECT_UNDEF,
-	OBJECT_ALIVE,
-	OBJECT_DEAD
-};
-
+/*! Base class of instantiatable object
+[av] */
 class Object : public std::enable_shared_from_this<Object> {
 public:
 	Object(string nm = "");
@@ -604,120 +715,8 @@ public:
 	virtual bool ReferencingObject(Object* o) { return false; }
 };
 
-class AssetObject : public Object {
-	friend class Editor;
-	friend struct Editor_PlaySyncer;
-protected:
-	AssetObject(ASSETTYPE t) : type(t), Object(), _changed(false)
-#ifdef IS_EDITOR
-		, _eCache(nullptr), _eCacheSz(0)
-#endif
-	{}
-	virtual  ~AssetObject() {}
-
-	const ASSETTYPE type = ASSETTYPE_UNDEF;
-#ifdef IS_EDITOR
-	byte* _eCache = nullptr; //first byte is always 255
-	uint _eCacheSz = 0;
-#endif
-	bool _changed;
-	virtual void GenECache() {}
-
-	virtual bool DrawPreview(uint x, uint y, uint w, uint h) { return false; }
-
-	//virtual void Load() = 0;
-};
-
-enum SHADER_VARTYPE : byte {
-	SHADER_INT = 0x00,
-	SHADER_FLOAT = 0x01,
-	SHADER_VEC2 = 0x02,
-	SHADER_VEC3 = 0x03,
-	SHADER_SAMPLER = 0x10,
-	SHADER_MATRIX = 0x20
-};
-
-class ShaderValue {
-public:
-	ShaderValue() : i(0), x(0), y(0), z(0), m() {}
-	int i;
-	float x, y, z;
-	glm::quat m;
-};
-
-enum SHADER_TEST {
-	SHADER_TEST_NEVER,
-	SHADER_TEST_ALWAYS,
-	SHADER_TEST_LESS,
-	SHADER_TEST_LEQUAL,
-	SHADER_TEST_EQUAL,
-	SHADER_TEST_GEQUAL,
-	SHADER_TEST_GREATER,
-	SHADER_TEST_NOTEQUAL
-};
-
-enum SHADER_CULL {
-	SHADER_CULL_BACK,
-	SHADER_CULL_FRONT,
-	SHADER_CULL_NONE
-};
-
-class ShaderTags {
-public:
-	ShaderTags(): zTest(SHADER_TEST_LEQUAL), aTest(SHADER_TEST_ALWAYS), culling(SHADER_CULL_BACK), zWrite() {}
-	SHADER_TEST zTest, aTest;
-	SHADER_CULL culling;
-	bool zWrite;
-
-	void ApplyGL();
-
-	static void Reset();
-};
-
-class ShaderVariable {
-public:
-	//ShaderVariable() : type(0), name(""), val(), min(0), max(0) {}
-
-	SHADER_VARTYPE type;
-	string name;
-	ShaderValue val, def;
-
-	float min, max;
-};
-
-class Shader : public AssetObject {
-public:
-	Shader(string path);
-	Shader(std::istream& stream, uint offset);
-	Shader(const string& vert, const string& frag);
-	Shader(GLuint p) : AssetObject(ASSETTYPE_SHADER), pointer(p), loaded(!!p), inherited(true) {}
-	//ShaderBase(string vert, string frag);
-	~Shader() {
-		if (!inherited) glDeleteProgram(pointer);
-		for (ShaderVariable* v : vars)
-			delete(v);
-	}
-
-	bool loaded;
-	GLuint pointer;
-	ShaderTags tags;
-	std::vector<ShaderVariable*> vars;
-
-	//void Set(byte type, GLint id, void* val) { values[type][id] = val; }
-	//void* Get(byte type, GLint id) { return values[type][id]; }
-	
-	//removes macros, insert include files
-	static bool Parse(std::ifstream* text, string path);
-	static bool LoadShader(GLenum shaderType, string source, GLuint& shader, string* err = nullptr);
-
-	friend class Camera;
-	friend class Engine;
-
-protected:
-	static GLuint FromVF(const string& vert, const string& frag);
-	bool inherited = false;
-};
-
+/*! generic class of ComputeBuffer
+[av] */
 class IComputeBuffer {
 public:
 	IComputeBuffer(uint size, void* data, uint padding = 0, uint stride = 1);
@@ -749,13 +748,20 @@ public:
 	}
 };
 
+/*! Data buffer to be used by ComputeShader.
+[av] */
 template<typename T> class ComputeBuffer : public IComputeBuffer {
 public:
 	ComputeBuffer(uint num, T* data = nullptr, uint padding = 0) : IComputeBuffer(num*sizeof(T), data, padding) {}
 };
 
+/*! GPGPU Shader. 
+[av] */
 class ComputeShader {
 public:
+	/*! Creates a ComputeShader from the shader source.
+	Example usage: ComputeShader(IO::GetText("C:\\source.compute"));
+	*/
 	ComputeShader(string str);
 	~ComputeShader();
 
@@ -774,119 +780,23 @@ protected:
 	GLuint pointer;
 };
 
-class MatVal_Tex {
-	friend class Material;
-	friend class MeshRenderer;
-	friend class SkinnedMeshRenderer;
-	friend void EBI_DrawAss_Mat(Vec4 v, Editor* editor, EB_Inspector* b, float &off);
-protected:
-	MatVal_Tex() : id(-1), tex(nullptr), defTex(0) {}
-	~MatVal_Tex() {}
-
-	int id;
-	Texture* tex;
-	GLuint defTex;
-};
-
-enum DEFTEX : byte {
-	DEFTEX_BLACK,
-	DEFTEX_GREY,
-	DEFTEX_WHITE,
-	DEFTEX_RED,
-	DEFTEX_GREEN,
-	DEFTEX_BLUE,
-	DEFTEX_NORMAL
-};
-
-class Material : public AssetObject {
-public:
-	Material(void);
-	Material(Shader* shad);
-	~Material();
-
-	Shader* shader();
-	void shader(Shader* shad);
-	//values applied to program on drawing stage
-	std::unordered_map<SHADER_VARTYPE, std::unordered_map <GLint, void*>> vals;
-	std::unordered_map<SHADER_VARTYPE, std::vector<string>> valNames;
-	//std::unordered_map<GLint, ShaderVariable> vals;
-	void SetTexture(string name, Texture* texture);
-	void SetTexture(GLint id, Texture* texture);
-	void SetFloat(string name, float val);
-	void SetFloat(GLint id, float val);
-	void SetInt(string name, int val);
-	void SetInt(GLint id, int val);
-	void SetVec2(string name, Vec2 val);
-	void SetVec2(GLint id, Vec2 val);
-
-	friend class Engine;
-	friend class Editor;
-	friend class EB_Browser;
-	friend class EB_Inspector;
-	friend class Mesh;
-	friend class MeshRenderer;
-	friend class SkinnedMeshRenderer;
-	friend class Scene;
-	friend class AssetManager;
-	friend class Shader;
-	friend class RenderTexture;
-	friend int main(int argc, char **argv);
-	friend void EBI_DrawAss_Mat(Vec4 v, Editor* editor, EB_Inspector* b, float &off);
-	_allowshared(Material);
-protected:
-	Material(string s);
-	Material(std::istream& stream, uint offset = 0);
-	void _ReloadParams();
-
-	Shader* _shader;
-	int _shaderId;
-	std::vector<SHADER_VARTYPE> valOrders;
-	std::vector<byte> valOrderIds;
-	std::vector<byte> valOrderGLIds;
-	std::vector<bool> writeMask;
-
-	static void LoadOris();
-	static std::vector<GLuint> defTexs;
-
-	static void _UpdateTexCache(void*);
-
-	void Save(string path);
-	void ApplyGL(Mat4x4& _mv, Mat4x4& _p);
-	void ResetVals();
-	
-	bool _maskExpanded;
-};
-
-class Time {
-public:
-	static long long startMillis;
-	static long long millis;
-	static double time;
-	static float delta;
-};
-
-enum DrawTex_Scaling {
-	DrawTex_Fit,
-	DrawTex_Crop,
-	DrawTex_Stretch
-};
-
 //#define EditText(x,y,w,h,s,str,font) _EditText(__COUNTER__, x,y,w,h,s,str,font)
 
-#define UI_MAX_EDIT_TEXT_FRAMES 8
 
+/*! 2D drawing to the screen.
+[av] */
 class UI {
 public:
-	static void Texture(float x, float y, float w, float h, ::Texture* texture, DrawTex_Scaling scl = DrawTex_Stretch, float miplevel = 0);
-	static void Texture(float x, float y, float w, float h, ::Texture* texture, float alpha, DrawTex_Scaling scl = DrawTex_Stretch, float miplevel = 0);
-	static void Texture(float x, float y, float w, float h, ::Texture* texture, Vec4 tint, DrawTex_Scaling scl = DrawTex_Stretch, float miplevel = 0);
+	static void Texture(float x, float y, float w, float h, ::Texture* texture, DRAWTEX_SCALING scl = DRAWTEX_STRETCH, float miplevel = 0);
+	static void Texture(float x, float y, float w, float h, ::Texture* texture, float alpha, DRAWTEX_SCALING scl = DRAWTEX_STRETCH, float miplevel = 0);
+	static void Texture(float x, float y, float w, float h, ::Texture* texture, Vec4 tint, DRAWTEX_SCALING scl = DRAWTEX_STRETCH, float miplevel = 0);
 	static void Label(float x, float y, float s, string str, Font* font, Vec4 col = black(), float maxw = -1);
 
 	//Draws an editable text box. EditText does not work on recursive functions.
 	static string EditText(float x, float y, float w, float h, float s, Vec4 bcol, const string& str, Font* font, bool delayed = false, bool* changed = nullptr, Vec4 fcol = black(), Vec4 hcol = Vec4(0, 120.0f / 255, 215.0f / 255, 1), Vec4 acol = white(), bool ser = true);
 	
 	static bool CanDraw();
-//protected:
+
 	static bool _isDrawingLoop;
 	static void PreLoop();
 	static uint _activeEditText[UI_MAX_EDIT_TEXT_FRAMES], _lastEditText[UI_MAX_EDIT_TEXT_FRAMES], _editingEditText[UI_MAX_EDIT_TEXT_FRAMES];
@@ -924,7 +834,7 @@ protected:
 	static void Init();
 };
 
-class Engine {
+class Engine { //why do I have this class again?
 public:
 	static void BeginStencil(float x, float y, float w, float h);
 	static void EndStencil();
@@ -999,121 +909,5 @@ protected:
 	static Rect* stencilRect;
 };
 
-enum GITYPE : byte {
-	GITYPE_NONE,
-	GITYPE_RSM
-};
-
-class SceneSettings {
-public:
-	SceneSettings(): sky(nullptr), skyId(-1), skyStrength(1) {}
-	
-	Background* sky;
-	float skyStrength;
-	Color ambientCol;
-	GITYPE GIType = GITYPE_RSM;
-	float rsmRadius;
-
-	bool useFog, sunFog;
-	float fogDensity, fogSunSpread;
-	Vec4 fogColor, fogSunColor;
-
-	friend class Editor;
-	friend class EB_Inspector;
-	friend class Scene;
-protected:
-	int skyId;
-};
-
-class Scene {
-public:
-	Scene() : sceneName("newScene") {}
-	Scene(std::ifstream& stream, long pos);
-	~Scene() {}
-	static Scene* active;
-	static bool loaded() {
-		return active != nullptr;
-	}
-	string sceneName;
-	int sceneId;
-	uint objectCount = 0;
-	std::vector<pSceneObject> objects;
-	SceneSettings settings;
-	std::vector<Component*> _preUpdateComps;
-	std::vector<Component*> _preLUpdateComps;
-	std::vector<Component*> _preRenderComps;
-
-	static void Load(uint i), Load(string name);
-	static void AddObject(pSceneObject object, pSceneObject parent = nullptr);
-	static void DeleteObject(pSceneObject object);
-
-	friend int main(int argc, char **argv);
-	friend class Editor;
-	friend struct Editor_PlaySyncer;
-	friend class AssetManager;
-	friend class Component;
-protected:
-
-	static std::ifstream* strm;
-//#ifndef IS_EDITOR
-	static std::vector<string> sceneEPaths;
-//#endif
-	static std::vector<string> sceneNames;
-	static std::vector<long> scenePoss;
-
-	static void ReadD0();
-	static void Unload();
-	void Save(Editor* e);
-
-	static struct _offset_map {
-		uint objCount = offsetof(Scene, objectCount),
-			objs = offsetof(Scene, objects);
-	} _offsets;
-};
-
-class AssetManager {
-	friend int main(int argc, char **argv);
-	friend class Engine;
-	friend class Editor;
-	friend class Scene;
-	friend class SceneObject;
-	friend class Material;
-	friend struct Editor_PlaySyncer;
-	template<typename T> friend T* _GetCache(ASSETTYPE t, ASSETID i, bool async);
-	friend string _Strm2Asset(std::istream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int max);
-protected:
-	static std::unordered_map<ASSETTYPE, std::vector<string>> names;
-#ifndef IS_EDITOR
-	static string eBasePath;
-	static std::unordered_map<ASSETTYPE, std::vector<string>> dataELocs;
-	static std::unordered_map<ASSETTYPE, std::vector<std::pair<byte*, uint>>> dataECaches;
-	static std::vector<uint> dataECacheLocs;
-	static std::vector<uint> dataECacheSzLocs;
-	static void AllocECache();
-#endif
-	static std::vector <std::pair<ASSETTYPE, ASSETID>> dataECacheIds;
-	static std::unordered_map<ASSETTYPE, std::vector<std::pair<byte, std::pair<uint, uint>>>> dataLocs;
-	static std::unordered_map<ASSETTYPE, std::vector<AssetObject*>> dataCaches;
-	static std::vector<std::ifstream*> streams;
-	static void Init(string dpath);
-	static AssetObject* CacheFromName(string nm);
-	static ASSETID GetAssetId(string nm, ASSETTYPE &t);
-	static AssetObject* GetCache(ASSETTYPE t, ASSETID i);
-	static AssetObject* GenCache(ASSETTYPE t, ASSETID i);
-};
-
-class DefaultResources { //loads binary created by DefaultResourcesBuild.exe
-public:
-	static void Init(string path);
-
-	static string GetStr(string name);
-	static std::vector<byte> GetBin(string name);
-private:
-	static std::vector<string> names;
-	static std::vector<char*> datas;
-	static std::vector<uint> sizes;
-};
-
+#include "AssetObjects.h"
 #include "SceneObjects.h"
-
-//#endif

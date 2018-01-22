@@ -295,6 +295,8 @@ MeshFilter::MeshFilter() : Component("Mesh Filter", COMP_MFT, DRAWORDER_NONE), _
 
 }
 
+
+#ifdef IS_EDITOR
 void MeshFilter::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 	//MeshFilter* mft = (MeshFilter*)c;
 	if (DrawComponentHeader(e, v, pos, this)) {
@@ -307,7 +309,6 @@ void MeshFilter::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 	}
 	else pos += 17;
 }
-
 void MeshFilter::SetMesh(int i) {
 	_mesh = i;
 	if (i >= 0) {
@@ -328,10 +329,6 @@ void MeshFilter::_UpdateMesh(void* i) {
 	mf->object->Refresh();
 }
 
-void MeshFilter::Serialize(Editor* e, std::ofstream* stream) {
-	_StreamWriteAsset(e, stream, ASSETTYPE_MESH, _mesh);
-}
-
 MeshFilter::MeshFilter(std::ifstream& stream, SceneObject* o, long pos) : Component("Mesh Filter", COMP_MFT, DRAWORDER_NONE, o), _mesh(-1) {
 	if (pos >= 0)
 		stream.seekg(pos);
@@ -341,11 +338,17 @@ MeshFilter::MeshFilter(std::ifstream& stream, SceneObject* o, long pos) : Compon
 		mesh = _GetCache<Mesh>(ASSETTYPE_MESH, _mesh);
 	object->Refresh();
 }
+#endif
+
+void MeshFilter::Serialize(Editor* e, std::ofstream* stream) {
+	_StreamWriteAsset(e, stream, ASSETTYPE_MESH, _mesh);
+}
 
 MeshRenderer::MeshRenderer() : Component("Mesh Renderer", COMP_MRD, DRAWORDER_SOLID | DRAWORDER_TRANSPARENT, nullptr, {COMP_MFT}) {
 	_materials.push_back(-1);
 }
 
+#ifdef IS_EDITOR
 MeshRenderer::MeshRenderer(std::ifstream& stream, SceneObject* o, long pos) : Component("Mesh Renderer", COMP_MRD, DRAWORDER_SOLID | DRAWORDER_TRANSPARENT, o, { COMP_MFT }) {
 	_UpdateMat(this);
 	if (pos >= 0)
@@ -363,6 +366,7 @@ MeshRenderer::MeshRenderer(std::ifstream& stream, SceneObject* o, long pos) : Co
 	}
 	//_Strm2Asset(stream, Editor::instance, t, _mat);
 }
+#endif
 
 void MeshRenderer::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 	MeshFilter* mf = (MeshFilter*)dependacyPointers[0].raw();
