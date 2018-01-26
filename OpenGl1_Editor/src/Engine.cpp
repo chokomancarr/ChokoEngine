@@ -636,7 +636,9 @@ string UI::EditText(float x, float y, float w, float h, float s, Vec4 bcol, cons
 	if (isActive) {
 		auto al = font->alignment;
 		font->Align(ALIGN_MIDLEFT);
+#ifdef IS_EDITOR
 		if (Editor::onFocus) {
+#endif
 			if (!delayed) _editTextString = str;
 			if (!!_editTextCursorPos) _editTextCursorPos -= Input::KeyDown(Key_LeftArrow);
 			_editTextCursorPos += Input::KeyDown(Key_RightArrow);
@@ -681,7 +683,9 @@ string UI::EditText(float x, float y, float w, float h, float s, Vec4 bcol, cons
 				if (!delayed && changed) *changed = true;
 				_editTextBlinkTime = 0;
 			}
+#ifdef IS_EDITOR
 		}
+#endif
 		Engine::DrawQuad(x, y, w, h, black());
 		Engine::DrawQuad(x + 1, y + 1, w - 2, h - 2, white());
 		UI::Label(x + 2, y + 0.4f*h, s, _editTextString, font);
@@ -1187,6 +1191,46 @@ void Engine::DrawIndicesI(const Vec3* poss, const int* is, int length, float r, 
 	glDrawElements(GL_TRIANGLES, length, GL_UNSIGNED_INT, is);
 }
 
+void Engine::DrawMeshInstanced(Mesh* mesh, uint matId, Material* mat, uint count) {
+	if (!mesh || !mesh->loaded || !mat)
+		return;
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glEnable(GL_CULL_FACE);
+	glVertexPointer(3, GL_FLOAT, 0, &(mesh->vertices[0]));
+	GLfloat matrix[16], matrix2[16];
+	glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
+	glGetFloatv(GL_PROJECTION_MATRIX, matrix2);
+	Mat4x4 m1(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
+	Mat4x4 m2(matrix2[0], matrix2[1], matrix2[2], matrix2[3], matrix2[4], matrix2[5], matrix2[6], matrix2[7], matrix2[8], matrix2[9], matrix2[10], matrix2[11], matrix2[12], matrix2[13], matrix2[14], matrix2[15]);
+
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glEnableVertexAttribArray(2);
+	glEnableVertexAttribArray(3);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &(mesh->vertices[0]));
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, &(mesh->uv0[0]));
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_TRUE, 0, &(mesh->normals[0]));
+	glVertexAttribPointer(3, 3, GL_FLOAT, GL_TRUE, 0, &(mesh->tangents[0]));
+	glVertexAttribDivisor(0, 0);
+	glVertexAttribDivisor(1, 0);
+	glVertexAttribDivisor(2, 0);
+	glVertexAttribDivisor(3, 0);
+	matId = min(mesh->materialCount-1, matId);
+	mat->ApplyGL(m1, m2);
+	
+	glDrawElementsInstanced(GL_TRIANGLES, mesh->_matTriangles[matId].size(), GL_UNSIGNED_INT, &(mesh->_matTriangles[matId][0]), count);
+	
+	glDisableVertexAttribArray(0);
+	glDisableVertexAttribArray(1);
+	glDisableVertexAttribArray(2);
+	glDisableVertexAttribArray(3);
+
+	glUseProgram(0);
+	glDisableClientState(GL_VERTEX_ARRAY);
+	glDisable(GL_CULL_FACE);
+}
+
 void Engine::DrawLine(Vec2 v1, Vec2 v2, Vec4 col, float width) {
 	DrawLine(Vec3(v1.x, v1.y, 1), Vec3(v2.x, v2.y, 1), col, width);
 }
@@ -1602,6 +1646,7 @@ string IO::ReadFile(const string& path) {
 	return buffer.str();
 }
 
+#if defined(IS_EDITOR) || defined(PLATFORM_WIN)
 std::vector<string> IO::GetRegistryKeys(HKEY key) {
 	TCHAR    achKey[255];
 	TCHAR    achClass[MAX_PATH] = TEXT("");
@@ -1620,12 +1665,89 @@ std::vector<string> IO::GetRegistryKeys(HKEY key) {
 	return res;
 }
 
+std::vector<std::pair<string, string>> IO::GetRegistryKeyValues(HKEY hKey, DWORD numValues)
+{
+	std::vector<std::pair<string, string>> vals;
+	for (DWORD i = 0; i < numValues; i++)
+	{
+		char valueName[201];
+		DWORD valNameLen = 200;
+		DWORD dataType;
+		byte data[501];
+		DWORD dataSize = 500;
+
+		auto val = RegEnumValue(hKey,
+			i,
+			valueName,
+			&valNameLen,
+			NULL,
+			&dataType,
+			data, &dataSize);
+
+		if (!!val) break;
+		vals.push_back(std::pair<string, string>(string(valueName), string((char*)data)));
+	}
+
+	return vals;
+}
+#endif
+
 string IO::GetText(const string& path) {
 	std::ifstream strm(path);
 	std::stringstream ss;
 	ss << strm.rdbuf();
 	return ss.str();
 }
+
+std::vector<string> SerialPort::GetNames() {
+	HKEY hkey;
+	auto res = RegOpenKeyEx(HKEY_LOCAL_MACHINE, "HARDWARE\\DEVICEMAP\\SERIALCOMM", 0, KEY_READ, &hkey);
+	if (!!res) return std::vector<string>();
+	auto ports = IO::GetRegistryKeyValues(hkey);
+	RegCloseKey(hkey);
+	std::vector<string> rets;
+	for (auto k : ports) rets.push_back(k.second);
+	return rets;
+}
+
+
+HANDLE SerialPort::handle = 0;
+
+bool SerialPort::Connect(string port) {
+	string path = "\\\\.\\" + port;
+	handle = CreateFile(&path[0], GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, 0, 0); //FILE_FLAG_OVERLAPPED, 0);
+
+	if (handle != INVALID_HANDLE_VALUE) {
+		DCB dcbSerialParams = { 0 }; // Initializing DCB structure
+		dcbSerialParams.DCBlength = sizeof(dcbSerialParams);
+		dcbSerialParams.BaudRate = CBR_9600;  // Setting BaudRate = 9600
+		dcbSerialParams.ByteSize = 8;         // Setting ByteSize = 8
+		dcbSerialParams.StopBits = ONESTOPBIT;// Setting StopBits = 1
+		dcbSerialParams.Parity = NOPARITY;  // Setting Parity = None
+
+		SetCommState(handle, &dcbSerialParams);
+
+		return true;
+	}
+	else return false;
+}
+
+bool SerialPort::Disconnect() {
+	CloseHandle(handle);
+	return true;
+}
+
+bool SerialPort::Read(byte* data, uint count) {
+	DWORD dwRead;
+
+	ReadFile(handle, data, count, &dwRead, 0);
+	return !!dwRead;
+}
+
+bool SerialPort::Write(byte* data, uint count) {
+	return false;
+}
+
 
 BOOL CALLBACK EnumWindowsProcMy(HWND hwnd, LPARAM lParam) {
 	DWORD lpdwProcessId;

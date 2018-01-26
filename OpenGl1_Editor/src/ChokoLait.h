@@ -1,5 +1,11 @@
 #pragma once
 
+/*
+ChokoLait Interface for ChokoEngine (c) Chokomancarr 2018
+
+See https://chokomancarr.github.io/ChokoLait/ for documentation and examples.
+*/
+
 #include "Defines.h"
 
 #ifndef CHOKO_LAIT_BUILD
@@ -13,19 +19,30 @@
 #pragma comment(lib, "opengl32.lib")
 #endif
 
+#define CHOKOLAIT_INIT_VARS ChokoLait __chokolait_instance;
+
 #include "Engine.h"
 
 typedef void(*emptyCallbackFunc)(void);
 
 class ChokoLait {
 public:
-	static void Init(char** argv, int scrW, int scrH);
+	ChokoLait();
+
+	static void Init(int scrW, int scrH);
 
 	static bool alive();
 
-	static void Update(emptyCallbackFunc);
-	static void Paint(emptyCallbackFunc);
+	static void Update(emptyCallbackFunc func = 0);
+	static void Paint(emptyCallbackFunc func = 0);
 
 protected:
+	static int initd;
+
 	static GLFWwindow* window;
+
+	static void MouseGL(GLFWwindow* window, int button, int state, int mods);
+	static void MouseScrGL(GLFWwindow* window, double xoff, double yoff);
+	static void MotionGL(GLFWwindow* window, double x, double y);
+	static void ReshapeGL(GLFWwindow* window, int w, int h);
 };

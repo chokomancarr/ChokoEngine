@@ -16,7 +16,7 @@
 #define GLFW_EXPOSE_NATIVE_WGL
 #include <glfw3native.h>
 //#include "MD.h"
-#include "Water.h"
+//#include "Water.h"
 
 void MouseGL(GLFWwindow* window, int button, int state, int mods);
 void MouseScrGL(GLFWwindow* window, double xoff, double yoff);

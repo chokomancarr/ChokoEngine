@@ -17,7 +17,7 @@
 #include <glfw3native.h>
 
 //#include "MD.h"
-#include "Water.h"
+//#include "Water.h"
 
 #pragma region UndoStack
 #ifdef IS_EDITOR
@@ -901,6 +901,8 @@ void EB_Viewer::Draw() {
 	Water::me->Draw();
 #endif
 
+	Engine::DrawMeshInstanced(_GetCache<Mesh>(ASSETTYPE_MESH, 2), 0, _GetCache<Material>(ASSETTYPE_MATERIAL, 0), 10000);
+
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	//glMultMatrixf(glm::value_ptr(glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f, -100.0f, 100.0f)));
@@ -1035,6 +1037,7 @@ void EB_Viewer::DrawTArrows(Vec3 pos, float size) {
 	Engine::DrawIndicesI(&arrowVerts[0], &arrowTIndexs[0], 15, 1, 0, 0);
 	Engine::DrawIndicesI(&arrowVerts[5], &arrowTIndexs[0], 15, 0, 1, 0);
 	Engine::DrawIndicesI(&arrowVerts[10], &arrowTIndexs[0], 15, 0, 0, 1);
+	glDisableClientState(GL_VERTEX_ARRAY);
 	glDepthFunc(GL_LEQUAL);
 }
 

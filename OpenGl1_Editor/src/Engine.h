@@ -461,7 +461,8 @@ enum SHADER_VARTYPE : byte {
 	SHADER_VEC2 = 0x02,
 	SHADER_VEC3 = 0x03,
 	SHADER_SAMPLER = 0x10,
-	SHADER_MATRIX = 0x20
+	SHADER_MATRIX = 0x20,
+	SHADER_BUFFER = 0x30
 };
 
 enum SHADER_TEST : byte {
@@ -608,9 +609,22 @@ public:
 	static string ReadFile(const string& path);
 #if defined(IS_EDITOR) || defined(PLATFORM_WIN)
 	static std::vector<string> GetRegistryKeys(HKEY key);
+	static std::vector<std::pair<string, string>> GetRegistryKeyValues(HKEY hKey, DWORD numValues = 5);
 #endif
 	static string GetText(const string& path);
 	static std::vector<byte> GetBytes(const string& path);
+};
+
+class SerialPort {
+public:
+	static std::vector<string> GetNames();
+	static bool Connect(string port);
+	static bool Disconnect();
+	static bool Read(byte* data, uint count);
+	static bool Write(byte* data, uint count);
+
+protected:
+	static HANDLE handle;
 };
 
 #ifdef PLATFORM_WIN
@@ -892,6 +906,8 @@ public:
 	static void DrawCube(Vec3 pos, float dx, float dy, float dz, Vec4 col);
 	static void DrawIndices(const Vec3* poss, const int* is, int length, float r, float g, float b);
 	static void DrawIndicesI(const Vec3* poss, const int* is, int length, float r, float g, float b);
+	static void DrawMeshInstanced(Mesh* mesh, uint matId, Material* mat, uint count);
+
 	static ulong idCounter;
 	static std::vector<Camera*> sceneCameras;
 	

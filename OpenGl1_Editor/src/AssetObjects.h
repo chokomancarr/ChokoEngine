@@ -225,6 +225,8 @@ public:
 	std::unordered_map<SHADER_VARTYPE, std::unordered_map <GLint, void*>> vals;
 	std::unordered_map<SHADER_VARTYPE, std::vector<string>> valNames;
 	//std::unordered_map<GLint, ShaderVariable> vals;
+	void SetBuffer(string name, IComputeBuffer* buffer);
+	void SetBuffer(GLint id, IComputeBuffer* buffer);
 	void SetTexture(string name, Texture* texture);
 	void SetTexture(GLint id, Texture* texture);
 	void SetFloat(string name, float val);
@@ -261,7 +263,7 @@ protected:
 	std::vector<bool> writeMask;
 
 	static void LoadOris();
-	static std::vector<GLuint> defTexs;
+	static std::array<GLuint, 7> defTexs;
 
 	static void _UpdateTexCache(void*);
 
@@ -291,6 +293,7 @@ public:
 	void RecalculateBoundingBox();
 
 	friend int main(int argc, char **argv);
+	friend class Engine;
 	friend class Editor;
 	friend class MeshFilter;
 	friend class MeshRenderer;

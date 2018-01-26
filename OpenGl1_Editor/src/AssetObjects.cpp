@@ -1440,19 +1440,31 @@ void Material::ResetVals() {
 	vals[SHADER_VEC3] = std::unordered_map <GLint, void*>();
 	vals[SHADER_SAMPLER] = std::unordered_map <GLint, void*>();
 	vals[SHADER_MATRIX] = std::unordered_map <GLint, void*>();
+	vals[SHADER_BUFFER] = std::unordered_map <GLint, void*>();
 	valNames[SHADER_INT] = std::vector<string>();
 	valNames[SHADER_FLOAT] = std::vector<string>();
 	valNames[SHADER_VEC2] = std::vector<string>();
 	valNames[SHADER_VEC3] = std::vector<string>();
 	valNames[SHADER_SAMPLER] = std::vector<string>();
 	valNames[SHADER_MATRIX] = std::vector<string>();
+	valNames[SHADER_BUFFER] = std::vector<string>();
 	valOrders = std::vector<SHADER_VARTYPE>();
 }
 
-void Material::SetTexture(string name, Texture * texture) {
+void Material::SetBuffer(string name, IComputeBuffer* buffer) {
+	SetBuffer(glGetUniformLocation(_shader->pointer, name.c_str()), buffer);
+}
+void Material::SetBuffer(GLint id, IComputeBuffer* buffer) {
+	if (id > -1) {
+		//if (vals[SHADER_BUFFER].find(id) == vals[SHADER_BUFFER].end()) vals[SHADER_BUFFER][id] = new 
+		vals[SHADER_BUFFER][id] = buffer;
+	}
+}
+
+void Material::SetTexture(string name, Texture* texture) {
 	SetTexture(glGetUniformLocation(_shader->pointer, name.c_str()), texture);
 }
-void Material::SetTexture(GLint id, Texture * texture) {
+void Material::SetTexture(GLint id, Texture* texture) {
 	if (id > -1) {
 		if (vals[SHADER_SAMPLER].find(id) == vals[SHADER_SAMPLER].end()) vals[SHADER_SAMPLER][id] = new MatVal_Tex();
 		((MatVal_Tex*)vals[SHADER_SAMPLER][id])->tex = texture;
@@ -1483,7 +1495,7 @@ void Material::SetVec2(GLint id, Vec2 val) {
 		vals[SHADER_VEC2][id] = new Vec2(val);
 }
 
-std::vector<GLuint> Material::defTexs = std::vector<GLuint>(7);
+std::array<GLuint, 7> Material::defTexs = std::array<GLuint, 7>();
 
 void Material::LoadOris() {
 	std::vector<byte> data(12, 0x00);
