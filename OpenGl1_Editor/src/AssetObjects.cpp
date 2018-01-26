@@ -840,36 +840,48 @@ bool Texture::DrawPreview(uint x, uint y, uint w, uint h) {
 
 #pragma endregion
 
-/*
+
 #pragma region VideoTexture
 
-string _vt_errtext(int i) {
-	char c[5];
-	*(int*)c = -i;
-	c[4] = 0;
-	return string(c);
-}
-
 void VideoTexture::Init() {
-	avcodec_register_all();
+	av_register_all();
 }
 
-VideoTexture::VideoTexture(const string& path) {
-#define fail(msg) {Debug::Warning("VideoTexture", msg); codec = nullptr; return;}
-	//strm = new std::ifstream(path, std::ios::binary);
-	//if (!strm) fail("cannot open file");
-	codec = avcodec_find_decoder(AV_CODEC_ID_H264);
-	if (!codec) fail("no h264 codec");
-	codecContext = avcodec_alloc_context3(codec);
-	if (codec->capabilities & CODEC_CAP_TRUNCATED) {
-		codecContext->flags |= CODEC_FLAG_TRUNCATED;
+VideoTexture::VideoTexture(const string& path) : formatCtx(0), codecCtx0(0), codecCtx(0), codec(0), videoStrm(-1), audioStrm(-1) {
+#define fail {Debug::Warning("VideoTexture", ffmpeg_getmsg(err)); return;}
+	auto err = avformat_open_input(&formatCtx, &path[0], NULL, NULL);
+	if (!!err) fail;
+	err = avformat_find_stream_info(formatCtx, NULL);
+	if (!!err) fail;
+	av_dump_format(formatCtx, 0, &path[0], 0);
+	for (uint i = 0; i < formatCtx->nb_streams; i++) {
+		if (formatCtx->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
+			videoStrm = i;
+			break;
+		}
 	}
-	if (avcodec_open2(codecContext, codec, 0) < 0) fail("cannot open codec");
-	picture = av_frame_alloc();
-	parser = av_parser_init(AV_CODEC_ID_H264);
-	if (!parser) fail("cannot create parser");
-
-	std::cout << "ok" << std::endl;
+	if (videoStrm == -1) {
+		Debug::Warning("VideoTexture", "No video data found!");
+		return;
+	}
+	codecCtx0 = formatCtx->streams[videoStrm]->codec;
+	codec = avcodec_find_decoder(codecCtx0->codec_id);
+	if (!codec) {
+		Debug::Warning("VideoTexture", "Unsupported codec!");
+		return;
+	}
+	codecCtx = avcodec_alloc_context3(codec);
+	if (!!avcodec_copy_context(codecCtx, codecCtx0)) {
+		Debug::Warning("VideoTexture", "Could not copy codec!");
+		return;
+	}
+	width = codecCtx0->width;
+	height = codecCtx0->height;
+	avcodec_open2(codecCtx, codec, 0);
+	swsCtx = sws_getContext(codecCtx0->width, codecCtx0->height, codecCtx0->pix_fmt, codecCtx0->width, codecCtx0->height, 
+		PIX_FMT_RGB24, SWS_BILINEAR, NULL, NULL, NULL);
+	
+	Debug::Message("VideoTexture", "loaded " + path);
 #undef fail
 }
 
@@ -878,7 +890,7 @@ void VideoTexture::GetFrame() {
 }
 
 #pragma endregion
-*/
+
 
 #pragma region Background
 

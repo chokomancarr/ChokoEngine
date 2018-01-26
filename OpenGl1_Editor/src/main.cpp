@@ -59,6 +59,9 @@ char Get(std::istream& strm) {
 
 int main(int argc, char **argv)
 {
+	av_register_all();
+	VideoTexture vt("D:\\r.mp4");
+
 	path = argv[0];
 	editor = new Editor();
 	editor->dataPath = path.substr(0, path.find_last_of('\\') + 1);

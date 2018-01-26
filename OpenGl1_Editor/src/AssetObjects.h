@@ -472,7 +472,6 @@ protected:
 	void GenECache(byte* dat, byte chn, bool isrgb, std::vector<RenderTexture*>* rts);
 };
 
-/*
 class VideoTexture : public Texture {
 public:
 VideoTexture(const string& path);
@@ -482,17 +481,18 @@ void Play(), Pause(), Stop();
 GLuint d_fbo;
 std::vector<byte> buffer;
 
-std::istream* strm;
-AVCodec* codec;
-AVCodecContext* codecContext;
-AVCodecParserContext* parser;
-AVFrame* picture;
-int frame;
+AVFormatContext* formatCtx = 0;
+AVCodecContext* codecCtx0 = 0;
+AVCodecContext* codecCtx = 0;
+AVCodec* codec = 0;
+SwsContext *swsCtx = 0;
+uint videoStrm, audioStrm;
+
+uint width, height;
 
 static void Init();
 void GetFrame();
 };
-*/
 
 class RenderTexture : public Texture {
 public:

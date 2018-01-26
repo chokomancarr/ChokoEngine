@@ -901,7 +901,7 @@ void EB_Viewer::Draw() {
 	Water::me->Draw();
 #endif
 
-	Engine::DrawMeshInstanced(_GetCache<Mesh>(ASSETTYPE_MESH, 2), 0, _GetCache<Material>(ASSETTYPE_MATERIAL, 0), 10000);
+	//Engine::DrawMeshInstanced(_GetCache<Mesh>(ASSETTYPE_MESH, 2), 0, _GetCache<Material>(ASSETTYPE_MATERIAL, 0), 10000);
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();

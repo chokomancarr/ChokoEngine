@@ -26,8 +26,15 @@ Global stuff, normally not macro-protected
 #if defined(IS_EDITOR) || defined(PLATFORM_WIN)
 #include <Windows.h>
 #endif
+
+/* gl (windows) */
+#ifdef PLATFORM_WIN
+#pragma comment(lib, "glfw_win.lib")
+#pragma comment(lib, "glew_win.lib")
 #include <glew.h>
 #include <glfw3.h>
+#endif
+
 #include <string>
 #include <iostream>
 #include <fstream>
@@ -44,19 +51,41 @@ Global stuff, normally not macro-protected
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+
+/* freetype */
+#ifdef PLATFORM_WIN
+#pragma comment(lib, "freetype_win.lib")
+#endif
 #include <ft2build.h>
 #include FT_FREETYPE_H
-extern "C" {
-//#include "libavcodec\avcodec.h"
-//#include "libavutil\avutil.h"
-}
 
-//jpeglib is built in vs2013
-extern FILE __iob[3];
-extern "C" FILE * __cdecl _imp___iob(void);
-#define _iob (*_imp___iob)	/* An array of FILE */
+/* jpeglib */
+#ifdef PLATFORM_WIN
+#pragma comment(lib, "jpeg_win.lib")
+#endif
 #include <jpeglib.h>
 #include <jerror.h>
+
+/* ffmpeg */
+#ifdef PLATFORM_WIN
+#pragma comment(lib, "Secur32.lib")
+#pragma comment(lib, "ws2_32.lib")
+#pragma comment(lib, "libavcodec.a")
+#pragma comment(lib, "libavdevice.a")
+#pragma comment(lib, "libavfilter.a")
+#pragma comment(lib, "libavformat.a")
+#pragma comment(lib, "libavutil.a")
+//#pragma comment(lib, "postproc.lib")
+#pragma comment(lib, "libswresample.a")
+#pragma comment(lib, "libswscale.a")
+#endif
+extern "C"
+{
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+#include <libswscale/swscale.h>
+}
+extern std::string ffmpeg_getmsg(int i);
 #pragma endregion
 
 enum PLATFORM : byte {

@@ -738,8 +738,7 @@ void SkinnedMeshRenderer::DrawDeferred(GLuint shader) {
 }
 
 void SkinnedMeshRenderer::InitSkinning() {
-	//skinningProg = new ComputeShader(DefaultResources::GetStr("gpuskin.txt"));
-	skinningProg = ComputeShader::FromPath("D://gpuskin.txt");
+	skinningProg = new ComputeShader(DefaultResources::GetStr("gpuskin.txt"));
 }
 
 void SkinnedMeshRenderer::Skin() {
