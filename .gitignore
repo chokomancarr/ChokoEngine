@@ -29,6 +29,7 @@ bld/
 [Bb]in/
 [Oo]bjs/
 [Ll]og/
+packages/
 
 OpenGl1_Editor/Debug/
 OpenGl1_Painter/Debug/

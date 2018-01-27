@@ -258,6 +258,47 @@ AssetObject* AssetManager::GenCache(ASSETTYPE t, ASSETID i) {
 
 #pragma endregion
 
+
+#pragma region AudioClip
+
+/*
+AudioClip::AudioClip(const string& path, bool stream) : AssetObject(ASSETTYPE_AUDIOCLIP) {
+#define fail {Debug::Warning("AudioTexture", ffmpeg_getmsg(err)); return;}
+	auto err = avformat_open_input(&formatCtx, &path[0], NULL, NULL);
+	if (!!err) fail;
+	err = avformat_find_stream_info(formatCtx, NULL);
+	if (!!err) fail;
+	av_dump_format(formatCtx, 0, &path[0], 0);
+	for (uint i = 0; i < formatCtx->nb_streams; i++) {
+		if (formatCtx->streams[i]->codec->codec_type == AVMEDIA_TYPE_AUDIO) {
+			audioStrm = i;
+			break;
+		}
+	}
+	if (audioStrm == -1) {
+		Debug::Warning("AudioTexture", "No video data found!");
+		return;
+	}
+	codecCtx0 = formatCtx->streams[audioStrm]->codec;
+	codec = avcodec_find_decoder(codecCtx0->codec_id);
+	if (!codec) {
+		Debug::Warning("AudioTexture", "Unsupported codec!");
+		return;
+	}
+	codecCtx = avcodec_alloc_context3(codec);
+	if (!!avcodec_copy_context(codecCtx, codecCtx0)) {
+		Debug::Warning("AudioTexture", "Could not copy codec!");
+		return;
+	}
+	avcodec_open2(codecCtx, codec, 0);
+
+	Debug::Message("AudioTexture", "loaded " + path);
+#undef fail
+}
+*/
+#pragma endregion
+
+
 #pragma region Texture
 
 bool LoadJPEG(string fileN, uint &x, uint &y, byte& channels, byte** data)
@@ -843,10 +884,6 @@ bool Texture::DrawPreview(uint x, uint y, uint w, uint h) {
 
 #pragma region VideoTexture
 
-void VideoTexture::Init() {
-	av_register_all();
-}
-
 VideoTexture::VideoTexture(const string& path) : formatCtx(0), codecCtx0(0), codecCtx(0), codec(0), videoStrm(-1), audioStrm(-1) {
 #define fail {Debug::Warning("VideoTexture", ffmpeg_getmsg(err)); return;}
 	auto err = avformat_open_input(&formatCtx, &path[0], NULL, NULL);
@@ -855,7 +892,7 @@ VideoTexture::VideoTexture(const string& path) : formatCtx(0), codecCtx0(0), cod
 	if (!!err) fail;
 	av_dump_format(formatCtx, 0, &path[0], 0);
 	for (uint i = 0; i < formatCtx->nb_streams; i++) {
-		if (formatCtx->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
+		if (formatCtx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
 			videoStrm = i;
 			break;
 		}
@@ -864,23 +901,21 @@ VideoTexture::VideoTexture(const string& path) : formatCtx(0), codecCtx0(0), cod
 		Debug::Warning("VideoTexture", "No video data found!");
 		return;
 	}
-	codecCtx0 = formatCtx->streams[videoStrm]->codec;
+	codecCtx0 = formatCtx->streams[videoStrm]->codecpar;
 	codec = avcodec_find_decoder(codecCtx0->codec_id);
 	if (!codec) {
 		Debug::Warning("VideoTexture", "Unsupported codec!");
 		return;
 	}
-	codecCtx = avcodec_alloc_context3(codec);
-	if (!!avcodec_copy_context(codecCtx, codecCtx0)) {
+	codecCtx = avcodec_parameters_alloc();
+	if (!!avcodec_parameters_copy(codecCtx, codecCtx0)) {
 		Debug::Warning("VideoTexture", "Could not copy codec!");
 		return;
 	}
-	width = codecCtx0->width;
-	height = codecCtx0->height;
-	avcodec_open2(codecCtx, codec, 0);
-	swsCtx = sws_getContext(codecCtx0->width, codecCtx0->height, codecCtx0->pix_fmt, codecCtx0->width, codecCtx0->height, 
-		PIX_FMT_RGB24, SWS_BILINEAR, NULL, NULL, NULL);
+	width = codecCtx->width;
+	height = codecCtx->height;
 	
+	swsCtx = sws_getContext(width, height, (AVPixelFormat)codecCtx->format, width, height, AV_PIX_FMT_RGB24, SWS_BILINEAR, 0, 0, 0);
 	Debug::Message("VideoTexture", "loaded " + path);
 #undef fail
 }

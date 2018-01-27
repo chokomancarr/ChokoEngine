@@ -436,6 +436,23 @@ protected:
 	void Save(string s);
 };
 
+class AudioClip : public AssetObject {
+public:
+	AudioClip(const string& path, bool stream = false);
+
+protected:
+	std::vector<ushort> _data;
+	uint dataSize, loadPtr;
+	float length;
+	uint sampleRate;
+
+	AVFormatContext* formatCtx = 0;
+	AVCodecContext* codecCtx0 = 0;
+	AVCodecContext* codecCtx = 0;
+	AVCodec* codec = 0;
+	uint audioStrm;
+};
+
 class Texture : public AssetObject {
 public:
 	Texture(const string& path, bool mipmap = true, TEX_FILTERING filter = TEX_FILTER_BILINEAR, byte aniso = 5, TEX_WARPING warp = TEX_WARP_REPEAT);
@@ -474,24 +491,23 @@ protected:
 
 class VideoTexture : public Texture {
 public:
-VideoTexture(const string& path);
+	VideoTexture(const string& path);
 
-void Play(), Pause(), Stop();
-//protected:
-GLuint d_fbo;
-std::vector<byte> buffer;
+	void Play(), Pause(), Stop();
+	//protected:
+	GLuint d_fbo;
+	std::vector<byte> buffer;
 
-AVFormatContext* formatCtx = 0;
-AVCodecContext* codecCtx0 = 0;
-AVCodecContext* codecCtx = 0;
-AVCodec* codec = 0;
-SwsContext *swsCtx = 0;
-uint videoStrm, audioStrm;
+	AVFormatContext* formatCtx = 0;
+	AVCodecParameters* codecCtx0 = 0;
+	AVCodecParameters* codecCtx = 0;
+	AVCodec* codec = 0;
+	SwsContext *swsCtx = 0;
+	uint videoStrm, audioStrm;
 
-uint width, height;
+	uint width, height;
 
-static void Init();
-void GetFrame();
+	void GetFrame();
 };
 
 class RenderTexture : public Texture {

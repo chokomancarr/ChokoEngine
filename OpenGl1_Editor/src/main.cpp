@@ -61,6 +61,7 @@ int main(int argc, char **argv)
 {
 	av_register_all();
 	VideoTexture vt("D:\\r.mp4");
+	//AudioClip ac("D:\\best.mp3");
 
 	path = argv[0];
 	editor = new Editor();

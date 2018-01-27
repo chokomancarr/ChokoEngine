@@ -70,14 +70,7 @@ Global stuff, normally not macro-protected
 #ifdef PLATFORM_WIN
 #pragma comment(lib, "Secur32.lib")
 #pragma comment(lib, "ws2_32.lib")
-#pragma comment(lib, "libavcodec.a")
-#pragma comment(lib, "libavdevice.a")
-#pragma comment(lib, "libavfilter.a")
-#pragma comment(lib, "libavformat.a")
-#pragma comment(lib, "libavutil.a")
-//#pragma comment(lib, "postproc.lib")
-#pragma comment(lib, "libswresample.a")
-#pragma comment(lib, "libswscale.a")
+#pragma comment(lib, "ffmpeg_win.lib")
 #endif
 extern "C"
 {
@@ -378,6 +371,8 @@ _canref(ReflectiveQuad);
 _canref(SceneScript);
 _canref(SkinnedMeshRenderer);
 _canref(TextureRenderer);
+_canref(AudioSource);
+_canref(AudioListener);
 
 //AssetObjects.h
 class AssetItem;
@@ -394,6 +389,7 @@ _canref(Mesh);
 _canref(Shader);
 _canref(Texture);
 _canref(RenderTexture);
+_canref(AudioClip);
 
 class Editor;
 class EditorBlock;
@@ -452,6 +448,7 @@ enum ASSETTYPE : byte {
 	ASSETTYPE_ANIMCLIP = 0x30,
 	ASSETTYPE_ANIMATION = 0x31,
 	ASSETTYPE_CAMEFFECT = 0x40,
+	ASSETTYPE_AUDIOCLIP = 0x50,
 	ASSETTYPE_SCRIPT_H = 0x9e,
 	ASSETTYPE_SCRIPT_CPP = 0x9f,
 	//derived types
@@ -534,19 +531,21 @@ enum GITYPE : byte {
 
 enum COMPONENT_TYPE : byte {
 	COMP_UNDEF = 0x00,
-	COMP_CAM = 0x01,
-	COMP_MFT = 0x02,
-	COMP_MRD = 0x10,
-	COMP_TRD = 0x11,
-	COMP_SRD = 0x12,
-	COMP_PST = 0x13,
-	COMP_LHT = 0x20,
-	COMP_RFQ = 0x22,
-	COMP_RDP = 0x25,
-	COMP_ARM = 0x30,
-	COMP_ANM = 0x31,
-	COMP_INK = 0x35,
-	COMP_SCR = 0xff
+	COMP_CAM = 0x01, //camera
+	COMP_MFT = 0x02, //mesh filter
+	COMP_MRD = 0x10, //mesh renderer
+	COMP_TRD = 0x11, //texture renderer
+	COMP_SRD = 0x12, //skinned mesh renderer
+	COMP_PST = 0x13, //particle system
+	COMP_LHT = 0x20, //light
+	COMP_RFQ = 0x22, //reflective quad
+	COMP_RDP = 0x25, //render probe
+	COMP_ARM = 0x30, //armature
+	COMP_ANM = 0x31, //animator
+	COMP_INK = 0x35, //inverse kinematics
+	COMP_AUS = 0x40, //audio source
+	COMP_AUL = 0x41, //audio listener
+	COMP_SCR = 0xff //script
 };
 
 #pragma endregion

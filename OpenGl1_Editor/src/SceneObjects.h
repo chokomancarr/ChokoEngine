@@ -272,6 +272,19 @@ protected:
 	static void _SetClear0(EditorBlock* b), _SetClear1(EditorBlock* b), _SetClear2(EditorBlock* b), _SetClear3(EditorBlock* b);
 };
 
+class AudioSource : public Component {
+public:
+	
+
+	rAudioClip clip;
+protected:
+	
+};
+
+class AudioListener : public Component {
+
+};
+
 class MeshFilter : public Component {
 public:
 	MeshFilter();
