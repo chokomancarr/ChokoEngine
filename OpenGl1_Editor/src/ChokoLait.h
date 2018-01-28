@@ -17,11 +17,12 @@ See https://chokomancarr.github.io/ChokoLait/ for documentation and examples.
 #ifndef CHOKO_LAIT_BUILD
 #define CHOKO_LAIT
 #if defined(PLATFORM_WIN)
-//#pragma comment(lib, "../bin/chokolait_win.lib")
+#pragma comment(lib, "chokolait_win.lib")
 #elif defined(PLATFORM_ADR)
-//#pragma comment(lib, "../bin/chokolait_adr.so")
+//#pragma comment(lib, "chokolait_adr.so")
 #endif
 #pragma comment(lib, "opengl32.lib")
+#pragma comment(lib, "chokolibs_win.lib")
 #endif
 
 #define CHOKOLAIT_INIT_VARS ChokoLait __chokolait_instance;
@@ -32,7 +33,15 @@ typedef void(*emptyCallbackFunc)(void);
 
 class ChokoLait {
 public:
-	ChokoLait();
+	ChokoLait() {
+		if (!initd) {
+#ifdef FEATURE_AV_CODECS
+			av_register_all();
+#endif
+			_InitVars();
+			initd = 1;
+		}
+	}
 
 	static void Init(int scrW, int scrH);
 
@@ -45,6 +54,8 @@ protected:
 	static int initd;
 
 	static GLFWwindow* window;
+
+	static void _InitVars();
 
 	static void MouseGL(GLFWwindow* window, int button, int state, int mods);
 	static void MouseScrGL(GLFWwindow* window, double xoff, double yoff);

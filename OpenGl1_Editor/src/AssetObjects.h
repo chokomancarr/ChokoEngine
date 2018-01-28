@@ -438,7 +438,15 @@ protected:
 
 class AudioClip : public AssetObject {
 public:
-	AudioClip(const string& path, bool stream = false);
+	AudioClip(const string& path, bool stream = false) : AssetObject(ASSETTYPE_AUDIOCLIP) {
+#ifdef FEATURE_AV_CODECS
+		_Init_ffmpeg(path);
+#elif defined(PLATFORM_WIN)
+		_Init_win(path);
+#elif defined(PLATFORM_ADR)
+		_Init_adr(path);
+#endif
+	}
 
 protected:
 	std::vector<ushort> _data;
@@ -446,11 +454,23 @@ protected:
 	float length;
 	uint sampleRate;
 
+#ifdef FEATURE_AV_CODECS
 	AVFormatContext* formatCtx = 0;
 	AVCodecContext* codecCtx0 = 0;
 	AVCodecContext* codecCtx = 0;
 	AVCodec* codec = 0;
 	uint audioStrm;
+#endif
+
+private:
+#if defined(FEATURE_AV_CODECS) || defined(IS_EDITOR) || defined(CHOKO_LAIT_BUILD)
+	void _Init_ffmpeg(const string& path);
+#endif
+#if defined(PLATFORM_WIN)
+	void _Init_win(const string& path);
+#elif defined(PLATFORM_ADR)
+	void _Init_adr(const string& path);
+#endif
 };
 
 class Texture : public AssetObject {
@@ -489,26 +509,48 @@ protected:
 	void GenECache(byte* dat, byte chn, bool isrgb, std::vector<RenderTexture*>* rts);
 };
 
+#ifdef FEATURE_AV_CODECS
 class VideoTexture : public Texture {
 public:
-	VideoTexture(const string& path);
+	VideoTexture(const string& path) : formatCtx(0), codecCtx0(0), codecCtx(0), codec(0), videoStrm(-1), audioStrm(-1) {
+#ifdef FEATURE_AV_CODECS
+		_Init_ffmpeg(path);
+#elif defined(PLATFORM_WIN)
+		_Init_win(path);
+#elif defined(PLATFORM_ADR)
+		_Init_adr(path);
+#endif
+	}
 
 	void Play(), Pause(), Stop();
 	//protected:
 	GLuint d_fbo;
 	std::vector<byte> buffer;
 
+#ifdef FEATURE_AV_CODECS
 	AVFormatContext* formatCtx = 0;
 	AVCodecParameters* codecCtx0 = 0;
 	AVCodecParameters* codecCtx = 0;
 	AVCodec* codec = 0;
 	SwsContext *swsCtx = 0;
 	uint videoStrm, audioStrm;
+#endif
 
 	uint width, height;
 
 	void GetFrame();
+
+private:
+#if defined(FEATURE_AV_CODECS) || defined(IS_EDITOR) || defined(CHOKO_LAIT_BUILD)
+	void _Init_ffmpeg(const string& path);
+#endif
+#if defined(PLATFORM_WIN)
+	void _Init_win(const string& path);
+#elif defined(PLATFORM_ADR)
+	void _Init_adr(const string& path);
+#endif
 };
+#endif
 
 class RenderTexture : public Texture {
 public:

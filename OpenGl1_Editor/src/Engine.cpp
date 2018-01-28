@@ -436,7 +436,7 @@ void Engine::Init(string path) {
 	Camera::InitShaders();
 	Font::Init();
 	SkinnedMeshRenderer::InitSkinning();
-	//VideoTexture::Init();
+	if (!AudioEngine::Init()) Debug::Error("AudioEngine", "Failed to initialize WASAPI!");
 #ifdef IS_EDITOR
 	Editor::InitShaders();
 	Editor::instance->InitMaterialPreviewer();
@@ -1545,7 +1545,7 @@ void Debug::Init(string s) {
 #ifndef IS_EDITOR
 	string ss = s + "Log.txt";
 	stream = new std::ofstream(ss.c_str(), std::ios::out | std::ios::trunc);
-	Message("Debug", "Log init'd");
+	Message("Debug", "Log Initialized");
 #endif
 }
 //-----------------io class-----------------------
@@ -1555,7 +1555,7 @@ std::vector<string> IO::GetFiles(const string& folder, string ext)
 	std::vector<string> names;
 	string search_path = folder + "/*" + ext;
 	WIN32_FIND_DATA fd;
-	HANDLE hFind = ::FindFirstFile(search_path.c_str(), &fd);
+	HANDLE hFind = FindFirstFile(search_path.c_str(), &fd);
 	if (hFind != INVALID_HANDLE_VALUE) {
 		do {
 			// read all (real) files in current folder
@@ -1563,8 +1563,8 @@ std::vector<string> IO::GetFiles(const string& folder, string ext)
 			if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
 				names.push_back(folder + "\\" + fd.cFileName);
 			}
-		} while (::FindNextFile(hFind, &fd));
-		::FindClose(hFind);
+		} while (FindNextFile(hFind, &fd));
+		FindClose(hFind);
 	}
 	return names;
 }
@@ -1574,7 +1574,7 @@ std::vector<EB_Browser_File> IO::GetFilesE (Editor* e, const string& folder)
 	std::vector<EB_Browser_File> names;
 	string search_path = folder + "/*.*";
 	WIN32_FIND_DATA fd;
-	HANDLE hFind = ::FindFirstFile(search_path.c_str(), &fd);
+	HANDLE hFind = FindFirstFile(search_path.c_str(), &fd);
 	if (hFind != INVALID_HANDLE_VALUE) {
 		do {
 			// read all importable files in current folder
@@ -1599,8 +1599,8 @@ std::vector<EB_Browser_File> IO::GetFilesE (Editor* e, const string& folder)
 				else if ((aa.length() > 9 && (aa.substr(aa.length() - 9) == ".animclip")))
 					names.push_back(EB_Browser_File(e, folder, aa, aa));
 			}
-		} while (::FindNextFile(hFind, &fd));
-		::FindClose(hFind);
+		} while (FindNextFile(hFind, &fd));
+		FindClose(hFind);
 	}
 	return names;
 }
@@ -1771,43 +1771,6 @@ long long Time::startMillis = 0;
 long long Time::millis = 0;
 double Time::time = 0;
 float Time::delta = 0;
-
-//-----------------Vec4s--------------------------
-
-/*
-Vec4 Lerp(Vec4 a, Vec4 b, float f) {
-	if (f > 1)
-		return b;
-	else if (f < 0)
-		return a;
-	else return a*(1 - f) + b*f;
-}
-
-float clamp(float f, float a, float b) {
-	return min(b, max(f, a));
-}
-
-float repeat(float f, float a, float b) {
-	assert(b > a);
-	float fn = f;
-	while (fn >= b) {
-		fn -= (b - a);
-		if (fn == f) {
-			Debug::Warning("Repeat", "Floating-point accuracy exceeded. Returning max.");
-			return b;
-		}
-	}
-	while (fn < a) {
-		fn += (b - a);
-		if (fn == f) {
-			Debug::Warning("Repeat", "Floating-point accuracy exceeded. Returning min.");
-			return a;
-		}
-	}
-	return fn;
-}
-
-*/
 
 //-----------------font class---------------------
 FT_Library Font::_ftlib = nullptr;

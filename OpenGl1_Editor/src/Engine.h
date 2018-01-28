@@ -67,6 +67,7 @@ Global stuff, normally not macro-protected
 #include <jerror.h>
 
 /* ffmpeg */
+#ifdef FEATURE_AV_CODECS
 #ifdef PLATFORM_WIN
 #pragma comment(lib, "Secur32.lib")
 #pragma comment(lib, "ws2_32.lib")
@@ -79,6 +80,7 @@ extern "C"
 #include <libswscale/swscale.h>
 }
 extern std::string ffmpeg_getmsg(int i);
+#endif
 #pragma endregion
 
 enum PLATFORM : byte {
@@ -954,5 +956,6 @@ protected:
 	static Rect* stencilRect;
 };
 
+#include "AudioEngine.h"
 #include "AssetObjects.h"
 #include "SceneObjects.h"

@@ -3,8 +3,7 @@
 GLFWwindow* ChokoLait::window = nullptr;
 int ChokoLait::initd = 0;
 
-ChokoLait::ChokoLait() {
-	if (!initd) {
+void ChokoLait::_InitVars() {
 		char cpath[200];
 		GetModuleFileName(NULL, cpath, 200);
 		string path = cpath;
@@ -33,9 +32,6 @@ ChokoLait::ChokoLait() {
 			abort();
 		}
 		Engine::Init(path);
-
-		initd = 1;
-	}
 }
 
 void ChokoLait::Init(int scrW, int scrH) {
