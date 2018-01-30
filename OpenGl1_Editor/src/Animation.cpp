@@ -188,6 +188,7 @@ void Animator::OnPreLUpdate() {
 	animation->keyvals = animation->states[0]->keyvals;
 }
 
+#ifdef IS_EDITOR
 void Animator::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 	if (DrawComponentHeader(e, v, pos, this)) {
 		pos += 17;
@@ -199,6 +200,7 @@ void Animator::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 	}
 	else pos += 17;
 }
+#endif
 
 void Animator::_SetAnim(void* v) {
 	Animator* r = (Animator*)v;

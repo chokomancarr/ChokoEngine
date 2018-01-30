@@ -115,7 +115,11 @@ Shader::Shader(string p) : AssetObject(ASSETTYPE_SHADER) {
 	if (vertex_shader_code != "") {
 		//std::cout << "Vertex Shader: " << std::endl << vertex_shader_code;
 		if (!LoadShader(GL_VERTEX_SHADER, vertex_shader_code, vertex_shader, &err)) {
+#ifdef IS_EDITOR
 			Editor::instance->_Error("Shader Compiler", p + " " + err);
+#else
+			Debug::Error("Shader Compiler", p + " " + err);
+#endif
 			return;
 		}
 	}
@@ -123,7 +127,11 @@ Shader::Shader(string p) : AssetObject(ASSETTYPE_SHADER) {
 	if (fragment_shader_code != "") {
 		//std::cout << "Fragment Shader: " << std::endl << fragment_shader_code;
 		if (!LoadShader(GL_FRAGMENT_SHADER, fragment_shader_code, fragment_shader, &err)) {
+#ifdef IS_EDITOR
 			Editor::instance->_Error("Shader Compiler", p + " " + err);
+#else
+			Debug::Error("Shader Compiler", p + " " + err);
+#endif
 			return;
 		}
 	}
@@ -235,7 +243,11 @@ Shader::Shader(std::istream& stream, uint offset) : AssetObject(ASSETTYPE_SHADER
 	if (vertex_shader_code != "") {
 		//std::cout << "Vertex Shader: " << std::endl << vertex_shader_code;
 		if (!LoadShader(GL_VERTEX_SHADER, vertex_shader_code, vertex_shader, &err)) {
+#ifdef IS_EDITOR
 			Editor::instance->_Error("Shader Compiler V", err);
+#else
+			Debug::Error("Shader Compiler V", err);
+#endif
 			return;
 		}
 	}
@@ -243,7 +255,11 @@ Shader::Shader(std::istream& stream, uint offset) : AssetObject(ASSETTYPE_SHADER
 	if (fragment_shader_code != "") {
 		//std::cout << "Fragment Shader: " << std::endl << fragment_shader_code;
 		if (!LoadShader(GL_FRAGMENT_SHADER, fragment_shader_code, fragment_shader, &err)) {
+#ifdef IS_EDITOR
 			Editor::instance->_Error("Shader Compiler F", err);
+#else
+			Debug::Error("Shader Compiler F", err);
+#endif
 			return;
 		}
 	}
@@ -329,6 +345,7 @@ GLuint Shader::FromVF(const string& vert, const string& frag) {
 	return pointer;
 }
 
+#ifdef IS_EDITOR
 /*code
 VRT
 [size(4)][codestring]\0
@@ -635,6 +652,7 @@ bool Shader::Parse(std::ifstream* stream, string path) {
 	strm.close();
 	return true;
 }
+#endif
 
 #pragma endregion
 

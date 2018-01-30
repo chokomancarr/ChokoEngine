@@ -4,6 +4,7 @@
 Object::Object(string nm) : id(Engine::GetNewId()), name(nm) {}
 Object::Object(ulong id, string nm) : id(id), name(nm) {}
 
+#ifdef IS_EDITOR
 bool DrawComponentHeader(Editor* e, Vec4 v, uint pos, Component* c) {
 	Engine::DrawQuad(v.r, v.g + pos, v.b - 17, 16, grey2());
 	//bool hi = expand;
@@ -21,6 +22,9 @@ bool DrawComponentHeader(Editor* e, Vec4 v, uint pos, Component* c) {
 	UI::Label(v.r + 20, v.g + pos, 12, c->name, e->font, white());
 	return c->_expanded;
 }
+#endif
+
+#pragma region Component
 
 Component::Component(string name, COMPONENT_TYPE t, DRAWORDER drawOrder, SceneObject* o, std::vector<COMPONENT_TYPE> dep)
 	: Object(name), componentType(t), active(true), drawOrder(drawOrder), _expanded(true), dependancies(dep) {
@@ -67,6 +71,10 @@ COMPONENT_TYPE Component::Name2Type(string nm) {
 	}
 	return COMP_UNDEF;
 }
+
+#pragma endregion
+
+#pragma region Camera
 
 const int Camera::camVertsIds[19] = { 0, 1, 0, 2, 0, 3, 0, 4, 1, 2, 2, 4, 4, 3, 3, 1, 1, 2, 5 };
 
@@ -206,6 +214,7 @@ void Camera::UpdateCamVerts() {
 #endif
 }
 
+#ifdef IS_EDITOR
 void Camera::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(3, GL_FLOAT, 0, &camVerts[0]);
@@ -290,9 +299,22 @@ void Camera::_SetClear2(EditorBlock* b) {
 void Camera::_SetClear3(EditorBlock* b) {
 	Editor::instance->selected->GetComponent<Camera>()->clearType = CAM_CLEAR_SKY;
 }
+#endif
+
+#pragma endregion
 
 MeshFilter::MeshFilter() : Component("Mesh Filter", COMP_MFT, DRAWORDER_NONE), _mesh(-1) {
 
+}
+
+MeshFilter::MeshFilter(std::ifstream& stream, SceneObject* o, long pos) : Component("Mesh Filter", COMP_MFT, DRAWORDER_NONE, o), _mesh(-1) {
+	if (pos >= 0)
+		stream.seekg(pos);
+	ASSETTYPE t;
+	_Strm2Asset(stream, Editor::instance, t, _mesh);
+	if (_mesh >= 0)
+		mesh(_GetCache<Mesh>(ASSETTYPE_MESH, _mesh));
+	object->Refresh();
 }
 
 #ifdef IS_EDITOR
@@ -316,19 +338,7 @@ void MeshFilter::_UpdateMesh(void* i) {
 	mf->object->Refresh();
 }
 
-MeshFilter::MeshFilter(std::ifstream& stream, SceneObject* o, long pos) : Component("Mesh Filter", COMP_MFT, DRAWORDER_NONE, o), _mesh(-1) {
-	if (pos >= 0)
-		stream.seekg(pos);
-	ASSETTYPE t;
-	_Strm2Asset(stream, Editor::instance, t, _mesh);
-	if (_mesh >= 0)
-		mesh = _GetCache<Mesh>(ASSETTYPE_MESH, _mesh);
-	object->Refresh();
-}
-#endif
-
 void MeshFilter::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
-#ifdef IS_EDITOR
 	//MeshFilter* mft = (MeshFilter*)c;
 	if (DrawComponentHeader(e, v, pos, this)) {
 		UI::Label(v.r + 2, v.g + pos + 20, 12, "Mesh", e->font, white());
@@ -339,18 +349,19 @@ void MeshFilter::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 		pos += 17;
 	}
 	else pos += 17;
-#endif
 }
 
 void MeshFilter::Serialize(Editor* e, std::ofstream* stream) {
 	_StreamWriteAsset(e, stream, ASSETTYPE_MESH, _mesh);
 }
+#endif
+
+#pragma region MR+TR
 
 MeshRenderer::MeshRenderer() : Component("Mesh Renderer", COMP_MRD, DRAWORDER_SOLID | DRAWORDER_TRANSPARENT, nullptr, {COMP_MFT}) {
 	_materials.push_back(-1);
 }
 
-#ifdef IS_EDITOR
 MeshRenderer::MeshRenderer(std::ifstream& stream, SceneObject* o, long pos) : Component("Mesh Renderer", COMP_MRD, DRAWORDER_SOLID | DRAWORDER_TRANSPARENT, o, { COMP_MFT }) {
 	_UpdateMat(this);
 	if (pos >= 0)
@@ -363,21 +374,19 @@ MeshRenderer::MeshRenderer(std::ifstream& stream, SceneObject* o, long pos) : Co
 		ASSETID i;
 		_Strm2Asset(stream, Editor::instance, t, i);
 		m = _GetCache<Material>(ASSETTYPE_MATERIAL, i);
-		materials.push_back(m);
+		materials.push_back(rMaterial(pMaterial(m)));
 		_materials.push_back(i);
 	}
 	//_Strm2Asset(stream, Editor::instance, t, _mat);
 }
-#endif
 
-void MeshRenderer::DrawEditor(EB_Viewer* ebv, GLuint shader) {
+void MeshRenderer::DrawDeferred(GLuint shader) {
 	MeshFilter* mf = (MeshFilter*)dependacyPointers[0].raw();
 	if (!mf->mesh || !mf->mesh->loaded)
 		return;
-	bool isE = (ebv != nullptr);
 	glEnableClientState(GL_VERTEX_ARRAY);
-	glPolygonMode(GL_FRONT_AND_BACK, (!isE || ebv->selectedShading == 0) ? GL_FILL : GL_LINE);
-	if (!isE || ebv->selectedShading == 0) glEnable(GL_CULL_FACE);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glEnable(GL_CULL_FACE);
 	glVertexPointer(3, GL_FLOAT, 0, &(mf->mesh->vertices[0]));
 	glLineWidth(1);
 	GLfloat matrix[16], matrix2[16];
@@ -385,7 +394,7 @@ void MeshRenderer::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 	glGetFloatv(GL_PROJECTION_MATRIX, matrix2);
 	Mat4x4 m1(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
 	Mat4x4 m2(matrix2[0], matrix2[1], matrix2[2], matrix2[3], matrix2[4], matrix2[5], matrix2[6], matrix2[7], matrix2[8], matrix2[9], matrix2[10], matrix2[11], matrix2[12], matrix2[13], matrix2[14], matrix2[15]);
-	
+
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
 	glEnableVertexAttribArray(2);
@@ -410,73 +419,6 @@ void MeshRenderer::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 	glUseProgram(0);
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glDisable(GL_CULL_FACE);
-	if (isE && mf->showBoundingBox) {
-		BBox& b = mf->mesh->boundingBox;
-		Engine::DrawCubeLinesW(b.x0, b.x1, b.y0, b.y1, b.z0, b.z1, 1, white(1, 0.5f));
-	}
-}
-
-void MeshRenderer::DrawDeferred(GLuint shader) {
-	DrawEditor(nullptr, shader);
-}
-
-void MeshRenderer::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
-	if (DrawComponentHeader(e, v, pos, this)) {
-		MeshFilter* mft = (MeshFilter*)dependacyPointers[0].raw();
-		if (!mft->mesh) {
-			UI::Label(v.r + 2, v.g + pos + 20, 12, "No Mesh Assigned!", e->font, white());
-			pos += 34;
-		}
-		else {
-			UI::Label(v.r + 2, v.g + pos + 18, 12, "Materials: " + std::to_string(mft->mesh->materialCount), e->font, white());
-			pos += 35;
-			for (uint a = 0; a < mft->mesh->materialCount; a++) {
-				UI::Label(v.r + 2, v.g + pos , 12, "Material " + std::to_string(a), e->font, white());
-				e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos, v.b*0.7f, 16, grey1(), ASSETTYPE_MATERIAL, 12, e->font, &_materials[a], & _UpdateMat, this);
-				pos += 17;
-				if (!materials[a])
-					continue;
-				if (overwriteWriteMask) {
-					if (Engine::EButton(e->editorLayer == 0, v.r + 5, v.g + pos, 16, 16, e->tex_expand, white()) == MOUSE_RELEASE) {
-						materials[a]->_maskExpanded = !materials[a]->_maskExpanded;
-					}
-					UI::Label(v.r + 22, v.g + pos, 12, "Write Mask", e->font, white());
-					pos += 17;
-					if (materials[a]->_maskExpanded) {
-						for (uint ea = 0; ea < GBUFFER_NUM_TEXTURES - 1; ea++) {
-							materials[a]->writeMask[ea] = Engine::Toggle(v.r + 22, v.g + pos, 16, e->tex_checkbox, materials[a]->writeMask[ea], white(), ORIENT_HORIZONTAL);
-							UI::Label(v.r + 43, v.g + pos, 12, Camera::_gbufferNames[ea], e->font, white());
-							pos += 17;
-						}
-					}
-				}
-				for (uint q = 0, qq = materials[a]->valOrders.size(); q < qq; q++) {
-					UI::Texture(v.r + 8, v.g + pos, 16, 16, e->matVarTexs[materials[a]->valOrders[q]]);
-					UI::Label(v.r + 25, v.g + pos, 12, materials[a]->valNames[materials[a]->valOrders[q]][materials[a]->valOrderIds[q]], e->font, white());
-					void* bbs = materials[a]->vals[materials[a]->valOrders[q]][materials[a]->valOrderGLIds[q]];
-					switch (materials[a]->valOrders[q]) {
-					case SHADER_INT:
-						*(int*)bbs = TryParse(UI::EditText(v.r + v.b * 0.3f + 22, v.g + pos, v.b*0.3f, 16, 12, grey1(), std::to_string(*(int*)bbs), e->font, true, nullptr, white()), *(int*)bbs);
-						*(int*)bbs = (int)round(Engine::DrawSliderFill(v.r + v.b*0.6f + 23, v.g + pos, v.b*0.4f - 19, 16, 0, 1, (float)(*(int*)bbs), grey2(), white()));
-						break;
-					case SHADER_FLOAT:
-						*(float*)bbs = TryParse(UI::EditText(v.r + v.b * 0.3f + 22, v.g + pos, v.b*0.3f, 16, 12, grey1(), std::to_string(*(float*)bbs), e->font, true, nullptr, white()), *(float*)bbs);
-						*(float*)bbs = Engine::DrawSliderFill(v.r + v.b*0.6f + 23, v.g + pos, v.b*0.4f - 19, 16, 0, 1, *(float*)bbs, grey2(), white());
-						break;
-					case SHADER_SAMPLER:
-						e->DrawAssetSelector(v.r + v.b * 0.3f + 22, v.g + pos, v.b*0.7f - 17, 16, grey1(), ASSETTYPE_TEXTURE, 12, e->font, &((MatVal_Tex*)bbs)->id, _UpdateTex, bbs);
-						break;
-					}
-					pos += 17;
-				}
-				pos++;
-			}
-			UI::Label(v.r + 2, v.g + pos, 12, "Override Masks", e->font, white());
-			overwriteWriteMask = Engine::Toggle(v.r + v.b*0.3f, v.g + pos, 12, e->tex_checkbox, overwriteWriteMask, white(), ORIENT_HORIZONTAL);
-			pos += 17;
-		}
-	}
-	else pos += 17;
 }
 
 void MeshRenderer::_UpdateMat(void* i) {
@@ -491,13 +433,6 @@ void MeshRenderer::_UpdateTex(void* i) {
 	v->tex = _GetCache<Texture>(ASSETTYPE_TEXTURE, v->id);
 }
 
-void MeshRenderer::Serialize(Editor* e, std::ofstream* stream) {
-	int s = _materials.size();
-	_StreamWrite(&s, stream, 4);
-	for (ASSETID i : _materials)
-		_StreamWriteAsset(e, stream, ASSETTYPE_MATERIAL, i);
-}
-
 void MeshRenderer::Refresh() {
 	MeshFilter* mf = (MeshFilter*)dependacyPointers[0].raw();
 	if (!mf || !mf->mesh || !mf->mesh->loaded) {
@@ -510,20 +445,6 @@ void MeshRenderer::Refresh() {
 	}
 }
 
-void TextureRenderer::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
-	//MeshRenderer* mrd = (MeshRenderer*)c;
-	if (DrawComponentHeader(e, v, pos, this)) {
-		UI::Label(v.r + 2, v.g + pos + 20, 12, "Texture", e->font, white());
-		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 17, v.b*0.7f, 16, grey1(), ASSETTYPE_TEXTURE, 12, e->font, &_texture);
-		pos += 34;
-	}
-	else pos += 17;
-}
-
-void TextureRenderer::Serialize(Editor* e, std::ofstream* stream) {
-	_StreamWriteAsset(e, stream, ASSETTYPE_TEXTURE, _texture);
-}
-
 TextureRenderer::TextureRenderer(std::ifstream& stream, SceneObject* o, long pos) : Component("Texture Renderer", COMP_TRD, DRAWORDER_OVERLAY, o) {
 	if (pos >= 0)
 		stream.seekg(pos);
@@ -531,7 +452,9 @@ TextureRenderer::TextureRenderer(std::ifstream& stream, SceneObject* o, long pos
 	_Strm2Asset(stream, Editor::instance, t, _texture);
 }
 
-//-----------------Skinned Mesh Renderer-------------
+#pragma endregion
+
+#pragma region SMR
 
 ComputeShader* SkinnedMeshRenderer::skinningProg = 0;
 
@@ -618,121 +541,6 @@ void SkinnedMeshRenderer::InitWeights() {
 		Debug::Warning("SMR", std::to_string(noweights.size()) + " vertices in \"" + _mesh->name + "\" have no weights assigned!");
 }
 
-void SkinnedMeshRenderer::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
-	if (DrawComponentHeader(e, v, pos, this)) {
-		UI::Label(v.r + 2, v.g + pos + 20, 12, "Mesh", e->font, white());
-		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 17, v.b*0.7f, 16, grey1(), ASSETTYPE_MESH, 12, e->font, &_meshId, &_UpdateMesh, this);
-		pos += 34;
-		UI::Label(v.r + 2, v.g + pos, 12, "Show Bounding Box", e->font, white());
-		showBoundingBox = Engine::Toggle(v.r + v.b*0.3f, v.g + pos, 12, e->tex_checkbox, showBoundingBox, white(), ORIENT_HORIZONTAL);
-		pos += 17;
-
-		if (!_mesh) {
-			UI::Label(v.r + 2, v.g + pos + 20, 12, "No Mesh Assigned!", e->font, white());
-			pos += 34;
-		}
-		else {
-			UI::Label(v.r + 2, v.g + pos, 12, "Materials: " + std::to_string(_mesh->materialCount), e->font, white());
-			pos += 17;
-			for (uint a = 0; a < _mesh->materialCount; a++) {
-				UI::Label(v.r + 2, v.g + pos, 12, "Material " + std::to_string(a), e->font, white());
-				e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos, v.b*0.7f, 16, grey1(), ASSETTYPE_MATERIAL, 12, e->font, &_materials[a], &_UpdateMat, this);
-				pos += 17;
-				if (!materials[a])
-					continue;
-				if (overwriteWriteMask) {
-					if (Engine::EButton(e->editorLayer == 0, v.r + 5, v.g + pos, 16, 16, e->tex_expand, white()) == MOUSE_RELEASE) {
-						materials[a]->_maskExpanded = !materials[a]->_maskExpanded;
-					}
-					UI::Label(v.r + 22, v.g + pos, 12, "Write Mask", e->font, white());
-					pos += 17;
-					if (materials[a]->_maskExpanded) {
-						for (uint ea = 0; ea < GBUFFER_NUM_TEXTURES - 1; ea++) {
-							materials[a]->writeMask[ea] = Engine::Toggle(v.r + 22, v.g + pos, 16, e->tex_checkbox, materials[a]->writeMask[ea], white(), ORIENT_HORIZONTAL);
-							UI::Label(v.r + 43, v.g + pos, 12, Camera::_gbufferNames[ea], e->font, white());
-							pos += 17;
-						}
-					}
-				}
-				for (uint q = 0, qq = materials[a]->valOrders.size(); q < qq; q++) {
-					UI::Texture(v.r + 8, v.g + pos, 16, 16, e->matVarTexs[materials[a]->valOrders[q]]);
-					UI::Label(v.r + 25, v.g + pos, 12, materials[a]->valNames[materials[a]->valOrders[q]][materials[a]->valOrderIds[q]], e->font, white());
-					void* bbs = materials[a]->vals[materials[a]->valOrders[q]][materials[a]->valOrderGLIds[q]];
-					switch (materials[a]->valOrders[q]) {
-					case SHADER_INT:
-						*(int*)bbs = TryParse(UI::EditText(v.r + v.b * 0.3f + 22, v.g + pos, v.b*0.3f, 16, 12, grey1(), std::to_string(*(int*)bbs), e->font, true, nullptr, white()), *(int*)bbs);
-						*(int*)bbs = (int)round(Engine::DrawSliderFill(v.r + v.b*0.6f + 23, v.g + pos, v.b*0.4f - 19, 16, 0, 1, (float)(*(int*)bbs), grey2(), white()));
-						break;
-					case SHADER_FLOAT:
-						*(float*)bbs = TryParse(UI::EditText(v.r + v.b * 0.3f + 22, v.g + pos, v.b*0.3f, 16, 12, grey1(), std::to_string(*(float*)bbs), e->font, true, nullptr, white()), *(float*)bbs);
-						*(float*)bbs = Engine::DrawSliderFill(v.r + v.b*0.6f + 23, v.g + pos, v.b*0.4f - 19, 16, 0, 1, *(float*)bbs, grey2(), white());
-						break;
-					case SHADER_SAMPLER:
-						e->DrawAssetSelector(v.r + v.b * 0.3f + 22, v.g + pos, v.b*0.7f - 17, 16, grey1(), ASSETTYPE_TEXTURE, 12, e->font, &((MatVal_Tex*)bbs)->id, _UpdateTex, bbs);
-						break;
-					}
-					pos += 17;
-				}
-				pos++;
-			}
-			UI::Label(v.r + 2, v.g + pos, 12, "Override Masks", e->font, white());
-			overwriteWriteMask = Engine::Toggle(v.r + v.b*0.3f, v.g + pos, 12, e->tex_checkbox, overwriteWriteMask, white(), ORIENT_HORIZONTAL);
-			pos += 17;
-		}
-	}
-	else pos += 17;
-}
-
-void SkinnedMeshRenderer::DrawEditor(EB_Viewer* ebv, GLuint shader) {
-	if (!_mesh || !_mesh->loaded)
-		return;
-	bool isE = !!ebv;
-	
-	Skin();
-
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glPolygonMode(GL_FRONT_AND_BACK, (!isE || ebv->selectedShading == 0) ? GL_FILL : GL_LINE);
-	if (!isE || ebv->selectedShading == 0) glEnable(GL_CULL_FACE);
-	glVertexPointer(3, GL_FLOAT, 0, &(_mesh->vertices[0]));
-	glLineWidth(1);
-	GLfloat matrix[16], matrix2[16];
-	glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
-	glGetFloatv(GL_PROJECTION_MATRIX, matrix2);
-	Mat4x4 m1(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
-	Mat4x4 m2(matrix2[0], matrix2[1], matrix2[2], matrix2[3], matrix2[4], matrix2[5], matrix2[6], matrix2[7], matrix2[8], matrix2[9], matrix2[10], matrix2[11], matrix2[12], matrix2[13], matrix2[14], matrix2[15]);
-
-	glEnableVertexAttribArray(0);
-	glEnableVertexAttribArray(1);
-	glEnableVertexAttribArray(2);
-	glEnableVertexAttribArray(3);
-	glBindBuffer(GL_ARRAY_BUFFER, skinBufPossO->pointer);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, sizeof(Vec4), 0);
-	glBindBuffer(GL_ARRAY_BUFFER, skinBufNrmsO->pointer);
-	glVertexAttribPointer(2, 3, GL_FLOAT, GL_TRUE, sizeof(Vec4), 0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glVertexAttribPointer(3, 3, GL_FLOAT, GL_TRUE, 0, &(_mesh->tangents[0]));
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, &(_mesh->uv0[0]));
-	for (uint m = 0; m < _mesh->materialCount; m++) {
-		if (!materials[m])
-			continue;
-		if (shader == 0) materials[m]->ApplyGL(m1, m2);
-		else glUseProgram(shader);
-		glDrawElements(GL_TRIANGLES, _mesh->_matTriangles[m].size(), GL_UNSIGNED_INT, &(_mesh->_matTriangles[m][0]));
-	}
-	glDisableVertexAttribArray(0);
-	glDisableVertexAttribArray(1);
-	glDisableVertexAttribArray(2);
-	glDisableVertexAttribArray(3);
-
-	glUseProgram(0);
-	glDisableClientState(GL_VERTEX_ARRAY);
-	glDisable(GL_CULL_FACE);
-	if (isE && showBoundingBox) {
-		BBox& b = _mesh->boundingBox;
-		Engine::DrawCubeLinesW(b.x0, b.x1, b.y0, b.y1, b.z0, b.z1, 1, white(1, 0.5f));
-	}
-}
-
 void SkinnedMeshRenderer::DrawDeferred(GLuint shader) {
 	DrawEditor(nullptr, shader);
 }
@@ -796,8 +604,9 @@ void SkinnedMeshRenderer::_UpdateTex(void* i) {
 	v->tex = _GetCache<Texture>(ASSETTYPE_TEXTURE, v->id);
 }
 
+#pragma endregion
 
-//-----------------Particle System-------------
+#pragma region Particles
 
 float ParticleSystemValue::Eval() {
 	switch (type) {
@@ -841,163 +650,9 @@ void ParticleSystem::Update() {
 	clockOffset -= c/_clock;
 }
 
-void Light::DrawEditor(EB_Viewer* ebv, GLuint shader) {
-	if (ebv->editor->selected != object) return;
-	switch (_lightType) { 
-	case LIGHTTYPE_POINT:
-		if (minDist > 0) {
-			Engine::DrawCircleW(Vec3(), Vec3(1, 0, 0), Vec3(0, 1, 0), minDist, 32, color, 1);
-			Engine::DrawCircleW(Vec3(), Vec3(1, 0, 0), Vec3(0, 0, 1), minDist, 32, color, 1);
-			Engine::DrawCircleW(Vec3(), Vec3(0, 1, 0), Vec3(0, 0, 1), minDist, 32, color, 1);
-		}
-		Engine::DrawCircleW(Vec3(), Vec3(1, 0, 0), Vec3(0, 1, 0), maxDist, 32, Lerp(color, black(), 0.5f), 1);
-		Engine::DrawCircleW(Vec3(), Vec3(1, 0, 0), Vec3(0, 0, 1), maxDist, 32, Lerp(color, black(), 0.5f), 1);
-		Engine::DrawCircleW(Vec3(), Vec3(0, 1, 0), Vec3(0, 0, 1), maxDist, 32, Lerp(color, black(), 0.5f), 1);
-		break;
-	case LIGHTTYPE_DIRECTIONAL:
-		Engine::DrawLineW(Vec3(0, 0, 0.2f), Vec3(0, 0, 1), color, 1);
-		Engine::DrawLineW(Vec3(0, 0, 1), Vec3(0, 0.2f, 0.7f), color, 1);
-		Engine::DrawLineW(Vec3(0, 0, 1), Vec3(0, -0.2f, 0.7f), color, 1);
-		Engine::DrawLineW(Vec3(0, 0, 1), Vec3(0.2f, 0, 0.7f), color, 1);
-		Engine::DrawLineW(Vec3(0, 0, 1), Vec3(-0.2f, 0, 0.7f), color, 1);
-		/*
-		Engine::DrawLineW(Vec3(0, 0, -0.3f), Vec3(0, 0, -0.5f), color, 1);
-		Engine::DrawLineW(Vec3(0, -0.3f, 0), Vec3(0, -0.5f, 0), color, 1);
-		Engine::DrawLineW(Vec3(0, 0.3f, 0), Vec3(0, 0.5f, 0), color, 1);
-		Engine::DrawLineW(Vec3(-0.3f, 0, 0), Vec3(-0.5f, 0, 0), color, 1);
-		Engine::DrawLineW(Vec3(0.3f, 0, 0), Vec3(0.5f, 0, 0), color, 1);
-		*/
-		Engine::DrawCircleW(Vec3(), Vec3(1, 0, 0), Vec3(0, 1, 0), 0.2f, 12, color, 1);
-		Engine::DrawCircleW(Vec3(), Vec3(1, 0, 0), Vec3(0, 0, 1), 0.2f, 12, color, 1);
-		Engine::DrawCircleW(Vec3(), Vec3(0, 1, 0), Vec3(0, 0, 1), 0.2f, 12, color, 1);
-		break;
-	case LIGHTTYPE_SPOT:
-		if (ebv->editor->selected == object) {
-			Engine::DrawLineWDotted(Vec3(0, 0, 1) * minDist, Vec3(0, 0, 1) * maxDist, white(0.5f, 0.5f), 1, 0.2f, true);
-			float rd = minDist*tan(deg2rad*angle*0.5f);
-			float rd2 = maxDist*tan(deg2rad*angle*0.5f);
-			if (minDist > 0)
-				Engine::DrawCircleW(Vec3(0, 0, 1) * minDist, Vec3(1, 0, 0), Vec3(0, 1, 0), rd, 16, color, 1);
-			Engine::DrawCircleW(Vec3(0, 0, 1) * maxDist, Vec3(1, 0, 0), Vec3(0, 1, 0), rd2, 32, color, 1);
-			Engine::DrawLineW(Vec3(rd, 0, minDist), Vec3(rd2, 0, maxDist), color, 1);
-			Engine::DrawLineW(Vec3(-rd, 0, minDist), Vec3(-rd2, 0, maxDist), color, 1);
-			Engine::DrawLineW(Vec3(0, rd, minDist), Vec3(0, rd2, maxDist), color, 1);
-			Engine::DrawLineW(Vec3(0, -rd, minDist), Vec3(0, -rd2, maxDist), color, 1);
-		}
-		break;
-	}
-}
+#pragma endregion
 
-void Light::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
-	if (DrawComponentHeader(e, v, pos, this)) {
-		pos += 17;
-		if (Engine::EButton(e->editorLayer == 0, v.r, v.g + pos, v.b * 0.33f - 1, 16, (_lightType == LIGHTTYPE_POINT) ? white(1, 0.5f) : grey1(), "Point", 12, e->font, white()) == MOUSE_RELEASE)
-			_lightType = LIGHTTYPE_POINT;
-		if (Engine::EButton(e->editorLayer == 0, v.r + v.b * 0.33f, v.g + pos, v.b * 0.34f - 1, 16, (_lightType == LIGHTTYPE_DIRECTIONAL) ? white(1, 0.5f) : grey1(), "Directional", 12, e->font, white()) == MOUSE_RELEASE)
-			_lightType = LIGHTTYPE_DIRECTIONAL;
-		if (Engine::EButton(e->editorLayer == 0, v.r + v.b * 0.67f, v.g + pos, v.b * 0.33f - 1, 16, (_lightType == LIGHTTYPE_SPOT) ? white(1, 0.5f) : grey1(), "Spot", 12, e->font, white()) == MOUSE_RELEASE)
-			_lightType = LIGHTTYPE_SPOT;
-
-		UI::Label(v.r + 2, v.g + pos + 17, 12, "Intensity", e->font, white());
-		Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos + 17, v.b * 0.3f - 1, 16, grey1());
-		UI::Label(v.r + v.b * 0.3f + 2, v.g + pos + 17, 12, std::to_string(intensity), e->font, white());
-		intensity = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos + 17, v.b * 0.4f - 1, 16, 0, 20, intensity, grey1(), white());
-		pos += 34;
-		UI::Label(v.r + 2, v.g + pos, 12, "Color", e->font, white());
-		e->DrawColorSelector(v.r + v.b*0.3f, v.g + pos, v.b*0.7f - 1, 16, grey1(), 12, e->font, &color);
-		pos += 17;
-
-		switch (_lightType) {
-		case LIGHTTYPE_POINT:
-			UI::Label(v.r + 2, v.g + pos, 12, "core radius", e->font, white());
-			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-			UI::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, std::to_string(minDist), e->font, white());
-			minDist = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, maxDist, minDist, grey1(), white());
-			pos += 17;
-			UI::Label(v.r + 2, v.g + pos, 12, "distance", e->font, white());
-			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-			UI::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, std::to_string(maxDist), e->font, white());
-			maxDist = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 20, maxDist, grey1(), white());
-			pos += 17;
-			UI::Label(v.r + 2, v.g + pos, 12, "falloff", e->font, white());
-			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-			UI::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, std::to_string(falloff), e->font, white());
-			falloff = (LIGHT_FALLOFF)((int)round(Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 20, (float)falloff, grey1(), white())));
-			pos += 17;
-			break;
-		case LIGHTTYPE_DIRECTIONAL:
-			
-			break;
-		case LIGHTTYPE_SPOT:
-			UI::Label(v.r + 2, v.g + pos, 12, "angle", e->font, white());
-			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-			UI::Label(v.r + v.b * 0.3f, v.g + pos + 2, 12, std::to_string(angle), e->font, white());
-			angle = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 180, angle, grey1(), white());
-			pos += 17;
-			UI::Label(v.r + 2, v.g + pos, 12, "start distance", e->font, white());
-			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-			UI::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, std::to_string(minDist), e->font, white());
-			minDist = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0.0001f, maxDist, minDist, grey1(), white());
-			pos += 17;
-			UI::Label(v.r + 2, v.g + pos, 12, "end distance", e->font, white());
-			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-			UI::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, std::to_string(maxDist), e->font, white());
-			maxDist = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0.0002f, 50, maxDist, grey1(), white());
-			pos += 17;
-			break;
-		}
-		UI::Label(v.r + 2, v.g + pos, 12, "cookie", e->font, white());
-		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos, v.b*0.7f, 16, grey1(), ASSETTYPE_TEXTURE, 12, e->font, &_cookie, &_SetCookie, this);
-		pos += 17;
-		UI::Label(v.r + 2, v.g + pos, 12, "cookie strength", e->font, white());
-		Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-		UI::Label(v.r + v.b * 0.3f, v.g + pos + 2, 12, std::to_string(cookieStrength), e->font, white());
-		cookieStrength = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 1, cookieStrength, grey1(), white());
-		pos += 17;
-		UI::Label(v.r + 2, v.g + pos, 12, "square shape", e->font, white());
-		square = Engine::Toggle(v.r + v.b * 0.3f, v.g + pos, 12, e->tex_checkbox, square, white(), ORIENT_HORIZONTAL);
-		pos += 17;
-		if (_lightType != LIGHTTYPE_DIRECTIONAL) {
-			if (Engine::EButton(e->editorLayer == 0, v.r, v.g + pos, v.b * 0.5f - 1, 16, (!drawShadow) ? white(1, 0.5f) : grey1(), "No Shadow", 12, e->font, white()) == MOUSE_RELEASE)
-				drawShadow = false;
-			if (Engine::EButton(e->editorLayer == 0, v.r + v.b * 0.5f, v.g + pos, v.b * 0.5f - 1, 16, (drawShadow) ? white(1, 0.5f) : grey1(), "Shadow", 12, e->font, white()) == MOUSE_RELEASE)
-				drawShadow = true;
-			pos += 17;
-			if (drawShadow) {
-				UI::Label(v.r + 2, v.g + pos, 12, "shadow bias", e->font, white());
-				Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-				UI::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, std::to_string(shadowBias), e->font, white());
-				shadowBias = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 0.02f, shadowBias, grey1(), white());
-				pos += 17;
-				UI::Label(v.r + 2, v.g + pos, 12, "shadow strength", e->font, white());
-				Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-				UI::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, std::to_string(shadowStrength), e->font, white());
-				shadowStrength = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 1, shadowStrength, grey1(), white());
-				pos += 17;
-
-				UI::Label(v.r + 2, v.g + pos, 12, "Contact Shadows", e->font, white());
-				contactShadows = Engine::Toggle(v.r + v.b * 0.3f, v.g + pos, 16, e->tex_checkbox, contactShadows, white(), ORIENT_HORIZONTAL);
-				pos += 17;
-				if (contactShadows) {
-					UI::Label(v.r + 2, v.g + pos, 12, "  samples", e->font, white());
-					Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-					UI::Label(v.r + v.b * 0.3f, v.g + pos + 2, 12, std::to_string(contactShadowSamples), e->font, white());
-					contactShadowSamples = (uint)Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 5, 50, (float)contactShadowSamples, grey1(), white());
-					pos += 17;
-					UI::Label(v.r + 2, v.g + pos, 12, "  distance", e->font, white());
-					Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-					UI::Label(v.r + v.b * 0.3f, v.g + pos + 2, 12, std::to_string(contactShadowDistance), e->font, white());
-					contactShadowDistance = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 1, contactShadowDistance, grey1(), white());
-					pos += 17;
-				}
-			}
-		}
-		UI::Label(v.r + 2, v.g + pos, 12, "HSV Map", e->font, white());
-		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos, v.b*0.7f, 16, grey1(), ASSETTYPE_TEXTURE, 12, e->font, &_hsvMap, &_SetHsvMap, this);
-
-	}
-	else pos += 17;
-}
+#pragma region Light
 
 void Light::_SetCookie(void* v) {
 	Light* l = (Light*)v;
@@ -1023,22 +678,6 @@ void Light::CalcShadowMatrix() {
 		//_shadowMatrix = Mat4x4();
 }
 
-void Light::Serialize(Editor* e, std::ofstream* stream) {
-	byte b = _lightType;
-	if (drawShadow) b |= 0xf0;
-	_StreamWrite(&b, stream, 1);
-	_StreamWrite(&intensity, stream, 4);
-	_StreamWrite(&minDist, stream, 4);
-	_StreamWrite(&maxDist, stream, 4);
-	_StreamWrite(&angle, stream, 4);
-	_StreamWrite(&shadowBias, stream, 4);
-	_StreamWrite(&shadowStrength, stream, 4);
-	_StreamWrite(&color.r, stream, 4);
-	_StreamWrite(&color.g, stream, 4);
-	_StreamWrite(&color.b, stream, 4);
-	_StreamWrite(&color.a, stream, 4);
-}
-
 Light::Light() : Component("Light", COMP_LHT, DRAWORDER_LIGHT), _lightType(LIGHTTYPE_POINT), color(Vec4(1, 1, 1, 1)) {}
 
 Light::Light(std::ifstream& stream, SceneObject* o, long pos) : Light() {
@@ -1061,6 +700,9 @@ Light::Light(std::ifstream& stream, SceneObject* o, long pos) : Light() {
 	_cookie = -1;
 }
 
+#pragma endregion
+
+#pragma region ReflQuad
 
 std::vector<GLint> ReflectiveQuad::paramLocs = std::vector<GLint>();
 
@@ -1068,87 +710,14 @@ ReflectiveQuad::ReflectiveQuad(Texture* tex) : Component("Reflective Quad", COMP
 
 }
 
-void ReflectiveQuad::DrawEditor(EB_Viewer* ebv, GLuint shader) {
-	Engine::DrawLineW(Vec3(origin.x, origin.y, 0), Vec3(origin.x + size.x, origin.y, 0), yellow(), 2);
-	Engine::DrawLineW(Vec3(origin.x, origin.y, 0), Vec3(origin.x, origin.y + size.y, 0), yellow(), 2);
-}
-
-void ReflectiveQuad::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
-	if (DrawComponentHeader(e, v, pos, this)) {
-		pos += 17;
-		UI::Label(v.r + 2, v.g + pos, 12, "Texture", e->font, white());
-		e->DrawAssetSelector(v.r + v.b*0.3f, v.g + pos, v.b*0.7f - 1, 16, grey1(), ASSETTYPE_TEXTURE, 12, e->font, &_texture, &_SetTex, this);
-		if (_texture == -1) {
-			UI::Label(v.r + 2, v.g + pos + 17, 12, "A Texture is required!", e->font, yellow());
-			return;
-		}
-		UI::Label(v.r + 2, v.g + pos + 17, 12, "Intensity", e->font, white());
-		Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos + 17, v.b * 0.3f - 1, 16, grey1());
-		UI::Label(v.r + v.b * 0.3f + 2, v.g + pos + 17, 12, std::to_string(intensity), e->font, white());
-		intensity = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos + 17, v.b * 0.4f - 1, 16, 0, 5, intensity, grey1(), white());
-		pos += 34;
-		UI::Label(v.r + 2, v.g + pos, 12, "Size", e->font, white());
-		Engine::EButton((e->editorLayer == 0), v.r + v.b*0.3f, v.g + pos, v.b*0.35f - 1, 16, Vec4(0.4f, 0.2f, 0.2f, 1));
-		UI::Label(v.r + v.b*0.33f, v.g + pos, 12, std::to_string(size.x), e->font, white());
-		Engine::EButton((e->editorLayer == 0), v.r + v.b*0.65f, v.g + pos, v.b*0.35f - 1, 16, Vec4(0.2f, 0.4f, 0.2f, 1));
-		UI::Label(v.r + v.b*0.67f, v.g + pos, 12, std::to_string(size.y), e->font, white());
-	}
-	else pos += 17;
-}
-
 void ReflectiveQuad::_SetTex(void* v) {
 	ReflectiveQuad* r = (ReflectiveQuad*)v;
 	r->texture = _GetCache<Texture>(ASSETTYPE_TEXTURE, r->_texture);
 }
 
-void ReflectiveQuad::Serialize(Editor* e, std::ofstream* stream) {
+#pragma endregion
 
-}
-
-
-void ReflectionProbe::DrawEditor(EB_Viewer* ebv, GLuint shader) {
-	Engine::DrawCircleW(Vec3(), Vec3(1, 0, 0), Vec3(0, 1, 0), 0.2f, 12, Vec4(1, 0.76f, 0.80, 1), 1);
-	Engine::DrawCircleW(Vec3(), Vec3(0, 1, 0), Vec3(0, 0, 1), 0.2f, 12, Vec4(1, 0.76f, 0.80, 1), 1);
-	Engine::DrawCircleW(Vec3(), Vec3(0, 0, 1), Vec3(1, 0, 0), 0.2f, 12, Vec4(1, 0.76f, 0.80, 1), 1);
-
-	if (ebv->editor->selected == object) {
-		Engine::DrawLineWDotted(range*Vec3(1, 1, -1), range*Vec3(1, 1, 1), white(), 1, 0.1f);
-		Engine::DrawLineWDotted(range*Vec3(1, 1, 1), range*Vec3(-1, 1, 1), white(), 1, 0.1f);
-		Engine::DrawLineWDotted(range*Vec3(-1, 1, 1), range*Vec3(-1, 1, -1), white(), 1, 0.1f);
-		Engine::DrawLineWDotted(range*Vec3(-1, 1, -1), range*Vec3(1, 1, -1), white(), 1, 0.1f);
-
-		Engine::DrawLineWDotted(range*Vec3(1, 1, 1), range*Vec3(1, -1, 1), white(), 1, 0.1f);
-		Engine::DrawLineWDotted(range*Vec3(1, 1, -1), range*Vec3(1, -1, -1), white(), 1, 0.1f);
-		Engine::DrawLineWDotted(range*Vec3(-1, 1, 1), range*Vec3(-1, -1, 1), white(), 1, 0.1f);
-		Engine::DrawLineWDotted(range*Vec3(-1, 1, -1), range*Vec3(-1, -1, -1), white(), 1, 0.1f);
-
-		Engine::DrawLineWDotted(range*Vec3(1, -1, -1), range*Vec3(1, -1, 1), white(), 1, 0.1f);
-		Engine::DrawLineWDotted(range*Vec3(1, -1, 1), range*Vec3(-1, -1, 1), white(), 1, 0.1f);
-		Engine::DrawLineWDotted(range*Vec3(-1, -1, 1), range*Vec3(-1, -1, -1), white(), 1, 0.1f);
-		Engine::DrawLineWDotted(range*Vec3(-1, -1, -1), range*Vec3(1, -1, -1), white(), 1, 0.1f);
-	}
-
-	/*
-	glPushMatrix();
-	Vec3 v = object->transform.position;
-	Vec3 vv = object->transform.scale;
-	Quat vvv = object->transform.rotation;
-	glTranslatef(v.x, v.y, v.z);
-	glScalef(vv.x, vv.y, vv.z);
-	glMultMatrixf(glm::value_ptr(Quat2Mat(vvv)));
-	glPopMatrix();
-	*/
-}
-
-void ReflectionProbe::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
-	if (DrawComponentHeader(e, v, pos, this)) {
-		pos += 17;
-		
-		UI::Label(v.r + 2, v.g + pos + 20, 12, "Intensity", e->font, white());
-		pos += 17;
-	}
-	else pos += 17;
-}
+#pragma region ReflProbe
 
 ReflectionProbe::ReflectionProbe(ushort size) : Component("Reflection Probe", COMP_RDP, DRAWORDER_LIGHT), size(size), map(new CubeMap(size)), updateMode(ReflProbe_UpdateMode_Start), intensity(1), clearType(ReflProbe_Clear_Sky), clearColor(), range(1, 1, 1), softness(0) {
 	
@@ -1173,21 +742,9 @@ ReflectionProbe::ReflectionProbe(std::ifstream& stream, SceneObject* o, long pos
 	//map = new CubeMap(size);
 }
 
-void ReflectionProbe::Serialize(Editor* e, std::ofstream* stream) {
-	_StreamWrite(&size, stream, 2);
-	_StreamWrite(&updateMode, stream, 1);
-	_StreamWrite(&intensity, stream, 4);
-	_StreamWrite(&clearType, stream, 1);
-	_StreamWrite(&clearColor.r, stream, 4);
-	_StreamWrite(&clearColor.g, stream, 4);
-	_StreamWrite(&clearColor.b, stream, 4);
-	_StreamWrite(&clearColor.a, stream, 4);
-	_StreamWrite(&range.x, stream, 4);
-	_StreamWrite(&range.y, stream, 4);
-	_StreamWrite(&range.z, stream, 4);
-	_StreamWrite(&softness, stream, 4);
-}
+#pragma endregion
 
+#pragma region IK
 
 InverseKinematics::InverseKinematics() : Component("InverseKinematics", COMP_INK) {
 
@@ -1214,25 +771,9 @@ void InverseKinematics::Apply() {
 	}
 }
 
-void InverseKinematics::DrawEditor(EB_Viewer* ebv, GLuint shader) {
-	if (target) Apply();
-}
+#pragma endregion
 
-void InverseKinematics::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
-	if (DrawComponentHeader(e, v, pos, this)) {
-		pos += 17;
-		UI::Label(v.r + 2, v.g + pos, 12, "Target", e->font, white());
-		e->DrawObjectSelector(v.r + v.b*0.3f, v.g + pos, v.b*0.7f - 1, 16, grey1(), 12, e->font, &target);
-		pos += 17;
-		UI::Label(v.r + 2, v.g + pos, 12, "Length", e->font, white());
-		length = (byte)TryParse(UI::EditText(v.r + v.b*0.3f, v.g + pos, v.b*0.7f - 1, 16, 12, grey2(), std::to_string(length), e->font, true, nullptr, white()), 1);
-		pos += 17;
-		UI::Label(v.r + 2, v.g + pos, 12, "Iterations", e->font, white());
-		iterations = (byte)TryParse(UI::EditText(v.r + v.b*0.3f, v.g + pos, v.b*0.7f - 1, 16, 12, grey2(), std::to_string(iterations), e->font, true, nullptr, white()), 1);
-	}
-	else pos += 17;
-}
-
+#pragma region Armature
 
 ArmatureBone::ArmatureBone(uint id, Vec3 pos, Quat rot, Vec3 scl, float lgh, bool conn, Transform* tr, ArmatureBone* par) : 
 	id(id), restPosition(pos), restRotation(rot), restScale(scl), restMatrix(MatFunc::FromTRS(pos, rot, scl)),
@@ -1287,24 +828,6 @@ Armature::Armature(string path, SceneObject* o) : Component("Armature", COMP_ARM
 Armature::~Armature() {
 	auto& prc = Scene::active->_preRenderComps;
 	prc.erase(std::find(prc.begin(), prc.end(), this));
-}
-
-void ArmatureBone::Draw(EB_Viewer* ebv) {
-	bool sel = (ebv->editor->selected == tr->object);
-	glPushMatrix();
-	glMultMatrixf(glm::value_ptr(tr->localMatrix()));
-	glPushMatrix();
-	glScalef(length, length, length);
-	glVertexPointer(3, GL_FLOAT, 0, &boneVecs[0]);
-	glLineWidth(1);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	if (sel) glColor4f(boneSelCol.r, boneSelCol.g, boneSelCol.b, 1);
-	else glColor4f(boneCol.r, boneCol.g, boneCol.b, 1);
-	glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, &boneIndices[0]);
-	glPopMatrix();
-
-	for (auto a : _children) a->Draw(ebv);
-	glPopMatrix();
 }
 
 ArmatureBone* Armature::MapBone(string nm) {
@@ -1428,171 +951,14 @@ void Armature::UpdateMats(ArmatureBone* b) {
 	}
 }
 
-void Armature::DrawEditor(EB_Viewer* ebv, GLuint shader) {
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glPushMatrix();
-	glMultMatrixf(glm::value_ptr(object->transform.localMatrix()));
-	if (xray) {
-		glDepthFunc(GL_ALWAYS);
-		glDepthMask(false);
-	}
-	for (auto a : _bones) a->Draw(ebv);
-	glDepthFunc(GL_LEQUAL);
-	glDepthMask(true);
-	glPopMatrix();
-	glDisableClientState(GL_VERTEX_ARRAY);
-}
-
-void Armature::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
-	Armature* cam = (Armature*)c;
-	if (DrawComponentHeader(e, v, pos, this)) {
-		pos += 17;
-		UI::Label(v.r + 2, v.g + pos, 12, "Anim Scale", e->font, white());
-		try {
-			animationScale = std::stof(UI::EditText(v.r + v.b*0.3f, v.g + pos, v.b*0.7f - 1, 16, 12, grey2(), std::to_string(animationScale), e->font, true, nullptr, white()));
-		}
-		catch (std::logic_error e) {
-			animationScale = 1;
-		}
-		animationScale = max(animationScale, 0.0001f);
-		pos += 17;
-	}
-	else pos += 17;
-}
-
 void Armature::OnPreRender() {
 	Animate();
 	UpdateMats();
 }
 
-SceneScript::SceneScript(Editor* e, ASSETID id) : Component(e->headerAssets[id] + " (Script)", COMP_SCR, DRAWORDER_NONE), _script(id) {
-	if (id < 0) {
-		name = "missing script!";
-		return;
-	}
-	std::ifstream strm(e->projectFolder + "Assets\\" + e->headerAssets[id] + ".meta", std::ios::in | std::ios::binary);
-	if (!strm.is_open()) {
-		e->_Error("Script Component", "Cannot read meta file!");
-		_script = -1;
-		return;
-	}
-	ushort sz;
-	_Strm2Val<ushort>(strm, sz);
-	_vals.resize(sz);
-	SCR_VARTYPE t;
-	for (ushort x = 0; x < sz; x++) {
-		_Strm2Val<SCR_VARTYPE>(strm, t);
-		_vals[x].second.first = t;
-		char c[100];
-		strm.getline(&c[0], 100, 0);
-		_vals[x].first += string(c);
-		switch (t) {
-		case SCR_VAR_INT:
-			_vals[x].second.second = new int(0);
-			break;
-		case SCR_VAR_FLOAT:
-			_vals[x].second.second = new float(0);
-			break;
-		case SCR_VAR_STRING:
-			_vals[x].second.second = new string("");
-			break;
-		case SCR_VAR_TEXTURE:
-			_vals[x].second.second = new ASSETID(-1);
-			break;
-		case SCR_VAR_COMPREF:
-			_vals[x].second.second = new CompRef((COMPONENT_TYPE)c[0]);
-			_vals[x].first = _vals[x].first.substr(1);
-			break;
-		}
-	}
-}
+#pragma endregion
 
-SceneScript::SceneScript(std::ifstream& strm, SceneObject* o) : Component("(Script)", COMP_SCR, DRAWORDER_NONE), _script(-1) {
-	char* c = new char[100];
-	strm.getline(c, 100, 0);
-	string s(c);
-	int i = 0;
-	for (auto a : Editor::instance->headerAssets) {
-		if (a == s) {
-			_script = i;
-			name = a + " (Script)";
-
-			std::ifstream strm(Editor::instance->projectFolder + "Assets\\" + a + ".meta", std::ios::in | std::ios::binary);
-			if (!strm.is_open()) {
-				Editor::instance->_Error("Script Component", "Cannot read meta file!");
-				_script = -1;
-				return;
-			}
-			ushort sz;
-			_Strm2Val<ushort>(strm, sz);
-			_vals.resize(sz);
-			SCR_VARTYPE t;
-			for (ushort x = 0; x < sz; x++) {
-				_Strm2Val<SCR_VARTYPE>(strm, t);
-				_vals[x].second.first = t;
-				char c[100];
-				strm.getline(&c[0], 100, 0);
-				_vals[x].first += string(c);
-				switch (t) {
-				case SCR_VAR_INT:
-					_vals[x].second.second = new int(0);
-					break;
-				case SCR_VAR_FLOAT:
-					_vals[x].second.second = new float(0);
-					break;
-				case SCR_VAR_STRING:
-					_vals[x].second.second = new string("");
-					break;
-				case SCR_VAR_TEXTURE:
-					_vals[x].second.second = new ASSETID(-1);
-					break;
-				case SCR_VAR_COMPREF:
-					_vals[x].second.second = new CompRef((COMPONENT_TYPE)c[0]);
-					_vals[x].first = _vals[x].first.substr(1);
-					break;
-				}
-			}
-			break;
-		}
-		i++;
-	}
-	ushort sz;
-	byte tp;
-	_Strm2Val<ushort>(strm, sz);
-	for (ushort aa = 0; aa < sz; aa++) {
-		_Strm2Val<byte>(strm, tp);
-		strm.getline(c, 100, 0);
-		string ss(c);
-		for (auto& vl : _vals) {
-			if (vl.first == ss && vl.second.first == SCR_VARTYPE(tp)) {
-				switch (vl.second.first) {
-				case SCR_VAR_INT:
-					int ii;
-					_Strm2Val<int>(strm, ii);
-					*(int*)vl.second.second += ii;
-					break;
-				case SCR_VAR_FLOAT:
-					float ff;
-					_Strm2Val<float>(strm, ff);
-					*(float*)vl.second.second += ff;
-					break;
-				case SCR_VAR_STRING:
-					strm.getline(c, 100, 0);
-					*(string*)vl.second.second += string(c);
-					break;
-				case SCR_VAR_TEXTURE:
-					ASSETTYPE tdd;
-					ASSETID idd;
-					//strm.getline(c, 100, 0);
-					//string sss(c);
-					_Strm2Asset(strm, Editor::instance, tdd, idd);
-					*(ASSETID*)vl.second.second += 1 + idd;
-				}
-			}
-		}
-	}
-	delete[](c);
-}
+#pragma region SceneScript
 
 SceneScript::~SceneScript() {
 #ifdef IS_EDITOR
@@ -1602,62 +968,11 @@ SceneScript::~SceneScript() {
 #endif
 }
 
-void SceneScript::Serialize(Editor* e, std::ofstream* stream) {
-	_StreamWriteAsset(e, stream, ASSETTYPE_SCRIPT_H, _script);
-	ushort sz = (ushort)_vals.size();
-	_StreamWrite(&sz, stream, 2);
-	for (auto& a : _vals) {
-		_StreamWrite(&a.second.first, stream, 1);
-		*stream << a.first << char0;
-		switch (a.second.first) {
-		case SCR_VAR_INT:
-		case SCR_VAR_FLOAT:
-			_StreamWrite(a.second.second, stream, 4);
-			break;
-		case SCR_VAR_TEXTURE:
-			_StreamWriteAsset(e, stream, ASSETTYPE_TEXTURE, *(ASSETID*)a.second.second);
-			break;
-		}
-	}
-}
-
-void SceneScript::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
-	SceneScript* scr = (SceneScript*)c;
-	if (DrawComponentHeader(e, v, pos, this)) {
-		for (auto& p : _vals){
-			UI::Label(v.r + 20, v.g + pos + 19, 12, p.first, e->font, white(1, (p.second.first == SCR_VAR_COMMENT)? 0.5f : 1));
-			switch (p.second.first) {
-			case SCR_VAR_FLOAT:
-				Engine::Button(v.r + v.b*0.3f, v.g + pos + 17, v.b*0.7f - 1, 16, grey2());
-				UI::Label(v.r + v.b*0.3f + 2, v.g + pos + 19, 12, std::to_string(*(float*)p.second.second), e->font, white());
-				break;
-			case SCR_VAR_INT:
-				Engine::Button(v.r + v.b*0.3f, v.g + pos + 17, v.b*0.7f - 1, 16, grey2());
-				UI::Label(v.r + v.b*0.3f + 2, v.g + pos + 19, 12, std::to_string(*(int*)p.second.second), e->font, white());
-				break;
-			case SCR_VAR_TEXTURE:
-				e->DrawAssetSelector(v.r + v.b*0.3f, v.g + pos + 17, v.b*0.7f - 1, 16, grey2(), ASSETTYPE_TEXTURE, 12, e->font, (ASSETID*)p.second.second);
-				break;
-			case SCR_VAR_COMPREF:
-				e->DrawCompSelector(v.r + v.b*0.3f, v.g + pos + 17, v.b*0.7f - 1, 16, grey2(), 12, e->font, (CompRef*)p.second.second);
-				break;
-			}
-			pos += 17;
-		}
-	}
-	pos += 17;
-}
-
-void SceneScript::Parse(string s, Editor* e) {
-	string p = e->projectFolder + "Assets\\" + s;
-	bool hasClass = false;
-	if (!hasClass)
-		e->_Error("Script Importer", "SceneScript class for " + s + " not found!");
-}
+#pragma endregion
 
 
+#pragma region Transform
 
-//-----------------transform class-------------------
 Transform::_offset_map Transform::_offsets = {};
 
 void Transform::Init(pSceneObject& sc, Vec3 pos, Quat rot, Vec3 scl) {
@@ -1845,6 +1160,9 @@ void Transform::_UpdateWMatrix(const Mat4x4& mat) {
 		object->children[a]->transform._UpdateWMatrix(_worldMatrix);
 }
 
+#pragma endregion
+
+#pragma region SceneObject
 
 SceneObject::_offset_map SceneObject::_offsets = {};
 
@@ -1954,7 +1272,11 @@ void SceneObject::RemoveComponent(pComponent c) {
 			for (int aa = _components.size()-1; aa >= 0; aa--) {
 				for (COMPONENT_TYPE t : _components[aa]->dependancies) {
 					if (t == c->componentType) {
+#ifdef IS_EDITOR
 						Editor::instance->_Warning("Component Deleter", "Cannot delete " + c->name + " because other components depend on it!");
+#else
+						Debug::Warning("SceneObject", "Cannot delete " + c->name + " because other components depend on it!");
+#endif
 						return;
 					}
 				}
@@ -1971,3 +1293,777 @@ void SceneObject::Refresh() {
 		c->Refresh();
 	}
 }
+
+#pragma endregion
+
+// ------------------------------------ Editor-only functions -------------------------------------
+#ifdef IS_EDITOR
+
+
+void MeshRenderer::DrawEditor(EB_Viewer* ebv, GLuint shader) {
+	MeshFilter* mf = (MeshFilter*)dependacyPointers[0].raw();
+	if (!mf->mesh || !mf->mesh->loaded)
+		return;
+	bool isE = (ebv != nullptr);
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glPolygonMode(GL_FRONT_AND_BACK, (!isE || ebv->selectedShading == 0) ? GL_FILL : GL_LINE);
+	if (!isE || ebv->selectedShading == 0) glEnable(GL_CULL_FACE);
+	glVertexPointer(3, GL_FLOAT, 0, &(mf->mesh->vertices[0]));
+	glLineWidth(1);
+	GLfloat matrix[16], matrix2[16];
+	glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
+	glGetFloatv(GL_PROJECTION_MATRIX, matrix2);
+	Mat4x4 m1(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
+	Mat4x4 m2(matrix2[0], matrix2[1], matrix2[2], matrix2[3], matrix2[4], matrix2[5], matrix2[6], matrix2[7], matrix2[8], matrix2[9], matrix2[10], matrix2[11], matrix2[12], matrix2[13], matrix2[14], matrix2[15]);
+
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glEnableVertexAttribArray(2);
+	glEnableVertexAttribArray(3);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->vertices[0]));
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->uv0[0]));
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->normals[0]));
+	glVertexAttribPointer(3, 3, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->tangents[0]));
+	for (uint m = 0; m < mf->mesh->materialCount; m++) {
+		if (!materials[m])
+			continue;
+		if (shader == 0) materials[m]->ApplyGL(m1, m2);
+		else glUseProgram(shader);
+
+		glDrawElements(GL_TRIANGLES, mf->mesh->_matTriangles[m].size(), GL_UNSIGNED_INT, &(mf->mesh->_matTriangles[m][0]));
+	}
+	glDisableVertexAttribArray(0);
+	glDisableVertexAttribArray(1);
+	glDisableVertexAttribArray(2);
+	glDisableVertexAttribArray(3);
+
+	glUseProgram(0);
+	glDisableClientState(GL_VERTEX_ARRAY);
+	glDisable(GL_CULL_FACE);
+	if (isE && mf->showBoundingBox) {
+		BBox& b = mf->mesh->boundingBox;
+		Engine::DrawCubeLinesW(b.x0, b.x1, b.y0, b.y1, b.z0, b.z1, 1, white(1, 0.5f));
+	}
+}
+
+void MeshRenderer::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
+	if (DrawComponentHeader(e, v, pos, this)) {
+		MeshFilter* mft = (MeshFilter*)dependacyPointers[0].raw();
+		if (!mft->mesh) {
+			UI::Label(v.r + 2, v.g + pos + 20, 12, "No Mesh Assigned!", e->font, white());
+			pos += 34;
+		}
+		else {
+			UI::Label(v.r + 2, v.g + pos + 18, 12, "Materials: " + std::to_string(mft->mesh->materialCount), e->font, white());
+			pos += 35;
+			for (uint a = 0; a < mft->mesh->materialCount; a++) {
+				UI::Label(v.r + 2, v.g + pos, 12, "Material " + std::to_string(a), e->font, white());
+				e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos, v.b*0.7f, 16, grey1(), ASSETTYPE_MATERIAL, 12, e->font, &_materials[a], &_UpdateMat, this);
+				pos += 17;
+				if (!materials[a])
+					continue;
+				if (overwriteWriteMask) {
+					if (Engine::EButton(e->editorLayer == 0, v.r + 5, v.g + pos, 16, 16, e->tex_expand, white()) == MOUSE_RELEASE) {
+						materials[a]->_maskExpanded = !materials[a]->_maskExpanded;
+					}
+					UI::Label(v.r + 22, v.g + pos, 12, "Write Mask", e->font, white());
+					pos += 17;
+					if (materials[a]->_maskExpanded) {
+						for (uint ea = 0; ea < GBUFFER_NUM_TEXTURES - 1; ea++) {
+							materials[a]->writeMask[ea] = Engine::Toggle(v.r + 22, v.g + pos, 16, e->tex_checkbox, materials[a]->writeMask[ea], white(), ORIENT_HORIZONTAL);
+							UI::Label(v.r + 43, v.g + pos, 12, Camera::_gbufferNames[ea], e->font, white());
+							pos += 17;
+						}
+					}
+				}
+				for (uint q = 0, qq = materials[a]->valOrders.size(); q < qq; q++) {
+					UI::Texture(v.r + 8, v.g + pos, 16, 16, e->matVarTexs[materials[a]->valOrders[q]]);
+					UI::Label(v.r + 25, v.g + pos, 12, materials[a]->valNames[materials[a]->valOrders[q]][materials[a]->valOrderIds[q]], e->font, white());
+					void* bbs = materials[a]->vals[materials[a]->valOrders[q]][materials[a]->valOrderGLIds[q]];
+					switch (materials[a]->valOrders[q]) {
+					case SHADER_INT:
+						*(int*)bbs = TryParse(UI::EditText(v.r + v.b * 0.3f + 22, v.g + pos, v.b*0.3f, 16, 12, grey1(), std::to_string(*(int*)bbs), e->font, true, nullptr, white()), *(int*)bbs);
+						*(int*)bbs = (int)round(Engine::DrawSliderFill(v.r + v.b*0.6f + 23, v.g + pos, v.b*0.4f - 19, 16, 0, 1, (float)(*(int*)bbs), grey2(), white()));
+						break;
+					case SHADER_FLOAT:
+						*(float*)bbs = TryParse(UI::EditText(v.r + v.b * 0.3f + 22, v.g + pos, v.b*0.3f, 16, 12, grey1(), std::to_string(*(float*)bbs), e->font, true, nullptr, white()), *(float*)bbs);
+						*(float*)bbs = Engine::DrawSliderFill(v.r + v.b*0.6f + 23, v.g + pos, v.b*0.4f - 19, 16, 0, 1, *(float*)bbs, grey2(), white());
+						break;
+					case SHADER_SAMPLER:
+						e->DrawAssetSelector(v.r + v.b * 0.3f + 22, v.g + pos, v.b*0.7f - 17, 16, grey1(), ASSETTYPE_TEXTURE, 12, e->font, &((MatVal_Tex*)bbs)->id, _UpdateTex, bbs);
+						break;
+					}
+					pos += 17;
+				}
+				pos++;
+			}
+			UI::Label(v.r + 2, v.g + pos, 12, "Override Masks", e->font, white());
+			overwriteWriteMask = Engine::Toggle(v.r + v.b*0.3f, v.g + pos, 12, e->tex_checkbox, overwriteWriteMask, white(), ORIENT_HORIZONTAL);
+			pos += 17;
+		}
+	}
+	else pos += 17;
+}
+
+
+void MeshRenderer::Serialize(Editor* e, std::ofstream* stream) {
+	int s = _materials.size();
+	_StreamWrite(&s, stream, 4);
+	for (ASSETID i : _materials)
+		_StreamWriteAsset(e, stream, ASSETTYPE_MATERIAL, i);
+}
+
+void TextureRenderer::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
+	//MeshRenderer* mrd = (MeshRenderer*)c;
+	if (DrawComponentHeader(e, v, pos, this)) {
+		UI::Label(v.r + 2, v.g + pos + 20, 12, "Texture", e->font, white());
+		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 17, v.b*0.7f, 16, grey1(), ASSETTYPE_TEXTURE, 12, e->font, &_texture);
+		pos += 34;
+	}
+	else pos += 17;
+}
+
+void TextureRenderer::Serialize(Editor* e, std::ofstream* stream) {
+	_StreamWriteAsset(e, stream, ASSETTYPE_TEXTURE, _texture);
+}
+
+
+void SkinnedMeshRenderer::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
+	if (DrawComponentHeader(e, v, pos, this)) {
+		UI::Label(v.r + 2, v.g + pos + 20, 12, "Mesh", e->font, white());
+		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 17, v.b*0.7f, 16, grey1(), ASSETTYPE_MESH, 12, e->font, &_meshId, &_UpdateMesh, this);
+		pos += 34;
+		UI::Label(v.r + 2, v.g + pos, 12, "Show Bounding Box", e->font, white());
+		showBoundingBox = Engine::Toggle(v.r + v.b*0.3f, v.g + pos, 12, e->tex_checkbox, showBoundingBox, white(), ORIENT_HORIZONTAL);
+		pos += 17;
+
+		if (!_mesh) {
+			UI::Label(v.r + 2, v.g + pos + 20, 12, "No Mesh Assigned!", e->font, white());
+			pos += 34;
+		}
+		else {
+			UI::Label(v.r + 2, v.g + pos, 12, "Materials: " + std::to_string(_mesh->materialCount), e->font, white());
+			pos += 17;
+			for (uint a = 0; a < _mesh->materialCount; a++) {
+				UI::Label(v.r + 2, v.g + pos, 12, "Material " + std::to_string(a), e->font, white());
+				e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos, v.b*0.7f, 16, grey1(), ASSETTYPE_MATERIAL, 12, e->font, &_materials[a], &_UpdateMat, this);
+				pos += 17;
+				if (!materials[a])
+					continue;
+				if (overwriteWriteMask) {
+					if (Engine::EButton(e->editorLayer == 0, v.r + 5, v.g + pos, 16, 16, e->tex_expand, white()) == MOUSE_RELEASE) {
+						materials[a]->_maskExpanded = !materials[a]->_maskExpanded;
+					}
+					UI::Label(v.r + 22, v.g + pos, 12, "Write Mask", e->font, white());
+					pos += 17;
+					if (materials[a]->_maskExpanded) {
+						for (uint ea = 0; ea < GBUFFER_NUM_TEXTURES - 1; ea++) {
+							materials[a]->writeMask[ea] = Engine::Toggle(v.r + 22, v.g + pos, 16, e->tex_checkbox, materials[a]->writeMask[ea], white(), ORIENT_HORIZONTAL);
+							UI::Label(v.r + 43, v.g + pos, 12, Camera::_gbufferNames[ea], e->font, white());
+							pos += 17;
+						}
+					}
+				}
+				for (uint q = 0, qq = materials[a]->valOrders.size(); q < qq; q++) {
+					UI::Texture(v.r + 8, v.g + pos, 16, 16, e->matVarTexs[materials[a]->valOrders[q]]);
+					UI::Label(v.r + 25, v.g + pos, 12, materials[a]->valNames[materials[a]->valOrders[q]][materials[a]->valOrderIds[q]], e->font, white());
+					void* bbs = materials[a]->vals[materials[a]->valOrders[q]][materials[a]->valOrderGLIds[q]];
+					switch (materials[a]->valOrders[q]) {
+					case SHADER_INT:
+						*(int*)bbs = TryParse(UI::EditText(v.r + v.b * 0.3f + 22, v.g + pos, v.b*0.3f, 16, 12, grey1(), std::to_string(*(int*)bbs), e->font, true, nullptr, white()), *(int*)bbs);
+						*(int*)bbs = (int)round(Engine::DrawSliderFill(v.r + v.b*0.6f + 23, v.g + pos, v.b*0.4f - 19, 16, 0, 1, (float)(*(int*)bbs), grey2(), white()));
+						break;
+					case SHADER_FLOAT:
+						*(float*)bbs = TryParse(UI::EditText(v.r + v.b * 0.3f + 22, v.g + pos, v.b*0.3f, 16, 12, grey1(), std::to_string(*(float*)bbs), e->font, true, nullptr, white()), *(float*)bbs);
+						*(float*)bbs = Engine::DrawSliderFill(v.r + v.b*0.6f + 23, v.g + pos, v.b*0.4f - 19, 16, 0, 1, *(float*)bbs, grey2(), white());
+						break;
+					case SHADER_SAMPLER:
+						e->DrawAssetSelector(v.r + v.b * 0.3f + 22, v.g + pos, v.b*0.7f - 17, 16, grey1(), ASSETTYPE_TEXTURE, 12, e->font, &((MatVal_Tex*)bbs)->id, _UpdateTex, bbs);
+						break;
+					}
+					pos += 17;
+				}
+				pos++;
+			}
+			UI::Label(v.r + 2, v.g + pos, 12, "Override Masks", e->font, white());
+			overwriteWriteMask = Engine::Toggle(v.r + v.b*0.3f, v.g + pos, 12, e->tex_checkbox, overwriteWriteMask, white(), ORIENT_HORIZONTAL);
+			pos += 17;
+		}
+	}
+	else pos += 17;
+}
+
+void SkinnedMeshRenderer::DrawEditor(EB_Viewer* ebv, GLuint shader) {
+	if (!_mesh || !_mesh->loaded)
+		return;
+	bool isE = !!ebv;
+
+	Skin();
+
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glPolygonMode(GL_FRONT_AND_BACK, (!isE || ebv->selectedShading == 0) ? GL_FILL : GL_LINE);
+	if (!isE || ebv->selectedShading == 0) glEnable(GL_CULL_FACE);
+	glVertexPointer(3, GL_FLOAT, 0, &(_mesh->vertices[0]));
+	glLineWidth(1);
+	GLfloat matrix[16], matrix2[16];
+	glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
+	glGetFloatv(GL_PROJECTION_MATRIX, matrix2);
+	Mat4x4 m1(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
+	Mat4x4 m2(matrix2[0], matrix2[1], matrix2[2], matrix2[3], matrix2[4], matrix2[5], matrix2[6], matrix2[7], matrix2[8], matrix2[9], matrix2[10], matrix2[11], matrix2[12], matrix2[13], matrix2[14], matrix2[15]);
+
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glEnableVertexAttribArray(2);
+	glEnableVertexAttribArray(3);
+	glBindBuffer(GL_ARRAY_BUFFER, skinBufPossO->pointer);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, sizeof(Vec4), 0);
+	glBindBuffer(GL_ARRAY_BUFFER, skinBufNrmsO->pointer);
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_TRUE, sizeof(Vec4), 0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glVertexAttribPointer(3, 3, GL_FLOAT, GL_TRUE, 0, &(_mesh->tangents[0]));
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, &(_mesh->uv0[0]));
+	for (uint m = 0; m < _mesh->materialCount; m++) {
+		if (!materials[m])
+			continue;
+		if (shader == 0) materials[m]->ApplyGL(m1, m2);
+		else glUseProgram(shader);
+		glDrawElements(GL_TRIANGLES, _mesh->_matTriangles[m].size(), GL_UNSIGNED_INT, &(_mesh->_matTriangles[m][0]));
+	}
+	glDisableVertexAttribArray(0);
+	glDisableVertexAttribArray(1);
+	glDisableVertexAttribArray(2);
+	glDisableVertexAttribArray(3);
+
+	glUseProgram(0);
+	glDisableClientState(GL_VERTEX_ARRAY);
+	glDisable(GL_CULL_FACE);
+	if (isE && showBoundingBox) {
+		BBox& b = _mesh->boundingBox;
+		Engine::DrawCubeLinesW(b.x0, b.x1, b.y0, b.y1, b.z0, b.z1, 1, white(1, 0.5f));
+	}
+}
+
+
+void Light::DrawEditor(EB_Viewer* ebv, GLuint shader) {
+	if (ebv->editor->selected != object) return;
+	switch (_lightType) {
+	case LIGHTTYPE_POINT:
+		if (minDist > 0) {
+			Engine::DrawCircleW(Vec3(), Vec3(1, 0, 0), Vec3(0, 1, 0), minDist, 32, color, 1);
+			Engine::DrawCircleW(Vec3(), Vec3(1, 0, 0), Vec3(0, 0, 1), minDist, 32, color, 1);
+			Engine::DrawCircleW(Vec3(), Vec3(0, 1, 0), Vec3(0, 0, 1), minDist, 32, color, 1);
+		}
+		Engine::DrawCircleW(Vec3(), Vec3(1, 0, 0), Vec3(0, 1, 0), maxDist, 32, Lerp(color, black(), 0.5f), 1);
+		Engine::DrawCircleW(Vec3(), Vec3(1, 0, 0), Vec3(0, 0, 1), maxDist, 32, Lerp(color, black(), 0.5f), 1);
+		Engine::DrawCircleW(Vec3(), Vec3(0, 1, 0), Vec3(0, 0, 1), maxDist, 32, Lerp(color, black(), 0.5f), 1);
+		break;
+	case LIGHTTYPE_DIRECTIONAL:
+		Engine::DrawLineW(Vec3(0, 0, 0.2f), Vec3(0, 0, 1), color, 1);
+		Engine::DrawLineW(Vec3(0, 0, 1), Vec3(0, 0.2f, 0.7f), color, 1);
+		Engine::DrawLineW(Vec3(0, 0, 1), Vec3(0, -0.2f, 0.7f), color, 1);
+		Engine::DrawLineW(Vec3(0, 0, 1), Vec3(0.2f, 0, 0.7f), color, 1);
+		Engine::DrawLineW(Vec3(0, 0, 1), Vec3(-0.2f, 0, 0.7f), color, 1);
+		/*
+		Engine::DrawLineW(Vec3(0, 0, -0.3f), Vec3(0, 0, -0.5f), color, 1);
+		Engine::DrawLineW(Vec3(0, -0.3f, 0), Vec3(0, -0.5f, 0), color, 1);
+		Engine::DrawLineW(Vec3(0, 0.3f, 0), Vec3(0, 0.5f, 0), color, 1);
+		Engine::DrawLineW(Vec3(-0.3f, 0, 0), Vec3(-0.5f, 0, 0), color, 1);
+		Engine::DrawLineW(Vec3(0.3f, 0, 0), Vec3(0.5f, 0, 0), color, 1);
+		*/
+		Engine::DrawCircleW(Vec3(), Vec3(1, 0, 0), Vec3(0, 1, 0), 0.2f, 12, color, 1);
+		Engine::DrawCircleW(Vec3(), Vec3(1, 0, 0), Vec3(0, 0, 1), 0.2f, 12, color, 1);
+		Engine::DrawCircleW(Vec3(), Vec3(0, 1, 0), Vec3(0, 0, 1), 0.2f, 12, color, 1);
+		break;
+	case LIGHTTYPE_SPOT:
+		if (ebv->editor->selected == object) {
+			Engine::DrawLineWDotted(Vec3(0, 0, 1) * minDist, Vec3(0, 0, 1) * maxDist, white(0.5f, 0.5f), 1, 0.2f, true);
+			float rd = minDist*tan(deg2rad*angle*0.5f);
+			float rd2 = maxDist*tan(deg2rad*angle*0.5f);
+			if (minDist > 0)
+				Engine::DrawCircleW(Vec3(0, 0, 1) * minDist, Vec3(1, 0, 0), Vec3(0, 1, 0), rd, 16, color, 1);
+			Engine::DrawCircleW(Vec3(0, 0, 1) * maxDist, Vec3(1, 0, 0), Vec3(0, 1, 0), rd2, 32, color, 1);
+			Engine::DrawLineW(Vec3(rd, 0, minDist), Vec3(rd2, 0, maxDist), color, 1);
+			Engine::DrawLineW(Vec3(-rd, 0, minDist), Vec3(-rd2, 0, maxDist), color, 1);
+			Engine::DrawLineW(Vec3(0, rd, minDist), Vec3(0, rd2, maxDist), color, 1);
+			Engine::DrawLineW(Vec3(0, -rd, minDist), Vec3(0, -rd2, maxDist), color, 1);
+		}
+		break;
+	}
+}
+
+void Light::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
+	if (DrawComponentHeader(e, v, pos, this)) {
+		pos += 17;
+		if (Engine::EButton(e->editorLayer == 0, v.r, v.g + pos, v.b * 0.33f - 1, 16, (_lightType == LIGHTTYPE_POINT) ? white(1, 0.5f) : grey1(), "Point", 12, e->font, white()) == MOUSE_RELEASE)
+			_lightType = LIGHTTYPE_POINT;
+		if (Engine::EButton(e->editorLayer == 0, v.r + v.b * 0.33f, v.g + pos, v.b * 0.34f - 1, 16, (_lightType == LIGHTTYPE_DIRECTIONAL) ? white(1, 0.5f) : grey1(), "Directional", 12, e->font, white()) == MOUSE_RELEASE)
+			_lightType = LIGHTTYPE_DIRECTIONAL;
+		if (Engine::EButton(e->editorLayer == 0, v.r + v.b * 0.67f, v.g + pos, v.b * 0.33f - 1, 16, (_lightType == LIGHTTYPE_SPOT) ? white(1, 0.5f) : grey1(), "Spot", 12, e->font, white()) == MOUSE_RELEASE)
+			_lightType = LIGHTTYPE_SPOT;
+
+		UI::Label(v.r + 2, v.g + pos + 17, 12, "Intensity", e->font, white());
+		Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos + 17, v.b * 0.3f - 1, 16, grey1());
+		UI::Label(v.r + v.b * 0.3f + 2, v.g + pos + 17, 12, std::to_string(intensity), e->font, white());
+		intensity = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos + 17, v.b * 0.4f - 1, 16, 0, 20, intensity, grey1(), white());
+		pos += 34;
+		UI::Label(v.r + 2, v.g + pos, 12, "Color", e->font, white());
+		e->DrawColorSelector(v.r + v.b*0.3f, v.g + pos, v.b*0.7f - 1, 16, grey1(), 12, e->font, &color);
+		pos += 17;
+
+		switch (_lightType) {
+		case LIGHTTYPE_POINT:
+			UI::Label(v.r + 2, v.g + pos, 12, "core radius", e->font, white());
+			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
+			UI::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, std::to_string(minDist), e->font, white());
+			minDist = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, maxDist, minDist, grey1(), white());
+			pos += 17;
+			UI::Label(v.r + 2, v.g + pos, 12, "distance", e->font, white());
+			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
+			UI::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, std::to_string(maxDist), e->font, white());
+			maxDist = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 20, maxDist, grey1(), white());
+			pos += 17;
+			UI::Label(v.r + 2, v.g + pos, 12, "falloff", e->font, white());
+			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
+			UI::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, std::to_string(falloff), e->font, white());
+			falloff = (LIGHT_FALLOFF)((int)round(Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 20, (float)falloff, grey1(), white())));
+			pos += 17;
+			break;
+		case LIGHTTYPE_DIRECTIONAL:
+
+			break;
+		case LIGHTTYPE_SPOT:
+			UI::Label(v.r + 2, v.g + pos, 12, "angle", e->font, white());
+			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
+			UI::Label(v.r + v.b * 0.3f, v.g + pos + 2, 12, std::to_string(angle), e->font, white());
+			angle = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 180, angle, grey1(), white());
+			pos += 17;
+			UI::Label(v.r + 2, v.g + pos, 12, "start distance", e->font, white());
+			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
+			UI::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, std::to_string(minDist), e->font, white());
+			minDist = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0.0001f, maxDist, minDist, grey1(), white());
+			pos += 17;
+			UI::Label(v.r + 2, v.g + pos, 12, "end distance", e->font, white());
+			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
+			UI::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, std::to_string(maxDist), e->font, white());
+			maxDist = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0.0002f, 50, maxDist, grey1(), white());
+			pos += 17;
+			break;
+		}
+		UI::Label(v.r + 2, v.g + pos, 12, "cookie", e->font, white());
+		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos, v.b*0.7f, 16, grey1(), ASSETTYPE_TEXTURE, 12, e->font, &_cookie, &_SetCookie, this);
+		pos += 17;
+		UI::Label(v.r + 2, v.g + pos, 12, "cookie strength", e->font, white());
+		Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
+		UI::Label(v.r + v.b * 0.3f, v.g + pos + 2, 12, std::to_string(cookieStrength), e->font, white());
+		cookieStrength = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 1, cookieStrength, grey1(), white());
+		pos += 17;
+		UI::Label(v.r + 2, v.g + pos, 12, "square shape", e->font, white());
+		square = Engine::Toggle(v.r + v.b * 0.3f, v.g + pos, 12, e->tex_checkbox, square, white(), ORIENT_HORIZONTAL);
+		pos += 17;
+		if (_lightType != LIGHTTYPE_DIRECTIONAL) {
+			if (Engine::EButton(e->editorLayer == 0, v.r, v.g + pos, v.b * 0.5f - 1, 16, (!drawShadow) ? white(1, 0.5f) : grey1(), "No Shadow", 12, e->font, white()) == MOUSE_RELEASE)
+				drawShadow = false;
+			if (Engine::EButton(e->editorLayer == 0, v.r + v.b * 0.5f, v.g + pos, v.b * 0.5f - 1, 16, (drawShadow) ? white(1, 0.5f) : grey1(), "Shadow", 12, e->font, white()) == MOUSE_RELEASE)
+				drawShadow = true;
+			pos += 17;
+			if (drawShadow) {
+				UI::Label(v.r + 2, v.g + pos, 12, "shadow bias", e->font, white());
+				Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
+				UI::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, std::to_string(shadowBias), e->font, white());
+				shadowBias = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 0.02f, shadowBias, grey1(), white());
+				pos += 17;
+				UI::Label(v.r + 2, v.g + pos, 12, "shadow strength", e->font, white());
+				Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
+				UI::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, std::to_string(shadowStrength), e->font, white());
+				shadowStrength = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 1, shadowStrength, grey1(), white());
+				pos += 17;
+
+				UI::Label(v.r + 2, v.g + pos, 12, "Contact Shadows", e->font, white());
+				contactShadows = Engine::Toggle(v.r + v.b * 0.3f, v.g + pos, 16, e->tex_checkbox, contactShadows, white(), ORIENT_HORIZONTAL);
+				pos += 17;
+				if (contactShadows) {
+					UI::Label(v.r + 2, v.g + pos, 12, "  samples", e->font, white());
+					Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
+					UI::Label(v.r + v.b * 0.3f, v.g + pos + 2, 12, std::to_string(contactShadowSamples), e->font, white());
+					contactShadowSamples = (uint)Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 5, 50, (float)contactShadowSamples, grey1(), white());
+					pos += 17;
+					UI::Label(v.r + 2, v.g + pos, 12, "  distance", e->font, white());
+					Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
+					UI::Label(v.r + v.b * 0.3f, v.g + pos + 2, 12, std::to_string(contactShadowDistance), e->font, white());
+					contactShadowDistance = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 1, contactShadowDistance, grey1(), white());
+					pos += 17;
+				}
+			}
+		}
+		UI::Label(v.r + 2, v.g + pos, 12, "HSV Map", e->font, white());
+		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos, v.b*0.7f, 16, grey1(), ASSETTYPE_TEXTURE, 12, e->font, &_hsvMap, &_SetHsvMap, this);
+
+	}
+	else pos += 17;
+}
+
+void Light::Serialize(Editor* e, std::ofstream* stream) {
+	byte b = _lightType;
+	if (drawShadow) b |= 0xf0;
+	_StreamWrite(&b, stream, 1);
+	_StreamWrite(&intensity, stream, 4);
+	_StreamWrite(&minDist, stream, 4);
+	_StreamWrite(&maxDist, stream, 4);
+	_StreamWrite(&angle, stream, 4);
+	_StreamWrite(&shadowBias, stream, 4);
+	_StreamWrite(&shadowStrength, stream, 4);
+	_StreamWrite(&color.r, stream, 4);
+	_StreamWrite(&color.g, stream, 4);
+	_StreamWrite(&color.b, stream, 4);
+	_StreamWrite(&color.a, stream, 4);
+}
+
+
+void ReflectiveQuad::DrawEditor(EB_Viewer* ebv, GLuint shader) {
+	Engine::DrawLineW(Vec3(origin.x, origin.y, 0), Vec3(origin.x + size.x, origin.y, 0), yellow(), 2);
+	Engine::DrawLineW(Vec3(origin.x, origin.y, 0), Vec3(origin.x, origin.y + size.y, 0), yellow(), 2);
+}
+
+void ReflectiveQuad::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
+	if (DrawComponentHeader(e, v, pos, this)) {
+		pos += 17;
+		UI::Label(v.r + 2, v.g + pos, 12, "Texture", e->font, white());
+		e->DrawAssetSelector(v.r + v.b*0.3f, v.g + pos, v.b*0.7f - 1, 16, grey1(), ASSETTYPE_TEXTURE, 12, e->font, &_texture, &_SetTex, this);
+		if (_texture == -1) {
+			UI::Label(v.r + 2, v.g + pos + 17, 12, "A Texture is required!", e->font, yellow());
+			return;
+		}
+		UI::Label(v.r + 2, v.g + pos + 17, 12, "Intensity", e->font, white());
+		Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos + 17, v.b * 0.3f - 1, 16, grey1());
+		UI::Label(v.r + v.b * 0.3f + 2, v.g + pos + 17, 12, std::to_string(intensity), e->font, white());
+		intensity = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos + 17, v.b * 0.4f - 1, 16, 0, 5, intensity, grey1(), white());
+		pos += 34;
+		UI::Label(v.r + 2, v.g + pos, 12, "Size", e->font, white());
+		Engine::EButton((e->editorLayer == 0), v.r + v.b*0.3f, v.g + pos, v.b*0.35f - 1, 16, Vec4(0.4f, 0.2f, 0.2f, 1));
+		UI::Label(v.r + v.b*0.33f, v.g + pos, 12, std::to_string(size.x), e->font, white());
+		Engine::EButton((e->editorLayer == 0), v.r + v.b*0.65f, v.g + pos, v.b*0.35f - 1, 16, Vec4(0.2f, 0.4f, 0.2f, 1));
+		UI::Label(v.r + v.b*0.67f, v.g + pos, 12, std::to_string(size.y), e->font, white());
+	}
+	else pos += 17;
+}
+
+
+void ReflectiveQuad::Serialize(Editor* e, std::ofstream* stream) {
+
+}
+
+void ReflectionProbe::DrawEditor(EB_Viewer* ebv, GLuint shader) {
+	Engine::DrawCircleW(Vec3(), Vec3(1, 0, 0), Vec3(0, 1, 0), 0.2f, 12, Vec4(1, 0.76f, 0.80, 1), 1);
+	Engine::DrawCircleW(Vec3(), Vec3(0, 1, 0), Vec3(0, 0, 1), 0.2f, 12, Vec4(1, 0.76f, 0.80, 1), 1);
+	Engine::DrawCircleW(Vec3(), Vec3(0, 0, 1), Vec3(1, 0, 0), 0.2f, 12, Vec4(1, 0.76f, 0.80, 1), 1);
+
+	if (ebv->editor->selected == object) {
+		Engine::DrawLineWDotted(range*Vec3(1, 1, -1), range*Vec3(1, 1, 1), white(), 1, 0.1f);
+		Engine::DrawLineWDotted(range*Vec3(1, 1, 1), range*Vec3(-1, 1, 1), white(), 1, 0.1f);
+		Engine::DrawLineWDotted(range*Vec3(-1, 1, 1), range*Vec3(-1, 1, -1), white(), 1, 0.1f);
+		Engine::DrawLineWDotted(range*Vec3(-1, 1, -1), range*Vec3(1, 1, -1), white(), 1, 0.1f);
+
+		Engine::DrawLineWDotted(range*Vec3(1, 1, 1), range*Vec3(1, -1, 1), white(), 1, 0.1f);
+		Engine::DrawLineWDotted(range*Vec3(1, 1, -1), range*Vec3(1, -1, -1), white(), 1, 0.1f);
+		Engine::DrawLineWDotted(range*Vec3(-1, 1, 1), range*Vec3(-1, -1, 1), white(), 1, 0.1f);
+		Engine::DrawLineWDotted(range*Vec3(-1, 1, -1), range*Vec3(-1, -1, -1), white(), 1, 0.1f);
+
+		Engine::DrawLineWDotted(range*Vec3(1, -1, -1), range*Vec3(1, -1, 1), white(), 1, 0.1f);
+		Engine::DrawLineWDotted(range*Vec3(1, -1, 1), range*Vec3(-1, -1, 1), white(), 1, 0.1f);
+		Engine::DrawLineWDotted(range*Vec3(-1, -1, 1), range*Vec3(-1, -1, -1), white(), 1, 0.1f);
+		Engine::DrawLineWDotted(range*Vec3(-1, -1, -1), range*Vec3(1, -1, -1), white(), 1, 0.1f);
+	}
+
+	/*
+	glPushMatrix();
+	Vec3 v = object->transform.position;
+	Vec3 vv = object->transform.scale;
+	Quat vvv = object->transform.rotation;
+	glTranslatef(v.x, v.y, v.z);
+	glScalef(vv.x, vv.y, vv.z);
+	glMultMatrixf(glm::value_ptr(Quat2Mat(vvv)));
+	glPopMatrix();
+	*/
+}
+
+void ReflectionProbe::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
+	if (DrawComponentHeader(e, v, pos, this)) {
+		pos += 17;
+
+		UI::Label(v.r + 2, v.g + pos + 20, 12, "Intensity", e->font, white());
+		pos += 17;
+	}
+	else pos += 17;
+}
+
+
+void ReflectionProbe::Serialize(Editor* e, std::ofstream* stream) {
+	_StreamWrite(&size, stream, 2);
+	_StreamWrite(&updateMode, stream, 1);
+	_StreamWrite(&intensity, stream, 4);
+	_StreamWrite(&clearType, stream, 1);
+	_StreamWrite(&clearColor.r, stream, 4);
+	_StreamWrite(&clearColor.g, stream, 4);
+	_StreamWrite(&clearColor.b, stream, 4);
+	_StreamWrite(&clearColor.a, stream, 4);
+	_StreamWrite(&range.x, stream, 4);
+	_StreamWrite(&range.y, stream, 4);
+	_StreamWrite(&range.z, stream, 4);
+	_StreamWrite(&softness, stream, 4);
+}
+
+
+void InverseKinematics::DrawEditor(EB_Viewer* ebv, GLuint shader) {
+	if (target) Apply();
+}
+
+void InverseKinematics::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
+	if (DrawComponentHeader(e, v, pos, this)) {
+		pos += 17;
+		UI::Label(v.r + 2, v.g + pos, 12, "Target", e->font, white());
+		e->DrawObjectSelector(v.r + v.b*0.3f, v.g + pos, v.b*0.7f - 1, 16, grey1(), 12, e->font, &target);
+		pos += 17;
+		UI::Label(v.r + 2, v.g + pos, 12, "Length", e->font, white());
+		length = (byte)TryParse(UI::EditText(v.r + v.b*0.3f, v.g + pos, v.b*0.7f - 1, 16, 12, grey2(), std::to_string(length), e->font, true, nullptr, white()), 1);
+		pos += 17;
+		UI::Label(v.r + 2, v.g + pos, 12, "Iterations", e->font, white());
+		iterations = (byte)TryParse(UI::EditText(v.r + v.b*0.3f, v.g + pos, v.b*0.7f - 1, 16, 12, grey2(), std::to_string(iterations), e->font, true, nullptr, white()), 1);
+	}
+	else pos += 17;
+}
+
+
+void ArmatureBone::Draw(EB_Viewer* ebv) {
+	bool sel = (ebv->editor->selected == tr->object);
+	glPushMatrix();
+	glMultMatrixf(glm::value_ptr(tr->localMatrix()));
+	glPushMatrix();
+	glScalef(length, length, length);
+	glVertexPointer(3, GL_FLOAT, 0, &boneVecs[0]);
+	glLineWidth(1);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	if (sel) glColor4f(boneSelCol.r, boneSelCol.g, boneSelCol.b, 1);
+	else glColor4f(boneCol.r, boneCol.g, boneCol.b, 1);
+	glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, &boneIndices[0]);
+	glPopMatrix();
+
+	for (auto a : _children) a->Draw(ebv);
+	glPopMatrix();
+}
+
+void Armature::DrawEditor(EB_Viewer* ebv, GLuint shader) {
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glPushMatrix();
+	glMultMatrixf(glm::value_ptr(object->transform.localMatrix()));
+	if (xray) {
+		glDepthFunc(GL_ALWAYS);
+		glDepthMask(false);
+	}
+	for (auto a : _bones) a->Draw(ebv);
+	glDepthFunc(GL_LEQUAL);
+	glDepthMask(true);
+	glPopMatrix();
+	glDisableClientState(GL_VERTEX_ARRAY);
+}
+
+void Armature::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
+	Armature* cam = (Armature*)c;
+	if (DrawComponentHeader(e, v, pos, this)) {
+		pos += 17;
+		UI::Label(v.r + 2, v.g + pos, 12, "Anim Scale", e->font, white());
+		try {
+			animationScale = std::stof(UI::EditText(v.r + v.b*0.3f, v.g + pos, v.b*0.7f - 1, 16, 12, grey2(), std::to_string(animationScale), e->font, true, nullptr, white()));
+		}
+		catch (std::logic_error e) {
+			animationScale = 1;
+		}
+		animationScale = max(animationScale, 0.0001f);
+		pos += 17;
+	}
+	else pos += 17;
+}
+
+
+SceneScript::SceneScript(Editor* e, ASSETID id) : Component(e->headerAssets[id] + " (Script)", COMP_SCR, DRAWORDER_NONE), _script(id) {
+	if (id < 0) {
+		name = "missing script!";
+		return;
+	}
+	std::ifstream strm(e->projectFolder + "Assets\\" + e->headerAssets[id] + ".meta", std::ios::in | std::ios::binary);
+	if (!strm.is_open()) {
+		e->_Error("Script Component", "Cannot read meta file!");
+		_script = -1;
+		return;
+	}
+	ushort sz;
+	_Strm2Val<ushort>(strm, sz);
+	_vals.resize(sz);
+	SCR_VARTYPE t;
+	for (ushort x = 0; x < sz; x++) {
+		_Strm2Val<SCR_VARTYPE>(strm, t);
+		_vals[x].second.first = t;
+		char c[100];
+		strm.getline(&c[0], 100, 0);
+		_vals[x].first += string(c);
+		switch (t) {
+		case SCR_VAR_INT:
+			_vals[x].second.second = new int(0);
+			break;
+		case SCR_VAR_FLOAT:
+			_vals[x].second.second = new float(0);
+			break;
+		case SCR_VAR_STRING:
+			_vals[x].second.second = new string("");
+			break;
+		case SCR_VAR_TEXTURE:
+			_vals[x].second.second = new ASSETID(-1);
+			break;
+		case SCR_VAR_COMPREF:
+			_vals[x].second.second = new CompRef((COMPONENT_TYPE)c[0]);
+			_vals[x].first = _vals[x].first.substr(1);
+			break;
+		}
+	}
+}
+
+SceneScript::SceneScript(std::ifstream& strm, SceneObject* o) : Component("(Script)", COMP_SCR, DRAWORDER_NONE), _script(-1) {
+	char* c = new char[100];
+	strm.getline(c, 100, 0);
+	string s(c);
+	int i = 0;
+	for (auto a : Editor::instance->headerAssets) {
+		if (a == s) {
+			_script = i;
+			name = a + " (Script)";
+
+			std::ifstream strm(Editor::instance->projectFolder + "Assets\\" + a + ".meta", std::ios::in | std::ios::binary);
+			if (!strm.is_open()) {
+				Editor::instance->_Error("Script Component", "Cannot read meta file!");
+				_script = -1;
+				return;
+			}
+			ushort sz;
+			_Strm2Val<ushort>(strm, sz);
+			_vals.resize(sz);
+			SCR_VARTYPE t;
+			for (ushort x = 0; x < sz; x++) {
+				_Strm2Val<SCR_VARTYPE>(strm, t);
+				_vals[x].second.first = t;
+				char c[100];
+				strm.getline(&c[0], 100, 0);
+				_vals[x].first += string(c);
+				switch (t) {
+				case SCR_VAR_INT:
+					_vals[x].second.second = new int(0);
+					break;
+				case SCR_VAR_FLOAT:
+					_vals[x].second.second = new float(0);
+					break;
+				case SCR_VAR_STRING:
+					_vals[x].second.second = new string("");
+					break;
+				case SCR_VAR_TEXTURE:
+					_vals[x].second.second = new ASSETID(-1);
+					break;
+				case SCR_VAR_COMPREF:
+					_vals[x].second.second = new CompRef((COMPONENT_TYPE)c[0]);
+					_vals[x].first = _vals[x].first.substr(1);
+					break;
+				}
+			}
+			break;
+		}
+		i++;
+	}
+	ushort sz;
+	byte tp;
+	_Strm2Val<ushort>(strm, sz);
+	for (ushort aa = 0; aa < sz; aa++) {
+		_Strm2Val<byte>(strm, tp);
+		strm.getline(c, 100, 0);
+		string ss(c);
+		for (auto& vl : _vals) {
+			if (vl.first == ss && vl.second.first == SCR_VARTYPE(tp)) {
+				switch (vl.second.first) {
+				case SCR_VAR_INT:
+					int ii;
+					_Strm2Val<int>(strm, ii);
+					*(int*)vl.second.second += ii;
+					break;
+				case SCR_VAR_FLOAT:
+					float ff;
+					_Strm2Val<float>(strm, ff);
+					*(float*)vl.second.second += ff;
+					break;
+				case SCR_VAR_STRING:
+					strm.getline(c, 100, 0);
+					*(string*)vl.second.second += string(c);
+					break;
+				case SCR_VAR_TEXTURE:
+					ASSETTYPE tdd;
+					ASSETID idd;
+					//strm.getline(c, 100, 0);
+					//string sss(c);
+					_Strm2Asset(strm, Editor::instance, tdd, idd);
+					*(ASSETID*)vl.second.second += 1 + idd;
+				}
+			}
+		}
+	}
+	delete[](c);
+}
+
+void SceneScript::Serialize(Editor* e, std::ofstream* stream) {
+	_StreamWriteAsset(e, stream, ASSETTYPE_SCRIPT_H, _script);
+	ushort sz = (ushort)_vals.size();
+	_StreamWrite(&sz, stream, 2);
+	for (auto& a : _vals) {
+		_StreamWrite(&a.second.first, stream, 1);
+		*stream << a.first << char0;
+		switch (a.second.first) {
+		case SCR_VAR_INT:
+		case SCR_VAR_FLOAT:
+			_StreamWrite(a.second.second, stream, 4);
+			break;
+		case SCR_VAR_TEXTURE:
+			_StreamWriteAsset(e, stream, ASSETTYPE_TEXTURE, *(ASSETID*)a.second.second);
+			break;
+		}
+	}
+}
+
+void SceneScript::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
+	SceneScript* scr = (SceneScript*)c;
+	if (DrawComponentHeader(e, v, pos, this)) {
+		for (auto& p : _vals) {
+			UI::Label(v.r + 20, v.g + pos + 19, 12, p.first, e->font, white(1, (p.second.first == SCR_VAR_COMMENT) ? 0.5f : 1));
+			switch (p.second.first) {
+			case SCR_VAR_FLOAT:
+				Engine::Button(v.r + v.b*0.3f, v.g + pos + 17, v.b*0.7f - 1, 16, grey2());
+				UI::Label(v.r + v.b*0.3f + 2, v.g + pos + 19, 12, std::to_string(*(float*)p.second.second), e->font, white());
+				break;
+			case SCR_VAR_INT:
+				Engine::Button(v.r + v.b*0.3f, v.g + pos + 17, v.b*0.7f - 1, 16, grey2());
+				UI::Label(v.r + v.b*0.3f + 2, v.g + pos + 19, 12, std::to_string(*(int*)p.second.second), e->font, white());
+				break;
+			case SCR_VAR_TEXTURE:
+				e->DrawAssetSelector(v.r + v.b*0.3f, v.g + pos + 17, v.b*0.7f - 1, 16, grey2(), ASSETTYPE_TEXTURE, 12, e->font, (ASSETID*)p.second.second);
+				break;
+			case SCR_VAR_COMPREF:
+				e->DrawCompSelector(v.r + v.b*0.3f, v.g + pos + 17, v.b*0.7f - 1, 16, grey2(), 12, e->font, (CompRef*)p.second.second);
+				break;
+			}
+			pos += 17;
+		}
+	}
+	pos += 17;
+}
+
+void SceneScript::Parse(string s, Editor* e) {
+	string p = e->projectFolder + "Assets\\" + s;
+	bool hasClass = false;
+	if (!hasClass)
+		e->_Error("Script Importer", "SceneScript class for " + s + " not found!");
+}
+
+#endif

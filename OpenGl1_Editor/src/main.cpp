@@ -1,3 +1,5 @@
+#ifdef IS_EDITOR
+
 #define _USE_MATH_DEFINES
 #define _ITERATOR_DEBUG_LEVEL 0
 
@@ -529,3 +531,5 @@ void ShowSplash(string bitmap, uint cx, uint cy, uint sw, uint sh) {
 void KillSplash() {
 	DestroyWindow(splashHwnd);
 }
+
+#endif

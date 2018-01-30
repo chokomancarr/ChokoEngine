@@ -70,9 +70,9 @@ protected:
 	static std::vector<string> sceneNames;
 	static std::vector<long> scenePoss;
 
-#ifdef IS_EDITOR
 	static void ReadD0();
 	static void Unload();
+#ifdef IS_EDITOR
 	void Save(Editor* e);
 #endif
 	static struct _offset_map {
@@ -116,10 +116,13 @@ protected:
 	static COMPONENT_TYPE Name2Type(string nm);
 
 	virtual void LoadDefaultValues() {} //also loads assets
+
+#ifdef IS_EDITOR
 	virtual void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) {} //trs matrix not applied, apply before calling
 	virtual void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) = 0;
 	//virtual void DrawGameCamera() {}
 	virtual void Serialize(Editor* e, std::ofstream* stream) = 0;
+#endif
 	virtual void Refresh() {}
 };
 
@@ -265,11 +268,14 @@ protected:
 	static void InitShaders();
 	void UpdateCamVerts();
 	void InitGBuffer();
+
+#ifdef IS_EDITOR
 	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
 	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, std::ofstream* stream) override;
 
 	static void _SetClear0(EditorBlock* b), _SetClear1(EditorBlock* b), _SetClear2(EditorBlock* b), _SetClear3(EditorBlock* b);
+#endif
 };
 
 class AudioSource : public Component {
@@ -292,8 +298,10 @@ public:
 	rMesh mesh = 0;
 	//void LoadDefaultValues() override;
 
+#ifdef IS_EDITOR
 	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, std::ofstream* stream) override;
+#endif
 
 	friend class MeshRenderer;
 	friend class Editor;
@@ -301,12 +309,12 @@ public:
 	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
 	_allowshared(MeshFilter);
 protected:
+	MeshFilter(std::ifstream& stream, SceneObject* o, long pos = -1);
 
 	bool showBoundingBox = false;
 	ASSETID _mesh = -1;
 
 #ifdef IS_EDITOR
-	MeshFilter(std::ifstream& stream, SceneObject* o, long pos = -1);
 	void SetMesh(int i);
 	static void _UpdateMesh(void* i);
 #endif
@@ -317,10 +325,12 @@ public:
 	MeshRenderer();
 	std::vector<rMaterial> materials;
 
+#ifdef IS_EDITOR
 	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
 	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
 
 	void Serialize(Editor* e, std::ofstream* stream) override;
+#endif
 	void Refresh() override;
 
 	friend class Camera;
@@ -328,9 +338,7 @@ public:
 	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
 	_allowshared(MeshRenderer);
 protected:
-#ifdef IS_EDITOR
 	MeshRenderer(std::ifstream& stream, SceneObject* o, long pos = -1);
-#endif
 
 	void DrawDeferred(GLuint shader = 0);
 
@@ -347,8 +355,10 @@ public:
 	
 	Texture* texture;
 
+#ifdef IS_EDITOR
 	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, std::ofstream* stream) override;
+#endif
 
 	friend int main(int argc, char **argv);
 	friend void Serialize(Editor* e, SceneObject* o, std::ofstream* stream);
@@ -371,10 +381,11 @@ public:
 	Mesh* mesh() { return _mesh; }
 	void mesh(Mesh*);
 	//void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
+#ifdef IS_EDITOR
 	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, std::ofstream* stream) override {}
 	//void Refresh() override;
-
+#endif
 	friend class Engine;
 	friend class Editor;
 	friend class Camera;
@@ -431,10 +442,12 @@ public:
 	rMaterial material;
 	std::vector<Vec3> positions;
 
+#ifdef IS_EDITOR
 	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
 	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
 
 	void Serialize(Editor* e, std::ofstream* stream) override {}
+#endif
 
 	friend class Camera;
 	friend class Editor;
@@ -529,7 +542,6 @@ public:
 	LIGHT_FALLOFF falloff;
 	Texture* hsvMap;
 
-	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
 	void DrawShadowMap(GLuint tar = 0), BlitRSMFlux(), DrawRSM(Mat4x4& ip, Mat4x4& lp, float w, float h, GLuint gtexs[], GLuint gdepth);
 
 	friend int main(int argc, char **argv);
@@ -546,8 +558,11 @@ protected:
 	ASSETID _cookie = -1, _hsvMap = -1;
 	static void _SetCookie(void* v), _SetHsvMap(void* v);
 
-	void Serialize(Editor* e, std::ofstream* stream) override;
+#ifdef IS_EDITOR
+	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
 	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
+	void Serialize(Editor* e, std::ofstream* stream) override;
+#endif
 
 	static void InitShadow(), InitRSM();
 	void CalcShadowMatrix();
@@ -585,9 +600,11 @@ protected:
 	static void _SetTex(void* v);
 
 	static void ScanParams();
+#ifdef IS_EDITOR
 	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
 	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, std::ofstream* stream) override;
+#endif
 };
 
 enum ReflProbe_UpdateMode : byte {
@@ -624,9 +641,11 @@ protected:
 	CubeMap* map;
 	GLuint mipFbos[7];
 
+#ifdef IS_EDITOR
 	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
 	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, std::ofstream* stream) override;
+#endif
 
 	void _DoUpdate();
 };
@@ -662,9 +681,11 @@ public:
 	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
 	_allowshared(InverseKinematics);
 protected:
+#ifdef IS_EDITOR
 	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
 	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, std::ofstream* stream) override {}
+#endif
 };
 
 class Animator : public Component {
@@ -698,9 +719,11 @@ protected:
 	ASSETID _animation = -1;
 
 	static void _SetAnim(void* v);
+#ifdef IS_EDITOR
 	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override {}
 	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, std::ofstream* stream) override {}
+#endif
 };
 
 #define ARMATURE_MAX_BONES 256
@@ -731,7 +754,9 @@ protected:
 	static const Vec3 boneCol, boneSelCol;
 	std::vector<ArmatureBone*> _children;
 
+#ifdef IS_EDITOR
 	void Draw(EB_Viewer* ebv);
+#endif
 };
 class Armature : public Component {
 public:
@@ -745,9 +770,11 @@ public:
 	float animationScale = 1;
 	const std::vector<ArmatureBone*>& bones() { return _bones; }
 
+#ifdef IS_EDITOR
 	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
 	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, std::ofstream* stream) override {}
+#endif
 
 	virtual void OnPreRender() override;
 
@@ -800,7 +827,9 @@ public:
 	virtual void LateUpdate() {}
 	virtual void Paint() {}
 
+#ifdef IS_EDITOR
 	static void Parse(string s, Editor* e);
+#endif
 
 	//bool ReferencingObject(Object* o) override;
 	friend class Editor;
@@ -808,15 +837,18 @@ public:
 	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
 	_allowshared(SceneScript);
 protected:
-	SceneScript(Editor* e, ASSETID id);
-	SceneScript(std::ifstream& strm, SceneObject* o);
 	SceneScript() : Component("", COMP_SCR, DRAWORDER_NONE) {}
 	
 	ASSETID _script;
 	std::vector<std::pair<string, std::pair<SCR_VARTYPE, void*>>> _vals;
 
+#ifdef IS_EDITOR
+	SceneScript(Editor* e, ASSETID id);
+	SceneScript(std::ifstream& strm, SceneObject* o);
+
 	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override; //we want c to be null if deleted
 	void Serialize(Editor* e, std::ofstream* stream) override;
+#endif
 };
 
 class SceneObject: public Object {

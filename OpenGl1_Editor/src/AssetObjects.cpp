@@ -32,6 +32,7 @@ std::vector<uint> AssetManager::dataECacheLocs = {};
 std::vector<uint> AssetManager::dataECacheSzLocs = {};
 #endif
 std::vector<std::pair<ASSETTYPE, ASSETID>> AssetManager::dataECacheIds = {};
+
 void AssetManager::Init(string dpath) {
 #if !defined(IS_EDITOR) && !defined(CHOKO_LAIT)
 	names.clear();
@@ -241,7 +242,7 @@ AssetObject* AssetManager::GenCache(ASSETTYPE t, ASSETID i) {
 		dataCaches[t][i] = new Material(strm, off);
 		break;
 	case ASSETTYPE_SHADER:
-		dataCaches[t][i] = new ShaderBase(strm, off);
+		dataCaches[t][i] = new Shader(strm, off);
 		break;
 	default:
 		Debug::Error("AssetManager", "No operation suits asset type " + std::to_string(t) + "!");
@@ -512,6 +513,7 @@ Texture::Texture(const string& path, bool mipmap, TEX_FILTERING filter, byte ani
 }
 
 Texture::Texture(int i, Editor* e) : AssetObject(ASSETTYPE_TEXTURE) {
+#ifdef IS_EDITOR
 	string path = e->projectFolder + "Assets\\" + e->normalAssets[ASSETTYPE_TEXTURE][i] + ".meta";
 	F2ISTREAM(strm, path);
 	if (strm.good()) {
@@ -590,6 +592,7 @@ Texture::Texture(int i, Editor* e) : AssetObject(ASSETTYPE_TEXTURE) {
 		delete[](data);
 		loaded = true;
 	}
+#endif
 }
 
 Texture::Texture(std::istream& strm, uint offset) : AssetObject(ASSETTYPE_TEXTURE) {
@@ -1017,6 +1020,7 @@ Background::Background(const string& path) : width(0), height(0), AssetObject(AS
 }
 
 Background::Background(int i, Editor* editor) : width(0), height(0), AssetObject(ASSETTYPE_HDRI), loaded(false) {
+#ifdef IS_EDITOR
 	string path = editor->projectFolder + "Assets\\" + editor->normalAssets[ASSETTYPE_HDRI][i] + ".meta";
 	//std::ifstream strm(path.c_str(), std::ios::in | std::ios::binary);
 	F2ISTREAM(strm, path);
@@ -1085,6 +1089,7 @@ Background::Background(int i, Editor* editor) : width(0), height(0), AssetObject
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	loaded = true;
+#endif
 }
 
 Background::Background(std::istream& strm, uint offset) : width(0), height(0), AssetObject(ASSETTYPE_HDRI) {
@@ -1247,8 +1252,9 @@ Material::Material(Shader * shad) : _shaderId(-1), AssetObject(ASSETTYPE_MATERIA
 	_shader = shad;
 	if (shad == nullptr)
 		return;
-	if (Editor::instance != nullptr)
-		_shaderId = Editor::instance->GetAssetId(_shader);
+#ifdef IS_EDITOR
+	_shaderId = Editor::instance->GetAssetId(_shader);
+#endif
 	_ReloadParams();
 }
 
@@ -1280,12 +1286,16 @@ void Material::_ReloadParams() {
 			valOrderIds.push_back((byte)(valNames[v->type].size() - 1));
 			valOrderGLIds.push_back(ii);
 		}
-		else
+		else {
+#ifdef IS_EDITOR
 			Editor::instance->_Warning("Material", "Shader parameter " + v->name + " not used!");
+#endif
+		}
 	}
 }
 
 Material::Material(string p) : AssetObject(ASSETTYPE_MATERIAL), writeMask(4, true) {
+#ifdef IS_EDITOR
 	//string p = Editor::instance->projectFolder + "Assets\\" + path;
 	//std::ifstream stream(p.c_str());
 	F2ISTREAM(stream, p);
@@ -1393,6 +1403,7 @@ Material::Material(string p) : AssetObject(ASSETTYPE_MATERIAL), writeMask(4, tru
 	}
 	delete[](nmm);
 	//stream.close();
+#endif
 }
 
 Material::Material(std::istream& stream, uint offset) : AssetObject(ASSETTYPE_MATERIAL), writeMask(4, true) {
@@ -1622,6 +1633,7 @@ void Material::_UpdateTexCache(void* v) {
 	}
 }
 
+#ifdef IS_EDITOR
 void Material::Save(string path) {
 	std::ofstream strm(path.c_str(), std::ios::out | std::ios::binary | std::ios::trunc);
 	strm << "KTC";
@@ -1667,6 +1679,7 @@ void Material::Save(string path) {
 	_StreamWrite(&i, &strm, 4);
 	strm.close();
 }
+#endif
 
 void Material::ApplyGL(Mat4x4& _mv, Mat4x4& _p) {
 	if (_shader == nullptr || !_shader->loaded) {
@@ -1725,6 +1738,7 @@ CameraEffect::CameraEffect(Material* mat) : AssetObject(ASSETTYPE_CAMEFFECT) {
 }
 
 CameraEffect::CameraEffect(string p) : AssetObject(ASSETTYPE_CAMEFFECT) {
+#ifdef IS_EDITOR
 	//string p = Editor::instance->projectFolder + "Assets\\" + path;
 	std::ifstream stream(p.c_str());
 	if (!stream.good()) {
@@ -1755,8 +1769,10 @@ CameraEffect::CameraEffect(string p) : AssetObject(ASSETTYPE_CAMEFFECT) {
 		mainTex = string(nmm);
 	}
 	delete[](nmm);
+#endif
 }
 
+#ifdef IS_EDITOR
 void CameraEffect::Save(string path) {
 	std::ofstream strm(path.c_str(), std::ios::out | std::ios::binary | std::ios::trunc);
 	strm << "KEF";
@@ -1766,6 +1782,7 @@ void CameraEffect::Save(string path) {
 	if (si != -1) strm << mainTex << char0;
 	strm.close();
 }
+#endif
 
 #pragma endregion
 
@@ -2167,6 +2184,7 @@ void Mesh::GenECache() {
 #endif
 }
 
+#ifdef IS_EDITOR
 bool Mesh::ParseBlend(Editor* e, string s) {
 	SECURITY_ATTRIBUTES sa;
 	sa.nLength = sizeof(SECURITY_ATTRIBUTES);
@@ -2280,5 +2298,6 @@ bool Mesh::ParseBlend(Editor* e, string s) {
 	SetFileAttributes(ms.c_str(), FILE_ATTRIBUTE_HIDDEN);
 	return true;
 }
+#endif
 
 #pragma endregion

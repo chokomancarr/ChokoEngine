@@ -8,8 +8,7 @@
 #define REFTIMES_PER_SEC  10000000LL
 #define REFTIMES_PER_MILLISEC  10000LL
 
-#define EXIT_ON_ERROR(hres)  \
-              if (FAILED(hres)) { __debugbreak; return false; }
+#define EXIT_ON_ERROR(hres) if (FAILED(hres)) return false
 #define SAFE_RELEASE(punk)  \
               if ((punk) != NULL)  \
                 { (punk)->Release(); (punk) = NULL; }

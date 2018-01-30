@@ -202,6 +202,8 @@ void Camera::InitGBuffer() {
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 }
 
+#ifdef IS_EDITOR
+
 void EB_Previewer::_InitDummyBBuffer() {
 	glGenFramebuffers(1, &b_fbo);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, b_fbo);
@@ -447,6 +449,8 @@ void EB_Previewer::_DrawLights(std::vector<pSceneObject> oo, Mat4x4 ip) {
 		_DrawLights(o->children, ip);
 	}
 }
+
+#endif
 
 Vec2 Camera::screenRectVerts[] = { Vec2(-1, -1), Vec2(-1, 1), Vec2(1, -1), Vec2(1, 1) };
 const int Camera::screenRectIndices[] = { 0, 1, 2, 1, 3, 2 };
@@ -1460,7 +1464,7 @@ RenderCubeMap::RenderCubeMap() : map(256, true) {
 	}
 }
 
-
+#ifdef IS_EDITOR
 void Editor::InitMaterialPreviewer() {
 	_InitGBuffer(&matPrev_fbo, matPrev_texs, &matPrev_depthTex, 256, 256);
 	matPreviewerSphere = Procedurals::UVSphere(32, 16);
@@ -1470,3 +1474,4 @@ void Editor::DrawMaterialPreviewer(float x, float y, float w, float h, float& rx
 	Engine::DrawQuad(x, y, w, h, black());
 
 }
+#endif

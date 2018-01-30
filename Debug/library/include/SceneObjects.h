@@ -2,23 +2,98 @@
 
 #include "Engine.h"
 
-typedef unsigned char COMPONENT_TYPE;
-typedef unsigned char DRAWORDER;
-#define DRAWORDER_NONE 0x00
-#define DRAWORDER_SOLID 0x01
-#define DRAWORDER_TRANSPARENT 0x02
-#define DRAWORDER_OVERLAY 0x04
-#define DRAWORDER_LIGHT 0x08
-#define ECACHESZ_PADDING 1
-class Component : public Object {
+class SceneSettings {
+public:
+	SceneSettings() : sky(nullptr), skyId(-1), skyStrength(1) {
+		sky = 0;
+	}
+
+	Background* sky;
+	float skyStrength;
+	Color ambientCol;
+	GITYPE GIType = GITYPE_RSM;
+	float rsmRadius;
+
+	bool useFog, sunFog;
+	float fogDensity, fogSunSpread;
+	Vec4 fogColor, fogSunColor;
+
+	friend class Editor;
+	friend class EB_Inspector;
+	friend class Scene;
+protected:
+	int skyId;
+};
+
+/*! A scene contains everything in a level.
+*/
+class Scene {
+public:
+#ifndef CHOKO_LAIT
+	Scene() : sceneName("newScene"), settings() {}
+	Scene(std::ifstream& stream, long pos);
+	~Scene() {}
+	static bool loaded() {
+		return active != nullptr;
+	}
+	string sceneName;
+	int sceneId;
+
+	static void Load(uint i), Load(string name);
+#endif
+
+	/*! The current active scene.
+	In Lait versions, this value cannot be changed.
+	*/
+	static Scene* active;
+
+	uint objectCount = 0;
+	std::vector<pSceneObject> objects;
+	SceneSettings settings;
+	std::vector<Component*> _preUpdateComps;
+	std::vector<Component*> _preLUpdateComps;
+	std::vector<Component*> _preRenderComps;
+	static void AddObject(pSceneObject object, pSceneObject parent = nullptr);
+	static void DeleteObject(pSceneObject object);
+
+	friend int main(int argc, char **argv);
+	friend class Editor;
+	friend struct Editor_PlaySyncer;
+	friend class AssetManager;
+	friend class Component;
+protected:
+
+	static std::ifstream* strm;
+	//#ifndef IS_EDITOR
+	static std::vector<string> sceneEPaths;
+	//#endif
+	static std::vector<string> sceneNames;
+	static std::vector<long> scenePoss;
+
+	static void ReadD0();
+	static void Unload();
+#ifdef IS_EDITOR
+	void Save(Editor* e);
+#endif
+	static struct _offset_map {
+		uint objCount = offsetof(Scene, objectCount),
+			objs = offsetof(Scene, objects);
+	} _offsets;
+};
+
+class Component: public Object {
 public:
 	Component(string name, COMPONENT_TYPE t, DRAWORDER drawOrder = 0x00, SceneObject* o = nullptr, std::vector<COMPONENT_TYPE> dep = {});
 	virtual  ~Component() {}
 
-	const COMPONENT_TYPE componentType = 0;
+	const COMPONENT_TYPE componentType = COMP_UNDEF;
 	const DRAWORDER drawOrder;
 	bool active;
-	SceneObject* object;
+	rSceneObject object;
+
+	virtual void OnPreUpdate() {}
+	virtual void OnPreLUpdate() {}
+	virtual void OnPreRender() {}
 
 	friend int main(int argc, char **argv);
 	friend void Serialize(Editor* e, SceneObject* o, std::ofstream* stream);
@@ -29,10 +104,9 @@ public:
 	friend class SceneObject;
 	friend bool DrawComponentHeader(Editor* e, Vec4 v, uint pos, Component* c);
 	friend void DrawSceneObjectsOpaque(EB_Viewer* ebv, const std::vector<SceneObject*> &oo), DrawSceneObjectsGizmos(EB_Viewer* ebv, const std::vector<SceneObject*> &oo), DrawSceneObjectsTrans(EB_Viewer* ebv, std::vector<SceneObject*> oo);
-
 protected:
 	std::vector<COMPONENT_TYPE> dependancies;
-	std::vector<Component*> dependacyPointers;
+	std::vector<rComponent> dependacyPointers;
 
 	//bool serializable;
 	//std::vector<pair<void*, void*>> serializedValues;
@@ -42,417 +116,76 @@ protected:
 	static COMPONENT_TYPE Name2Type(string nm);
 
 	virtual void LoadDefaultValues() {} //also loads assets
+
+#ifdef IS_EDITOR
 	virtual void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) {} //trs matrix not applied, apply before calling
-	virtual void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) = 0;
+	virtual void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) = 0;
 	//virtual void DrawGameCamera() {}
 	virtual void Serialize(Editor* e, std::ofstream* stream) = 0;
+#endif
 	virtual void Refresh() {}
 };
 
-class Transform : public Object {
+class Transform: public Object {
 public:
-	SceneObject* object;
-	Vec3 position;
-	const Vec3 worldPosition(), forward(), right(), up();
-	const Quat rotation(), worldRotation();
-	const Vec3& eulerRotation() { return _eulerRotation;  }
-	void eulerRotation(Vec3 r);
-	Vec3 scale;
+	rSceneObject object;
+
+	const Vec3& position() { return _position; }
+	const Vec3& localPosition() { return _localPosition; }
+	const Quat& rotation() { return _rotation; }
+	const Quat& localRotation() { return _localRotation; }
+	const Vec3& localScale () { return _localScale; }
+	const Vec3& eulerRotation() { return _eulerRotation; }
+	const Vec3& localEulerRotation() { return _localEulerRotation;  }
+	void position(const Vec3& r);
+	void localPosition(const Vec3& r);
+	void rotation(const Quat& r);
+	void localRotation(const Quat& r);
+	void localScale(const Vec3& r);
+	void eulerRotation(const Vec3& r);
+	void localEulerRotation(const Vec3& r);
 	const Mat4x4 localMatrix() { return _localMatrix; }
 	const Mat4x4 worldMatrix() { return _worldMatrix; }
 
-	Transform* Translate(float x, float y, float z) { return Translate(Vec3(x, y, z)); }
-	Transform* Rotate(float x, float y, float z, TransformSpace sp = Space_Self) { return Rotate(Vec3(x, y, z), sp); }
-	Transform* Scale(float x, float y, float z) { return Scale(Vec3(x, y, z)); }
-	Transform* Translate(Vec3 v), *Rotate(Vec3 v, TransformSpace sp = Space_Self), *Scale(Vec3 v);
-	Transform* RotateAround(Vec3 a, float f);
+	Vec3 forward(), right(), up(), Local2World(Vec3);
+
+	Transform& Translate(float x, float y, float z, TransformSpace sp = Space_Self) { return Translate(Vec3(x, y, z), sp); }
+	Transform& Rotate(float x, float y, float z, TransformSpace sp = Space_Self) { return Rotate(Vec3(x, y, z), sp); }
+	Transform& Scale(float x, float y, float z) { return Scale(Vec3(x, y, z)); }
+	Transform& Translate(Vec3 v, TransformSpace sp = Space_Self), &Rotate(Vec3 v, TransformSpace sp = Space_Self), &Scale(Vec3 v);
+	Transform& RotateAround(Vec3 a, float f);
 
 	friend class SceneObject;
 	friend class EB_Viewer;
 	friend class EB_Inspector;
 	friend struct Editor_PlaySyncer;
-	friend void DrawSceneObjectsOpaque(EB_Viewer*, const std::vector<SceneObject*>&);
-	friend void DrawSceneObjectsGizmos(EB_Viewer*, const std::vector<SceneObject*>&);
+	friend class Armature;
+	_allowshared(Transform);
 private:
-	//never call Transform constructor directly. Call SceneObject().transform instead.
-	Transform(SceneObject* sc, Vec3 pos, Quat rot, Vec3 scl);
-	Transform(SceneObject* sc, byte* data);
-	Quat _rotation;
-	Vec3 _eulerRotation;
+	Transform() {}
+	void Init(pSceneObject& sc, Vec3 pos, Quat rot, Vec3 scl);
+	void Init(pSceneObject& sc, byte* data);
+
+	Vec3 _position, _localPosition;
+	Quat _rotation, _localRotation;
+	Vec3 _eulerRotation, _localEulerRotation;
+	Vec3 _localScale;
 	Mat4x4 _localMatrix, _worldMatrix;
 
 	static struct _offset_map {
-		uint position = offsetof(Transform, position),
+		uint position = offsetof(Transform, _position),
 			rotation = offsetof(Transform, _rotation),
-			scale = offsetof(Transform, scale);
+			scale = offsetof(Transform, _localScale);
 	} _offsets;
 
-	void _UpdateQuat();
-	void _UpdateEuler();
+	void _W2LPos(), _L2WPos();
+	void _UpdateWQuat(), _UpdateLQuat(), _L2WQuat(), _W2LQuat();
+	void _UpdateWEuler(), _UpdateLEuler();
 	void _UpdateLMatrix();
 	void _UpdateWMatrix(const Mat4x4& mat);
-};
 
-class Mesh : public AssetObject {
-public:
-	//Mesh(); //until i figure out normal recalc algorithm
-	bool loaded;
-	Mesh(const std::vector<Vec3>& verts, const std::vector<Vec3>& norms, const std::vector<int>& tris, std::vector<Vec2> uvs = std::vector<Vec2>());
-
-	std::vector<Vec3> vertices;
-	std::vector<Vec3> normals, tangents;// , bitangents;
-	std::vector<int> triangles;
-	std::vector<Vec2> uv0, uv1;
-	ChokoEngine::BBox boundingBox;
-	
-	uint vertexCount, triangleCount, materialCount;
-	
-	void RecalculateBoundingBox();
-	
-	friend int main(int argc, char **argv);
-	friend class Editor;
-	friend class MeshFilter;
-	friend class MeshRenderer;
-	friend class AssetManager;
-protected:
-	Mesh(Editor* e, int i);
-	Mesh(std::istream& strm, uint offset = 0);
-	Mesh(string path);
-	Mesh(byte* mem);
-
-	void CalcTangents();
-	void GenECache() override;
-
-	static bool ParseBlend(Editor* e, string s);
-	std::vector<std::vector<int>> _matTriangles;
-	//void Draw(Material* mat);
-	//void Load();
-};
-
-class FCurve_Key {
-public:
-	FCurve_Key(Vec2 a, Vec2 b, Vec2 c) : point(a), left(b), right(c) {}
-	Vec2 point, left, right;
-};
-
-enum FCurveType : byte {
-	FC_Undef = 0x00,
-	FC_BoneLoc_X = 0x10,
-	FC_BoneLoc_Y, FC_BoneLoc_Z,
-	FC_BoneQuat_W, FC_BoneQuat_X, FC_BoneQuat_Y, FC_BoneQuat_Z,
-	FC_BoneScl_X, FC_BoneScl_Y, FC_BoneScl_Z,
-	FC_ShapeKey = 0x20,
-	FC_Location_X = 0xf0,
-	FC_Location_Y, FC_Location_Z,
-	FC_Rotation_X, FC_Rotation_Y, FC_Rotation_Z,
-	FC_Scale_X = 0xf7,
-	FC_Scale_Y, FC_Scale_Z,
-};
-class FCurve {
-public:
-	FCurve() : type(FC_Undef), name(""), keys(), keyCount(0), startTime(0), endTime(0) {}
-	FCurveType type;
-	string name;
-	std::vector<FCurve_Key> keys;
-	byte keyCount;
-	float startTime, endTime;
-	float Eval(float t, float repeat = false);
-};
-
-class AnimClip : public AssetObject {
-	std::vector<FCurve> curves;
-	uint curveLength;
-
-	friend class Editor;
-	friend class AssetManager;
-protected:
-	AnimClip(Editor* e, int i);
-	AnimClip(std::ifstream& strm, uint offset);
-	AnimClip(string path);
-};
-
-class AnimFrameItem {
-public:
-	AnimFrameItem();
-	friend class Animator;
-	friend class Anim_State;
-protected:
-	byte type;
-	string name;
-	Vec3 transform, scale;
-	Quat rotation;
-};
-
-class Anim_State {
-public:
-	Anim_State(bool blend = false) : name(blend? "newBlendState" : "newState"), isBlend(blend), speed(1), length(0), time(0), _clip(-1), editorPos(Vec2()), editorExpand(true) {}
-	friend class Animator;
-	friend class EB_AnimEditor;
-protected:
-	Anim_State(Vec2 pos, bool blend = false) : name(blend ? "newBlendState" : "newState"), isBlend(blend), speed(1), length(0), time(0), _clip(-1), editorPos(pos), editorExpand(true) {}
-	string name;
-	bool isBlend;
-	float speed, length, time;
-	float Eval(); //increments time automatically
-
-	AnimClip* clip;
-	ASSETID _clip;
-	Vec2 editorPos;
-	bool editorExpand, editorShowGraph;
-
-	std::vector<AnimClip*> blendClips;
-	std::vector<ASSETID> _blendClips;
-	std::vector<float> blendOffsets;
-};
-
-class Anim_Transition {
-public:
-	Anim_Transition();
-	friend class Animator;
-protected:
-	bool canInterrupt;
-	float length, time;
-
-};
-
-class AnimValue {
-	string name;
-	Vec3 pos, scl;
-	Quat rot;
-};
-
-class Animator : public AssetObject {
-
-	friend class EB_AnimEditor;
-	friend class Editor;
-	friend class SkinnedMeshRenderer;
-protected:
-	Animator();
-	Animator(string s);
-	Animator(std::ifstream& stream, uint offset);
-	uint activeState, nextState;
-	float stateTransition;
-
-	std::vector<string> names; //Bones must have unique names
-	std::vector<Anim_State*> states;
-	std::vector<Anim_Transition*> transitions;
-
-	int IdOfName(string n) {
-		for (int a = names.size() - 1; a >= 0; a--)
-			if (names[a] == n)
-				return a;
-		return -1;
-	}
-	void Get(uint id);
-
-	void Save(string s);
-};
-
-enum TEX_FILTERING : byte {
-	TEX_FILTER_POINT = 0x00,
-	TEX_FILTER_BILINEAR,
-	TEX_FILTER_TRILINEAR
-};
-
-enum TEX_WARPING : byte {
-	TEX_WARP_CLAMP,
-	TEX_WARP_REPEAT
-};
-
-enum TEX_TYPE : byte {
-	TEX_TYPE_NORMAL = 0x00,
-	TEX_TYPE_RENDERTEXTURE,
-	TEX_TYPE_READWRITE,
-	TEX_TYPE_UNDEF
-};
-
-class Texture : public AssetObject {
-public:
-	Texture(const string& path, bool mipmap = true, TEX_FILTERING filter = TEX_FILTER_BILINEAR, byte aniso = 5, TEX_WARPING warp = TEX_WARP_REPEAT);
-	//Texture(std::ifstream& stream, long pos);
-	~Texture(){ glDeleteTextures(1, &pointer); }
-	bool loaded;
-	uint width, height;
-	GLuint pointer;
-	TEX_TYPE texType() { return _texType; }
-	
-	static byte* LoadPixels(const string& path, byte& chn, uint& w, uint& h);
-
-	friend int main(int argc, char **argv);
-	friend class Editor;
-	friend class EB_Inspector;
-	friend class AssetManager;
-	friend class RenderTexture;
-	friend void EBI_DrawAss_Tex(Vec4 v, Editor* editor, EB_Inspector* b, float &off);
-protected:
-	Texture() : AssetObject(ASSETTYPE_TEXTURE) {}
-	Texture(int i, Editor* e); //for caches
-	Texture(std::istream& strm, uint offset = 0);
-	Texture(byte* b);
-	static TEX_TYPE _ReadStrm(Texture* tex, std::istream& strm, byte& chn, GLenum& rgb, GLenum& rgba);
-	byte _aniso = 0;
-	TEX_FILTERING _filter = TEX_FILTER_POINT;
-	TEX_TYPE _texType = TEX_TYPE_NORMAL;
-	bool _mipmap = true, _repeat = false, _blurmips = false;
-	static bool Parse(Editor* e, string path);
-	void _ApplyPrefs(const string& p);
-	bool DrawPreview(uint x, uint y, uint w, uint h) override;
-	
-	void GenECache(byte* dat, byte chn, bool isrgb, std::vector<RenderTexture*>* rts);
-};
-/*
-class VideoTexture : public Texture {
-public:
-	VideoTexture(const string& path);
-
-	void Play(), Pause(), Stop();
-//protected:
-	GLuint d_fbo;
-	std::vector<byte> buffer;
-
-	std::istream* strm;
-	AVCodec* codec;
-	AVCodecContext* codecContext;
-	AVCodecParserContext* parser;
-	AVFrame* picture;
-	int frame;
-
-	static void Init();
-	void GetFrame();
-};
-*/
-enum RT_FLAGS : byte {
-	RT_FLAG_NONE = 0U,
-	RT_FLAG_DEPTH = 1U,
-	RT_FLAG_STENCIL = 2U, //doesn't do anything for now
-	RT_FLAG_HDR = 4U
-};
-
-class RenderTexture : public Texture {
-public:
-	RenderTexture(uint w, uint h, RT_FLAGS flags = RT_FLAG_NONE, const GLvoid* pixels = NULL, GLenum pixelFormat = GL_RGBA, GLenum minFilter = GL_LINEAR, GLenum magFilter = GL_LINEAR, GLenum wrapS = GL_REPEAT, GLenum wrapT = GL_REPEAT);
-	~RenderTexture();
-
-	const bool depth, stencil, hdr;
-
-	static void Blit(Texture* src, RenderTexture* dst, ShaderBase* shd, string texName = "mainTex");
-	static void Blit(Texture* src, RenderTexture* dst, Material* mat, string texName = "mainTex");
-	static void Blit(GLuint src, RenderTexture* dst, GLuint shd, string texName = "mainTex");
-
-	template <typename T>
-	std::vector<T> pixels(bool alpha) {
-		assert((typeid(byte).hash_code() == typeid(T).hash_code()) || (typeid(float).hash_code() == typeid(T).hash_code()));
-		std::vector<T> v = std::vector<T>(width*height * (alpha? 4 : 3));
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, d_fbo);
-		glReadPixels(0, 0, width, height, (alpha? GL_RGBA : GL_RGB), (typeid(byte).hash_code() == typeid(T).hash_code())? GL_UNSIGNED_BYTE : GL_FLOAT, &v[0]);
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-		return v;
-	}
-
-	//void Resize(uint w, uint h);
-	friend class Texture;
-	friend class Editor;
-	friend class Background;
-	friend int main(int argc, char **argv);
-protected:
-	GLuint d_fbo;
-	void Load(string path);
-	void Load(std::istream& strm);
-	static bool Parse(string path); //just tell Texture to load as rendtex
-};
-
-class Background : public AssetObject {
-public:
-	//Background() : AssetObject(ASSETTYPE_HDRI){}
-	Background(const string& path);
-
-	bool loaded;
-	unsigned int width, height;
-	GLuint pointer;
-	friend int main(int argc, char **argv);
-	friend class Editor;
-	friend class AssetManager;
-private:
-	Background(int i, Editor* editor);
-	Background(std::istream& strm, uint offset);
-	Background(byte*);
-	static bool Parse(string path);
-
-	void GenECache(const std::vector<Vec2>& szs, const std::vector<RenderTexture*>& rts);
-};
-
-class CubeMap : public AssetObject {
-public:
-	CubeMap(Texture* px, Texture* nx, Texture* py, Texture* ny, Texture* pz, Texture* nz);
-	CubeMap(Texture* tex);
-
-	const ushort size;
-	bool loaded;
-	
-	friend class Camera;
-	friend class RenderCubeMap;
-	friend class ReflectionProbe;
-protected:
-	CubeMap(ushort size, bool mips = false, GLenum type = GL_RGBA, byte dataSize = 4, GLenum format = GL_RGBA, GLenum dataType = GL_UNSIGNED_BYTE);
-	
-	uint pointer;
-
-	static void _RenderCube(Vec3 pos, Vec3 xdir, GLuint fbos[], uint size, GLuint shader = 0);
-	static void _DoRenderCubeFace(GLuint fbo);
-};
-
-class RenderCubeMap {
-protected:
-	RenderCubeMap();
-
-	CubeMap map;
-	std::vector<GLuint> fbos[6]; //[face][mip]
-};
-
-#define COMP_UNDEF 0x00
-
-class ReflectionProbe;
-
-#define COMP_CAM 0x01
-enum CAM_CLEARTYPE : byte {
-	CAM_CLEAR_NONE,
-	CAM_CLEAR_COLOR,
-	CAM_CLEAR_DEPTH,
-	CAM_CLEAR_SKY
-};
-
-enum GBUFFERS {
-	GBUFFER_DIFFUSE,
-	GBUFFER_NORMAL,
-	GBUFFER_SPEC_GLOSS,
-	GBUFFER_EMISSION_AO,
-	GBUFFER_Z,
-	GBUFFER_NUM_TEXTURES
-};
-
-class CameraEffect : public AssetObject {
-public:
-	CameraEffect(Material* mat);
-
-	bool enabled = true;
-
-	friend class Camera;
-	friend class Engine;
-	friend class Editor;
-	friend class EB_Browser;
-	friend class EB_Inspector;
-	friend void EBI_DrawAss_Eff(Vec4 v, Editor* editor, EB_Inspector* b, float &off);
-protected:
-	Material* material;
-	int _material = -1;
-	bool expanded; //editor only
-	string mainTex;
-
-	void Save(string nm);
-
-	CameraEffect(string s);
-	//CameraEffect(std::ifstream& strm, uint offset);
-	//void SetShader(ShaderBase* shad);
+	//never call Transform constructor directly.
+	Transform(const Transform& rhs);
 };
 
 class Camera : public Component {
@@ -466,8 +199,8 @@ public:
 	Vec4 clearColor;
 	float nearClip;
 	float farClip;
-	RenderTexture* targetRT;
-	std::vector<CameraEffect*> effects;
+	rRenderTexture targetRT;
+	std::vector<rCameraEffect> effects;
 	
 	void Render(RenderTexture* target = nullptr);
 
@@ -479,6 +212,7 @@ public:
 	friend class EB_Previewer;
 	friend class Background;
 	friend class MeshRenderer;
+	friend class SkinnedMeshRenderer;
 	friend class Engine;
 	friend class Editor;
 	friend class Light;
@@ -487,20 +221,21 @@ public:
 	friend class RenderTexture;
 	friend class ReflectionProbe;
 	friend class CubeMap;
-	friend class ChokoEngine::Color;
+	friend class Color;
+	_allowshared(Camera);
 protected:
 	Camera(std::ifstream& stream, SceneObject* o, long pos = -1);
 
 	std::vector<ASSETID> _effects;
 
-	static void DrawSceneObjectsOpaque(std::vector<SceneObject*> oo, GLuint shader = 0);
+	static void DrawSceneObjectsOpaque(std::vector<pSceneObject> oo, GLuint shader = 0);
 	void RenderLights(GLuint targetFbo = 0);
 	void DumpBuffers();
 
-	void _RenderProbesMask(std::vector<SceneObject*>& objs, Mat4x4 mat, std::vector<ReflectionProbe*>& probes), _RenderProbes(std::vector<ReflectionProbe*>& probes, Mat4x4 mat);
+	void _RenderProbesMask(std::vector<pSceneObject>& objs, Mat4x4 mat, std::vector<ReflectionProbe*>& probes), _RenderProbes(std::vector<ReflectionProbe*>& probes, Mat4x4 mat);
 	void _DoRenderProbeMask(ReflectionProbe* p, Mat4x4& ip), _DoRenderProbe(ReflectionProbe* p, Mat4x4& ip);
 	static void _RenderSky(Mat4x4 ip, GLuint d_texs[], GLuint d_depthTex, float w = (float)Display::width, float h = (float)Display::height);
-	void _DrawLights(std::vector<SceneObject*>& oo, Mat4x4& ip, GLuint targetFbo = 0);
+	void _DrawLights(std::vector<pSceneObject>& oo, Mat4x4& ip, GLuint targetFbo = 0);
 	static void _ApplyEmission(GLuint d_fbo, GLuint d_texs[], float w = (float)Display::width, float h = (float)Display::height, GLuint targetFbo = 0);
 	static void _DoDrawLight_Point(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs[], GLuint d_depthTex, GLuint ctar, GLuint c_tex, float w = (float)Display::width, float h = (float)Display::height, GLuint targetFbo = 0);
 	static void _DoDrawLight_Spot(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs[], GLuint d_depthTex, GLuint ctar, GLuint c_tex, float w = (float)Display::width, float h = (float)Display::height, GLuint targetFbo = 0);
@@ -511,7 +246,7 @@ protected:
 	static void GenShaderFromPath(GLuint vertex_shader, const string& path, GLuint* program);
 
 	Vec3 camVerts[6];
-	static int camVertsIds[19];
+	static const int camVertsIds[19];
 	GLuint d_fbo, d_texs[4], d_depthTex;
 	static GLuint d_probeMaskProgram, d_probeProgram, d_blurProgram, d_blurSBProgram, d_skyProgram, d_pLightProgram, d_sLightProgram, d_sLightCSProgram, d_sLightRSMProgram, d_sLightRSMFluxProgram;
 	static GLuint d_reflQuadProgram;
@@ -533,121 +268,201 @@ protected:
 	static void InitShaders();
 	void UpdateCamVerts();
 	void InitGBuffer();
+
+#ifdef IS_EDITOR
 	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
-	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, std::ofstream* stream) override;
 
 	static void _SetClear0(EditorBlock* b), _SetClear1(EditorBlock* b), _SetClear2(EditorBlock* b), _SetClear3(EditorBlock* b);
+#endif
 };
 
-#define COMP_MFT 0x02
+class AudioSource : public Component {
+public:
+	
+
+	rAudioClip clip;
+protected:
+	
+};
+
+class AudioListener : public Component {
+
+};
+
 class MeshFilter : public Component {
 public:
 	MeshFilter();
 	
-	Mesh* mesh;
+	rMesh mesh = 0;
 	//void LoadDefaultValues() override;
 
-	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
+#ifdef IS_EDITOR
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, std::ofstream* stream) override;
+#endif
 
 	friend class MeshRenderer;
 	friend class Editor;
-	friend void LoadMeshMeta(std::vector<SceneObject*>& os, string& path);
+	friend void LoadMeshMeta(std::vector<pSceneObject>& os, string& path);
 	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
+	_allowshared(MeshFilter);
 protected:
-	bool showBoundingBox;
-
 	MeshFilter(std::ifstream& stream, SceneObject* o, long pos = -1);
 
+	bool showBoundingBox = false;
+	ASSETID _mesh = -1;
+
+#ifdef IS_EDITOR
 	void SetMesh(int i);
 	static void _UpdateMesh(void* i);
-	ASSETID _mesh;
+#endif
 };
 
-#define COMP_MRD 0x10
 class MeshRenderer : public Component {
 public:
 	MeshRenderer();
-	std::vector<Material*> materials;
+	std::vector<rMaterial> materials;
 
+#ifdef IS_EDITOR
 	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
-	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
 
 	void Serialize(Editor* e, std::ofstream* stream) override;
+#endif
 	void Refresh() override;
 
 	friend class Camera;
 	friend class Editor;
 	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
+	_allowshared(MeshRenderer);
 protected:
 	MeshRenderer(std::ifstream& stream, SceneObject* o, long pos = -1);
 
 	void DrawDeferred(GLuint shader = 0);
 
 	std::vector<ASSETID> _materials;
-	bool overwriteWriteMask;
+	bool overwriteWriteMask = false;
 	std::vector<bool> writeMask;
 	static void _UpdateMat(void* i);
 	static void _UpdateTex(void* i);
 };
 
-#define COMP_TRD 0x11
 class TextureRenderer : public Component {
 public:
 	TextureRenderer(): _texture(-1), Component("Texture Renderer", COMP_TRD, DRAWORDER_OVERLAY) {}
 	
 	Texture* texture;
 
-	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
+#ifdef IS_EDITOR
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, std::ofstream* stream) override;
+#endif
 
 	friend int main(int argc, char **argv);
 	friend void Serialize(Editor* e, SceneObject* o, std::ofstream* stream);
 	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
+	_allowshared(TextureRenderer);
 protected:
 	TextureRenderer(std::ifstream& stream, SceneObject* o, long pos = -1);
 	int _texture;
 };
 
-struct SRD_ArmatureData { //bind(-1) -> animate -> bind
-	Mat4x4 bind[512];
-	Mat4x4 animate[512];
-};
+#define SKINNED_MAX_VERTICES 65535
+#define SKINNED_THREADS_PER_GROUP 32
 
-#define COMP_SRD 0x12
+class Armature;
+class ArmatureBone;
 class SkinnedMeshRenderer : public Component {
 public:
-	SkinnedMeshRenderer();
-
+	SkinnedMeshRenderer(SceneObject* o);
 	std::vector<Material*> materials;
-	Animator* anim;
-
+	Mesh* mesh() { return _mesh; }
+	void mesh(Mesh*);
 	//void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
-	//void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
-
-	//void Serialize(Editor* e, std::ofstream* stream) override;
+#ifdef IS_EDITOR
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
+	void Serialize(Editor* e, std::ofstream* stream) override {}
 	//void Refresh() override;
-
+#endif
+	friend class Engine;
 	friend class Editor;
+	friend class Camera;
 	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
-	friend void DrawSceneObjectsOpaque(std::vector<SceneObject*> oo);
+	friend void LoadMeshMeta(std::vector<pSceneObject>& os, string& path);
+	_allowshared(SkinnedMeshRenderer);
 protected:
 	SkinnedMeshRenderer(std::ifstream& stream, SceneObject* o, long pos = -1);
 
-	SceneObject* baseBone;
-	SRD_ArmatureData animData;
-	std::vector<std::pair<uint, SceneObject*>> boneObjs;
+	std::vector<std::array<std::pair<ArmatureBone*, float>, 4>> weights;
 
-	void ApplyAnim();
-	void DrawDeferred();
+	void InitWeights();
+	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0);
+	void DrawDeferred(GLuint shader = 0);
 
+	Mesh* _mesh = 0;
+	ASSETID _meshId = -1;
+	Armature* armature;
 	std::vector<ASSETID> _materials;
+	bool overwriteWriteMask = false;
+	std::vector<bool> writeMask;
+	bool showBoundingBox = false;
+
+	struct SkinDats {
+		SkinDats() {
+			mats[0] = 0;
+			mats[1] = 0;
+			mats[2] = 0;
+			mats[3] = 0;
+		}
+
+		uint mats[4];
+		Vec4 weights;
+	};
+	ComputeBuffer<Vec4>* skinBufPoss = 0, *skinBufNrms;
+	ComputeBuffer<Vec4>*skinBufPossO, *skinBufNrmsO;
+	ComputeBuffer<SkinDats>* skinBufDats;
+	ComputeBuffer<Mat4x4>* skinBufMats;
+	static ComputeShader* skinningProg;
+	uint skinDispatchGroups;
+
+	static void InitSkinning();
+	void Skin();
+
+	void SetMesh(int i);
+	static void _UpdateMesh(void* i);
 	static void _UpdateMat(void* i);
 	static void _UpdateTex(void* i);
 };
 
-#define COMP_PST 0x13
+class ArrayRenderer : public Component {
+public:
+	ArrayRenderer();
+	rMaterial material;
+	std::vector<Vec3> positions;
+
+#ifdef IS_EDITOR
+	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
+
+	void Serialize(Editor* e, std::ofstream* stream) override {}
+#endif
+
+	friend class Camera;
+	friend class Editor;
+	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
+	_allowshared(ArrayRenderer);
+protected:
+	ArrayRenderer(std::ifstream& stream, SceneObject* o, long pos = -1);
+
+	void DrawDeferred(GLuint shader = 0);
+
+	ASSETID _material;
+	bool overwriteWriteMask = false;
+	std::vector<bool> writeMask;
+};
+
 enum ParticleEmissionType {
 	ParticleEmission_Cone
 };
@@ -705,7 +520,6 @@ enum LIGHT_FALLOFF : byte {
 	LIGHT_FALLOFF_LINEAR,
 	LIGHT_FALLOFF_CONSTANT
 };
-#define COMP_LHT 0x20
 #define LIGHT_POINT_MINSTR 0.01f
 #define BUFFERLOC_LIGHT_RSM 2
 class Light : public Component {
@@ -726,8 +540,8 @@ public:
 	float cookieStrength = 1;
 	bool square = false;
 	LIGHT_FALLOFF falloff;
+	Texture* hsvMap;
 
-	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
 	void DrawShadowMap(GLuint tar = 0), BlitRSMFlux(), DrawRSM(Mat4x4& ip, Mat4x4& lp, float w, float h, GLuint gtexs[], GLuint gdepth);
 
 	friend int main(int argc, char **argv);
@@ -736,15 +550,19 @@ public:
 	friend class Camera;
 	friend class Engine;
 	friend class EB_Previewer;
+	_allowshared(Light);
 protected:
 	LIGHTTYPE _lightType;
 	Light(std::ifstream& stream, SceneObject* o, long pos = -1);
 	//Mat4x4 _shadowMatrix;
-	ASSETID _cookie = -1;
-	static void _SetCookie(void* v);
+	ASSETID _cookie = -1, _hsvMap = -1;
+	static void _SetCookie(void* v), _SetHsvMap(void* v);
 
+#ifdef IS_EDITOR
+	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, std::ofstream* stream) override;
-	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
+#endif
 
 	static void InitShadow(), InitRSM();
 	void CalcShadowMatrix();
@@ -758,7 +576,6 @@ protected:
 	//static CubeMap* _shadowCube;
 };
 
-#define COMP_RFQ 0x22
 class ReflectiveQuad : public Component {
 public:
 	ReflectiveQuad(Texture* tex = nullptr);
@@ -774,6 +591,7 @@ public:
 	friend class Camera;
 	friend class Light;
 	friend class Engine;
+	_allowshared(ReflectiveQuad);
 protected:
 	ASSETID _texture;
 	static std::vector<GLint> paramLocs;
@@ -782,12 +600,13 @@ protected:
 	static void _SetTex(void* v);
 
 	static void ScanParams();
+#ifdef IS_EDITOR
 	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
-	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, std::ofstream* stream) override;
+#endif
 };
 
-#define COMP_RDP 0x25
 enum ReflProbe_UpdateMode : byte {
 	ReflProbe_UpdateMode_Start,
 	ReflProbe_UpdateMode_Realtime,
@@ -815,49 +634,149 @@ public:
 	friend void Serialize(Editor* e, SceneObject* o, std::ofstream* stream);
 	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
 	friend class Camera;
+	_allowshared(ReflectionProbe);
 protected:
 	ReflectionProbe(std::ifstream& stream, SceneObject* o, long pos = -1);
 	bool _pendingUpdate;
 	CubeMap* map;
 	GLuint mipFbos[7];
 
+#ifdef IS_EDITOR
 	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
-	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override;
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, std::ofstream* stream) override;
+#endif
 
 	void _DoUpdate();
 };
 
-#define COMP_ARM 0x30
+enum IK_TYPE : byte {
+	IK_TARGET_ONLY,
+	IK_JOINT_ONLY,
+	IK_GENERIC
+};
+
+enum IK_AXIAL_CONSTRAINT : byte {
+	IK_AXIAL_FREE,
+	IK_AXIAL_ONLY,
+	IK_NON_AXIAL_ONLY
+};
+
+class InverseKinematics : public Component {
+public:
+	InverseKinematics();
+
+	IK_TYPE type;
+
+	rSceneObject target;
+	byte length = 1, iterations = 20;
+
+	bool jointIsAxial;
+	bool allowRotation[3];
+	IK_AXIAL_CONSTRAINT axialType;
+
+	void Apply();
+
+	friend void Serialize(Editor* e, SceneObject* o, std::ofstream* stream);
+	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
+	_allowshared(InverseKinematics);
+protected:
+#ifdef IS_EDITOR
+	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
+	void Serialize(Editor* e, std::ofstream* stream) override {}
+#endif
+};
+
+class Animator : public Component {
+public:
+	Animator(Animation* anim = nullptr);
+	~Animator();
+
+	Animation* animation;
+
+	int IdOf(const string& s) {
+		return animation ? animation->IdOf(s) : -1;
+	}
+
+	Vec4 Get(const string& name) {
+		return animation ? animation->Get(name) : Vec4();
+	}
+	Vec4 Get(uint id) {
+		return animation ? animation->Get(id) : Vec4();
+	}
+
+	float fps = 24;
+
+	void OnPreLUpdate() override;
+
+	friend int main(int argc, char **argv);
+	friend void Serialize(Editor* e, SceneObject* o, std::ofstream* stream);
+	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
+	friend class Engine;
+	_allowshared(Animator);
+protected:
+	ASSETID _animation = -1;
+
+	static void _SetAnim(void* v);
+#ifdef IS_EDITOR
+	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override {}
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
+	void Serialize(Editor* e, std::ofstream* stream) override {}
+#endif
+};
+
+#define ARMATURE_MAX_BONES 256
 class ArmatureBone {
 public:
+
 	Transform* const tr;
 	Vec3 const restPosition;
 	Quat const restRotation;
 	Vec3 const restScale;
-	Vec3 tailPos;
+	Vec3 tailPos() { return tr->position() + tr->forward()*length*tr->localScale().z; }
+	float const length;
 	bool const connected;
+	const Mat4x4 restMatrix, restMatrixInv;
+	const Mat4x4 restMatrixAInv;
+	Mat4x4 newMatrix, animMatrix;
+	string const name, fullName; // parent2/parent/me/
+	uint const id;
 	const std::vector<ArmatureBone*>& children() { return _children; }
+	const ArmatureBone* parent;
 
 	friend class Armature;
 protected:
-	ArmatureBone(Vec3 pos, Quat rot, Vec3 scl, Vec3 tal, bool conn, Transform* tr) : restPosition(pos), restRotation(rot), restScale(scl), tailPos(tal), connected(conn), tr(tr) {}
+	ArmatureBone(uint id, Vec3 pos, Quat rot, Vec3 scl, float lgh, bool conn, Transform* tr, ArmatureBone* par);
+	
+	static const Vec3 boneVecs[6];
+	static const uint boneIndices[24];
+	static const Vec3 boneCol, boneSelCol;
 	std::vector<ArmatureBone*> _children;
+
+#ifdef IS_EDITOR
+	void Draw(EB_Viewer* ebv);
+#endif
 };
 class Armature : public Component {
 public:
 	//Armature() : _anim(-1), Component("Armature", COMP_ARM, DRAWORDER_OVERLAY) {}
-
-	Animator* anim;
+	~Armature();
 
 	bool overridePos;
 	Vec3 restPosition;
 	Quat restRotation;
 	Vec3 restScale;
+	float animationScale = 1;
 	const std::vector<ArmatureBone*>& bones() { return _bones; }
 
-	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override {}
+#ifdef IS_EDITOR
+	void DrawEditor(EB_Viewer* ebv, GLuint shader = 0) override;
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, std::ofstream* stream) override {}
+#endif
+
+	virtual void OnPreRender() override;
 
 	friend int main(int argc, char **argv);
 	friend void Serialize(Editor* e, SceneObject* o, std::ofstream* stream);
@@ -866,15 +785,29 @@ public:
 	friend class Editor;
 	friend class EB_Viewer;
 	friend class EB_Previewer;
+	friend class SkinnedMeshRenderer;
+	_allowshared(Armature);
 protected:
 	Armature(string s, SceneObject* o);
 	Armature(std::ifstream& stream, SceneObject* o, long pos = -1);
-	static void AddBone(std::ifstream&, std::vector<ArmatureBone*>&, std::vector<ArmatureBone*>&, SceneObject*);
-	ASSETID _anim;
+
+	Animator* _anim;
+
+	bool xray;
 	std::vector<ArmatureBone*> _bones;
+	std::vector<string> _allbonenames;
+	std::vector<ArmatureBone*> _allbones;
+	std::vector<int> _boneAnimIds;
+	Mat4x4 _animMatrices[ARMATURE_MAX_BONES];
+	ArmatureBone* MapBone(string nm);
+	
+	static void AddBone(std::ifstream&, std::vector<ArmatureBone*>&, std::vector<ArmatureBone*>&, SceneObject*, uint&);
+	void GenMap(ArmatureBone* b = nullptr);
+	void UpdateAnimIds();
+	void Animate();
+	void UpdateMats(ArmatureBone* b = nullptr);
 };
 
-#define COMP_SCR 0xff
 enum SCR_VARTYPE : byte {
 	SCR_VAR_UNDEF = 0U,
 	SCR_VAR_INT, SCR_VAR_UINT,
@@ -894,72 +827,103 @@ public:
 	virtual void LateUpdate() {}
 	virtual void Paint() {}
 
+#ifdef IS_EDITOR
 	static void Parse(string s, Editor* e);
+#endif
 
 	//bool ReferencingObject(Object* o) override;
 	friend class Editor;
 	friend class EB_Viewer;
 	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
+	_allowshared(SceneScript);
 protected:
-	SceneScript(Editor* e, ASSETID id);
-	SceneScript(std::ifstream& strm, SceneObject* o);
 	SceneScript() : Component("", COMP_SCR, DRAWORDER_NONE) {}
 	
 	ASSETID _script;
 	std::vector<std::pair<string, std::pair<SCR_VARTYPE, void*>>> _vals;
 
-	void DrawInspector(Editor* e, Component*& c, Vec4 v, uint& pos) override; //we want c to be null if deleted
+#ifdef IS_EDITOR
+	SceneScript(Editor* e, ASSETID id);
+	SceneScript(std::ifstream& strm, SceneObject* o);
+
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override; //we want c to be null if deleted
 	void Serialize(Editor* e, std::ofstream* stream) override;
+#endif
 };
 
-class SceneObject : public Object {
+class SceneObject: public Object {
 public:
-	SceneObject();
-	SceneObject(string s);
-	SceneObject(Vec3 pos, Quat rot, Vec3 scale);
-	SceneObject(string s, Vec3 pos, Quat rot, Vec3 scale);
 	~SceneObject();
+	static pSceneObject New(Vec3 pos, Quat rot = Quat(), Vec3 scale = Vec3(1, 1, 1)) {
+		auto p = pSceneObject(new SceneObject(pos, rot, scale));
+		p->transform.Init(p, pos, rot, scale);
+		return p;
+	}
+	static pSceneObject New(string s = "New Object", Vec3 pos = Vec3(), Quat rot = Quat(), Vec3 scale = Vec3(1, 1, 1)) {
+		auto p = pSceneObject(new SceneObject(s, pos, rot, scale));
+		p->transform.Init(p, pos, rot, scale);
+		return p;
+	}
+
 	bool active = true;
 	Transform transform;
 
 	void SetActive(bool active, bool enableAll = false);
 
-	SceneObject* parent;
+	rSceneObject parent;
 	uint childCount = 0;
-	std::vector<SceneObject*> children;
+	std::vector<pSceneObject> children;
 
-	SceneObject* AddChild(SceneObject* child);
-	SceneObject* GetChild(int i) { return children[i]; }
-	Component* AddComponent(Component* c);
-	
-	Component* GetComponent(COMPONENT_TYPE type);
-	template<class T> T* GetComponent() {
-		//static_assert(is_base_of(Component, T), "GetComponent requires a component type!");
-		(void)static_cast<Component*>((T*)0);
-		for (Component* cc : _components)
+	void SetParent(pSceneObject parent, bool retainLocal = false);
+	/*! Add child to this SceneObject.
+	 *  @param child The child SceneObject to add.
+	 *  @param retainLocal If true, the child's local transform is retained. If false, the child's world transform is retained.
+	 */
+	pSceneObject AddChild(pSceneObject child, bool retainLocal = false);
+	pSceneObject GetChild(int i) { return children[i]; }
+	pComponent AddComponent(pComponent c);
+	template <typename T, class ...Args> std::shared_ptr<T> AddComponent(Args&& ...args) {
+		auto c = std::make_shared<T>(std::forward<Args>(args)...);
+		AddComponent(std::static_pointer_cast<Component>(c));
+		return c;
+	}
+
+	/*! you should probably use GetComponent<T>() instead.
+	 */
+	pComponent GetComponent(COMPONENT_TYPE type);
+	template<class T> std::shared_ptr<T> GetComponent() {
+		static_assert(std::is_base_of<Component, T>::value, "T is not a Component type!");
+		for (pComponent cc : _components)
 		{
-			T* xx = dynamic_cast<T*>(cc);
+			auto xx = std::dynamic_pointer_cast<T>(cc);
 			if (xx != nullptr) {
-			//if (typeid(&cc) == typeid(T)) {
 				return xx;
 			}
 		}
 		return nullptr;
 	}
-	void RemoveComponent(Component*& c);
+	void RemoveComponent(pComponent c);
 
 	bool _expanded;
 	int _componentCount;
-	std::vector<Component*> _components;
+	std::vector<pComponent> _components;
 
 	friend class MeshFilter;
 	friend class Scene;
 	friend class Editor;
 	friend struct Editor_PlaySyncer;
 protected:
+	//set transform.object after construction
+	SceneObject(Vec3 pos, Quat rot = Quat(), Vec3 scale = Vec3(1, 1, 1));
+	SceneObject(string s = "New Object", Vec3 pos = Vec3(), Quat rot = Quat(), Vec3 scale = Vec3(1, 1, 1));
 	SceneObject(byte* data);
+	static pSceneObject New(byte* data) {
+		auto p = pSceneObject(new SceneObject(data));
+		p->transform.Init(p, data + offsetof(SceneObject, transform));
+		return p;
+	}
 
-	static SceneObject* _FromId(const std::vector<SceneObject*>& objs, ulong id);
+	static pSceneObject _FromId(const std::vector<pSceneObject>& objs, ulong id);
 
 	static struct _offset_map {
 		uint name = offsetof(SceneObject, name),

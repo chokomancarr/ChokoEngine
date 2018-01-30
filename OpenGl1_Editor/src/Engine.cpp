@@ -155,6 +155,7 @@ string Color::Col2Hex(Vec4 col) {
 }
 
 void Color::DrawPicker(float x, float y, Color& c) {
+#ifdef IS_EDITOR
 	Engine::DrawQuad(x, y, 270.0f, c.useA ? 335.0f : 318.0f, white(0.8f, 0.1f));
 	Vec2 v2 = Engine::DrawSliderFill2D(x + 10, y + 10, 220, 220, Vec2(), Vec2(1, 1), Vec2(1 - c.s, c.v), black(), grey1());
 	c.s = 1 - v2.x;
@@ -198,6 +199,7 @@ void Color::DrawPicker(float x, float y, Color& c) {
 
 	c.RecalcHSV();
 	//std::cout << std::to_string(c.vec4()) << std::endl << std::to_string(c.hsv()) << std::endl;
+#endif
 }
 
 Vec4 Color::HueBaseCol(float hue) {
@@ -528,10 +530,10 @@ UI::Style UI::_defaultStyle = {};
 
 void UI::Init() {
 	_defaultStyle.fontSize = 12;
-	_defaultStyle.normal.Set(grey1(), black());
+	_defaultStyle.normal.Set(white(1, 0.3f), black());
 	_defaultStyle.mouseover.Set(white(), black());
 	_defaultStyle.highlight.Set(blue(), white());
-	_defaultStyle.press.Set(grey2(), black());
+	_defaultStyle.press.Set(white(1, 0.5f), black());
 }
 
 void UI_Trace(uint fpar, uint numb, uint* tar) {
@@ -1499,17 +1501,19 @@ void Debug::Message(string c, string s) {
 void Debug::Warning(string c, string s) {
 #ifndef IS_EDITOR
 	*stream << "[w]" << c << ": " << s << std::endl;
-#endif
+#else
 	std::cout << "[w]" << c << ": " << s << std::endl;
 	Editor::instance->_Warning(c, s);
+#endif
 }
 void Debug::Error(string c, string s) {
 #ifndef IS_EDITOR
 	*stream << "[e]" << c << ": " << s << std::endl;
-#endif
+#else
 	std::cout << "[e]" << c << " says: " << s << std::endl;
 	__debugbreak();
 	//abort();
+#endif
 }
 
 void Debug::DoDebugObjectTree(const std::vector<pSceneObject>& o, int i) {
@@ -1702,7 +1706,7 @@ std::vector<string> SerialPort::GetNames() {
 	auto ports = IO::GetRegistryKeyValues(hkey);
 	RegCloseKey(hkey);
 	std::vector<string> rets;
-	for (auto k : ports) rets.push_back(k.second);
+	for (auto& k : ports) rets.push_back(k.second);
 	return rets;
 }
 
@@ -1971,6 +1975,7 @@ void _StreamWrite(const void* val, std::ofstream* stream, int size) {
 }
 
 void _StreamWriteAsset(Editor* e, std::ofstream* stream, ASSETTYPE t, ASSETID i) {
+#ifdef IS_EDITOR
 	if (i < 0) {
 		(*stream) << (char)0;
 		return;
@@ -1981,6 +1986,7 @@ void _StreamWriteAsset(Editor* e, std::ofstream* stream, ASSETTYPE t, ASSETID i)
 	else
 		p = e->normalAssets[t][i];
 	(*stream) << p << char0;
+#endif
 }
 
 ASSETID _Strm2H(std::istream& strm) {
@@ -2000,6 +2006,7 @@ string _Strm2Asset(std::istream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int 
 }
 
 void Serialize(Editor* e, SceneObject* o, std::ofstream* stream) {
+#ifdef IS_EDITOR
 	/*
 	Object data
 	O[tx][ty][tz][rx][ry][rz][sx][sy][sz] (trs=float32)
@@ -2031,6 +2038,7 @@ void Serialize(Editor* e, SceneObject* o, std::ofstream* stream) {
 		Serialize(e, oo.get(), stream);
 	}
 	*stream << "o";
+#endif
 }
 
 void Deserialize(std::ifstream& stream, SceneObject* obj) {
@@ -2083,7 +2091,7 @@ void Deserialize(std::ifstream& stream, SceneObject* obj) {
 #ifdef IS_EDITOR
 				obj->AddComponent<SceneScript>(stream, obj);
 #else
-				obj->AddComponent(SceneScriptResolver::instance->Resolve(stream, obj));
+				obj->AddComponent(pComponent(SceneScriptResolver::instance->Resolve(stream, obj)));
 #endif
 				break;
 			default:

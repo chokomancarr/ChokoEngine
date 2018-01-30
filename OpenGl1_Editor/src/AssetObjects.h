@@ -73,7 +73,7 @@ class AssetManager {
 	friend class SceneObject;
 	friend class Material;
 	friend struct Editor_PlaySyncer;
-	template<typename T> friend T* _GetCache(ASSETTYPE t, ASSETID i, bool async);
+	template<typename T> friend T* _GetCache(ASSETTYPE t, ASSETID i, bool async = false);
 	friend string _Strm2Asset(std::istream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int max);
 protected:
 	static std::unordered_map<ASSETTYPE, std::vector<string>> names;
@@ -96,7 +96,7 @@ protected:
 	static AssetObject* GenCache(ASSETTYPE t, ASSETID i);
 };
 
-template<typename T> T* _GetCache(ASSETTYPE t, ASSETID i, bool async = false) {
+template<typename T> T* _GetCache(ASSETTYPE t, ASSETID i, bool async) {
 #ifdef IS_EDITOR
 	return static_cast<T*>(Editor::instance->GetCache(t, i, async));
 #else
@@ -194,7 +194,9 @@ public:
 	//void* Get(byte type, GLint id) { return values[type][id]; }
 
 	//removes macros, insert include files
+#ifdef IS_EDITOR
 	static bool Parse(std::ifstream* text, string path);
+#endif
 	static bool LoadShader(GLenum shaderType, string source, GLuint& shader, string* err = nullptr);
 
 	friend class Camera;
@@ -275,7 +277,9 @@ protected:
 
 	static void _UpdateTexCache(void*);
 
+#ifdef IS_EDITOR
 	void Save(string path);
+#endif
 	void ApplyGL(Mat4x4& _mv, Mat4x4& _p);
 	void ResetVals();
 
@@ -317,7 +321,10 @@ protected:
 	void CalcTangents();
 	void GenECache() override;
 
+#ifdef IS_EDITOR
 	static bool ParseBlend(Editor* e, string s);
+#endif
+
 	std::vector<std::vector<int>> _matTriangles;
 	//void Draw(Material* mat);
 	//void Load();
@@ -663,7 +670,9 @@ protected:
 	bool expanded; //editor only
 	string mainTex;
 
+#ifdef IS_EDITOR
 	void Save(string nm);
+#endif
 
 	CameraEffect(string s);
 	//CameraEffect(std::ifstream& strm, uint offset);

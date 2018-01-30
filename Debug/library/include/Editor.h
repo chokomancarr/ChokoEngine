@@ -1,18 +1,17 @@
 #pragma once
 
+#ifdef IS_EDITOR
+
+#include <Windows.h>
 #include "Defines.h"
 #include "Engine.h"
-
-using namespace ChokoEngine;
+#include "Xml.h"
 /*
 Editor functions
 */
 
-#include <string>
-#include <vector>
 #include <mutex>
 #include <memory>
-#include <unordered_map>
 
 #define EB_HEADER_SIZE 16
 #define EB_HEADER_PADDING 16
@@ -213,6 +212,10 @@ public:
 	void OnMousePress(int i) override;
 	void OnMouseScr(bool up) override;
 
+	static void DrawSceneObjectsOpaque(EB_Viewer* ebv, const std::vector<pSceneObject>& oo);
+	static void DrawSceneObjectsGizmos(EB_Viewer* ebv, const std::vector<pSceneObject>& oo);
+	static void DrawSceneObjectsTrans(EB_Viewer* ebv, const std::vector<pSceneObject>& oo);
+
 	static void _Grab(EditorBlock*), _Rotate(EditorBlock*), _Scale(EditorBlock*);
 	static void _X(EditorBlock*), _Y(EditorBlock*), _Z(EditorBlock*);
 
@@ -221,14 +224,15 @@ public:
 
 	static byte preAddType;
 	static void _AddObjectE(EditorBlock*), _AddObjectPr(EditorBlock*), _AddObjectBl(EditorBlock*), _AddObjectCam(EditorBlock*), _AddObjectAud(EditorBlock*);
-	static void _AddComScr(EditorBlock*), _AddComAud(EditorBlock*), _AddComRend(EditorBlock*), _AddComMesh(EditorBlock*);
+	static void _AddComScr(EditorBlock*), _AddComAud(EditorBlock*), _AddComAnim(EditorBlock*), _AddComRend(EditorBlock*), _AddComMesh(EditorBlock*);
 	
 	static void _DoAddObjectBl(EditorBlock* b, void* v);
 	static void _DoAddComScr(EditorBlock* b, void* v), _DoAddComRend(EditorBlock* b, void* v);
-	static void _D2AddComCam(EditorBlock*), _D2AddComMrd(EditorBlock*), _D2AddComLht(EditorBlock*), _D2AddComRfq(EditorBlock*), _D2AddComRdp(EditorBlock*), _D2AddComMft(EditorBlock*);
+	static void _D2AddComCam(EditorBlock*), _D2AddComMrd(EditorBlock*), _D2AddComAnm(EditorBlock*), _D2AddComInk(EditorBlock*), _D2AddComLht(EditorBlock*), _D2AddComRfq(EditorBlock*), _D2AddComRdp(EditorBlock*), _D2AddComMft(EditorBlock*);
 	
 	static void _AddObjAsI(EditorBlock*); //, _AddObjAsC(EditorBlock*), _AddObjAsP(EditorBlock*);
-	
+	static bool _AddObjAsCh(pSceneObject sc, const string& nm, std::vector<pSceneObject>& os, const string& bn);
+
 	static void _TooltipT(EditorBlock*), _TooltipR(EditorBlock*), _TooltipS(EditorBlock*);
 	static void _SelectAll(EditorBlock*), _ViewInvis(EditorBlock*), _ViewPersp(EditorBlock*);
 	static void _OrientG(EditorBlock*), _OrientL(EditorBlock*), _OrientV(EditorBlock*);
@@ -252,7 +256,7 @@ public:
 	string label;
 
 	bool lock = false;
-	SceneObject* lockedObj;
+	rSceneObject lockedObj = rSceneObject(true);
 	byte lockGlobal;
 	float previewMip;
 
@@ -263,11 +267,11 @@ public:
 
 	void OnMouseScr(bool up) override;
 
-	static bool DrawScalar(Editor* e, Vec4 v, float dh, string label, float& value);
-	static bool DrawVector2(Editor* e, Vec4 v, float dh, string label, Vec2& value);
-	static bool DrawVector3(Editor* e, Vec4 v, float dh, string label, Vec3& value);
-	static bool DrawVector4(Editor* e, Vec4 v, float dh, string label, Vec4& value);
-	static bool DrawVec4(Editor* e, Vec4 v, float dh, string label, Vec4& col);
+	static bool DrawScalar(Editor* e, Vec4 v, float dh, string label, float& value, bool* dirty);
+	static bool DrawVector2(Editor* e, Vec4 v, float dh, string label, Vec2& value, bool* dirty);
+	static bool DrawVector3(Editor* e, Vec4 v, float dh, string label, Vec3& value, bool* dirty);
+	static bool DrawVector4(Editor* e, Vec4 v, float dh, string label, Vec4& value, bool* dirty);
+	static bool DrawVec4(Editor* e, Vec4 v, float dh, string label, Vec4& col, bool* dirty);
 	static void DrawAsset(Editor* e, Vec4 v, float dh, string label, ASSETTYPE type);
 
 	static void DrawObj(Vec4 v, Editor* editor, EB_Inspector* b, SceneObject* o);
@@ -284,7 +288,7 @@ public:
 	float scale = 1;
 	Vec2 offset;
 
-	Animator* editingAnim;
+	Animation* editingAnim;
 	ASSETID _editingAnim;
 	uint selected;
 	bool selectingTransition;
@@ -315,7 +319,7 @@ protected:
 	void _InitDebugPrograms();
 	void DrawPreview(Vec4 v);
 	void _RenderLights(Vec4 v);
-	void _RenderSky(Mat4x4 mat), _DrawLights(std::vector<SceneObject*> oo, Mat4x4 ip);
+	void _RenderSky(Mat4x4 mat), _DrawLights(std::vector<pSceneObject> oo, Mat4x4 ip);
 
 	static void _ToggleBuffers(EditorBlock* v), _ToggleLumi(EditorBlock* v);
 
@@ -362,6 +366,40 @@ public:
 	string path;
 };
 
+#ifdef IS_EDITOR
+class UndoStack {
+public:
+	enum UNDO_TYPE {
+		UNDO_TYPE_NORMAL,
+		UNDO_TYPE_STRING,
+		UNDO_TYPE_ASSET
+	};
+	struct UndoObj {
+		UndoObj(void* loc, uint sz, uint nsz, UNDO_TYPE type = UNDO_TYPE_NORMAL, void* val = nullptr, bool* dirty = nullptr, string desc = "");
+		UndoObj(void* loc, void* val, uint sz, callbackFunc func, void* funcVal);
+		~UndoObj();
+
+		void* loc = 0, *val = 0;
+		uint sz, nsz;
+		string desc;
+		UNDO_TYPE type;
+		bool* dirty = 0;
+		callbackFunc func; //called after memcpy
+		void* funcVal = 0;
+
+		void Apply();
+	};
+
+	static void Init();
+	static void Add(UndoObj* obj);
+	static byte maxStack;
+	static void Undo(byte cnt = 1), Redo(byte cnt = 1);
+
+	static std::vector<UndoObj*> stack, rstack;
+	static byte esp;
+};
+#endif
+
 class BlockCombo;
 class xPossLerper;
 class yPossLerper;
@@ -403,7 +441,7 @@ struct Editor_PlaySyncer {
 			transform = offsetof(Transform, _offsets),
 			sceneobject = offsetof(SceneObject, _offsets);
 	} offsets;
-	std::vector<SceneObject*> syncedScene;
+	std::vector<pSceneObject> syncedScene;
 	uint syncedSceneSz;
 	uint pointerLoc;
 	int playW, playH;
@@ -414,12 +452,52 @@ struct Editor_PlaySyncer {
 	std::vector<uint> eCacheLocs, eCacheSzLocs;
 
 	void Update();
-	bool SyncScene(), DoSyncObj(const std::vector<uint>& locs, const uint sz, std::vector<SceneObject*>& objs);
+	bool SyncScene(), DoSyncObj(const std::vector<uint>& locs, const uint sz, std::vector<pSceneObject>& objs);
 	bool Connect(), Disconnect(), Terminate();
 	bool Resize(int w, int h), ReloadTex();
 	byte* pixels;
 	ulong pixelCount = 0, pixelCountO = 0;
 	GLuint texPointer;
+};
+
+enum POPUP_SELECT_TYPE {
+	POPUP_TYPE_OBJECT,
+	POPUP_TYPE_ASSET,
+	POPUP_TYPE_COMPONENT,
+	POPUP_TYPE_TEXTURE
+};
+
+class PopupSelector {
+public:
+	static bool focused, show;
+	static uint width, height;
+	static bool mouse0, mouse1, mouse2;
+	static byte mouse0State, mouse1State, mouse2State;
+	static Vec2 mousePos, mouseDownPos;
+	static Editor* editor;
+
+	static POPUP_SELECT_TYPE _type;
+
+	static rSceneObject* _browseTargetObj;
+
+	static ASSETTYPE assettype;
+	static int* _browseTarget;
+	static callbackFunc _browseCallback;
+	static void* _browseCallbackParam;
+
+	static bool drawIcons;
+	static float minIconSize;
+
+	static GLFWwindow* window;
+
+	static void Enable_Object(rSceneObject* target);
+	static void Enable_Asset(ASSETTYPE type, int* target, callbackFunc callback, void* param);
+
+	static void Init(), Draw(), Close();
+	static void Draw_Object(), Draw_Asset(), Draw_Component();
+	static bool Do_Draw_Object(const std::vector<pSceneObject>& objs, uint& off, uint inc);
+
+	static void Reshape(GLFWwindow* window, int w, int h);
 };
 
 class Editor {
@@ -540,7 +618,7 @@ public:
 
 	Scene* activeScene = nullptr;
 	bool sceneLoaded() { return activeScene != nullptr; }
-	SceneObject* selected;
+	rSceneObject selected = rSceneObject(true);
 	Mat4x4 selectedMvMatrix;
 	Vec4 selectedSpos;
 	bool selectGlobal = false;
@@ -577,13 +655,15 @@ public:
 	std::vector<string> headerAssets, cppAssets, blendAssets;
 	std::unordered_map<ASSETTYPE, std::vector<string>> normalAssets, internalAssets, proceduralAssets;
 	std::unordered_map <ASSETTYPE, std::pair<ASSETTYPE, std::vector<uint>>> derivedAssets;
-	std::unordered_map<ASSETTYPE, std::vector<AssetObject*>> normalAssetCaches, internalAssetCaches, proceduralAssetCaches;
+	std::unordered_map<ASSETTYPE, std::vector<pAssetObject>> normalAssetCaches, internalAssetCaches, proceduralAssetCaches;
 	std::unordered_map<ASSETTYPE, std::vector<std::pair<byte*, uint>>> normalAssetBuffers;
+	std::unordered_map<ASSETTYPE, std::vector<bool>> normalAssetMakings;
 	bool internalAssetsLoaded;
 
 	static void InitShaders();
 	void ResetAssetMap(), LoadInternalAssets();
 
+	void DrawObjectSelector(float x, float y, float w, float h, Vec4 col, float labelSize, Font* labelFont, rSceneObject* tar);
 	void DrawAssetSelector(float x, float y, float w, float h, Vec4 col, ASSETTYPE type, float labelSize, Font* labelFont, ASSETID* tar, callbackFunc func = nullptr, void* param = nullptr);
 	void DrawCompSelector(float x, float y, float w, float h, Vec4 col, float labelSize, Font* labelFont, CompRef* tar, callbackFunc func = nullptr, void* param = nullptr);
 	void DrawColorSelector(float x, float y, float w, float h, Vec4 col, float labelSize, Font* labelFont, Vec4* tar);
@@ -624,8 +704,8 @@ public:
 
 	void ReloadAssets(string path, bool recursive);
 	bool ParseAsset(string path);
-	AssetObject* GetCache(ASSETTYPE type, int id);
-	AssetObject* GenCache(ASSETTYPE type, int id);
+	AssetObject* GetCache(ASSETTYPE type, int id, bool async = false);
+	AssetObject* GenCache(ASSETTYPE type, int id, bool async = false);
 
 	static void Compile(Editor* e);
 	static void ShowPrefs(Editor* e);
@@ -637,6 +717,7 @@ public:
 	static void DoDeleteActive(EditorBlock* b);
 	static void Maximize(Editor* e);
 	static void TogglePlay(Editor* e);
+	static void Undo(Editor* e), Redo(Editor* e);
 
 	void DoCompile();
 
@@ -711,3 +792,18 @@ public:
 		}
 	}
 };
+
+#else
+
+#include "Engine.h"
+
+class Editor {
+public:
+	static Editor* instance;
+};
+class EditorBlock {};
+class EB_Inspector {};
+class EB_Browser_File {};
+class EB_Viewer {};
+
+#endif
