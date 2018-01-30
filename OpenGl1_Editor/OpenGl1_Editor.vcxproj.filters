@@ -54,13 +54,7 @@
     <ClCompile Include="src\Xml.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\MD.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\Animation.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Water.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\ChokoLait.cpp">
@@ -92,16 +86,10 @@
     <ClInclude Include="src\Xml.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\MD.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="hdr\hdr.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="png\lodepng.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Water.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\AssetObjects.h">

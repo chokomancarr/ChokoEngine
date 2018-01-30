@@ -1,5 +1,7 @@
 #pragma once
 #include "Engine.h"
+
+#ifdef PLATFORM_WIN
 #include <mmdeviceapi.h>
 #include <Audioclient.h>
 
@@ -16,11 +18,13 @@ extern const CLSID CLSID_MMDeviceEnumerator;
 extern const IID IID_IMMDeviceEnumerator;
 extern const IID IID_IAudioClient;
 extern const IID IID_IAudioRenderClient;
+#endif
 
 typedef bool(*audioRequestPacketCallback) (byte* data, uint count); //datasize = count*channels*samples
 
 class AudioEngine {
 public:
+#ifdef PLATFORM_WIN
 	static REFERENCE_TIME requestedSamples, actualSamples;
 	static IMMDeviceEnumerator *pEnumerator;
 	static IMMDevice *pDevice;
@@ -32,7 +36,8 @@ public:
 	static UINT32 numFramesPadding;
 	static BYTE *pData;
 	static DWORD flags;
-	
+#endif
+
 	static audioRequestPacketCallback callback;
 	static bool forcestop;
 	static std::thread* thread;

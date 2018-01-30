@@ -1,5 +1,6 @@
 #include "AudioEngine.h"
 
+#ifdef PLATFORM_WIN
 const CLSID CLSID_MMDeviceEnumerator = __uuidof(MMDeviceEnumerator);
 const IID IID_IMMDeviceEnumerator = __uuidof(IMMDeviceEnumerator);
 const IID IID_IAudioClient = __uuidof(IAudioClient);
@@ -17,12 +18,14 @@ UINT32 AudioEngine::numFramesAvailable;
 UINT32 AudioEngine::numFramesPadding;
 BYTE *AudioEngine::pData;
 DWORD AudioEngine::flags = 0;
+#endif
 
 audioRequestPacketCallback AudioEngine::callback = nullptr;
 bool AudioEngine::forcestop = false;
 std::thread* AudioEngine::thread;
 
 bool AudioEngine::Init() {
+#ifdef PLATFORM_WIN
 	HRESULT hr;
 	
 	CoInitializeEx(NULL, COINIT_MULTITHREADED);
@@ -80,8 +83,10 @@ bool AudioEngine::Init() {
 	// Calculate the actual duration of the allocated buffer.
 	actualSamples = REFTIMES_PER_SEC * bufferFrameCount / pwfx->nSamplesPerSec;
 
-	Debug::Error("AudioEngine", "WASAPI Initialized.");
+	Debug::Message("AudioEngine", "WASAPI Initialized.");
 	return true;
+#endif
+	return false;
 }
 
 void AudioEngine::Start(audioRequestPacketCallback callback) {
@@ -98,6 +103,7 @@ void AudioEngine::Stop() {
 
 void AudioEngine::_DoPlayStream()
 {
+#ifdef PLATFORM_WIN
 	while (!forcestop)
 	{
 		// Sleep for half the buffer duration.
@@ -121,4 +127,5 @@ void AudioEngine::_DoPlayStream()
 	Sleep((DWORD)(actualSamples / REFTIMES_PER_MILLISEC / 2));
 
 	pAudioClient->Stop();  // Stop playing.
+#endif
 }

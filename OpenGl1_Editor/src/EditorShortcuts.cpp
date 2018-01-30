@@ -1,6 +1,7 @@
+#ifdef IS_EDITOR
+
 #include "Editor.h"
 #include "Engine.h"
-#include <sstream>
 
 void EB_Browser::_AddAsset(EditorBlock* b) {
 	b->editor->RegisterMenu(b, "Add Asset", { "Script (Header)", "Script (Cpp)", "Shader", "Material", "Camera Effect" }, { &_DoAddAssetH, nullptr, &_DoAddAssetShad, &_DoAddAssetMat, &_DoAddAssetEff }, 0);
@@ -11,11 +12,11 @@ void EB_Browser::_DoAddAssetH(EditorBlock* b) {
 	int q = 1;
 	string p = eb->currentDir + "NewSceneScript.h";
 	while (IO::HasFile(p.c_str())) {
-		p = eb->currentDir + "NewSceneScript" + to_string(q++) + ".h";
+		p = eb->currentDir + "NewSceneScript" + std::to_string(q++) + ".h";
 	}
 	std::ofstream strm(p, std::ios::out | std::ios::trunc);
 	strm << "#include \"Engine.h\"\r\n\r\nclass ";
-	strm << "NewSceneScript" + to_string(q);
+	strm << "NewSceneScript" + std::to_string(q);
 	strm << " : public NewSceneScript{\r\n\tvoid Start() override {}\r\n\tvoid Update() override {}\r\n};";
 	strm.close();
 	eb->Refresh();
@@ -26,7 +27,7 @@ void EB_Browser::_DoAddAssetMat(EditorBlock* b) {
 	int q = 1;
 	string p = eb->currentDir + "newMaterial.material";
 	while (IO::HasFile(p.c_str())) {
-		p = eb->currentDir + "newMaterial" + to_string(q++) + ".material";
+		p = eb->currentDir + "newMaterial" + std::to_string(q++) + ".material";
 	}
 	Material m = Material();
 	m.Save(p);
@@ -42,7 +43,7 @@ void EB_Browser::_DoAddShadStd(EditorBlock* b) {
 	int q = 1;
 	string p = eb->currentDir + "NewShader.shade";
 	while (IO::HasFile(p.c_str())) {
-		p = eb->currentDir + "NewShader" + to_string(q++) + ".shade";
+		p = eb->currentDir + "NewShader" + std::to_string(q++) + ".shade";
 	}
 	std::ifstream tmp(eb->editor->dataPath + "\\template_StdShader.txt");
 	std::ofstream strm(p, std::ios::out | std::ios::trunc);
@@ -58,7 +59,7 @@ void EB_Browser::_DoAddShadEff(EditorBlock* b) {
 	int q = 1;
 	string p = eb->currentDir + "NewEffectShader.shade";
 	while (IO::HasFile(p.c_str())) {
-		p = eb->currentDir + "NewEffectShader" + to_string(q++) + ".shade";
+		p = eb->currentDir + "NewEffectShader" + std::to_string(q++) + ".shade";
 	}
 	std::ifstream tmp(eb->editor->dataPath + "\\template_EffShader.txt");
 	std::ofstream strm(p, std::ios::out | std::ios::trunc);
@@ -74,7 +75,7 @@ void EB_Browser::_DoAddAssetEff(EditorBlock* b) {
 	int q = 1;
 	string p = eb->currentDir + "newEffect.effect";
 	while (IO::HasFile(p.c_str())) {
-		p = eb->currentDir + "newEffect" + to_string(q++) + ".effect";
+		p = eb->currentDir + "newEffect" + std::to_string(q++) + ".effect";
 	}
 	CameraEffect m = CameraEffect(nullptr);
 	m.Save(p);
@@ -689,3 +690,5 @@ void Editor::DoOpenScene(EditorBlock* b, void* v) {
 	Scene::active = Editor::instance->activeScene;
 #endif
 }
+
+#endif

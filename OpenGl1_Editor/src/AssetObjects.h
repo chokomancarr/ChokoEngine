@@ -96,6 +96,14 @@ protected:
 	static AssetObject* GenCache(ASSETTYPE t, ASSETID i);
 };
 
+template<typename T> T* _GetCache(ASSETTYPE t, ASSETID i, bool async = false) {
+#ifdef IS_EDITOR
+	return static_cast<T*>(Editor::instance->GetCache(t, i, async));
+#else
+	return static_cast<T*>(AssetManager::GetCache(t, i));
+#endif
+}
+
 class DefaultResources { //loads binary created by DefaultResourcesBuild.exe
 public:
 	static void Init(string path);
@@ -222,8 +230,8 @@ public:
 	Shader* shader();
 	void shader(Shader* shad);
 	//values applied to program on drawing stage
-	std::unordered_map<SHADER_VARTYPE, std::unordered_map <GLint, void*>> vals;
-	std::unordered_map<SHADER_VARTYPE, std::vector<string>> valNames;
+	std::unordered_map<SHADER_VARTYPE, std::unordered_map <GLint, void*>, std::hash<byte>> vals;
+	std::unordered_map<SHADER_VARTYPE, std::vector<string>, std::hash<byte>> valNames;
 	//std::unordered_map<GLint, ShaderVariable> vals;
 	void SetBuffer(string name, IComputeBuffer* buffer);
 	void SetBuffer(GLint id, IComputeBuffer* buffer);
@@ -463,7 +471,7 @@ protected:
 #endif
 
 private:
-#if defined(FEATURE_AV_CODECS) || defined(IS_EDITOR) || defined(CHOKO_LAIT_BUILD)
+#if defined(FEATURE_AV_CODECS)
 	void _Init_ffmpeg(const string& path);
 #endif
 #if defined(PLATFORM_WIN)

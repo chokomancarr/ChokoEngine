@@ -291,12 +291,12 @@ void EB_Previewer::InitGBuffer() {
 	_InitGBuffer(&d_fbo, d_texs, &d_depthTex, previewWidth, previewHeight);
 	GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	if (Status != GL_FRAMEBUFFER_COMPLETE) {
-		Debug::Error("Previewer", "Fatal FB (MRT) error:" + to_string(Status));
+		Debug::Error("Previewer", "Fatal FB (MRT) error:" + std::to_string(Status));
 	}
 	_InitDummyBBuffer();
 	Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	if (Status != GL_FRAMEBUFFER_COMPLETE) {
-		Debug::Error("Previewer", "Fatal FB (back) error:" + to_string(Status));
+		Debug::Error("Previewer", "Fatal FB (back) error:" + std::to_string(Status));
 	}
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 	_InitDebugPrograms();
@@ -1369,7 +1369,7 @@ void ReflectionProbe::_DoUpdate() {
 
 CubeMap::CubeMap(ushort size, bool mips, GLenum type, byte dataSize, GLenum format, GLenum dataType) : size(size), AssetObject(ASSETTYPE_HDRI), loaded(false) {
 	if (size != 64 && size != 128 && size != 256 && size != 512 && size != 1024 && size != 2048) {
-		Debug::Error("Cubemap", "CubeMaps must be POT-sized between 64 and 2048! (" + to_string(size) + ")");
+		Debug::Error("Cubemap", "CubeMaps must be POT-sized between 64 and 2048! (" + std::to_string(size) + ")");
 		abort();
 	}
 	glGenTextures(1, &pointer);

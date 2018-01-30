@@ -59,8 +59,8 @@ char Get(std::istream& strm) {
 
 int main(int argc, char **argv)
 {
-	av_register_all();
-	VideoTexture vt("D:\\r.mp4");
+	//av_register_all();
+	//VideoTexture vt("D:\\r.mp4");
 	//AudioClip ac("D:\\best.mp3");
 
 	path = argv[0];
@@ -217,7 +217,7 @@ int main(int argc, char **argv)
 			PROCESS_MEMORY_COUNTERS pmc;
 			GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc));
 			SIZE_T virtualMemUsedByMe = pmc.WorkingSetSize;
-			string str("ChokoEngine (about " + to_string((uint)round(virtualMemUsedByMe / 1024 / 1024)) + "Mb used, " + to_string(fps) + "fps)");
+			string str("ChokoEngine (about " + std::to_string((uint)round(virtualMemUsedByMe / 1024 / 1024)) + "Mb used, " + std::to_string(fps) + "fps)");
 			glfwSetWindowTitle(window, &str[0]);
 			fps = 0;
 		}
@@ -264,7 +264,7 @@ void CheckShortcuts() {
 		}
 	}
 	else if (Input::KeyDown(Key_Enter) && editor->editorLayer == 4 && editor->buildEnd && editor->buildErrorPath != "") { //enter
-		string cmd = " " + editor->buildErrorPath + " -n" + to_string(editor->buildErrorLine);
+		string cmd = " " + editor->buildErrorPath + " -n" + std::to_string(editor->buildErrorLine);
 		ShellExecute(NULL, "open", "C:\\Program Files (x86)\\Notepad++\\Notepad++.exe", cmd.c_str(), NULL, SW_SHOW);
 	}
 }

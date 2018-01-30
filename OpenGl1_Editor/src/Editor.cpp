@@ -1,4 +1,6 @@
-﻿#include "Editor.h"
+﻿#ifdef IS_EDITOR
+
+#include "Editor.h"
 #include "Engine.h"
 #include <shlobj.h>
 #include <shlguid.h>
@@ -622,7 +624,7 @@ void EB_Browser::Refresh() {
 	files.clear();
 	IO::GetFolders(currentDir, &dirs);
 	files = IO::GetFilesE(editor, currentDir);
-	//editor->_Message("Browser", to_string(dirs.size()) + " folders and " + to_string(files.size()) + " files from " + currentDir);
+	//editor->_Message("Browser", std::to_string(dirs.size()) + " folders and " + std::to_string(files.size()) + " files from " + currentDir);
 	if (dirs.size() == 0) {
 		dirs.push_back(".");
 		dirs.push_back("..");
@@ -994,10 +996,10 @@ void EB_Viewer::Draw() {
 	}
 
 	if (editor->_showDebugInfo) {
-		UI::Label(v.x + 50, v.y + 30, 12, "z=" + to_string(rz) + " w = " + to_string(rw), editor->font, white());
-		UI::Label(v.x + 50, v.y + 55, 12, "fov=" + to_string(fov) + " scale=" + to_string(scale), editor->font, white());
+		UI::Label(v.x + 50, v.y + 30, 12, "z=" + std::to_string(rz) + " w = " + std::to_string(rw), editor->font, white());
+		UI::Label(v.x + 50, v.y + 55, 12, "fov=" + std::to_string(fov) + " scale=" + std::to_string(scale), editor->font, white());
 		//Vec4 r = invMatrix * Vec4(1, 0, 0, 0);
-		UI::Label(v.x + 50, v.y + 80, 12, "center=" + to_string(rotCenter), editor->font, white());
+		UI::Label(v.x + 50, v.y + 80, 12, "center=" + std::to_string(rotCenter), editor->font, white());
 	}
 }
 
@@ -1248,7 +1250,7 @@ void EBI_DrawAss_Tex(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 	}
 	UI::Label(v.r + 18, off + sz + 49, 12, "Aniso Level", editor->font, white());
 	Engine::DrawQuad(v.r + v.b * 0.3f, off + sz + 48, v.b * 0.1f - 1, 14, grey2());
-	UI::Label(v.r + v.b * 0.3f + 2, off + sz + 49, 12, to_string(tex->_aniso), editor->font, white());
+	UI::Label(v.r + v.b * 0.3f + 2, off + sz + 49, 12, std::to_string(tex->_aniso), editor->font, white());
 	tex->_aniso = (byte)round(Engine::DrawSliderFill(v.r + v.b * 0.4f, off + sz + 48, v.b*0.7f - 1, 14, 0, 10, (float)tex->_aniso, grey2(), white()));
 	off += sz + 63;
 }
@@ -1266,10 +1268,10 @@ void EBI_DrawAss_Mat(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 		assert(bbs != nullptr);
 		switch (mat->valOrders[q]) {
 		case SHADER_INT:
-			Engine::Button(v.r + v.b * 0.3f + 17, off, v.b*0.7f - 17, 16, grey1(), to_string(*(int*)bbs), 12, editor->font, white());
+			Engine::Button(v.r + v.b * 0.3f + 17, off, v.b*0.7f - 17, 16, grey1(), std::to_string(*(int*)bbs), 12, editor->font, white());
 			break;
 		case SHADER_FLOAT:
-			Engine::Button(v.r + v.b * 0.3f + 17, off, v.b*0.7f - 17, 16, grey1(), to_string(*(float*)bbs), 12, editor->font, white());
+			Engine::Button(v.r + v.b * 0.3f + 17, off, v.b*0.7f - 17, 16, grey1(), std::to_string(*(float*)bbs), 12, editor->font, white());
 			break;
 		case SHADER_SAMPLER:
 			ASSETID* id = &ASSETID(((MatVal_Tex*)bbs)->id);
@@ -1417,13 +1419,13 @@ void EB_Inspector::DrawGlobal(Vec4 v) {
 	if (editor->activeScene->settings.skyId > -1) {
 		UI::Label(v.r, v.g + off, 12, "Sky Strength", editor->font, white());
 		Engine::DrawQuad(v.r + v.b*0.3f, v.g + off, v.b*0.3f-1, 16, grey2());
-		UI::Label(v.r + v.b*0.3f, v.g + off, 12, to_string(editor->activeScene->settings.skyStrength), editor->font, white());
+		UI::Label(v.r + v.b*0.3f, v.g + off, 12, std::to_string(editor->activeScene->settings.skyStrength), editor->font, white());
 		editor->activeScene->settings.skyStrength = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + off, v.b*0.4f - 1, 16, 0, 3, editor->activeScene->settings.skyStrength, grey2(), white());
 	}
 	off += 17;
 	UI::Label(v.r, v.g + off, 12, "RSM Radius", editor->font, white());
 	Engine::DrawQuad(v.r + v.b*0.3f, v.g + off, v.b*0.3f - 1, 16, grey2());
-	UI::Label(v.r + v.b*0.3f, v.g + off, 12, to_string(editor->activeScene->settings.rsmRadius), editor->font, white());
+	UI::Label(v.r + v.b*0.3f, v.g + off, 12, std::to_string(editor->activeScene->settings.rsmRadius), editor->font, white());
 	editor->activeScene->settings.rsmRadius = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + off, v.b*0.4f - 1, 16, 0, 3, editor->activeScene->settings.rsmRadius, grey2(), white());
 }
 
@@ -1432,14 +1434,14 @@ bool EB_Inspector::DrawVector3(Editor* e, Vec4 v, float dh, string label, Vec3& 
 	bool changed = false, chg = false;
 	UI::Label(v.r, v.g + dh + EB_HEADER_SIZE, 12, label, e->font, white());
 	//Engine::EButton((e->editorLayer == 0), v.r + v.b*0.19f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, Vec4(0.4f, 0.2f, 0.2f, 1));
-	//UI::Label(v.r + v.b*0.19f + 2, v.g + dh + EB_HEADER_SIZE, 12, to_string(value.x), e->font, white());
-	auto res = UI::EditText(v.r + v.b*0.19f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, 12, Vec4(0.4f, 0.2f, 0.2f, 1), to_string(value.x), e->font, true, &chg, white(), hlCol(), white(), false);
+	//UI::Label(v.r + v.b*0.19f + 2, v.g + dh + EB_HEADER_SIZE, 12, std::to_string(value.x), e->font, white());
+	auto res = UI::EditText(v.r + v.b*0.19f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, 12, Vec4(0.4f, 0.2f, 0.2f, 1), std::to_string(value.x), e->font, true, &chg, white(), hlCol(), white(), false);
 	value.x = TryParse(res, value.x);
 	changed |= chg;
-	res = UI::EditText(v.r + v.b*0.46f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, 12, Vec4(0.2f, 0.4f, 0.2f, 1), to_string(value.y), e->font, true, &chg, white(), hlCol(), white(), false);
+	res = UI::EditText(v.r + v.b*0.46f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, 12, Vec4(0.2f, 0.4f, 0.2f, 1), std::to_string(value.y), e->font, true, &chg, white(), hlCol(), white(), false);
 	value.y = TryParse(res, value.y);
 	changed |= chg;
-	res = UI::EditText(v.r + v.b*0.73f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, 12, Vec4(0.2f, 0.2f, 0.4f, 1), to_string(value.z), e->font, true, &chg, white(), hlCol(), white(), false);
+	res = UI::EditText(v.r + v.b*0.73f, v.g + dh + EB_HEADER_SIZE, v.b*0.27f - 1, 16, 12, Vec4(0.2f, 0.2f, 0.4f, 1), std::to_string(value.z), e->font, true, &chg, white(), hlCol(), white(), false);
 	value.z = TryParse(res, value.z);
 	changed |= chg;
 #ifdef IS_EDITOR
@@ -1562,7 +1564,7 @@ void EB_AnimEditor::Draw() {
 		}
 	}
 
-	UI::Label(v.r + 5, v.g + v.a - 16, 12, to_string(scl), editor->font);
+	UI::Label(v.r + 5, v.g + v.a - 16, 12, std::to_string(scl), editor->font);
 	Engine::EndStencil();
 }
 
@@ -1610,7 +1612,7 @@ void EB_Previewer::Draw() {
 	Vec4 v = Vec4(Display::width*editor->xPoss[x1], Display::height*editor->yPoss[y1], Display::width*editor->xPoss[x2], Display::height*editor->yPoss[y2]);
 	CalcV(v);
 	if (maximize) v = Vec4(0, 0, Display::width, Display::height);
-	DrawHeaders(editor, this, &v, "Previewer (" + to_string(editor->playSyncer.playW) + "x" + to_string(editor->playSyncer.playH) + ")");
+	DrawHeaders(editor, this, &v, "Previewer (" + std::to_string(editor->playSyncer.playW) + "x" + std::to_string(editor->playSyncer.playH) + ")");
 
 	if (viewer == nullptr) FindEditor();
 
@@ -1688,7 +1690,7 @@ void EB_Previewer::Draw() {
 			}
 			break;
 		case Editor_PlaySyncer::EPS_Crashed:
-			UI::Label(v.r + v.b*0.5f, v.g + v.a*0.5f, 12, "Crashed! Exit Code: " + to_string(editor->playSyncer.exitCode), editor->font, red());
+			UI::Label(v.r + v.b*0.5f, v.g + v.a*0.5f, 12, "Crashed! Exit Code: " + std::to_string(editor->playSyncer.exitCode), editor->font, red());
 			if (Engine::Button(v.r + v.b*0.4f, v.g + v.a*0.5f + 12, v.b*0.2f, 18, grey2(), "Close", 12, editor->font, white(), true) == MOUSE_RELEASE) {
 				editor->playSyncer.Terminate();
 			}
@@ -1921,7 +1923,7 @@ bool EPS_RWMem(bool write, Editor_PlaySyncer* syncer, T* val, uint loc, ulong sz
 	else ok = !!ReadProcessMemory(syncer->pInfo.hProcess, (LPVOID)loc, val, sz, &c);
 	if (!ok || c != sz) {
 		syncer->status = Editor_PlaySyncer::EPS_RWFailure;
-		Debug::Error("RWMem", "Unable to " + (string)(write? "write " : "read ") + to_string(sz) + " bytes to " + to_string(loc) + "! (" + to_string(c) + " bytes succeeded)");
+		Debug::Error("RWMem", "Unable to " + (string)(write? "write " : "read ") + std::to_string(sz) + " bytes to " + std::to_string(loc) + "! (" + std::to_string(c) + " bytes succeeded)");
 		return false;
 	}
 	else return true;
@@ -1973,7 +1975,7 @@ void Editor_PlaySyncer::Update() {
 				}
 				DeleteFile(&wl[0]);
 
-				Debug::Message("Player", "reading info struct at " + to_string(pointerLoc));
+				Debug::Message("Player", "reading info struct at " + std::to_string(pointerLoc));
 				if (!EPS_RWMem(false, this, &pointers, pointerLoc)) return;
 				Debug::Message("Player", "writing screen size to " + std::to_string((uint)pointers.screenSizeLoc));
 				uint sz = (playH << 16) + playW;
@@ -1986,7 +1988,7 @@ void Editor_PlaySyncer::Update() {
 					auto as = Editor::instance->normalAssetCaches[ids.first][ids.second];
 					if (as && as->_eCache) {
 						if (!EPS_RWMem(true, this, &as->_eCacheSz, eCacheSzLocs[an])) return;
-						std::cout << "(sz)wrote " << (int)ids.first << "." << ids.second << ": " << as->_eCacheSz << "B to " << to_string(eCacheSzLocs[an]) << std::endl;
+						std::cout << "(sz)wrote " << (int)ids.first << "." << ids.second << ": " << as->_eCacheSz << "B to " << std::to_string(eCacheSzLocs[an]) << std::endl;
 					}
 					an++;
 				}
@@ -2072,7 +2074,7 @@ void Editor_PlaySyncer::Update() {
 					glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, playW, playH, GL_RGB, GL_UNSIGNED_BYTE, pixels);
 					err = glGetError();
 					if (err != 0) {
-						Debug::Warning("PlayMode", "Writing pixels failed with code " + to_string(err) + "!");
+						Debug::Warning("PlayMode", "Writing pixels failed with code " + std::to_string(err) + "!");
 						//status = EPS_RWFailure;
 					}
 					glBindTexture(GL_TEXTURE_2D, 0);
@@ -2383,7 +2385,7 @@ void Editor::ReadPrefs() {
 		char c;
 		strm >> c;
 		if ((byte)c > 1) {
-			_Error("Editor", "Strange byte in prefs file! " + to_string(strm.tellg()));
+			_Error("Editor", "Strange byte in prefs file! " + std::to_string(strm.tellg()));
 			return;
 		}
 		includedScenesUse.push_back(c == 1);
@@ -2392,7 +2394,7 @@ void Editor::ReadPrefs() {
 	}
 	_Strm2Val(strm, n);
 	if (n != 255) {
-		_Error("Editor", "Separator byte missing in prefs file! " + to_string(strm.tellg()));
+		_Error("Editor", "Separator byte missing in prefs file! " + std::to_string(strm.tellg()));
 		return;
 	}
 	_Strm2Val(strm, n);
@@ -2654,7 +2656,7 @@ void Editor::GenerateScriptResolver() {
 	//*
 	h += "\n\tstatic SceneScript ";
 	for (int a = 0, b = headerAssets.size(); a < b; a++) {
-		h += "*_Inst" + to_string(a) + "()";
+		h += "*_Inst" + std::to_string(a) + "()";
 		if (a == b - 1)
 			h += ";\n";
 		else
@@ -2663,7 +2665,7 @@ void Editor::GenerateScriptResolver() {
 	
 	h += "\n\tstatic void ";
 	for (int a = 0, b = headerAssets.size(); a < b; a++) {
-		h += "_Ass" + to_string(a) + "(SceneScript* sscr, std::ifstream& strm)";
+		h += "_Ass" + std::to_string(a) + "(SceneScript* sscr, std::ifstream& strm)";
 		if (a == b - 1)
 			h += ";\n";
 		else
@@ -2681,14 +2683,14 @@ void Editor::GenerateScriptResolver() {
 		string ha = headerAssets[a].substr(flo);
 		s += "#include \"..\\Assets\\" + headerAssets[a] + "\"\n";
 		string ss = ha.substr(0, ha.size() - 2);
-		s += "SceneScript* SceneScriptResolver::_Inst" + to_string(a) + "() { return new " + ss + "(); }\n\n";
+		s += "SceneScript* SceneScriptResolver::_Inst" + std::to_string(a) + "() { return new " + ss + "(); }\n\n";
 	}
 	//*/
 	s += "\n\nusing namespace std;\r\nSceneScriptResolver* SceneScriptResolver::instance = nullptr;\nSceneScriptResolver::SceneScriptResolver() {\n\tinstance = this;\n";
 	for (int a = 0, b = headerAssets.size(); a < b; a++) {
 		s += "\tnames.push_back(R\"(" + headerAssets[a] + ")\");\n";
-		s += "\tmap.push_back(&_Inst" + to_string(a) + ");\n";
-		s += "\tass.push_back(&_Ass" + to_string(a) + ");\n";
+		s += "\tmap.push_back(&_Inst" + std::to_string(a) + ");\n";
+		s += "\tass.push_back(&_Ass" + std::to_string(a) + ");\n";
 	}
 	s += "}\n\n";
 	s += "SceneScript* SceneScriptResolver::Resolve(std::ifstream& strm) {\n\tchar* c = new char[100];\n\tstrm.getline(c, 100, 0);\n\tstring s(c);\n\tdelete[](c);";
@@ -2724,7 +2726,7 @@ void Editor::GenerateScriptValuesReader(string& s) {
 		string ha = headerAssets[a].substr(flo);
 		ha = ha.substr(0, ha.size() - 2);
 		
-		s += "void SceneScriptResolver::_Ass" + to_string(a) + " (SceneScript* sscr, std::ifstream& strm) {\n\t" + ha + "* scr = (" + ha  + "*)sscr;\n" + tmpl;
+		s += "void SceneScriptResolver::_Ass" + std::to_string(a) + " (SceneScript* sscr, std::ifstream& strm) {\n\t" + ha + "* scr = (" + ha  + "*)sscr;\n" + tmpl;
 		std::ifstream mstrm(projectFolder + "Assets\\" + headerAssets[a] + ".meta", std::ios::in | std::ios::binary);
 		if (!mstrm.is_open()) {
 			_Error("Script Component", "Cannot read meta file!");
@@ -2925,7 +2927,7 @@ dh = 1.0f / Display::height;
 					canPress = menuFuncSingle != nullptr;
 				else
 					canPress = menuFuncs[r] != nullptr;
-				if (Engine::Button(popupPos.x, popupPos.y + off, 200, 15, white(1, Input::KeyHold(InputKey(Key_1 + r)) ? 0.3f : 0.7f), "(" + to_string(r + 1) + ") " + menuNames[r], 12, font, canPress ? black() : red(1, 0.6f)) == MOUSE_RELEASE || Input::KeyUp(InputKey(Key_1 + r))) {
+				if (Engine::Button(popupPos.x, popupPos.y + off, 200, 15, white(1, Input::KeyHold(InputKey(Key_1 + r)) ? 0.3f : 0.7f), "(" + std::to_string(r + 1) + ") " + menuNames[r], 12, font, canPress ? black() : red(1, 0.6f)) == MOUSE_RELEASE || Input::KeyUp(InputKey(Key_1 + r))) {
 					editorLayer = 0;
 					if (menuFuncIsSingle) {
 						if (canPress) {
@@ -3051,14 +3053,14 @@ dh = 1.0f / Display::height;
 				Engine::Button(Display::width*0.1f + 702, Display::height*0.1f + offy + 25, 16, 16, tex_buttonX, white(0.8f), white(), white(0.4f));
 
 				UI::Label(Display::width*0.1f + 10, Display::height*0.1f + offy + 48, 12, "Background Brightness", font, white());
-				Engine::Button(Display::width*0.1f + 200, Display::height*0.1f + offy + 46, 70, 16, grey2(), to_string(backgroundAlpha), 12, font, white());
+				Engine::Button(Display::width*0.1f + 200, Display::height*0.1f + offy + 46, 70, 16, grey2(), std::to_string(backgroundAlpha), 12, font, white());
 				backgroundAlpha = (byte)Engine::DrawSliderFill(Display::width*0.1f + 271, Display::height*0.1f + offy + 46, 200, 16, 0, 100, backgroundAlpha, grey2(), white());
 			}
 
 			offy = 190;
 			UI::Label(Display::width*0.1f + 10, Display::height*0.1f + offy, 21, "Build settings", font, white());
 			UI::Label(Display::width*0.1f + 10, Display::height*0.1f + offy + 28, 12, "Data bundle size (x100Mb)", font, white());
-			Engine::Button(Display::width*0.1f + 200, Display::height*0.1f + offy + 25, 70, 16, grey2(), to_string(_assetDataSize), 12, font, white());
+			Engine::Button(Display::width*0.1f + 200, Display::height*0.1f + offy + 25, 70, 16, grey2(), std::to_string(_assetDataSize), 12, font, white());
 			_cleanOnBuild = Engine::Toggle(Display::width*0.1f + 12, Display::height*0.1f + offy + 46, 14, tex_checkbox, _cleanOnBuild, white(), ORIENT_HORIZONTAL);
 			UI::Label(Display::width*0.1f + 30, Display::height*0.1f + offy + 48, 12, "Remove visual studio files on build", font, white());
 		}
@@ -3078,7 +3080,7 @@ dh = 1.0f / Display::height;
 			UI::Label(Display::width*0.2f + 10, Display::height*0.2f + 10, 21, "Build settings", font, white());
 
 			uint sz = includedScenes.size();
-			UI::Label(Display::width*0.2f + 15, Display::height*0.2f + 35, 12, "Included scenes: " + to_string(sz), font, white());
+			UI::Label(Display::width*0.2f + 15, Display::height*0.2f + 35, 12, "Included scenes: " + std::to_string(sz), font, white());
 			Engine::DrawQuad(Display::width*0.2f + 12, Display::height*0.2f + 50, Display::width*0.3f, 306, white(0.05f));
 			for (uint a = 0; a < sz; a++) {
 				includedScenesUse[a] = Engine::Toggle(Display::width*0.2f + 14, Display::height*0.2f + 51 + a*15, 14, tex_checkbox, includedScenesUse[a], white(), ORIENT_HORIZONTAL);
@@ -3603,7 +3605,7 @@ bool Editor::MergeAssets_(Editor* e) {
 				file << as2 + ".meta" << char0;
 				break;
 			default:
-				Debug::Error("AssetMerger", "No type defined for " + to_string(as.first) + "!");
+				Debug::Error("AssetMerger", "No type defined for " + std::to_string(as.first) + "!");
 				return false;
 			}
 			file << as2 << (char)0;
@@ -3704,7 +3706,7 @@ bool Editor::MergeAssets(Editor* e) {
 	_StreamWrite(&q, &file, 2);
 
 	byte incre = 1;
-	string nm = e->projectFolder + "Release\\data" + to_string(incre);
+	string nm = e->projectFolder + "Release\\data" + std::to_string(incre);
 	e->AddBuildLog(e, "Writing to " + nm);
 	std::ofstream file2(nm.c_str(), std::ios::out | std::ios::binary | std::ios::trunc); 
 	if (!file2.is_open()) {
@@ -3716,7 +3718,7 @@ bool Editor::MergeAssets(Editor* e) {
 		if (it.second.size() > 0) {
 			ushort i = 0;
 			for (string s : it.second) {
-				e->buildLabel = "Build: merging assets... " + s + "(" + to_string(xxx + 1) + "/" + to_string(xx) + ") ";
+				e->buildLabel = "Build: merging assets... " + s + "(" + std::to_string(xxx + 1) + "/" + std::to_string(xx) + ") ";
 				string nmm;
 				if (it.first == ASSETTYPE_MESH)
 					nmm = e->projectFolder + "Assets\\" + s + ".mesh.meta";
@@ -3749,7 +3751,7 @@ bool Editor::MergeAssets(Editor* e) {
 				if (pos2 > e->_assetDataSize * uint(10000000)) {
 					//file2 << etx;
 					file2.close();
-					nm = e->projectFolder + "Release\\data" + to_string(++incre);
+					nm = e->projectFolder + "Release\\data" + std::to_string(++incre);
 					e->AddBuildLog(e, "Writing to " + nm);
 					file2.open(nm.c_str(), std::ios::out | std::ios::binary | std::ios::trunc);
 					if (!file2.is_open()) {
@@ -3848,7 +3850,7 @@ bool DoMsBuild(Editor* e) {
 
 			//DWORD ii;
 			//GetExitCodeProcess(processInfo.hProcess, &ii);
-			//e->AddBuildLog("Compile finished with code " + to_string(ii) + ".");
+			//e->AddBuildLog("Compile finished with code " + std::to_string(ii) + ".");
 			return (!failed);
 		}
 		else {
@@ -4004,3 +4006,11 @@ void BlockCombo::Draw() {
 
 	}
 }
+
+#else
+
+#include "Editor.h"
+
+Editor* Editor::instance = nullptr;
+
+#endif

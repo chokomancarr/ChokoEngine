@@ -222,7 +222,7 @@ void Camera::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 	Camera* cam = (Camera*)c;
 	if (DrawComponentHeader(e, v, pos, this)) {
 		UI::Label(v.r + 2, v.g + pos + 17, 12, "Field of view", e->font, white());
-		cam->fov = TryParse(UI::EditText(v.r + v.b * 0.3f, v.g + pos + 17, v.b * 0.3f - 1, 16, 12, grey1(), to_string(cam->fov), e->font, true, nullptr, white()), cam->fov);
+		cam->fov = TryParse(UI::EditText(v.r + v.b * 0.3f, v.g + pos + 17, v.b * 0.3f - 1, 16, 12, grey1(), std::to_string(cam->fov), e->font, true, nullptr, white()), cam->fov);
 		cam->fov = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos + 17, v.b * 0.4f-1, 16, 0.1f, 179.9f, cam->fov, grey1(), white());
 		UI::Label(v.r + 2, v.g + pos + 35, 12, "Frustrum", e->font, white());
 		UI::Label(v.r + 4, v.g + pos + 47, 12, "X", e->font, white());
@@ -246,7 +246,7 @@ void Camera::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 17, v.b*0.7f, 16, grey1(), ASSETTYPE_TEXTURE_REND, 12, e->font, &_tarRT, nullptr, this);
 		pos += 34;
 		uint ess = effects.size();
-		UI::Label(v.r + 2, v.g + pos, 12, "Effects: " + to_string(ess), e->font, white());
+		UI::Label(v.r + 2, v.g + pos, 12, "Effects: " + std::to_string(ess), e->font, white());
 		pos += 17;
 		Engine::DrawQuad(v.r + 2, v.g + pos, v.b - 4, 17 * ess + 2.0f, grey1()*0.5f);
 		int pendingDel = -1;
@@ -428,10 +428,10 @@ void MeshRenderer::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 			pos += 34;
 		}
 		else {
-			UI::Label(v.r + 2, v.g + pos + 18, 12, "Materials: " + to_string(mft->mesh->materialCount), e->font, white());
+			UI::Label(v.r + 2, v.g + pos + 18, 12, "Materials: " + std::to_string(mft->mesh->materialCount), e->font, white());
 			pos += 35;
 			for (uint a = 0; a < mft->mesh->materialCount; a++) {
-				UI::Label(v.r + 2, v.g + pos , 12, "Material " + to_string(a), e->font, white());
+				UI::Label(v.r + 2, v.g + pos , 12, "Material " + std::to_string(a), e->font, white());
 				e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos, v.b*0.7f, 16, grey1(), ASSETTYPE_MATERIAL, 12, e->font, &_materials[a], & _UpdateMat, this);
 				pos += 17;
 				if (!materials[a])
@@ -456,11 +456,11 @@ void MeshRenderer::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 					void* bbs = materials[a]->vals[materials[a]->valOrders[q]][materials[a]->valOrderGLIds[q]];
 					switch (materials[a]->valOrders[q]) {
 					case SHADER_INT:
-						*(int*)bbs = TryParse(UI::EditText(v.r + v.b * 0.3f + 22, v.g + pos, v.b*0.3f, 16, 12, grey1(), to_string(*(int*)bbs), e->font, true, nullptr, white()), *(int*)bbs);
+						*(int*)bbs = TryParse(UI::EditText(v.r + v.b * 0.3f + 22, v.g + pos, v.b*0.3f, 16, 12, grey1(), std::to_string(*(int*)bbs), e->font, true, nullptr, white()), *(int*)bbs);
 						*(int*)bbs = (int)round(Engine::DrawSliderFill(v.r + v.b*0.6f + 23, v.g + pos, v.b*0.4f - 19, 16, 0, 1, (float)(*(int*)bbs), grey2(), white()));
 						break;
 					case SHADER_FLOAT:
-						*(float*)bbs = TryParse(UI::EditText(v.r + v.b * 0.3f + 22, v.g + pos, v.b*0.3f, 16, 12, grey1(), to_string(*(float*)bbs), e->font, true, nullptr, white()), *(float*)bbs);
+						*(float*)bbs = TryParse(UI::EditText(v.r + v.b * 0.3f + 22, v.g + pos, v.b*0.3f, 16, 12, grey1(), std::to_string(*(float*)bbs), e->font, true, nullptr, white()), *(float*)bbs);
 						*(float*)bbs = Engine::DrawSliderFill(v.r + v.b*0.6f + 23, v.g + pos, v.b*0.4f - 19, 16, 0, 1, *(float*)bbs, grey2(), white());
 						break;
 					case SHADER_SAMPLER:
@@ -615,7 +615,7 @@ void SkinnedMeshRenderer::InitWeights() {
 	skinDispatchGroups = (uint)ceilf(((float)_mesh->vertexCount) / SKINNED_THREADS_PER_GROUP);
 
 	if (!!noweights.size()) 
-		Debug::Warning("SMR", to_string(noweights.size()) + " vertices in \"" + _mesh->name + "\" have no weights assigned!");
+		Debug::Warning("SMR", std::to_string(noweights.size()) + " vertices in \"" + _mesh->name + "\" have no weights assigned!");
 }
 
 void SkinnedMeshRenderer::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
@@ -632,10 +632,10 @@ void SkinnedMeshRenderer::DrawInspector(Editor* e, Component* c, Vec4 v, uint& p
 			pos += 34;
 		}
 		else {
-			UI::Label(v.r + 2, v.g + pos, 12, "Materials: " + to_string(_mesh->materialCount), e->font, white());
+			UI::Label(v.r + 2, v.g + pos, 12, "Materials: " + std::to_string(_mesh->materialCount), e->font, white());
 			pos += 17;
 			for (uint a = 0; a < _mesh->materialCount; a++) {
-				UI::Label(v.r + 2, v.g + pos, 12, "Material " + to_string(a), e->font, white());
+				UI::Label(v.r + 2, v.g + pos, 12, "Material " + std::to_string(a), e->font, white());
 				e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos, v.b*0.7f, 16, grey1(), ASSETTYPE_MATERIAL, 12, e->font, &_materials[a], &_UpdateMat, this);
 				pos += 17;
 				if (!materials[a])
@@ -660,11 +660,11 @@ void SkinnedMeshRenderer::DrawInspector(Editor* e, Component* c, Vec4 v, uint& p
 					void* bbs = materials[a]->vals[materials[a]->valOrders[q]][materials[a]->valOrderGLIds[q]];
 					switch (materials[a]->valOrders[q]) {
 					case SHADER_INT:
-						*(int*)bbs = TryParse(UI::EditText(v.r + v.b * 0.3f + 22, v.g + pos, v.b*0.3f, 16, 12, grey1(), to_string(*(int*)bbs), e->font, true, nullptr, white()), *(int*)bbs);
+						*(int*)bbs = TryParse(UI::EditText(v.r + v.b * 0.3f + 22, v.g + pos, v.b*0.3f, 16, 12, grey1(), std::to_string(*(int*)bbs), e->font, true, nullptr, white()), *(int*)bbs);
 						*(int*)bbs = (int)round(Engine::DrawSliderFill(v.r + v.b*0.6f + 23, v.g + pos, v.b*0.4f - 19, 16, 0, 1, (float)(*(int*)bbs), grey2(), white()));
 						break;
 					case SHADER_FLOAT:
-						*(float*)bbs = TryParse(UI::EditText(v.r + v.b * 0.3f + 22, v.g + pos, v.b*0.3f, 16, 12, grey1(), to_string(*(float*)bbs), e->font, true, nullptr, white()), *(float*)bbs);
+						*(float*)bbs = TryParse(UI::EditText(v.r + v.b * 0.3f + 22, v.g + pos, v.b*0.3f, 16, 12, grey1(), std::to_string(*(float*)bbs), e->font, true, nullptr, white()), *(float*)bbs);
 						*(float*)bbs = Engine::DrawSliderFill(v.r + v.b*0.6f + 23, v.g + pos, v.b*0.4f - 19, 16, 0, 1, *(float*)bbs, grey2(), white());
 						break;
 					case SHADER_SAMPLER:
@@ -900,7 +900,7 @@ void Light::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 
 		UI::Label(v.r + 2, v.g + pos + 17, 12, "Intensity", e->font, white());
 		Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos + 17, v.b * 0.3f - 1, 16, grey1());
-		UI::Label(v.r + v.b * 0.3f + 2, v.g + pos + 17, 12, to_string(intensity), e->font, white());
+		UI::Label(v.r + v.b * 0.3f + 2, v.g + pos + 17, 12, std::to_string(intensity), e->font, white());
 		intensity = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos + 17, v.b * 0.4f - 1, 16, 0, 20, intensity, grey1(), white());
 		pos += 34;
 		UI::Label(v.r + 2, v.g + pos, 12, "Color", e->font, white());
@@ -911,17 +911,17 @@ void Light::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 		case LIGHTTYPE_POINT:
 			UI::Label(v.r + 2, v.g + pos, 12, "core radius", e->font, white());
 			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-			UI::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, to_string(minDist), e->font, white());
+			UI::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, std::to_string(minDist), e->font, white());
 			minDist = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, maxDist, minDist, grey1(), white());
 			pos += 17;
 			UI::Label(v.r + 2, v.g + pos, 12, "distance", e->font, white());
 			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-			UI::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, to_string(maxDist), e->font, white());
+			UI::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, std::to_string(maxDist), e->font, white());
 			maxDist = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 20, maxDist, grey1(), white());
 			pos += 17;
 			UI::Label(v.r + 2, v.g + pos, 12, "falloff", e->font, white());
 			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-			UI::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, to_string(falloff), e->font, white());
+			UI::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, std::to_string(falloff), e->font, white());
 			falloff = (LIGHT_FALLOFF)((int)round(Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 20, (float)falloff, grey1(), white())));
 			pos += 17;
 			break;
@@ -931,17 +931,17 @@ void Light::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 		case LIGHTTYPE_SPOT:
 			UI::Label(v.r + 2, v.g + pos, 12, "angle", e->font, white());
 			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-			UI::Label(v.r + v.b * 0.3f, v.g + pos + 2, 12, to_string(angle), e->font, white());
+			UI::Label(v.r + v.b * 0.3f, v.g + pos + 2, 12, std::to_string(angle), e->font, white());
 			angle = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 180, angle, grey1(), white());
 			pos += 17;
 			UI::Label(v.r + 2, v.g + pos, 12, "start distance", e->font, white());
 			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-			UI::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, to_string(minDist), e->font, white());
+			UI::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, std::to_string(minDist), e->font, white());
 			minDist = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0.0001f, maxDist, minDist, grey1(), white());
 			pos += 17;
 			UI::Label(v.r + 2, v.g + pos, 12, "end distance", e->font, white());
 			Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-			UI::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, to_string(maxDist), e->font, white());
+			UI::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, std::to_string(maxDist), e->font, white());
 			maxDist = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0.0002f, 50, maxDist, grey1(), white());
 			pos += 17;
 			break;
@@ -951,7 +951,7 @@ void Light::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 		pos += 17;
 		UI::Label(v.r + 2, v.g + pos, 12, "cookie strength", e->font, white());
 		Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-		UI::Label(v.r + v.b * 0.3f, v.g + pos + 2, 12, to_string(cookieStrength), e->font, white());
+		UI::Label(v.r + v.b * 0.3f, v.g + pos + 2, 12, std::to_string(cookieStrength), e->font, white());
 		cookieStrength = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 1, cookieStrength, grey1(), white());
 		pos += 17;
 		UI::Label(v.r + 2, v.g + pos, 12, "square shape", e->font, white());
@@ -966,12 +966,12 @@ void Light::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 			if (drawShadow) {
 				UI::Label(v.r + 2, v.g + pos, 12, "shadow bias", e->font, white());
 				Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-				UI::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, to_string(shadowBias), e->font, white());
+				UI::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, std::to_string(shadowBias), e->font, white());
 				shadowBias = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 0.02f, shadowBias, grey1(), white());
 				pos += 17;
 				UI::Label(v.r + 2, v.g + pos, 12, "shadow strength", e->font, white());
 				Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-				UI::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, to_string(shadowStrength), e->font, white());
+				UI::Label(v.r + v.b * 0.3f + 2, v.g + pos, 12, std::to_string(shadowStrength), e->font, white());
 				shadowStrength = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 1, shadowStrength, grey1(), white());
 				pos += 17;
 
@@ -981,12 +981,12 @@ void Light::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 				if (contactShadows) {
 					UI::Label(v.r + 2, v.g + pos, 12, "  samples", e->font, white());
 					Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-					UI::Label(v.r + v.b * 0.3f, v.g + pos + 2, 12, to_string(contactShadowSamples), e->font, white());
+					UI::Label(v.r + v.b * 0.3f, v.g + pos + 2, 12, std::to_string(contactShadowSamples), e->font, white());
 					contactShadowSamples = (uint)Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 5, 50, (float)contactShadowSamples, grey1(), white());
 					pos += 17;
 					UI::Label(v.r + 2, v.g + pos, 12, "  distance", e->font, white());
 					Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos, v.b * 0.3f - 1, 16, grey1());
-					UI::Label(v.r + v.b * 0.3f, v.g + pos + 2, 12, to_string(contactShadowDistance), e->font, white());
+					UI::Label(v.r + v.b * 0.3f, v.g + pos + 2, 12, std::to_string(contactShadowDistance), e->font, white());
 					contactShadowDistance = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos, v.b * 0.4f - 1, 16, 0, 1, contactShadowDistance, grey1(), white());
 					pos += 17;
 				}
@@ -1084,14 +1084,14 @@ void ReflectiveQuad::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 		}
 		UI::Label(v.r + 2, v.g + pos + 17, 12, "Intensity", e->font, white());
 		Engine::DrawQuad(v.r + v.b * 0.3f, v.g + pos + 17, v.b * 0.3f - 1, 16, grey1());
-		UI::Label(v.r + v.b * 0.3f + 2, v.g + pos + 17, 12, to_string(intensity), e->font, white());
+		UI::Label(v.r + v.b * 0.3f + 2, v.g + pos + 17, 12, std::to_string(intensity), e->font, white());
 		intensity = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + pos + 17, v.b * 0.4f - 1, 16, 0, 5, intensity, grey1(), white());
 		pos += 34;
 		UI::Label(v.r + 2, v.g + pos, 12, "Size", e->font, white());
 		Engine::EButton((e->editorLayer == 0), v.r + v.b*0.3f, v.g + pos, v.b*0.35f - 1, 16, Vec4(0.4f, 0.2f, 0.2f, 1));
-		UI::Label(v.r + v.b*0.33f, v.g + pos, 12, to_string(size.x), e->font, white());
+		UI::Label(v.r + v.b*0.33f, v.g + pos, 12, std::to_string(size.x), e->font, white());
 		Engine::EButton((e->editorLayer == 0), v.r + v.b*0.65f, v.g + pos, v.b*0.35f - 1, 16, Vec4(0.2f, 0.4f, 0.2f, 1));
-		UI::Label(v.r + v.b*0.67f, v.g + pos, 12, to_string(size.y), e->font, white());
+		UI::Label(v.r + v.b*0.67f, v.g + pos, 12, std::to_string(size.y), e->font, white());
 	}
 	else pos += 17;
 }
@@ -1225,10 +1225,10 @@ void InverseKinematics::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos
 		e->DrawObjectSelector(v.r + v.b*0.3f, v.g + pos, v.b*0.7f - 1, 16, grey1(), 12, e->font, &target);
 		pos += 17;
 		UI::Label(v.r + 2, v.g + pos, 12, "Length", e->font, white());
-		length = (byte)TryParse(UI::EditText(v.r + v.b*0.3f, v.g + pos, v.b*0.7f - 1, 16, 12, grey2(), to_string(length), e->font, true, nullptr, white()), 1);
+		length = (byte)TryParse(UI::EditText(v.r + v.b*0.3f, v.g + pos, v.b*0.7f - 1, 16, 12, grey2(), std::to_string(length), e->font, true, nullptr, white()), 1);
 		pos += 17;
 		UI::Label(v.r + 2, v.g + pos, 12, "Iterations", e->font, white());
-		iterations = (byte)TryParse(UI::EditText(v.r + v.b*0.3f, v.g + pos, v.b*0.7f - 1, 16, 12, grey2(), to_string(iterations), e->font, true, nullptr, white()), 1);
+		iterations = (byte)TryParse(UI::EditText(v.r + v.b*0.3f, v.g + pos, v.b*0.7f - 1, 16, 12, grey2(), std::to_string(iterations), e->font, true, nullptr, white()), 1);
 	}
 	else pos += 17;
 }
@@ -1272,10 +1272,10 @@ Armature::Armature(string path, SceneObject* o) : Component("Armature", COMP_ARM
 	char b = strm.get();
 	uint i = 0;
 	while (b == 'B') {
-		//std::cout << " >" << to_string(strm.tellg());
+		//std::cout << " >" << std::to_string(strm.tellg());
 		AddBone(strm, _bones, boneList, object.raw(), i);
 		b = strm.get();
-		//std::cout << " " << to_string(strm.tellg()) << std::endl;
+		//std::cout << " " << std::to_string(strm.tellg()) << std::endl;
 	}
 	_allbonenames.reserve(i);
 	_allbones.reserve(i);
@@ -1354,14 +1354,14 @@ void Armature::AddBone(std::ifstream& strm, std::vector<ArmatureBone*>& bones, s
 	bnv.push_back(bn);
 	scp->AddChild(oo);
 	blist.push_back(bn);
-	std::cout << nm << " " << scp->name << " " << to_string((tal - pos)) << to_string(fwd) << std::endl;
+	std::cout << nm << " " << scp->name << " " << std::to_string((tal - pos)) << std::to_string(fwd) << std::endl;
 	if (prt) {
-		//std::cout << " " << to_string((tal - pos)) << to_string(fwd) << std::endl;
+		//std::cout << " " << std::to_string((tal - pos)) << std::to_string(fwd) << std::endl;
 		oo->transform.localRotation(rot);
 		oo->transform.localPosition(pos + Vec3(0,0,1)*prt->length);
 	}
 	else {
-		//std::cout << " " << to_string((tal - pos)) << to_string(fwd) << std::endl;
+		//std::cout << " " << std::to_string((tal - pos)) << std::to_string(fwd) << std::endl;
 		oo->transform.localRotation(rot);
 		oo->transform.localPosition(pos);
 	}
@@ -1449,7 +1449,7 @@ void Armature::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 		pos += 17;
 		UI::Label(v.r + 2, v.g + pos, 12, "Anim Scale", e->font, white());
 		try {
-			animationScale = std::stof(UI::EditText(v.r + v.b*0.3f, v.g + pos, v.b*0.7f - 1, 16, 12, grey2(), to_string(animationScale), e->font, true, nullptr, white()));
+			animationScale = std::stof(UI::EditText(v.r + v.b*0.3f, v.g + pos, v.b*0.7f - 1, 16, 12, grey2(), std::to_string(animationScale), e->font, true, nullptr, white()));
 		}
 		catch (std::logic_error e) {
 			animationScale = 1;
@@ -1629,11 +1629,11 @@ void SceneScript::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 			switch (p.second.first) {
 			case SCR_VAR_FLOAT:
 				Engine::Button(v.r + v.b*0.3f, v.g + pos + 17, v.b*0.7f - 1, 16, grey2());
-				UI::Label(v.r + v.b*0.3f + 2, v.g + pos + 19, 12, to_string(*(float*)p.second.second), e->font, white());
+				UI::Label(v.r + v.b*0.3f + 2, v.g + pos + 19, 12, std::to_string(*(float*)p.second.second), e->font, white());
 				break;
 			case SCR_VAR_INT:
 				Engine::Button(v.r + v.b*0.3f, v.g + pos + 17, v.b*0.7f - 1, 16, grey2());
-				UI::Label(v.r + v.b*0.3f + 2, v.g + pos + 19, 12, to_string(*(int*)p.second.second), e->font, white());
+				UI::Label(v.r + v.b*0.3f + 2, v.g + pos + 19, 12, std::to_string(*(int*)p.second.second), e->font, white());
 				break;
 			case SCR_VAR_TEXTURE:
 				e->DrawAssetSelector(v.r + v.b*0.3f, v.g + pos + 17, v.b*0.7f - 1, 16, grey2(), ASSETTYPE_TEXTURE, 12, e->font, (ASSETID*)p.second.second);

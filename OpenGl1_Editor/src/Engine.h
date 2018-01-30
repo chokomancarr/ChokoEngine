@@ -33,6 +33,13 @@ Global stuff, normally not macro-protected
 #pragma comment(lib, "glew_win.lib")
 #include <glew.h>
 #include <glfw3.h>
+#elif defined(PLATFORM_ADR)
+#ifdef FEATURE_COMPUTE_SHADERS
+#include <GLES3\gl31.h>
+#else
+#include <GLES3\gl3.h>
+#endif
+typedef void GLFWwindow;
 #endif
 
 #include <string>
@@ -83,7 +90,7 @@ extern std::string ffmpeg_getmsg(int i);
 #endif
 #pragma endregion
 
-enum PLATFORM : byte {
+enum PLATFORM : unsigned char {
 	PLATFORM_WINDOWS,
 	PLATFORM_ANDROID
 };
@@ -154,14 +161,6 @@ const char char0 = 0;
 
 #define UI_MAX_EDIT_TEXT_FRAMES 8
 
-template <typename T> T Lerp(T a, T b, float c) {
-	if (c < 0) return a;
-	else if (c > 1) return b;
-	else return a*(1 - c) + b*c;
-}
-template <typename T> float InverseLerp(T a, T b, T c) {
-	return Clamp((float)((c - a) / (b - a)), 0.0f, 1.0f);
-}
 #define Normalize(a) glm::normalize(a)
 #define Distance(a, b) glm::distance(a, b)
 
@@ -184,19 +183,37 @@ template <typename T> T Clamp(T t, T a, T b) {
 	return min(b, max(t, a));
 }
 
+template <typename T> T Lerp(T a, T b, float c) {
+	if (c < 0) return a;
+	else if (c > 1) return b;
+	else return a*(1 - c) + b*c;
+}
+template <typename T> float InverseLerp(T a, T b, T c) {
+	return Clamp((float)((c - a) / (b - a)), 0.0f, 1.0f);
+}
+
 //shorthands
 Vec4 black(float f = 1);
 Vec4 red(float f = 1, float i = 1), green(float f = 1, float i = 1), blue(float f = 1, float i = 1), cyan(float f = 1, float i = 1), yellow(float f = 1, float i = 1), white(float f = 1, float i = 1);
 
 #define push_val(var, nm, val) auto var = nm; nm = val;
 
-string to_string(float f);
-string to_string(double f);
-string to_string(ulong f);
-string to_string(long f);
-string to_string(uint f);
-string to_string(int f);
-string to_string(Vec2 v), to_string(Vec3 v), to_string(Vec4 v), to_string(Quat v);
+#ifndef PLATFORM_WIN
+namespace std {
+	template <typename T> string to_string(T val) {
+		std::ostringstream strm;
+		strm << val;
+		return strm.str();
+	}
+}
+#endif
+namespace std {
+	string to_string(Vec2 v);
+	string to_string(Vec3 v);
+	string to_string(Vec4 v);
+	string to_string(Quat v);
+}
+
 std::vector<string> string_split(string s, char c);
 
 int TryParse(string str, int defVal);
@@ -285,77 +302,17 @@ typedef unsigned char DRAWORDER;
 
 #pragma region class names
 
-template <class T> class Ref {
-public:
-	Ref(bool suppress = false) : _suppress(suppress) {
-		static_assert(std::is_base_of<Object, T>::value, "Ref class must be derived from Object!");
-	}
-	Ref(std::shared_ptr<T> ref, bool suppress = false) : _suppress(suppress), _object(ref), _empty(false) {
-		static_assert(std::is_base_of<Object, T>::value, "Ref class must be derived from Object!");
-	}
-
-	std::shared_ptr<T> operator()() { //get
-		if (_empty) {
-			if (!_suppress) Debug::Error("Object Reference", "Reference is null!");
-			return nullptr;
-		}
-		else if (_object.expired()) {
-			if (!_suppress) Debug::Error("Object Reference", "Reference is deleted!");
-			return nullptr;
-		}
-		else return _object.lock();
-	}
-	std::shared_ptr<T> operator->() { return this->operator()(); }
-
-	void operator()(const std::shared_ptr<T>& ref) { //set
-		_object = ref;
-		_empty = false;
-	}
-	void operator()(const Ref<T>& ref) {
-		_object = ref._object;
-		_empty = false;
-	}
-	void operator()(const T* ref) {
-		if (!ref) clear();
-		else {
-			_object = get_shared<T>((Object*)ref);
-			_empty = false;
-		}
-	}
-	operator bool() const {
-		return !(_empty || _object.expired());
-	}
-
-	bool operator ==(const Ref<T>& rhs) const {
-		return this->_object.lock() == rhs._object.lock();
-	}
-	bool operator !=(const Ref<T>& rhs) const {
-		return this->_object.lock() != rhs._object.lock();
-	}
-
-	void clear() {
-		_empty = true;
-	}
-	bool ok() {
-		return !(_empty || _object.expired());
-	}
-	T* raw() {
-		if (ok()) return _object.lock().get();
-		else return nullptr;
-	}
-
-private:
-	std::weak_ptr<T> _object;
-	bool _empty = true, _suppress = false;
-};
-
+#if defined(PLATFORM_WIN)
 #define _allowshared(T) friend class std::_Ref_count_obj<T>
+#elif defined(PLATFORM_ADR)
+#define _allowshared(T) friend class std::shared_ptr<T>
+#endif
+
+template <class T> class Ref;
 
 #define _canref(obj) class obj; \
 typedef std::shared_ptr<obj> p ## obj; \
 typedef Ref<obj> r ## obj;
-
-class Object;
 
 //SceneObjects.h
 _canref(Component);
@@ -397,6 +354,7 @@ class Editor;
 class EditorBlock;
 class EB_Inspector;
 class EB_Browser_File;
+class EB_Viewer;
 
 #pragma endregion
 
@@ -552,6 +510,111 @@ enum COMPONENT_TYPE : byte {
 
 #pragma endregion
 
+/*! Debugging functions. Output is saved in Log.txt beside the executable.
+[av] */
+class Debug {
+public:
+	static void Message(string c, string s);
+	static void Warning(string c, string s);
+	static void Error(string c, string s);
+	static void ObjectTree(const std::vector<pSceneObject>& o);
+
+	friend int main(int argc, char **argv);
+	friend class ChokoLait;
+protected:
+	static std::ofstream* stream;
+	static void Init(string path);
+
+private:
+	static void DoDebugObjectTree(const std::vector<pSceneObject>& o, int i);
+};
+
+/*! Base class of instantiatable object
+[av] */
+class Object : public std::enable_shared_from_this<Object> {
+public:
+	Object(string nm = "");
+	Object(ulong id, string nm);
+	ulong id;
+	string name;
+	bool dirty = false; //triggers a reload of internal variables
+	bool dead = false; //will be cleaned up after this frame
+
+	virtual bool ReferencingObject(Object* o) { return false; }
+};
+
+#pragma region pointer extensions
+
+template <class T> std::shared_ptr<T> get_shared(Object* ref) {
+	return std::dynamic_pointer_cast<T> (ref->shared_from_this());
+}
+
+template <class T> class Ref {
+public:
+	Ref(bool suppress = false) : _suppress(suppress) {
+		static_assert(std::is_base_of<Object, T>::value, "Ref class must be derived from Object!");
+	}
+	Ref(std::shared_ptr<T> ref, bool suppress = false) : _suppress(suppress), _object(ref), _empty(false) {
+		static_assert(std::is_base_of<Object, T>::value, "Ref class must be derived from Object!");
+	}
+
+	std::shared_ptr<T> operator()() { //get
+		if (_empty) {
+			if (!_suppress) Debug::Error("Object Reference", "Reference is null!");
+			return nullptr;
+		}
+		else if (_object.expired()) {
+			if (!_suppress) Debug::Error("Object Reference", "Reference is deleted!");
+			return nullptr;
+		}
+		else return _object.lock();
+	}
+	std::shared_ptr<T> operator->() { return this->operator()(); }
+
+	void operator()(const std::shared_ptr<T>& ref) { //set
+		_object = ref;
+		_empty = false;
+	}
+	void operator()(const Ref<T>& ref) {
+		_object = ref._object;
+		_empty = false;
+	}
+	void operator()(const T* ref) {
+		if (!ref) clear();
+		else {
+			_object = get_shared<T>((Object*)ref);
+			_empty = false;
+		}
+	}
+	operator bool() const {
+		return !(_empty || _object.expired());
+	}
+
+	bool operator ==(const Ref<T>& rhs) const {
+		return this->_object.lock() == rhs._object.lock();
+	}
+	bool operator !=(const Ref<T>& rhs) const {
+		return this->_object.lock() != rhs._object.lock();
+	}
+
+	void clear() {
+		_empty = true;
+	}
+	bool ok() {
+		return !(_empty || _object.expired());
+	}
+	T* raw() {
+		if (ok()) return _object.lock().get();
+		else return nullptr;
+	}
+
+private:
+	std::weak_ptr<T> _object;
+	bool _empty = true, _suppress = false;
+};
+
+#pragma endregion
+
 /*! Run-time mesh generation.
 [av] */
 class Procedurals {
@@ -594,36 +657,6 @@ ASSETID _Strm2H(std::istream& strm);
 
 string _Strm2Asset(std::istream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int maxL = 100);
 
-template<typename T> T* _GetCache(ASSETTYPE t, ASSETID i, bool async = false) {
-#ifdef IS_EDITOR
-	return static_cast<T*>(Editor::instance->GetCache(t, i, async));
-#else
-	return static_cast<T*>(AssetManager::GetCache(t, i));
-#endif
-}
-
-template <class T> std::shared_ptr<T> get_shared(Object* ref) {
-	return std::dynamic_pointer_cast<T> (ref->shared_from_this());
-}
-
-/*! Debugging functions. Output is saved in Log.txt beside the executable.
-[av] */
-class Debug {
-public:
-	static void Message(string c, string s);
-	static void Warning(string c, string s);
-	static void Error(string c, string s);
-	static void ObjectTree(const std::vector<pSceneObject>& o);
-
-	friend int main(int argc, char **argv);
-	friend class ChokoLait;
-protected:
-	static std::ofstream* stream;
-	static void Init(string path);
-
-private:
-	static void DoDebugObjectTree(const std::vector<pSceneObject>& o, int i);
-};
 
 /*! File/folder reading/writing functions.
 [av] */
@@ -645,6 +678,7 @@ public:
 	static std::vector<byte> GetBytes(const string& path);
 };
 
+#ifdef PLATFORM_WIN
 class SerialPort {
 public:
 	static std::vector<string> GetNames();
@@ -656,6 +690,7 @@ public:
 protected:
 	static HANDLE handle;
 };
+#endif
 
 #ifdef PLATFORM_WIN
 class WinFunc {
@@ -745,20 +780,7 @@ protected:
 	static GLFWwindow* window;
 };
 
-/*! Base class of instantiatable object
-[av] */
-class Object : public std::enable_shared_from_this<Object> {
-public:
-	Object(string nm = "");
-	Object(ulong id, string nm);
-	ulong id;
-	string name;
-	bool dirty = false; //triggers a reload of internal variables
-	bool dead = false; //will be cleaned up after this frame
-
-	virtual bool ReferencingObject(Object* o) { return false; }
-};
-
+#ifdef FEATURE_COMPUTE_SHADERS
 /*! generic class of ComputeBuffer
 [av] */
 class IComputeBuffer {
@@ -823,6 +845,7 @@ protected:
 
 	GLuint pointer;
 };
+#endif
 
 //#define EditText(x,y,w,h,s,str,font) _EditText(__COUNTER__, x,y,w,h,s,str,font)
 

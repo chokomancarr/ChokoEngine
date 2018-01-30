@@ -389,7 +389,7 @@ bool Shader::Parse(std::ifstream* stream, string path) {
 	string vertCode, fragCode;
 
 	while (!sstream.eof()) {
-		//std::cout << to_string(readingType) << std::endl;
+		//std::cout << std::to_string(readingType) << std::endl;
 		if (readingType == 0) {
 			getline(sstream, a);
 			if (a == "VARSTART")
@@ -541,7 +541,7 @@ bool Shader::Parse(std::ifstream* stream, string path) {
 						int rr = stoi(a.substr(6, 1));
 						string ss = a.substr(6, string::npos);
 						int r = stoi(ss, nullptr);
-						in += "layout(position=" + to_string(r) + ")" + ss + "\n";
+						in += "layout(position=" + std::to_string(r) + ")" + ss + "\n";
 					}
 					catch (std::exception e) {
 						in += a + "\n";

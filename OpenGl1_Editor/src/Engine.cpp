@@ -14,25 +14,6 @@ string ffmpeg_getmsg(int i) {
 	return string((char*)&e);
 }
 
-string to_string(float f) { return std::to_string(f); }
-string to_string(double f) { return std::to_string(f); }
-string to_string(ulong f) { return std::to_string(f); }
-string to_string(long f) { return std::to_string(f); }
-string to_string(uint f) { return std::to_string(f); }
-string to_string(int f) { return std::to_string(f); }
-string to_string(Vec2 v) {
-	return "(" + to_string(v.x) + ", " + to_string(v.y) + ")";
-}
-string to_string(Vec3 v) {
-	return "(" + to_string(v.x) + ", " + to_string(v.y) + ", " + to_string(v.z) + ")";
-}
-string to_string(Vec4 v) {
-	return "(" + to_string(v.w) + ", " + to_string(v.x) + ", " + to_string(v.y) + ", " + to_string(v.z) + ")";
-}
-string to_string(Quat v) {
-	return "(" + to_string(v.w) + ", " + to_string(v.x) + ", " + to_string(v.y) + ", " + to_string(v.z) + ")";
-}
-
 Vec4 black(float f) { return Vec4(0, 0, 0, f); }
 Vec4 red(float f, float i) { return Vec4(i, 0, 0, f); }
 Vec4 green(float f, float i) { return Vec4(0, i, 0, f); }
@@ -40,6 +21,21 @@ Vec4 blue(float f, float i) { return Vec4(0, 0, i, f); }
 Vec4 cyan(float f, float i) { return Vec4(i*0.09f, i*0.706f, i, f); }
 Vec4 yellow(float f, float i) { return Vec4(i, i, 0, f); }
 Vec4 white(float f, float i) { return Vec4(i, i, i, f); }
+
+namespace std {
+	string to_string(Vec2 v) {
+		return "(" + to_string(v.x) + ", " + to_string(v.y) + ")";
+	}
+	string to_string(Vec3 v) {
+		return "(" + to_string(v.x) + ", " + to_string(v.y) + ", " + to_string(v.z) + ")";
+	}
+	string to_string(Vec4 v) {
+		return "(" + to_string(v.w) + ", " + to_string(v.x) + ", " + to_string(v.y) + ", " + to_string(v.z) + ")";
+	}
+	string to_string(Quat v) {
+		return "(" + to_string(v.w) + ", " + to_string(v.x) + ", " + to_string(v.y) + ", " + to_string(v.z) + ")";
+	}
+}
 
 std::vector<string> string_split(string s, char c) {
 	std::vector<string> o = std::vector<string>();
@@ -187,21 +183,21 @@ void Color::DrawPicker(float x, float y, Color& c) {
 	c.b = (byte)round(Engine::DrawSliderFill(x + 40, y + 50, 170, 16, 0, 255, c.b, grey2(), blue()));
 
 	Engine::DrawQuad(x + 212, y + 16, 47, 16, grey2());
-	UI::Label(x + 214, y + 18, 12, to_string(c.r), Editor::instance->font, white());
+	UI::Label(x + 214, y + 18, 12, std::to_string(c.r), Editor::instance->font, white());
 	Engine::DrawQuad(x + 212, y + 33, 47, 16, grey2());
-	UI::Label(x + 214, y + 35, 12, to_string(c.g), Editor::instance->font, white());
+	UI::Label(x + 214, y + 35, 12, std::to_string(c.g), Editor::instance->font, white());
 	Engine::DrawQuad(x + 212, y + 50, 47, 16, grey2());
-	UI::Label(x + 214, y + 52, 12, to_string(c.b), Editor::instance->font, white());
+	UI::Label(x + 214, y + 52, 12, std::to_string(c.b), Editor::instance->font, white());
 
 	if (c.useA) {
 		UI::Label(x + 10, y + 69, 12, "A", Editor::instance->font, white());
 		c.a = (byte)Engine::DrawSliderFill(x + 40, y + 67, 170, 16, 0, 255, c.a, grey2(), white());
 		Engine::DrawQuad(x + 212, y + 67, 47, 16, grey2());
-		UI::Label(x + 214, y + 69, 12, to_string(c.a), Editor::instance->font, white());
+		UI::Label(x + 214, y + 69, 12, std::to_string(c.a), Editor::instance->font, white());
 	}
 
 	c.RecalcHSV();
-	//std::cout << to_string(c.vec4()) << std::endl << to_string(c.hsv()) << std::endl;
+	//std::cout << std::to_string(c.vec4()) << std::endl << std::to_string(c.hsv()) << std::endl;
 }
 
 Vec4 Color::HueBaseCol(float hue) {
@@ -1486,7 +1482,7 @@ ulong Engine::idCounter = 0;
 ulong Engine::GetNewId() {
 	if (++idCounter >= ULONG_MAX) {
 		idCounter = 0;
-		Debug::Warning("Engine", "max id count reached! (" + to_string(idCounter) + ")");
+		Debug::Warning("Engine", "max id count reached! (" + std::to_string(idCounter) + ")");
 	}
 	return idCounter;
 }
@@ -1496,7 +1492,7 @@ ulong Engine::GetNewId() {
 //-----------------debug class-----------------------
 void Debug::Message(string c, string s) {
 #ifndef IS_EDITOR
-	*stream << "[i " + to_string(clock()) + "]" << c << ": " << s << std::endl;
+	*stream << "[i " + std::to_string(clock()) + "]" << c << ": " << s << std::endl;
 #endif
 	std::cout << "[i]" << c << ": " << s << std::endl;
 }
@@ -1698,6 +1694,7 @@ string IO::GetText(const string& path) {
 	return ss.str();
 }
 
+#ifdef PLATFORM_WIN
 std::vector<string> SerialPort::GetNames() {
 	HKEY hkey;
 	auto res = RegOpenKeyEx(HKEY_LOCAL_MACHINE, "HARDWARE\\DEVICEMAP\\SERIALCOMM", 0, KEY_READ, &hkey);
@@ -1708,7 +1705,6 @@ std::vector<string> SerialPort::GetNames() {
 	for (auto k : ports) rets.push_back(k.second);
 	return rets;
 }
-
 
 HANDLE SerialPort::handle = 0;
 
@@ -1747,7 +1743,6 @@ bool SerialPort::Write(byte* data, uint count) {
 	return false;
 }
 
-
 BOOL CALLBACK EnumWindowsProcMy(HWND hwnd, LPARAM lParam) {
 	DWORD lpdwProcessId;
 	GetWindowThreadProcessId(hwnd, &lpdwProcessId);
@@ -1765,6 +1760,7 @@ HWND WinFunc::GetHwndFromProcessID(DWORD id) {
 	EnumWindows(EnumWindowsProcMy, (LPARAM)&var);
 	return var.second;
 }
+#endif
 
 //-----------------time class---------------------
 long long Time::startMillis = 0;
@@ -2055,7 +2051,7 @@ void Deserialize(std::ifstream& stream, SceneObject* obj) {
 
 	c = stream.get();
 	while (c != 'o') {
-		//Debug::Message("Object Deserializer", to_string(c) + " " + to_string(stream.tellg()));
+		//Debug::Message("Object Deserializer", std::to_string(c) + " " + std::to_string(stream.tellg()));
 		if (c == 'O') {
 			auto sc = SceneObject::New();
 			obj->AddChild(sc);
@@ -2063,7 +2059,7 @@ void Deserialize(std::ifstream& stream, SceneObject* obj) {
 		}
 		else if (c == 'C') {
 			c = stream.get(); //component type
-			Debug::Message("Object Deserializer", "component " + to_string(c) + " " + to_string((int)c));
+			Debug::Message("Object Deserializer", "component " + std::to_string(c) + " " + std::to_string((int)c));
 			switch (c) {
 			case COMP_CAM:
 				obj->AddComponent<Camera>(stream, obj);
@@ -2100,7 +2096,7 @@ void Deserialize(std::ifstream& stream, SceneObject* obj) {
 				stream.seekg(ss - 1);
 				break;
 			}
-			//Debug::Message("Object Deserializer", "2 " + to_string(stream.tellg()));
+			//Debug::Message("Object Deserializer", "2 " + std::to_string(stream.tellg()));
 			c = stream.get();
 			if (c != 'c') {
 				Debug::Error("Object Deserializer", "scene data corrupted(component)");
@@ -2166,10 +2162,10 @@ Scene::Scene(std::ifstream& stream, long pos) : sceneName("") {
 
 void Scene::Load(uint i) {
 	if (i >= sceneNames.size()) {
-		Debug::Error("Scene Loader", "Scene ID (" + to_string(i) + ") out of range!");
+		Debug::Error("Scene Loader", "Scene ID (" + std::to_string(i) + ") out of range!");
 		return;
 	}
-	Debug::Message("Scene Loader", "Loading scene " + to_string(i) + "...");
+	Debug::Message("Scene Loader", "Loading scene " + std::to_string(i) + "...");
 #ifndef IS_EDITOR
 	if (_pipemode) {
 		std::ifstream strm2(sceneEPaths[i], std::ios::binary);
@@ -2183,7 +2179,7 @@ void Scene::Load(uint i) {
 		active = new Scene(*strm, scenePoss[i]);
 	}
 	active->sceneId = i;
-	Debug::Message("Scene Loader", "Loaded scene " + to_string(i) + "(" + sceneNames[i] + ")");
+	Debug::Message("Scene Loader", "Loaded scene " + std::to_string(i) + "(" + sceneNames[i] + ")");
 }
 
 void Scene::Load(string name) {
@@ -2242,7 +2238,7 @@ void Scene::ReadD0() {
 			strm->getline(c, 100, 0);
 			sceneNames.push_back(c);
 			strm->seekg(p1 + sz + 1);
-			Debug::Message("AssetManager", "Registered scene " + sceneNames[a] + " (" + to_string(sz) + " bytes)");
+			Debug::Message("AssetManager", "Registered scene " + sceneNames[a] + " (" + std::to_string(sz) + " bytes)");
 		}
 	}
 #endif
@@ -2299,7 +2295,7 @@ void DefaultResources::Init(string path) {
 		cc[sz] = 0;
 		datas.push_back(cc);
 	}
-	std::cout << "Default Resources OK (" << to_string(names.size()) << " files loaded)" << std::endl;
+	std::cout << "Default Resources OK (" << std::to_string(names.size()) << " files loaded)" << std::endl;
 }
 
 string DefaultResources::GetStr(string name) {

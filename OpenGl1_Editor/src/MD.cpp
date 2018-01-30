@@ -99,14 +99,14 @@ void MD::Update() {
 }
 
 void MD::DrawUI() {
-	UI::Label(25, 120, 16, to_string(particlecount) + " particles", Editor::instance->font, white());
-	UI::Label(25, 140, 16, "using " + to_string(threads) + " threads (" + to_string((int)(Time::delta*1000/5)) + "ms)", Editor::instance->font, white());
-	UI::Label(25, 160, 16, "potential: " + to_string(pe), Editor::instance->font, white());
+	UI::Label(25, 120, 16, std::to_string(particlecount) + " particles", Editor::instance->font, white());
+	UI::Label(25, 140, 16, "using " + std::to_string(threads) + " threads (" + std::to_string((int)(Time::delta*1000/5)) + "ms)", Editor::instance->font, white());
+	UI::Label(25, 160, 16, "potential: " + std::to_string(pe), Editor::instance->font, white());
 
 	temp = Engine::DrawSliderFill(20, 200, 200, 30, 0.1f, 20, temp, grey1(), white());
-	UI::Label(25, 202, 20, "T=" + to_string(temp), Editor::instance->font);
+	UI::Label(25, 202, 20, "T=" + std::to_string(temp), Editor::instance->font);
 	wall = Engine::DrawSliderFill(20, 240, 200, 30, mwall, mwall*4, wall, grey1(), white());
-	UI::Label(25, 242, 20, "W=" + to_string(wall), Editor::instance->font);
+	UI::Label(25, 242, 20, "W=" + std::to_string(wall), Editor::instance->font);
 
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glColor4f(1,1,1,1);

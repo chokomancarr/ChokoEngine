@@ -119,12 +119,12 @@ void AssetManager::Init(string dpath) {
 		}
 
 		for (int a = 0; a < numDat; a++) {
-			string pp = dpath + to_string(a + 1);
+			string pp = dpath + std::to_string(a + 1);
 			streams.push_back(new std::ifstream(pp.c_str(), std::ios::in | std::ios::binary));
 			if (streams[a]->is_open())
-				Debug::Message("AssetManager", "Streaming data" + to_string(a + 1));
+				Debug::Message("AssetManager", "Streaming data" + std::to_string(a + 1));
 			else {
-				Debug::Error("AssetManager", "Fatal: Failed to open data" + to_string(a + 1) + "!");
+				Debug::Error("AssetManager", "Fatal: Failed to open data" + std::to_string(a + 1) + "!");
 				abort();
 			}
 		}
@@ -134,7 +134,7 @@ void AssetManager::Init(string dpath) {
 			for (auto& bb : aa.second) {
 				streams[bb.first]->seekg(bb.second.first);
 				_Strm2Val(*streams[bb.first], bb.second.second);
-				Debug::Message("AssetManager", "Registered asset " + names[aa.first][s] + " (" + to_string(bb.second.second) + " bytes)");
+				Debug::Message("AssetManager", "Registered asset " + names[aa.first][s] + " (" + std::to_string(bb.second.second) + " bytes)");
 				streams[bb.first]->seekg(0);
 				s++;
 			}
@@ -244,7 +244,7 @@ AssetObject* AssetManager::GenCache(ASSETTYPE t, ASSETID i) {
 		dataCaches[t][i] = new ShaderBase(strm, off);
 		break;
 	default:
-		Debug::Error("AssetManager", "No operation suits asset type " + to_string(t) + "!");
+		Debug::Error("AssetManager", "No operation suits asset type " + std::to_string(t) + "!");
 		return nullptr;
 	}
 	if (_pipemode && !cache) delete(fstrm);
@@ -261,6 +261,7 @@ AssetObject* AssetManager::GenCache(ASSETTYPE t, ASSETID i) {
 
 #pragma region AudioClip
 
+#ifndef DISABLE_AV_CODECS
 void AudioClip::_Init_ffmpeg(const string& path) {
 /*
 #define fail {Debug::Warning("VideoTexture", ffmpeg_getmsg(err)); return;}
@@ -298,6 +299,7 @@ void AudioClip::_Init_ffmpeg(const string& path) {
 #undef fail
 */
 }
+#endif
 
 #if defined(PLATFORM_WIN)
 void AudioClip::_Init_win(const string& path) {
@@ -896,6 +898,7 @@ bool Texture::DrawPreview(uint x, uint y, uint w, uint h) {
 
 
 #pragma region VideoTexture
+#ifndef DISABLE_AV_CODECS
 
 void VideoTexture::_Init_ffmpeg(const string& path) {
 #define fail {Debug::Warning("VideoTexture", ffmpeg_getmsg(err)); return;}
@@ -947,6 +950,8 @@ void VideoTexture::_Init_adr(const string& path) {
 void VideoTexture::GetFrame() {
 	Debug::Warning("VT", "get frame failed!");
 }
+
+#endif
 #pragma endregion
 
 
@@ -1866,7 +1871,7 @@ Mesh::Mesh(std::istream& stream, uint offset) : AssetObject(ASSETTYPE_MESH), loa
 				}
 			}
 			else {
-				Debug::Error("Mesh Importer", "Unknown char: " + to_string(cc));
+				Debug::Error("Mesh Importer", "Unknown char: " + std::to_string(cc));
 			}
 			cc = stream.get();
 		}
@@ -2003,7 +2008,7 @@ Mesh::Mesh(string p) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0
 			}
 			break;
 		default:
-			Debug::Error("Mesh Importer", "Unknown char: " + to_string(cc));
+			Debug::Error("Mesh Importer", "Unknown char: " + std::to_string(cc));
 		}
 		stream.read(&cc, 1);
 	}
@@ -2071,7 +2076,7 @@ void Mesh::CalcTangents() {
 		p2 = vertices[n2];
 
 		if ((u0 == u1) || (u1 == u2) || (u0 == u2)) {
-			//Debug::Warning("Tangent calculator", "Triangle " + to_string(n) + " does not have well-defined UVs!");
+			//Debug::Warning("Tangent calculator", "Triangle " + std::to_string(n) + " does not have well-defined UVs!");
 			continue;
 		}
 		r1 = u1 - u0;
@@ -2080,7 +2085,7 @@ void Mesh::CalcTangents() {
 		//t = ar + br';
 		db = r1.y*r2.x - r1.x*r2.y;
 		if (db == 0) {
-			//Debug::Warning("Tangent calculator", "Triangle " + to_string(n) + " does not have well-defined UVs!");
+			//Debug::Warning("Tangent calculator", "Triangle " + std::to_string(n) + " does not have well-defined UVs!");
 			continue;
 		}
 		b = r1.y / db;
@@ -2263,7 +2268,7 @@ bool Mesh::ParseBlend(Editor* e, string s) {
 	}
 	else {
 		DWORD err = GetLastError();
-		std::cout << "Cannot start Blender! (Error code " << to_string(err) << ")" << std::endl;
+		std::cout << "Cannot start Blender! (Error code " << std::to_string(err) << ")" << std::endl;
 		CloseHandle(stdOutR);
 		CloseHandle(stdOutW);
 		CloseHandle(stdInR);

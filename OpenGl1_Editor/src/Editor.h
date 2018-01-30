@@ -1,5 +1,7 @@
 #pragma once
 
+#ifdef IS_EDITOR
+
 #include <Windows.h>
 #include "Defines.h"
 #include "Engine.h"
@@ -790,3 +792,18 @@ public:
 		}
 	}
 };
+
+#else
+
+#include "Engine.h"
+
+class Editor {
+public:
+	static Editor* instance;
+};
+class EditorBlock {};
+class EB_Inspector {};
+class EB_Browser_File {};
+class EB_Viewer {};
+
+#endif
