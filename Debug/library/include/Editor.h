@@ -651,13 +651,13 @@ public:
 	std::vector<Texture*> assetIcons;
 	//Texture buttonDash;
 	std::unordered_map<string, ASSETTYPE> assetTypes;
-	std::unordered_map<ASSETTYPE, std::vector<string>> allAssets;
+	std::unordered_map<ASSETTYPE, std::vector<string>, std::hash<byte>> allAssets;
 	std::vector<string> headerAssets, cppAssets, blendAssets;
-	std::unordered_map<ASSETTYPE, std::vector<string>> normalAssets, internalAssets, proceduralAssets;
+	std::unordered_map<ASSETTYPE, std::vector<string>, std::hash<byte>> normalAssets, internalAssets, proceduralAssets;
 	std::unordered_map <ASSETTYPE, std::pair<ASSETTYPE, std::vector<uint>>> derivedAssets;
-	std::unordered_map<ASSETTYPE, std::vector<pAssetObject>> normalAssetCaches, internalAssetCaches, proceduralAssetCaches;
-	std::unordered_map<ASSETTYPE, std::vector<std::pair<byte*, uint>>> normalAssetBuffers;
-	std::unordered_map<ASSETTYPE, std::vector<bool>> normalAssetMakings;
+	std::unordered_map<ASSETTYPE, std::vector<pAssetObject>, std::hash<byte>> normalAssetCaches, internalAssetCaches, proceduralAssetCaches;
+	std::unordered_map<ASSETTYPE, std::vector<std::pair<byte*, uint>>, std::hash<byte>> normalAssetBuffers;
+	std::unordered_map<ASSETTYPE, std::vector<bool>, std::hash<byte>> normalAssetMakings;
 	bool internalAssetsLoaded;
 
 	static void InitShaders();

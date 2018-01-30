@@ -5,9 +5,19 @@
 #include <algorithm>
 #include <climits>
 #include <ctime>
-#include <shellapi.h>
+#include <cstdarg>
 #include "Defines.h"
 #include "SceneScriptResolver.h"
+
+#ifdef PLATFORM_WIN
+#include <shellapi.h>
+#elif defined(PLATFORM_ADR)
+void glPolygonMode(GLenum a, GLenum b) {}
+#endif
+
+#ifndef IS_EDITOR
+bool _pipemode = false;
+#endif
 
 string ffmpeg_getmsg(int i) {
 	uint64_t e = -i;
@@ -21,6 +31,29 @@ Vec4 blue(float f, float i) { return Vec4(0, 0, i, f); }
 Vec4 cyan(float f, float i) { return Vec4(i*0.09f, i*0.706f, i, f); }
 Vec4 yellow(float f, float i) { return Vec4(i, i, 0, f); }
 Vec4 white(float f, float i) { return Vec4(i, i, i, f); }
+
+#ifndef PLATFORM_WIN
+namespace std {
+	int stoi(const string& s) {
+		return 1;
+	}
+	float stof(const string& s) {
+		return 1.0f;
+	}
+	unsigned long stoul(const string& s) {
+		return 0UL;
+	}
+}
+
+void fopen_s(FILE** f, const char* c, const char* m) {
+	*f = fopen(c, m);
+}
+void sscanf_s(const char* b, const char* m, ...) {
+	__va_list args;
+	sscanf(b, m, args);
+}
+
+#endif
 
 namespace std {
 	string to_string(Vec2 v) {
@@ -205,9 +238,9 @@ void Color::DrawPicker(float x, float y, Color& c) {
 Vec4 Color::HueBaseCol(float hue) {
 	hue *= 6;
 	Vec4 v;
-	v.r = Clamp(abs(hue - 3) - 1, 0.0f, 1.0f);
-	v.g = 1 - Clamp(abs(hue - 2) - 1, 0.0f, 1.0f);
-	v.b = 1 - Clamp(abs(hue - 4) - 1, 0.0f, 1.0f);
+	v.r = Clamp(abs(hue - 3) - 1.0f, 0.0f, 1.0f);
+	v.g = 1 - Clamp(abs(hue - 2) - 1.0f, 0.0f, 1.0f);
+	v.b = 1 - Clamp(abs(hue - 4) - 1.0f, 0.0f, 1.0f);
 	v.a = 1;
 	return v;
 }
@@ -221,6 +254,7 @@ void Color::RecalcHSV() {
 }
 
 void Color::DrawSV(float x, float y, float w, float h, float hue) {
+#ifdef IS_EDITOR
 	Vec3 quadPoss[4];
 	Vec2 quadUvs[4] {Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0)};
 	quadPoss[0].x = x;
@@ -258,9 +292,11 @@ void Color::DrawSV(float x, float y, float w, float h, float hue) {
 	glUseProgram(0);
 
 	glDisableClientState(GL_VERTEX_ARRAY);
+#endif
 }
 
 void Color::DrawH(float x, float y, float w, float h) {
+#ifdef IS_EDITOR
 	Vec3 quadPoss[4];
 	Vec2 quadUvs[4]{ Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0) };
 	quadPoss[0].x = x;
@@ -294,6 +330,7 @@ void Color::DrawH(float x, float y, float w, float h) {
 	glUseProgram(0);
 
 	glDisableClientState(GL_VERTEX_ARRAY);
+#endif
 }
 
 Mesh* Procedurals::Plane(uint xCount, uint yCount) {
@@ -393,6 +430,7 @@ float Random::Range(float min, float max) {
 }
 
 long long milliseconds() {
+#ifdef PLATFORM_WIN
 	static LARGE_INTEGER s_frequency;
 	static BOOL s_use_qpc = QueryPerformanceFrequency(&s_frequency);
 	if (s_use_qpc) {
@@ -403,6 +441,11 @@ long long milliseconds() {
 	else {
 		return GetTickCount64();
 	}
+#elif defined(PLATFORM_ADR)
+struct timespec now;
+clock_gettime(CLOCK_MONOTONIC, &now);
+return now.tv_sec * 1000LL + now.tv_nsec/1000000LL;
+#endif
 }
 
 Texture* Engine::fallbackTex = nullptr;
@@ -537,6 +580,7 @@ void UI::Init() {
 }
 
 void UI_Trace(uint fpar, uint numb, uint* tar) {
+#ifdef PLATFORM_WIN
 	byte p = 0;
 	uint oldebx = 0;
 	uint par;
@@ -566,6 +610,7 @@ void UI_Trace(uint fpar, uint numb, uint* tar) {
 		}
 		p++;
 	}
+#endif
 }
 
 bool UI_Same_Id(uint* left, uint* right) {
@@ -576,12 +621,14 @@ bool UI_Same_Id(uint* left, uint* right) {
 }
 
 void UI::GetEditTextId() {
+#ifdef PLATFORM_WIN
 	SecureZeroMemory(_activeEditText, UI_MAX_EDIT_TEXT_FRAMES * 4);
 	UI_Trace(drawFuncLoc, 2, _activeEditText);
 	if (UI_Same_Id(_activeEditText, _lastEditText)) _activeEditTextId++;
 	else _activeEditTextId = 0;
 
 	memcpy(_lastEditText, _activeEditText, UI_MAX_EDIT_TEXT_FRAMES * 4);
+#endif
 }
 
 bool UI::IsActiveEditText() {
@@ -589,8 +636,10 @@ bool UI::IsActiveEditText() {
 }
 
 void UI::PreLoop() {
+#ifdef PLATFORM_WIN
 	SecureZeroMemory(_lastEditText, UI_MAX_EDIT_TEXT_FRAMES * 4);
 	_activeEditTextId = 0;
+#endif
 }
 
 #define _checkdraw assert(UI::CanDraw() && "UI functions can only be called from the Overlay function!");
@@ -623,6 +672,7 @@ void UI::Texture(float x, float y, float w, float h, ::Texture* texture, Vec4 ti
 }
 
 string UI::EditText(float x, float y, float w, float h, float s, Vec4 bcol, const string& str2, Font* font, bool delayed, bool* changed, Vec4 fcol, Vec4 hcol, Vec4 acol, bool ser) {
+#ifdef PLATFORM_WIN
 	string str = str2;
 	_checkdraw;
 	GetEditTextId();
@@ -741,6 +791,7 @@ string UI::EditText(float x, float y, float w, float h, float s, Vec4 bcol, cons
 		if (delayed) _editTextString = str;
 	}
 	return str;
+#endif
 }
 
 void UI::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4, float maxw) {
@@ -1070,7 +1121,7 @@ void Engine::DrawQuad(float x, float y, float w, float h, Vec4 Vec4) {
 		//Vec3 v = quadPoss[y];
 		quadPoss[y] = Ds(Display::uiMatrix*quadPoss[y]);
 	}
-	uint quadIndexes[4] = { 0, 1, 3, 2 };
+	uint quadIndexes[6] = { 0, 1, 2, 1, 3, 2 };
 	uint prog = unlitProgramC;
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
@@ -1082,7 +1133,7 @@ void Engine::DrawQuad(float x, float y, float w, float h, Vec4 Vec4) {
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &quadPoss[0]);
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glDrawElements(GL_QUADS, 4, GL_UNSIGNED_INT, &quadIndexes[0]);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, &quadIndexes[0]);
 
 	glDisableVertexAttribArray(0);
 	glUseProgram(0);
@@ -1113,7 +1164,7 @@ void Engine::DrawQuad(float x, float y, float w, float h, GLuint texture, Vec2 u
 		quadPoss[y] = Ds(Display::uiMatrix*quadPoss[y]);
 	}
 	Vec2 quadUv[4]{uv0, uv1, uv2, uv3};
-	uint quadIndexes[4] = { 0, 1, 3, 2 };
+	uint quadIndexes[6] = { 0, 1, 2, 1, 3, 2 };
 	uint prog = single ? unlitProgramA : unlitProgram;
 	glEnableClientState(GL_VERTEX_ARRAY);
 	
@@ -1134,7 +1185,7 @@ void Engine::DrawQuad(float x, float y, float w, float h, GLuint texture, Vec2 u
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, &quadUv[0]);
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glDrawElements(GL_QUADS, 4, GL_UNSIGNED_INT, &quadIndexes[0]);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, &quadIndexes[0]);
 
 	glDisableVertexAttribArray(0);
 	glDisableVertexAttribArray(1);
@@ -1162,13 +1213,17 @@ void Engine::DrawCube(Vec3 pos, float dx, float dy, float dz, Vec4 Vec4) {
 	quadPoss[5] = pos + Vec3(dx, -dy, dz);
 	quadPoss[6] = pos + Vec3(-dx, dy, dz);
 	quadPoss[7] = pos + Vec3(dx, dy, dz);
-	uint quadIndexes[24] = { 0, 1, 3, 2, 4, 5, 7, 6, 0, 2, 6, 4, 1, 3, 7, 5, 0, 1, 5, 4, 2, 3, 7, 6 };
+	//uint quadIndexes[24] = { 0, 1, 3, 2, 4, 5, 7, 6, 0, 2, 6, 4, 1, 3, 7, 5, 0, 1, 5, 4, 2, 3, 7, 6 };
+	static const uint quadIndexes[36] = {
+		0, 1, 2, 1, 3, 2,		4, 5, 6, 5, 7, 6, 
+		0, 2, 4, 2, 6, 4,		1, 3, 5, 3, 7, 5, 
+		0, 1, 4, 1, 5, 4,		2, 3, 6, 3, 7, 6 };
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
 	glColor4f(Vec4.r, Vec4.g, Vec4.b, Vec4.a);
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glDrawElements(GL_QUADS, 24, GL_UNSIGNED_INT, &quadIndexes[0]);
+	glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, &quadIndexes[0]);
 
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
@@ -1357,7 +1412,7 @@ void Engine::DrawCircleW(Vec3 c, Vec3 x, Vec3 y, float r, uint n, Vec4 col, floa
 	std::vector<Vec3> poss = std::vector<Vec3>(n);
 	std::vector<uint> ids = std::vector<uint>(dotted? n : n * 2 - 1);
 	for (uint a = 0; a < n; a++) {
-		poss[a] += c + sin(a * 6.283f / (n)) * x * r + cos(a * 6.283f / (n)) * y * r;
+		poss[a] += c + (float)sin(a * 6.283f / (n)) * x * r + (float)cos(a * 6.283f / (n)) * y * r;
 		if (dotted)
 			ids[a] += a;
 		else {
@@ -1388,14 +1443,17 @@ void Engine::DrawCubeLinesW(float x0, float x1, float y0, float y1, float z0, fl
 	quadPoss[5] = Vec3(x1, y0, z1);
 	quadPoss[6] = Vec3(x0, y1, z1);
 	quadPoss[7] = Vec3(x1, y1, z1);
-	uint quadIndexes[24] = { 0, 1, 3, 2, 4, 5, 7, 6, 0, 2, 6, 4, 1, 3, 7, 5, 0, 1, 5, 4, 2, 3, 7, 6 };
+	static const uint quadIndexes[36] = {
+		0, 1, 2, 1, 3, 2,		4, 5, 6, 5, 7, 6,
+		0, 2, 4, 2, 6, 4,		1, 3, 5, 3, 7, 5,
+		0, 1, 4, 1, 5, 4,		2, 3, 6, 3, 7, 6 };
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
 	glColor4f(col.r, col.g, col.b, col.a);
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	glLineWidth(width);
-	glDrawElements(GL_QUADS, 24, GL_UNSIGNED_INT, &quadIndexes[0]);
+	glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, &quadIndexes[0]);
 
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
@@ -1417,6 +1475,7 @@ bool Input::KeyUp(InputKey k) {
 }
 
 void Input::UpdateMouseNKeyboard(bool* src) {
+#ifdef PLATFORM_WIN
 	std::swap(keyStatusOld, keyStatusNew);
 	if (src) std::swap_ranges(src, src + 255, keyStatusNew);
 	else {
@@ -1427,6 +1486,7 @@ void Input::UpdateMouseNKeyboard(bool* src) {
 			keyStatusNew[a] = ((GetAsyncKeyState(a) >> 8) == -128);
 		}
 	}
+#endif
 	
 	inputString = "";
 	bool shift = KeyHold(Key_Shift);
@@ -1476,8 +1536,10 @@ void Input::UpdateMouseNKeyboard(bool* src) {
 }
 
 void Display::Resize(int x, int y, bool maximize) {
+#ifdef PLATFORM_WIN
 	ShowWindow(GetActiveWindow(), maximize? SW_MAXIMIZE : SW_NORMAL);
 	glfwSetWindowSize(window, x, y);
+#endif
 }
 
 ulong Engine::idCounter = 0;
@@ -1551,6 +1613,7 @@ void Debug::Init(string s) {
 //-----------------io class-----------------------
 std::vector<string> IO::GetFiles(const string& folder, string ext)
 {
+#ifdef PLATFORM_WIN
 	if (folder == "") return std::vector<string>();
 	std::vector<string> names;
 	string search_path = folder + "/*" + ext;
@@ -1567,6 +1630,7 @@ std::vector<string> IO::GetFiles(const string& folder, string ext)
 		FindClose(hFind);
 	}
 	return names;
+#endif
 }
 #ifdef IS_EDITOR
 std::vector<EB_Browser_File> IO::GetFilesE (Editor* e, const string& folder)
@@ -1608,6 +1672,7 @@ std::vector<EB_Browser_File> IO::GetFilesE (Editor* e, const string& folder)
 
 void IO::GetFolders(const string& folder, std::vector<string>* names, bool hidden)
 {
+#ifdef PLATFORM_WIN
 	//std::vector<string> names;
 	string search_path = folder + "/*";
 	WIN32_FIND_DATA fd;
@@ -1620,18 +1685,23 @@ void IO::GetFolders(const string& folder, std::vector<string>* names, bool hidde
 		} while (::FindNextFile(hFind, &fd));
 		::FindClose(hFind);
 	}
+#endif
 }
 
 bool IO::HasDirectory (string szPath)
 {
+#ifdef PLATFORM_WIN
 	DWORD dwAttrib = GetFileAttributes(&szPath[0]);
 	return (dwAttrib != INVALID_FILE_ATTRIBUTES && (dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
+#endif
 }
 
 bool IO::HasFile(string szPath)
 {
+#ifdef PLATFORM_WIN
 	DWORD dwAttrib = GetFileAttributes(&szPath[0]);
 	return (dwAttrib != INVALID_FILE_ATTRIBUTES);// && (dwAttrib & FILE_ATTRIBUTE_NORMAL));
+#endif
 }
 
 string IO::ReadFile(const string& path) {
@@ -1854,8 +1924,8 @@ GLuint Font::CreateGlyph(uint sz, bool recalc) {
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (sz + 1) * 16, (sz + 1) * 16, 0, GL_RED, GL_UNSIGNED_BYTE, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 	for (ushort a = 0; a < 256; a++) {
@@ -2218,8 +2288,6 @@ void Scene::DeleteObject(pSceneObject o) {
 	o->_pendingDelete = true;
 }
 
-#ifdef IS_EDITOR
-
 void Scene::ReadD0() {
 #ifndef IS_EDITOR
 	ushort num;
@@ -2255,6 +2323,8 @@ void Scene::ReadD0() {
 void Scene::Unload() {
 
 }
+
+#ifdef IS_EDITOR
 
 void Scene::Save(Editor* e) {
 	std::ofstream sw(e->projectFolder + "Assets\\" + sceneName + ".scene", std::ios::out | std::ios::binary);

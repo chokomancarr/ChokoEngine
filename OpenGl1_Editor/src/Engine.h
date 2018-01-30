@@ -39,7 +39,18 @@ Global stuff, normally not macro-protected
 #else
 #include <GLES3\gl3.h>
 #endif
+#include <GLES\gl.h>
+#include <GLES\glext.h>
 typedef void GLFWwindow;
+typedef unsigned int size_t;
+#define NULL 0
+
+//define some functions not available is OPENGL ES
+extern void glPolygonMode(GLenum a, GLenum b);
+#define GL_BGR GL_RGB
+#define GL_BGRA GL_RGBA
+#define GL_LINE 0U
+#define GL_FILL 0U
 #endif
 
 #include <string>
@@ -205,7 +216,14 @@ namespace std {
 		strm << val;
 		return strm.str();
 	}
+
+	int stoi(const string& s);
+	float stof(const string& s);
+	unsigned long stoul(const string& s);
 }
+
+void fopen_s(FILE** f, const char* c, const char* m);
+void sscanf_s(const char* b, const char* m, ...);
 #endif
 namespace std {
 	string to_string(Vec2 v);
@@ -302,10 +320,12 @@ typedef unsigned char DRAWORDER;
 
 #pragma region class names
 
+//we really shouldn't be doing this
 #if defined(PLATFORM_WIN)
 #define _allowshared(T) friend class std::_Ref_count_obj<T>
 #elif defined(PLATFORM_ADR)
-#define _allowshared(T) friend class std::shared_ptr<T>
+#define _allowshared(T) friend class __gnu_cxx::new_allocator<T>
+//#define _allowshared(T) friend class std::__libcpp_compressed_pair_imp<std::allocator<T>, T, 1>
 #endif
 
 template <class T> class Ref;
@@ -946,8 +966,8 @@ public:
 	static Texture* fallbackTex;
 
 	static std::vector<std::ifstream> dataFiles;
-	static std::unordered_map<ASSETTYPE, std::vector<std::pair<byte, long>>> dataPoss;
-	static std::unordered_map<ASSETTYPE, std::vector<void*>> dataPossCache;
+	static std::unordered_map<ASSETTYPE, std::vector<std::pair<byte, long>>, std::hash<byte>> dataPoss;
+	static std::unordered_map<ASSETTYPE, std::vector<void*>, std::hash<byte>> dataPossCache;
 
 //private: //fk users
 	static GLint drawQuadLocs[3], drawQuadLocsA[3], drawQuadLocsC[1];

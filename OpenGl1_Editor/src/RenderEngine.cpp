@@ -21,12 +21,12 @@ void Camera::DrawSceneObjectsOpaque(std::vector<pSceneObject> oo, GLuint shader)
 	{
 		glPushMatrix();
 		glMultMatrixf(glm::value_ptr(sc->transform.localMatrix()));
-		auto& mrd = sc->GetComponent<MeshRenderer>();
+		auto mrd = sc->GetComponent<MeshRenderer>();
 		if (mrd) {
 			//Debug::Message("Cam", "Drawing " + sc->name);
 			mrd->DrawDeferred(shader);
 		}
-		auto& smd = sc->GetComponent<SkinnedMeshRenderer>();
+		auto smd = sc->GetComponent<SkinnedMeshRenderer>();
 		if (smd) {
 			//Debug::Message("Cam", "Drawing " + sc->name);
 			smd->DrawDeferred(shader);
@@ -148,7 +148,8 @@ void RenderTexture::Blit(Texture* src, RenderTexture* dst, Material* mat, string
 	glDisable(GL_BLEND);
 
 	mat->SetTexture(texName, src);
-	mat->ApplyGL(Mat4x4(), Mat4x4());
+	Mat4x4 dm = Mat4x4();
+	mat->ApplyGL(dm, dm);
 
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(2, GL_FLOAT, 0, &Camera::screenRectVerts[0]);
@@ -874,8 +875,10 @@ void Camera::_DoDrawLight_Spot(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs
 	return;
 	*/
 
-	if (l->drawShadow && l->contactShadows) _DoDrawLight_Spot_Contact(l, glm::inverse(ip), d_depthTex, w, h, d_fbo, ctar);
-
+	if (l->drawShadow && l->contactShadows) {
+		auto iip = glm::inverse(ip);
+		_DoDrawLight_Spot_Contact(l, iip, d_depthTex, w, h, d_fbo, ctar);
+	}
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, d_fbo);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, tar);
 #define sloc l->paramLocs_Spot
@@ -1248,9 +1251,10 @@ void Light::InitRSM() {
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(_rsmBuffer), &_rsmBuffer, GL_STATIC_DRAW);
 	//glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	//glBindBuffer(GL_UNIFORM_BUFFER, gbo);
-	GLvoid* p = glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
-	memcpy(p, &_rsmBuffer, sizeof(_rsmBuffer));
-	glUnmapBuffer(GL_UNIFORM_BUFFER);
+	//GLvoid* p = glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
+	//memcpy(p, &_rsmBuffer, sizeof(_rsmBuffer));
+	//glUnmapBuffer(GL_UNIFORM_BUFFER);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(_rsmBuffer), &_rsmBuffer, GL_WRITE_ONLY);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 

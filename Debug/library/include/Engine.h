@@ -946,8 +946,8 @@ public:
 	static Texture* fallbackTex;
 
 	static std::vector<std::ifstream> dataFiles;
-	static std::unordered_map<ASSETTYPE, std::vector<std::pair<byte, long>>> dataPoss;
-	static std::unordered_map<ASSETTYPE, std::vector<void*>> dataPossCache;
+	static std::unordered_map<ASSETTYPE, std::vector<std::pair<byte, long>>, std::hash<byte>> dataPoss;
+	static std::unordered_map<ASSETTYPE, std::vector<void*>, std::hash<byte>> dataPossCache;
 
 //private: //fk users
 	static GLint drawQuadLocs[3], drawQuadLocsA[3], drawQuadLocsC[1];

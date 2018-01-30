@@ -66,6 +66,8 @@ enum GBUFFERS {
 #pragma endregion
 
 class AssetManager {
+public:
+	/*
 	friend int main(int argc, char **argv);
 	friend class Engine;
 	friend class Editor;
@@ -76,18 +78,19 @@ class AssetManager {
 	template<typename T> friend T* _GetCache(ASSETTYPE t, ASSETID i, bool async = false);
 	friend string _Strm2Asset(std::istream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int max);
 protected:
-	static std::unordered_map<ASSETTYPE, std::vector<string>> names;
+	*/
+	static std::unordered_map<ASSETTYPE, std::vector<string>, std::hash<byte>> names;
 #ifndef IS_EDITOR
 	static string eBasePath;
-	static std::unordered_map<ASSETTYPE, std::vector<string>> dataELocs;
-	static std::unordered_map<ASSETTYPE, std::vector<std::pair<byte*, uint>>> dataECaches;
+	static std::unordered_map<ASSETTYPE, std::vector<string>, std::hash<byte>> dataELocs;
+	static std::unordered_map<ASSETTYPE, std::vector<std::pair<byte*, uint>>, std::hash<byte>> dataECaches;
 	static std::vector<uint> dataECacheLocs;
 	static std::vector<uint> dataECacheSzLocs;
 	static void AllocECache();
 #endif
 	static std::vector <std::pair<ASSETTYPE, ASSETID>> dataECacheIds;
-	static std::unordered_map<ASSETTYPE, std::vector<std::pair<byte, std::pair<uint, uint>>>> dataLocs;
-	static std::unordered_map<ASSETTYPE, std::vector<AssetObject*>> dataCaches;
+	static std::unordered_map<ASSETTYPE, std::vector<std::pair<byte, std::pair<uint, uint>>>, std::hash<byte>> dataLocs;
+	static std::unordered_map<ASSETTYPE, std::vector<AssetObject*>, std::hash<byte>> dataCaches;
 	static std::vector<std::ifstream*> streams;
 	static void Init(string dpath);
 	static AssetObject* CacheFromName(string nm);
@@ -96,7 +99,7 @@ protected:
 	static AssetObject* GenCache(ASSETTYPE t, ASSETID i);
 };
 
-template<typename T> T* _GetCache(ASSETTYPE t, ASSETID i, bool async) {
+template<typename T> T* _GetCache(ASSETTYPE t, ASSETID i, bool async = false) {
 #ifdef IS_EDITOR
 	return static_cast<T*>(Editor::instance->GetCache(t, i, async));
 #else
@@ -518,7 +521,9 @@ protected:
 	TEX_TYPE _texType = TEX_TYPE_NORMAL;
 	bool _mipmap = true, _repeat = false, _blurmips = false;
 	static bool Parse(Editor* e, string path);
+#ifdef IS_EDITOR
 	void _ApplyPrefs(const string& p);
+#endif
 	bool DrawPreview(uint x, uint y, uint w, uint h) override;
 
 	void GenECache(byte* dat, byte chn, bool isrgb, std::vector<RenderTexture*>* rts);

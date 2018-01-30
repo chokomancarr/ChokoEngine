@@ -4,30 +4,26 @@
 #include <iomanip>
 #include <algorithm>
 #include <climits>
-#include <shellapi.h>
 #include <thread>
 #include "Defines.h"
 #include "SceneScriptResolver.h"
+#ifdef IS_EDITOR
+#include <shellapi.h>
+#endif
 
 #define F2ISTREAM(_varname, _pathname) std::ifstream _f2i_ifstream((_pathname).c_str(), std::ios::in | std::ios::binary); \
 std::istream _varname(_f2i_ifstream.rdbuf());
 
-std::stringstream StreamFromBuffer(const std::vector<char>& buf) {
-	std::stringstream strm;
-	strm.write(&buf[0], buf.size());
-	return strm;
-}
-
 #pragma region AssetManager
 
-std::unordered_map<ASSETTYPE, std::vector<string>> AssetManager::names = {};
-std::unordered_map<ASSETTYPE, std::vector<std::pair<byte, std::pair<uint, uint>>>> AssetManager::dataLocs = {};
-std::unordered_map<ASSETTYPE, std::vector<AssetObject*>> AssetManager::dataCaches = {};
+std::unordered_map<ASSETTYPE, std::vector<string>, std::hash<byte>> AssetManager::names = std::unordered_map<ASSETTYPE, std::vector<string>, std::hash<byte>>();
+std::unordered_map<ASSETTYPE, std::vector<std::pair<byte, std::pair<uint, uint>>>, std::hash<byte>> AssetManager::dataLocs = std::unordered_map<ASSETTYPE, std::vector<std::pair<byte, std::pair<uint, uint>>>, std::hash<byte>>();
+std::unordered_map<ASSETTYPE, std::vector<AssetObject*>, std::hash<byte>> AssetManager::dataCaches = std::unordered_map<ASSETTYPE, std::vector<AssetObject*>, std::hash<byte>>();
 std::vector<std::ifstream*> AssetManager::streams = {};
 #ifndef IS_EDITOR
 string AssetManager::eBasePath = "";
-std::unordered_map<ASSETTYPE, std::vector<string>> AssetManager::dataELocs = {};
-std::unordered_map<ASSETTYPE, std::vector<std::pair<byte*, uint>>> AssetManager::dataECaches = {};
+std::unordered_map<ASSETTYPE, std::vector<string>, std::hash<byte>> AssetManager::dataELocs = std::unordered_map<ASSETTYPE, std::vector<string>, std::hash<byte>>();
+std::unordered_map<ASSETTYPE, std::vector<std::pair<byte*, uint>>, std::hash<byte>> AssetManager::dataECaches = std::unordered_map<ASSETTYPE, std::vector<std::pair<byte*, uint>>, std::hash<byte>>();
 std::vector<uint> AssetManager::dataECacheLocs = {};
 std::vector<uint> AssetManager::dataECacheSzLocs = {};
 #endif
@@ -326,8 +322,11 @@ bool LoadJPEG(string fileN, uint &x, uint &y, byte& channels, byte** data)
 	struct jpeg_error_mgr err;          //the error handler
 
 	FILE* file;
+#ifdef PLATFORM_WIN
 	fopen_s(&file, fileN.c_str(), "rb");  //open the file
-
+#else
+	file = fopen(fileN.c_str(), "rb");
+#endif
 	info.err = jpeg_std_error(&err);
 	jpeg_create_decompress(&info);   //fills info structure
 
@@ -418,11 +417,18 @@ bool LoadBMP(string fileN, uint &x, uint &y, byte& channels, byte** data) {
 		return false;
 	else channels = (bpi == 24) ? 3 : 4;
 	// Some BMP files are misformatted, guess missing information
-	if (imageSize == 0)    imageSize = x * y * 3; // 3 : one byte for each Red, Green and Blue component
+	if (imageSize == 0)    imageSize = x * y * channels; // 3 : one byte for each Red, Green and Blue component
 	if (dataPos == 0)      dataPos = 54; // The BMP header is done that way
 	*data = new unsigned char[imageSize];
 	// Read the actual data from the file into the buffer
 	strm.read(*(char**)data, imageSize);
+#ifdef PLATFORM_ADR
+	for (uint a = 0; a < x * y; a++) {
+		unsigned char b = (*data)[a];
+		(*data)[a] = (*data)[a + 2];
+		(*data)[a+2] = b;
+	}
+#endif
 	return true;
 }
 
@@ -437,8 +443,6 @@ byte* Texture::LoadPixels(const string& path, byte& chn, uint& w, uint& h) {
 			std::cout << "load bmp failed! " << path << std::endl;
 			return nullptr;
 		}
-		//rgb = GL_BGR;
-		//rgba = GL_BGRA;
 	}
 	else if (sss == ".jpg") {
 		if (!LoadJPEG(path, w, h, chn, &data)) {
@@ -869,6 +873,7 @@ bool Texture::Parse(Editor* e, string path) {
 	return true;
 }
 
+#ifdef IS_EDITOR
 void Texture::_ApplyPrefs(const string& p) {
 	std::ifstream iStrm(p, std::ios::in | std::ios::binary | std::ios::ate);
 	if (iStrm.is_open()) {
@@ -891,6 +896,7 @@ void Texture::_ApplyPrefs(const string& p) {
 		}
 	}
 }
+#endif
 
 bool Texture::DrawPreview(uint x, uint y, uint w, uint h) {
 	UI::Texture((float)x, (float)y, (float)w, (float)h, this, DRAWTEX_FIT);
@@ -1724,7 +1730,7 @@ void Material::ApplyGL(Mat4x4& _mv, Mat4x4& _p) {
 		bool wm;
 		for (uint m = 0; m < GBUFFER_NUM_TEXTURES - 1; m++) {
 			wm = writeMask[m];
-			glColorMaski(m, wm, wm, wm, wm);
+			//glColorMaski(m, wm, wm, wm, wm);
 		}
 	}
 }

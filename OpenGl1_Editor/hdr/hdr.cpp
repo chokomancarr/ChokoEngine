@@ -39,6 +39,7 @@
 
 \****************************************************************************/
 
+#include "Engine.h"
 #include "hdr.h"
 #include <math.h>
 #include <stdio.h>
@@ -123,7 +124,6 @@ unsigned char *hdr::read_hdr(const char *filename, unsigned int *w, unsigned int
 
     /* Read the dimensions */
     sscanf_s(buf, "%*s %u %*s %u", h, w);
-
     if ((*w == 0) || (*h == 0)) {
         fprintf(stderr, "read_hdr(): Something is wrong with image dimensions\n");
         return NULL;

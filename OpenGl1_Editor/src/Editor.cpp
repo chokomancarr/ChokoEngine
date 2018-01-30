@@ -104,7 +104,7 @@ void UndoStack::Undo(byte cnt) {
 	}
 }
 void UndoStack::Redo(byte cnt) {
-	
+
 }
 #endif
 #pragma endregion
@@ -187,7 +187,7 @@ ASSETTYPE GetFormatEnum(string ext) {
 		return ASSETTYPE_SHADER;
 	else if (ext == ".effect")
 		return ASSETTYPE_CAMEFFECT;
-	
+
 	else return ASSETTYPE_UNDEF;
 }
 
@@ -243,8 +243,8 @@ void EB_Debug::Draw() {
 	//glDisable(GL_DEPTH_TEST);
 	for (int x = drawIds.size() - 1, y = 0; x >= 0; x--, y++) {
 		byte t = editor->messageTypes[drawIds[x]];
-		Vec4 col = (t == 0) ? white() : ((t==1)? yellow() : red());
-		Engine::DrawQuad(v.r + 1, v.g + v.a - 36 - y * 15 + scrollOffset, v.b - 2, 14, Vec4(1, 1, 1, ((x&1)==1)? 0.2f : 0.1f));
+		Vec4 col = (t == 0) ? white() : ((t == 1) ? yellow() : red());
+		Engine::DrawQuad(v.r + 1, v.g + v.a - 36 - y * 15 + scrollOffset, v.b - 2, 14, Vec4(1, 1, 1, ((x & 1) == 1) ? 0.2f : 0.1f));
 		UI::Label(v.r + 3, v.g + v.a - 36 - y * 15 + scrollOffset, 12, editor->messages[drawIds[x]].first + " says: " + editor->messages[drawIds[x]].second, editor->font, col);
 	}
 	if (Engine::EButton((editor->editorLayer == 0), v.r + 1, v.g + v.a - 21, 80, 20, grey1(), "Messages", 12, editor->font, drawM ? white() : grey2()) == MOUSE_RELEASE) {
@@ -262,7 +262,7 @@ void EB_Debug::Draw() {
 	if (Engine::EButton((editor->editorLayer == 0), v.r + v.b - 100, v.g + v.a - 21, 80, 20, grey1(), "Clear", 12, editor->font, white()) == MOUSE_RELEASE) {
 		editor->ClearLogs();
 	}
-	Engine::EndStencil(); 
+	Engine::EndStencil();
 }
 
 void EB_Debug::Refresh() {
@@ -307,7 +307,7 @@ void EB_Console::Draw() {
 	DrawHeaders(editor, this, &v, "System Console");
 	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
 	Engine::DrawQuad(v.r, v.g, v.b, v.a - 17, black());
-	
+
 	for (uint c = outputCount; c > 0; c--) {
 		UI::Label(v.r + 2, v.g + v.a - 17 * (2 + outputCount - c), 12, outputs[c - 1], editor->font, white());
 	}
@@ -332,7 +332,7 @@ void EB_Console::Draw() {
 			input = "";
 		}
 		else if (Input::KeyDown(Key_Backspace)) {
-			input = input.substr(0, input.length()-1);
+			input = input.substr(0, input.length() - 1);
 		}
 		else input += Input::inputString;
 	}
@@ -449,13 +449,13 @@ EB_Browser_File::EB_Browser_File(Editor* e, string path, string nm, string fn) :
 	canExpand = false;
 	/*
 	if (ext == "jpg" || ext == "bmp" || ext == "png") {
-		//name = name.substr(0, name.find_last_of('.'));
-		ASSETTYPE t;
-		ASSETID i;
-		if (e->GetAssetInfo(fullName, t, i) != ASSETTYPE_UNDEF) {
-			tex = _GetCache<Texture>(t, i);
-			thumbnail = 1;
-		}
+	//name = name.substr(0, name.find_last_of('.'));
+	ASSETTYPE t;
+	ASSETID i;
+	if (e->GetAssetInfo(fullName, t, i) != ASSETTYPE_UNDEF) {
+	tex = _GetCache<Texture>(t, i);
+	thumbnail = 1;
+	}
 	}
 	*/
 	for (int a = e->assetIcons.size() - 1; a >= 0; a--) {
@@ -493,11 +493,11 @@ EB_Browser::EB_Browser(Editor* e, int x1, int y1, int x2, int y2, string dir) : 
 bool DrawFileRect(float w, float h, float size, EB_Browser_File* file, EditorBlock* e) {
 	bool b = false;
 	if (e->editor->editorLayer == 0) {
-		byte bb = ((file->thumbnail >= 0) ? Engine::Button(w + 1, h + 1, size - 2, size - 2, (file->tex != nullptr)? file->tex : e->editor->assetIcons[file->thumbnail], white(1, 0.8f), white(), white(1, 0.5f)) : Engine::Button(w + 1, h + 1, size - 2, size - 2, grey2()));
+		byte bb = ((file->thumbnail >= 0) ? Engine::Button(w + 1, h + 1, size - 2, size - 2, (file->tex != nullptr) ? file->tex : e->editor->assetIcons[file->thumbnail], white(1, 0.8f), white(), white(1, 0.5f)) : Engine::Button(w + 1, h + 1, size - 2, size - 2, grey2()));
 		b = bb == MOUSE_RELEASE;
 
 		if (file->canExpand) {
-			if (Engine::Button(w + size*0.5f, h + 1, size*0.5f-1, size - 2, file->expanded? e->editor->tex_assetCollapse : e->editor->tex_assetExpand, white((bb & MOUSE_HOVER_FLAG)>0? 1 : 0.5f, 0.8f), white(), white(1, 0.5f)) == MOUSE_RELEASE) {
+			if (Engine::Button(w + size*0.5f, h + 1, size*0.5f - 1, size - 2, file->expanded ? e->editor->tex_assetCollapse : e->editor->tex_assetExpand, white((bb & MOUSE_HOVER_FLAG)>0 ? 1 : 0.5f, 0.8f), white(), white(1, 0.5f)) == MOUSE_RELEASE) {
 				file->expanded = !file->expanded;
 			}
 		}
@@ -513,8 +513,8 @@ bool DrawFileRect(float w, float h, float size, EB_Browser_File* file, EditorBlo
 	return b;
 }
 
-bool IsTextFile(const string& path) { 
-	std::vector<string> exts = std::vector<string>({"cpp", "h", "txt"});
+bool IsTextFile(const string& path) {
+	std::vector<string> exts = std::vector<string>({ "cpp", "h", "txt" });
 	string s = path.substr(path.find_last_of('.') + 1);
 	return std::find(exts.begin(), exts.end(), s) != exts.end();
 }
@@ -569,7 +569,7 @@ void EB_Browser::Draw() {
 	int hh = 0;
 	byte fileSize = 70;
 	for (int ff = files.size() - 1; ff >= 0; ff--) {
-		if (DrawFileRect(v.r + 151 + ww, v.g + EB_HEADER_SIZE + (fileSize+1)* hh, fileSize, &files[ff], this)) {
+		if (DrawFileRect(v.r + 151 + ww, v.g + EB_HEADER_SIZE + (fileSize + 1)* hh, fileSize, &files[ff], this)) {
 			editor->GetAssetInfo(files[ff].fullName, editor->selectedFileType, editor->selectedFile);
 			editor->selectedFileTexts.clear();
 			editor->selectedFileName = files[ff].name;
@@ -581,12 +581,12 @@ void EB_Browser::Draw() {
 				editor->selectedFileTexts = GetTexts(files[ff].fullName);
 			}
 		}
-		
-		ww += fileSize+1;
+
+		ww += fileSize + 1;
 		if (ww > (v.b - 152 - fileSize)) {
 			ww = 0;
 			hh++;
-			if (v.g + EB_HEADER_SIZE + (fileSize+1)* hh > Display::height)
+			if (v.g + EB_HEADER_SIZE + (fileSize + 1)* hh > Display::height)
 				break;
 		}
 		if (files[ff].expanded) {
@@ -604,11 +604,11 @@ void EB_Browser::Draw() {
 						editor->selectedFileTexts = GetTexts(files[ff].children[fff].fullName);
 					}
 				}
-				ww += fileSize+1;
+				ww += fileSize + 1;
 				if (ww > (v.b - 152 - fileSize)) {
 					ww = 0;
 					hh++;
-					if (v.g + EB_HEADER_SIZE + (fileSize+1)* hh > Display::height)
+					if (v.g + EB_HEADER_SIZE + (fileSize + 1)* hh > Display::height)
 						break;
 				}
 			}
@@ -921,14 +921,14 @@ void EB_Viewer::Draw() {
 			}
 		}
 		else {
-			Engine::DrawLineWDotted(Vec3(editor->selectedSpos.x, editor->selectedSpos.y, 0), Vec3((Input::mousePos.x - v.r)/v.b * 2 - 1, -((Input::mousePos.y - v.g - EB_HEADER_SIZE - 1)/(v.a - EB_HEADER_SIZE - 1) * 2 - 1), 0), white(1, 0.1f), 1, 12.0f / Display::height);
+			Engine::DrawLineWDotted(Vec3(editor->selectedSpos.x, editor->selectedSpos.y, 0), Vec3((Input::mousePos.x - v.r) / v.b * 2 - 1, -((Input::mousePos.y - v.g - EB_HEADER_SIZE - 1) / (v.a - EB_HEADER_SIZE - 1) * 2 - 1), 0), white(1, 0.1f), 1, 12.0f / Display::height);
 		}
 	}
 
 
 	//Engine::EndStencil();
 	glViewport(0, 0, Display::width, Display::height);
-	
+
 	if (!editor->playSyncer.syncedSceneSz && (editor->playSyncer.status != Editor_PlaySyncer::EPS_Offline)) {
 		UI::Texture(v.r + v.b / 2 - 16, v.g + v.a / 2 - 16, 32, 32, editor->tex_waiting);
 	}
@@ -1014,8 +1014,8 @@ void EB_Viewer::DrawTArrows(Vec3 pos, float size) {
 	Engine::DrawLineW(pos, pos + _rot(Vec3(s, 0, 0)), red(), 3);
 	Engine::DrawLineW(pos, pos + _rot(Vec3(0, s, 0)), green(), 3);
 	Engine::DrawLineW(pos, pos + _rot(Vec3(0, 0, s)), blue(), 3);
-	
-	
+
+
 	float ds = s * 0.07f;
 	arrowVerts[0] = pos + _rot(Vec3(s, ds, ds));
 	arrowVerts[1] = pos + _rot(Vec3(s, -ds, ds));
@@ -1064,9 +1064,9 @@ void EB_Viewer::DrawSArrows(Vec3 pos, float size) {
 
 	//float s = size / pow(2, scale);
 	float ds = sz * 0.07f;
-	Engine::DrawCube(pos + Vec3((sz) + ds, 0, 0), ds, ds, ds, red());
-	Engine::DrawCube(pos + Vec3(0, (sz) + ds, 0), ds, ds, ds, green());
-	Engine::DrawCube(pos + Vec3(0, 0, (sz) + ds), ds, ds, ds, blue());
+	Engine::DrawCube(pos + Vec3((sz)+ds, 0, 0), ds, ds, ds, red());
+	Engine::DrawCube(pos + Vec3(0, (sz)+ds, 0), ds, ds, ds, green());
+	Engine::DrawCube(pos + Vec3(0, 0, (sz)+ds), ds, ds, ds, blue());
 	glDepthFunc(GL_LEQUAL);
 }
 #undef _rot
@@ -1314,7 +1314,7 @@ void EBI_DrawAss_Txt(Vec4 v, Editor* editor, EB_Inspector* b, float off) {
 	uint sz = editor->selectedFileTexts.size();
 	Engine::DrawQuad(v.r + 2.0f, off, v.b - 4.0f, 14.0f*sz + 4.0f, black(0.8f));
 	for (uint a = 0; a < sz; a++) {
-		UI::Label(v.r + 4, off + a*14 + 2, 12, editor->selectedFileTexts[a], editor->font, white());
+		UI::Label(v.r + 4, off + a * 14 + 2, 12, editor->selectedFileTexts[a], editor->font, white());
 	}
 }
 
@@ -1388,7 +1388,7 @@ void EB_Inspector::Draw() {
 	else if (editor->selectGlobal) {
 		DrawGlobal(v);
 	}
-	else if (editor->selected()){
+	else if (editor->selected()) {
 		DrawObj(v, editor, this, editor->selected.raw());
 	}
 	else if (editor->selectedFileTexts.size() > 0) {
@@ -1418,7 +1418,7 @@ void EB_Inspector::DrawGlobal(Vec4 v) {
 	off = 40 + EB_HEADER_SIZE;
 	if (editor->activeScene->settings.skyId > -1) {
 		UI::Label(v.r, v.g + off, 12, "Sky Strength", editor->font, white());
-		Engine::DrawQuad(v.r + v.b*0.3f, v.g + off, v.b*0.3f-1, 16, grey2());
+		Engine::DrawQuad(v.r + v.b*0.3f, v.g + off, v.b*0.3f - 1, 16, grey2());
 		UI::Label(v.r + v.b*0.3f, v.g + off, 12, std::to_string(editor->activeScene->settings.skyStrength), editor->font, white());
 		editor->activeScene->settings.skyStrength = Engine::DrawSliderFill(v.r + v.b*0.6f, v.g + off, v.b*0.4f - 1, 16, 0, 3, editor->activeScene->settings.skyStrength, grey2(), white());
 	}
@@ -1491,7 +1491,7 @@ void EB_Inspector::_ApplyEffMat(void* v) {
 	eff->Save(Editor::instance->selectedFilePath);
 }
 
-EB_AnimEditor::EB_AnimEditor(Editor* e, int x1, int y1, int x2, int y2): _editingAnim(-1), scale(2), offset(Vec2()) {
+EB_AnimEditor::EB_AnimEditor(Editor* e, int x1, int y1, int x2, int y2) : _editingAnim(-1), scale(2), offset(Vec2()) {
 	editorType = 5;
 	editor = e;
 	this->x1 = x1;
@@ -1510,7 +1510,7 @@ void EB_AnimEditor::Draw() {
 	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
 
 	Engine::DrawQuad(v.r, v.g + EB_HEADER_SIZE, v.b, v.a, white(0.1f, 0.4f));
-	float scl = 1/scale;
+	float scl = 1 / scale;
 	scl *= scl;
 	float scl2 = scl;
 	while (scl2 < 0.2f)
@@ -1519,8 +1519,8 @@ void EB_AnimEditor::Draw() {
 		scl2 *= 0.2f;
 
 	Vec2 off0 = offset*scl + Vec2(v.r, v.g) + 0.5f*Vec2(v.b, v.a);
-	for (float x = v.r; x < (v.r + v.b); x+=scl2*32) {
-		Engine::DrawLine(Vec2(x, v.g - EB_HEADER_SIZE - 1), Vec2(x, v.g + v.a), black(0.6f*(scl2-0.2f)/0.8f), 1);
+	for (float x = v.r; x < (v.r + v.b); x += scl2 * 32) {
+		Engine::DrawLine(Vec2(x, v.g - EB_HEADER_SIZE - 1), Vec2(x, v.g + v.a), black(0.6f*(scl2 - 0.2f) / 0.8f), 1);
 	}
 	for (float y = v.g; y < (v.g + v.a); y += scl2 * 32) {
 		Engine::DrawLine(Vec2(v.r, y), Vec2(v.r + v.b, y), black(0.6f*(scl2 - 0.2f) / 0.8f), 1);
@@ -1533,7 +1533,7 @@ void EB_AnimEditor::Draw() {
 	}
 
 	editor->DrawAssetSelector(v.r, v.g + EB_HEADER_SIZE + 1, v.b * 0.5f, 14, grey2(), ASSETTYPE_ANIMATION, 12, editor->font, &_editingAnim, &_SetAnim, this);
-	
+
 	if (editingAnim != nullptr) {
 		for (Anim_State* state : editingAnim->states) {
 			Vec2 poss = off0 + state->editorPos;
@@ -1543,7 +1543,7 @@ void EB_AnimEditor::Draw() {
 				state->editorExpand = !state->editorExpand;
 			Engine::EButton(editor->editorLayer == 0, poss.x + scl * 34, poss.y + scl * 2, scl * 284, scl * 28, grey1(), state->name, scl * 24, editor->font, white());
 			if (state->editorExpand) {
-				Engine::DrawQuad(poss.x, poss.y + scl * 32, scl * 320, (state->isBlend && state->editorShowGraph)? scl*320 : scl * 256, grey1());
+				Engine::DrawQuad(poss.x, poss.y + scl * 32, scl * 320, (state->isBlend && state->editorShowGraph) ? scl * 320 : scl * 256, grey1());
 				state->isBlend = Engine::Toggle(poss.x + scl * 6, poss.y + scl * 34, scl * 28, editor->tex_checkbox, state->isBlend, white(), ORIENT_HORIZONTAL);
 				UI::Label(poss.x + scl * 36, poss.y + scl * 36, scl * 24, "Blending", editor->font, white());
 				float off = poss.y + scl * 64;
@@ -1574,7 +1574,7 @@ void EB_AnimEditor::OnMouseScr(bool up) {
 }
 
 GLuint EB_Previewer::d_fbo = 0;
-GLuint EB_Previewer::d_texs[] = {0, 0, 0};
+GLuint EB_Previewer::d_texs[] = { 0, 0, 0 };
 GLuint EB_Previewer::d_depthTex = 0;
 
 GLuint EB_Previewer::b_fbo = 0;
@@ -1868,7 +1868,7 @@ bool PopupSelector::Do_Draw_Object(const std::vector<pSceneObject>& objs, uint& 
 			return true;
 		}
 		off++;
-		if (!!o->childCount) 
+		if (!!o->childCount)
 			if (Do_Draw_Object(o->children, off, inc + 1))
 				return true;
 	}
@@ -1923,7 +1923,7 @@ bool EPS_RWMem(bool write, Editor_PlaySyncer* syncer, T* val, uint loc, ulong sz
 	else ok = !!ReadProcessMemory(syncer->pInfo.hProcess, (LPVOID)loc, val, sz, &c);
 	if (!ok || c != sz) {
 		syncer->status = Editor_PlaySyncer::EPS_RWFailure;
-		Debug::Error("RWMem", "Unable to " + (string)(write? "write " : "read ") + std::to_string(sz) + " bytes to " + std::to_string(loc) + "! (" + std::to_string(c) + " bytes succeeded)");
+		Debug::Error("RWMem", "Unable to " + (string)(write ? "write " : "read ") + std::to_string(sz) + " bytes to " + std::to_string(loc) + "! (" + std::to_string(c) + " bytes succeeded)");
 		return false;
 	}
 	else return true;
@@ -1980,7 +1980,7 @@ void Editor_PlaySyncer::Update() {
 				Debug::Message("Player", "writing screen size to " + std::to_string((uint)pointers.screenSizeLoc));
 				uint sz = (playH << 16) + playW;
 				if (!EPS_RWMem(true, this, &sz, pointers.screenSizeLoc)) return;
-				
+
 				eCacheSzLocs = std::vector<uint>(AssetManager::dataECacheIds.size());
 				if (!EPS_RWMem(false, this, &eCacheSzLocs[0], pointers.assetCacheSzLoc, sizeof(uint)*AssetManager::dataECacheIds.size())) return;
 				ushort an = 0;
@@ -2020,7 +2020,7 @@ void Editor_PlaySyncer::Update() {
 					//auto as = Editor::instance->GetCache(ids.first, ids.second);
 					auto as = Editor::instance->normalAssetCaches[ids.first][ids.second];
 					if (as && as->_eCache) {
-						if (!EPS_RWMem(true, this, as->_eCache, eCacheLocs[an], as->_eCacheSz+1)) return;
+						if (!EPS_RWMem(true, this, as->_eCache, eCacheLocs[an], as->_eCacheSz + 1)) return;
 						std::cout << "wrote " << (int)ids.first << "." << ids.second << ": " << as->_eCacheSz << "B" << std::endl;
 					}
 					an++;
@@ -2057,7 +2057,7 @@ void Editor_PlaySyncer::Update() {
 					input._mouse0 = Input::mouse0;
 					input._mouse1 = Input::mouse1;
 					input._mouse2 = Input::mouse2;
-					if (!EPS_RWMem(true, this, &input._mousePos, pointers.mousePosLoc, 4*sizeof(Vec2)+3)) return;
+					if (!EPS_RWMem(true, this, &input._mousePos, pointers.mousePosLoc, 4 * sizeof(Vec2) + 3)) return;
 					if (!EPS_RWMem(true, this, Input::keyStatusNew, pointers.keyboardLoc, 256)) return;
 
 					if (!EPS_RWMem(false, this, &pixelCount, pointers.pixelCountLoc)) return;
@@ -2111,7 +2111,7 @@ bool Editor_PlaySyncer::DoSyncObj(const std::vector<uint>& locs, const uint sz, 
 		obj->childCount = *((uint*)(dat + SceneObject::_offsets.children) - 1);
 		if (!obj->childCount) continue;
 		std::vector<uint> locs2(obj->childCount);
-		if (!EPS_RWMem(false, this, &locs2[0], *((uint*)(dat + SceneObject::_offsets.children)), 4*obj->childCount)) return false;
+		if (!EPS_RWMem(false, this, &locs2[0], *((uint*)(dat + SceneObject::_offsets.children)), 4 * obj->childCount)) return false;
 		DoSyncObj(locs2, obj->childCount, obj->children);
 	}
 	return true;
@@ -2182,7 +2182,7 @@ bool Editor_PlaySyncer::ReloadTex() {
 	e = glGetError();
 	glBindTexture(GL_TEXTURE_2D, texPointer);
 	e = glGetError();
-	byte* dat = new byte[playW*playH*4]();
+	byte* dat = new byte[playW*playH * 4]();
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, playW, playH, 0, GL_RGB, GL_UNSIGNED_BYTE, dat);
 	e = glGetError();
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -2345,8 +2345,8 @@ ASSETID Editor::GetAssetId(AssetObject* i, ASSETTYPE&) {
 		return -1;
 	else {
 		for (auto& a : normalAssetCaches) {
-			for (int b = a.second.size()-1; b >= 0; b--) {
-				if (a.second[b].get() == i){
+			for (int b = a.second.size() - 1; b >= 0; b--) {
+				if (a.second[b].get() == i) {
 					return b;
 				}
 			}
@@ -2370,7 +2370,7 @@ string Editor::GetAssetName(ASSETTYPE type, ASSETID i) {
 void Editor::ReadPrefs() {
 	string ss = projectFolder;
 	while (ss[ss.size() - 1] == '\\')
-		ss = ss.substr(0, ss.size()-1);
+		ss = ss.substr(0, ss.size() - 1);
 	string s = projectFolder + "\\" + ss.substr(ss.find_last_of('\\'), string::npos) + ".Bordom";
 	std::ifstream strm(s, std::ios::in | std::ios::binary);
 	if (!strm.is_open()) {
@@ -2495,7 +2495,7 @@ void Editor::LoadDefaultAssets() {
 
 	tex_assetExpand = GetRes("asset_expand");
 	tex_assetCollapse = GetRes("asset_collapse");
-	
+
 	assetIconsExt.push_back("h");
 	assetIconsExt.push_back("blend");
 	assetIconsExt.push_back("cpp");
@@ -2537,7 +2537,7 @@ void Editor::LoadDefaultAssets() {
 	grid[63] = Vec3(0, 0, 8);
 
 	for (int a = 0; a < 16; a++) {
-		gridId[a*2] = a;
+		gridId[a * 2] = a;
 		gridId[a * 2 + 1] = a + 44;
 	}
 	for (int b = 0; b < 14; b++) {
@@ -2575,7 +2575,7 @@ void Editor::LoadDefaultAssets() {
 	assetTypes.emplace("hdr", ASSETTYPE_HDRI);
 	assetTypes.emplace("animclip", ASSETTYPE_ANIMCLIP);
 	assetTypes.emplace("animator", ASSETTYPE_ANIMATION);
-	
+
 	allAssets.emplace(ASSETTYPE_SCENE, std::vector<string>());
 	allAssets.emplace(ASSETTYPE_MESH, std::vector<string>());
 	allAssets.emplace(ASSETTYPE_ANIMCLIP, std::vector<string>());
@@ -2619,7 +2619,7 @@ void AddH(Editor* e, string dir, std::vector<string>* h, std::vector<string>* cp
 
 void Editor::GenerateScriptResolver() {
 	std::ifstream vcxIn(dataPath + "res\\vcxproj.txt", std::ios::in);
-	if (!vcxIn.is_open()){
+	if (!vcxIn.is_open()) {
 		_Error("Script Resolver", "Vcxproj template not found!");
 		return;
 	}
@@ -2662,7 +2662,7 @@ void Editor::GenerateScriptResolver() {
 		else
 			h += ", ";
 	}
-	
+
 	h += "\n\tstatic void ";
 	for (int a = 0, b = headerAssets.size(); a < b; a++) {
 		h += "_Ass" + std::to_string(a) + "(SceneScript* sscr, std::ifstream& strm)";
@@ -2673,7 +2673,7 @@ void Editor::GenerateScriptResolver() {
 	}
 	//*/
 	h += "};";
-	
+
 	//SceneScriptResolver.cpp
 	string s = "#include \"SceneScriptResolver.h\"\n#include \"Engine.h\"\n\n";
 	//*
@@ -2695,16 +2695,16 @@ void Editor::GenerateScriptResolver() {
 	s += "}\n\n";
 	s += "SceneScript* SceneScriptResolver::Resolve(std::ifstream& strm) {\n\tchar* c = new char[100];\n\tstrm.getline(c, 100, 0);\n\tstring s(c);\n\tdelete[](c);";
 	s += "\n\tint a = 0;\n\tfor (string ss : names) {\n\t\tif (ss == s) {\n\t\t\tSceneScript* scr = map[a]();\n\t\t\tscr->name = s + \" (Script)\";\n\t\t\t(*ass[a])(scr, strm);\n\t\t\treturn scr;\n\t\t}\n\t\ta++;\n\t}\n\treturn nullptr;\n}";
-	
+
 	GenerateScriptValuesReader(s);
-	
+
 	string cppO = projectFolder + "\\System\\SceneScriptResolver.cpp";
 	string hO = projectFolder + "\\System\\SceneScriptResolver.h";
 
 	std::remove(hO.c_str());
 	std::remove(cppO.c_str());
 
-	std::ofstream ofs (cppO.c_str(), std::ios::out | std::ios::trunc);
+	std::ofstream ofs(cppO.c_str(), std::ios::out | std::ios::trunc);
 	ofs << s;
 	ofs.close();
 	//SetFileAttributes(cppO.c_str(), FILE_ATTRIBUTE_HIDDEN);
@@ -2719,14 +2719,14 @@ void Editor::GenerateScriptValuesReader(string& s) {
 	tmpl += "\tfor (ushort x = 0; x < sz; x++) {\n\t\t_Strm2Val<SCR_VARTYPE>(strm, t);\n";
 	tmpl += "\t\tchar c[100];\n\t\tstrm.getline(&c[0], 100, 0);\n\t\tstring s(c);\n\n";
 	s += "\n\n";
-	
+
 	for (int a = 0, b = headerAssets.size(); a < b; a++) {
 		int flo = headerAssets[a].find_last_of('\\') + 1;
 		if (flo == string::npos) flo = 0;
 		string ha = headerAssets[a].substr(flo);
 		ha = ha.substr(0, ha.size() - 2);
-		
-		s += "void SceneScriptResolver::_Ass" + std::to_string(a) + " (SceneScript* sscr, std::ifstream& strm) {\n\t" + ha + "* scr = (" + ha  + "*)sscr;\n" + tmpl;
+
+		s += "void SceneScriptResolver::_Ass" + std::to_string(a) + " (SceneScript* sscr, std::ifstream& strm) {\n\t" + ha + "* scr = (" + ha + "*)sscr;\n" + tmpl;
 		std::ifstream mstrm(projectFolder + "Assets\\" + headerAssets[a] + ".meta", std::ios::in | std::ios::binary);
 		if (!mstrm.is_open()) {
 			_Error("Script Component", "Cannot read meta file!");
@@ -2852,9 +2852,9 @@ void Editor::DrawHandles() {
 		}
 		//Engine::DrawQuad(v.b - EB_HEADER_PADDING, v.a - EB_HEADER_PADDING - 1, EB_HEADER_PADDING, EB_HEADER_PADDING, tex_buttonExt->pointer); //splitter bot right
 		if (Engine::EButton((editorLayer == 0), v.b - EB_HEADER_PADDING, v.g + 1, EB_HEADER_PADDING, EB_HEADER_PADDING, tex_buttonX, white(0.7f, 0.8f), white(), white(1, 0.3f)) == MOUSE_RELEASE) {//window mod
-			//blocks.erase(blocks.begin() + r);
-			//delete(b);
-			//break;
+																																																	//blocks.erase(blocks.begin() + r);
+																																																	//delete(b);
+																																																	//break;
 		}
 		r++;
 	}
@@ -2886,9 +2886,9 @@ void Editor::DrawHandles() {
 				if (b && MOUSE_HOVER_FLAG > 0) {
 					if (b == MOUSE_CLICK) {
 						activeY = q;
-dw = 1.0f / Display::width;
-dh = 1.0f / Display::height;
-//mousePosOld = Input::mousePosRelative.x;
+						dw = 1.0f / Display::width;
+						dh = 1.0f / Display::height;
+						//mousePosOld = Input::mousePosRelative.x;
 					}
 					moused = true;
 				}
@@ -2993,7 +2993,7 @@ dh = 1.0f / Display::height;
 				for (int e = 0, ee = internalAssets[browseType].size(); e < ee; e++, ar++) {
 					byte b = Engine::Button(Display::width*0.2f + 6 + (Display::width*0.3f - 5)*(ar & 1), Display::height*0.2f + 41 + 15 * ((ar >> 1) - 1), Display::width*0.3f - 7, 14, Vec4(0.2f, 0.2f, 0.4f, 1), internalAssets[browseType][e], 12, font, white());
 					if (b & MOUSE_HOVER_FLAG) {
-						
+
 					}
 				}
 				for (int r = 0, rr = proceduralAssets[browseType].size(); r < rr; r++, ar++) {
@@ -3083,8 +3083,8 @@ dh = 1.0f / Display::height;
 			UI::Label(Display::width*0.2f + 15, Display::height*0.2f + 35, 12, "Included scenes: " + std::to_string(sz), font, white());
 			Engine::DrawQuad(Display::width*0.2f + 12, Display::height*0.2f + 50, Display::width*0.3f, 306, white(0.05f));
 			for (uint a = 0; a < sz; a++) {
-				includedScenesUse[a] = Engine::Toggle(Display::width*0.2f + 14, Display::height*0.2f + 51 + a*15, 14, tex_checkbox, includedScenesUse[a], white(), ORIENT_HORIZONTAL);
-				UI::Label(Display::width*0.2f + 30, Display::height*0.2f + 52 + a*15, 12, includedScenes[a], font, white());
+				includedScenesUse[a] = Engine::Toggle(Display::width*0.2f + 14, Display::height*0.2f + 51 + a * 15, 14, tex_checkbox, includedScenesUse[a], white(), ORIENT_HORIZONTAL);
+				UI::Label(Display::width*0.2f + 30, Display::height*0.2f + 52 + a * 15, 12, includedScenes[a], font, white());
 			}
 
 			if (Engine::Button(Display::width*0.8f - 80, Display::height*0.2f + 2, 78, 18, grey2(), "Save", 18, font, white()) == MOUSE_RELEASE) {
@@ -3163,7 +3163,7 @@ Texture* Editor::GetRes(string name, bool mipmap, string ext) {
 	return GetRes(name, mipmap, false, ext);
 }
 Texture* Editor::GetRes(string name, bool mipmap, bool nearest, string ext) {
-	return new Texture(dataPath + "res\\" + name + "." + ext, mipmap, nearest? TEX_FILTER_POINT : TEX_FILTER_TRILINEAR, 0);
+	return new Texture(dataPath + "res\\" + name + "." + ext, mipmap, nearest ? TEX_FILTER_POINT : TEX_FILTER_TRILINEAR, 0);
 }
 
 void Editor::_Message(string a, string b) {
@@ -3247,7 +3247,7 @@ void DoScanMeshesGet(Editor* e, std::vector<string>& list, string p, bool rec) {
 		if ((w.size() > 10) && ((w.substr(w.size() - 10, string::npos)) == ".mesh.meta")) {
 			string ww(w.substr(e->projectFolder.size() + 7, string::npos));
 			ww = ww.substr(0, ww.find_last_of('\\')) + ww.substr(ww.find_last_of('\\') + 1, string::npos);
-			e->normalAssets[ASSETTYPE_MESH].push_back(ww.substr(0, ww.size()-10));
+			e->normalAssets[ASSETTYPE_MESH].push_back(ww.substr(0, ww.size() - 10));
 			e->normalAssetCaches[ASSETTYPE_MESH].push_back(nullptr);
 			e->normalAssetMakings[ASSETTYPE_MESH].push_back(nullptr);
 		}
@@ -3369,12 +3369,12 @@ void Editor::LoadInternalAssets() {
 		else {
 			/*
 			if (s.substr(0, 11) == "procedural\\") {
-				proceduralAssets[actt].push_back(s);
-				switch (actt) {
-				case ASSETTYPE_MESH:
-					proceduralAssetCaches[actt].push_back(Procedurals::UVSphere(16, 12));
-					break;
-				}
+			proceduralAssets[actt].push_back(s);
+			switch (actt) {
+			case ASSETTYPE_MESH:
+			proceduralAssetCaches[actt].push_back(Procedurals::UVSphere(16, 12));
+			break;
+			}
 			}
 			*/
 		}
@@ -3411,7 +3411,7 @@ bool Editor::ParseAsset(string path) {
 	if (ext == "shade") {
 		ok = Shader::Parse(&stream, path + ".meta");
 	}
-	else if (ext == "blend"){
+	else if (ext == "blend") {
 		ok = Mesh::ParseBlend(this, path);
 	}
 	else if (ext == "bmp" || ext == "jpg" || ext == "png") {
@@ -3449,7 +3449,7 @@ void Editor::SetBackground(string s, float a) {
 		delete(backgroundTex);
 	backgroundTex = new Texture(s);
 	if (a >= 0)
-		backgroundAlpha = (int)(a*100);
+		backgroundAlpha = (int)(a * 100);
 }
 
 void DoScanBrowseComp(SceneObject* o, COMPONENT_TYPE t, string p, std::vector<Component*>& vc, std::vector<string>& vs) {
@@ -3708,7 +3708,7 @@ bool Editor::MergeAssets(Editor* e) {
 	byte incre = 1;
 	string nm = e->projectFolder + "Release\\data" + std::to_string(incre);
 	e->AddBuildLog(e, "Writing to " + nm);
-	std::ofstream file2(nm.c_str(), std::ios::out | std::ios::binary | std::ios::trunc); 
+	std::ofstream file2(nm.c_str(), std::ios::out | std::ios::binary | std::ios::trunc);
 	if (!file2.is_open()) {
 		e->AddBuildLog(e, "Cannot open " + nm + "!", true);
 		return false;
@@ -3785,7 +3785,7 @@ bool DoMsBuild(Editor* e) {
 			e->AddBuildLog(e, "failed to create pipe for stdout!");
 			return false;
 		}
-		if (!SetHandleInformation(stdOutR, HANDLE_FLAG_INHERIT, 0)){
+		if (!SetHandleInformation(stdOutR, HANDLE_FLAG_INHERIT, 0)) {
 			e->AddBuildLog(e, "failed to set handle for stdout!");
 			return false;
 		}
@@ -3800,11 +3800,11 @@ bool DoMsBuild(Editor* e) {
 		string ss = (string(s) + "\\msbuild.exe");
 		/*
 		if (IO::HasFile("D:\\TestProject\\Debug\\TestProject.exe")) {
-			e->buildLog.push_back("removing previous executable");
-			if (remove("D:\\TestProject\\Debug\\TestProject.exe") != 0) {
-				e->buildLog.push_back("unable to remove previous executable!");
-				return false;
-			}
+		e->buildLog.push_back("removing previous executable");
+		if (remove("D:\\TestProject\\Debug\\TestProject.exe") != 0) {
+		e->buildLog.push_back("unable to remove previous executable!");
+		return false;
+		}
 		}
 		*/
 		bool failed = true;
@@ -3875,9 +3875,9 @@ void Editor::Compile(Editor* e) {
 void AddOtherScenes(Editor* e, string dir, std::vector<string> &v1, std::vector<bool> &v2) {
 	for (string s : IO::GetFiles(dir)) {
 		if (s.size() > 7 && s.substr(s.size() - 6, string::npos) == ".scene") {
-			string pp = s.substr(s.find_last_of("\\")+1, string::npos);
+			string pp = s.substr(s.find_last_of("\\") + 1, string::npos);
 			for (string p2 : v1)
-				if (p2==pp)
+				if (p2 == pp)
 					goto cancel;
 			v1.push_back(pp);
 			v2.push_back(false);
@@ -3888,7 +3888,7 @@ void AddOtherScenes(Editor* e, string dir, std::vector<string> &v1, std::vector<
 	IO::GetFolders(dir, &f);
 	for (string ff : f)
 		if (ff != "." && ff != "..")
-		AddOtherScenes(e, ff, v1, v2);
+			AddOtherScenes(e, ff, v1, v2);
 }
 
 void Editor::ShowPrefs(Editor* e) {
@@ -3964,7 +3964,7 @@ void Editor::DoCompile() {
 			for (string s2 : IO::GetFiles(projectFolder + "Release"))
 			{
 				string ss = s2.substr(s2.find_last_of('\\') + 1, string::npos);
-				string se = s2.substr(s2.size()-4, string::npos);
+				string se = s2.substr(s2.size() - 4, string::npos);
 				if (ss == "glewinfo.exe" || ss == "visualinfo.exe" || se == ".pdb" || se == ".obj") {
 					AddBuildLog(this, "deleting " + s2);
 					std::remove(s2.c_str());
@@ -3995,7 +3995,7 @@ void BlockCombo::Draw() {
 	Editor* editor = blocks[0]->editor;
 	Vec4 v = Vec4(Display::width*editor->xPoss[blocks[0]->x1], Display::height*editor->yPoss[blocks[0]->y1], Display::width*editor->xPoss[blocks[0]->x2], Display::height*editor->yPoss[blocks[0]->y2]);
 	CalcV(v);
-	float a = Rect(v.r, v.g, v.b, v.a).Inside(Input::mousePos)? 1 : 0.3f;
+	float a = Rect(v.r, v.g, v.b, v.a).Inside(Input::mousePos) ? 1 : 0.3f;
 	for (uint x = 0, y = blocks.size(); x < y; x++) {
 		if (Engine::EButton(editor->editorLayer == 0, v.r + v.b - EB_HEADER_PADDING - 2 - EB_HEADER_SIZE*(y - x)*1.2f, v.g + 1, EB_HEADER_SIZE - 2, EB_HEADER_SIZE - 2, editor->ebIconTexs[blocks[x]->editorType], white(((x == active) ? 1 : 0.7f)*a)) == MOUSE_RELEASE) {
 			active = x;

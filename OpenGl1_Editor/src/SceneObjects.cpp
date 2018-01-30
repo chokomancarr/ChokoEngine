@@ -1,5 +1,6 @@
 #include "Engine.h"
 #include "Editor.h"
+#include "algorithm"
 
 Object::Object(string nm) : id(Engine::GetNewId()), name(nm) {}
 Object::Object(ulong id, string nm) : id(id), name(nm) {}
@@ -108,11 +109,11 @@ void Camera::ApplyGL() {
 	case CAM_CLEAR_COLOR:
 		glClearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
 		glClear(GL_COLOR_BUFFER_BIT);
-		glClearDepth(1);
+		glClearDepthf(1);
 		glClear(GL_DEPTH_BUFFER_BIT);
 		break;
 	case CAM_CLEAR_DEPTH:
-		glClearDepth(1);
+		glClearDepthf(1);
 		glClear(GL_DEPTH_BUFFER_BIT);
 		break;
 	}
@@ -753,7 +754,7 @@ InverseKinematics::InverseKinematics() : Component("InverseKinematics", COMP_INK
 void InverseKinematics::Apply() {
 	auto t = target->transform.position();
 	for (byte i = 0; i < iterations; i++) {
-		auto& o = object();
+		auto o = object();
 		for (byte a = 0; a < length; a++) {
 			if (!o->parent) return;
 
