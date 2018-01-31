@@ -536,11 +536,11 @@ public:
 	bool contactShadows = false;
 	float contactShadowDistance = 0.1f;
 	uint contactShadowSamples = 20;
-	Texture* cookie;
+	Texture* cookie = 0;
 	float cookieStrength = 1;
 	bool square = false;
-	LIGHT_FALLOFF falloff;
-	Texture* hsvMap;
+	LIGHT_FALLOFF falloff = LIGHT_FALLOFF_INVSQUARE;
+	Texture* hsvMap = 0;
 
 	void DrawShadowMap(GLuint tar = 0), BlitRSMFlux(), DrawRSM(Mat4x4& ip, Mat4x4& lp, float w, float h, GLuint gtexs[], GLuint gdepth);
 

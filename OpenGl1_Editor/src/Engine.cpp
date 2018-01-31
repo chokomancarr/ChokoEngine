@@ -12,6 +12,8 @@
 #ifdef PLATFORM_WIN
 #include <shellapi.h>
 #elif defined(PLATFORM_ADR)
+#include <dirent.h>
+#include <android/log.h>
 void glPolygonMode(GLenum a, GLenum b) {}
 #endif
 
@@ -472,26 +474,34 @@ void Engine::Init(string path) {
 	}
 	Engine::_mainThreadId = std::this_thread::get_id();
 
-	Material::LoadOris();
-	Light::InitShadow();
-	Camera::InitShaders();
-	Font::Init();
-	SkinnedMeshRenderer::InitSkinning();
-	if (!AudioEngine::Init()) Debug::Error("AudioEngine", "Failed to initialize WASAPI!");
-#ifdef IS_EDITOR
-	Editor::InitShaders();
-	Editor::instance->InitMaterialPreviewer();
-#endif
+#ifdef PLATFORM_WIN
 	string vertcode = "#version 330 core\nlayout(location = 0) in vec3 pos;\nlayout(location = 1) in vec2 uv;\nout vec2 UV;\nvoid main(){ \ngl_Position.xyz = pos;\ngl_Position.w = 1.0;\nUV = uv;\n}";
 	string fragcode = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nuniform float level;\nout vec4 color;void main(){\ncolor = textureLod(sampler, UV, level)*col;\n}"; //out vec3 Vec4;\n
 	string fragcode2 = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nuniform float level;\nout vec4 color;void main(){\ncolor = vec4(1, 1, 1, textureLod(sampler, UV, level).r)*col;\n}"; //out vec3 Vec4;\n
 	string fragcode3 = "#version 330 core\nin vec2 UV;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = col;\n}";
 	string fragcodeSky = "#version 330 core\nin vec2 UV;uniform sampler2D sampler;uniform vec2 dir;uniform float length;out vec4 color;void main(){float ay = asin((UV.y) / length);float l2 = length*cos(ay);float ax = asin((dir.x + UV.x) / l2);color = textureLod(sampler, vec2((dir.x + ax / 3.14159)*sin(dir.y + ay / 3.14159) + 0.5, (dir.y + ay / 3.14159)), 0);color.a = 1;}";
-
+#else
+	string vertcode = "#version 300 es\nlayout(location = 0) in vec3 pos;\nlayout(location = 1) in vec2 uv;\nout vec2 UV;\nvoid main(){ \ngl_Position.xyz = pos;\ngl_Position.w = 1.0;\nUV = uv;\n}";
+	string fragcode = "#version 300 es\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nuniform float level;\nout vec4 color;void main(){\ncolor = textureLod(sampler, UV, level)*col;\n}"; //out vec3 Vec4;\n
+	string fragcode2 = "#version 300 es\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nuniform float level;\nout vec4 color;void main(){\ncolor = vec4(1, 1, 1, textureLod(sampler, UV, level).r)*col;\n}"; //out vec3 Vec4;\n
+	string fragcode3 = "#version 300 es\nin vec2 UV;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = col;\n}";
+	string fragcodeSky = "#version 300 es\nin vec2 UV;uniform sampler2D sampler;uniform vec2 dir;uniform float length;out vec4 color;void main(){float ay = asin((UV.y) / length);float l2 = length*cos(ay);float ax = asin((dir.x + UV.x) / l2);color = textureLod(sampler, vec2((dir.x + ax / 3.14159)*sin(dir.y + ay / 3.14159) + 0.5, (dir.y + ay / 3.14159)), 0.0);color.a = 1.0;}";
+#endif
 	unlitProgram = Shader::FromVF(vertcode, fragcode);
 	unlitProgramA = Shader::FromVF(vertcode, fragcode2);
 	unlitProgramC = Shader::FromVF(vertcode, fragcode3);
 	skyProgram = Shader::FromVF(vertcode, fragcodeSky);
+
+	Material::LoadOris();
+	Light::InitShadow();
+	Camera::InitShaders();
+	Font::Init();
+	SkinnedMeshRenderer::InitSkinning();
+	if (!AudioEngine::Init()) Debug::Error("AudioEngine", "Failed to initialize audio output!");
+#ifdef IS_EDITOR
+	Editor::InitShaders();
+	Editor::instance->InitMaterialPreviewer();
+#endif
 	ScanQuadParams();
 
 #ifdef IS_EDITOR
@@ -1559,10 +1569,16 @@ void Debug::Message(string c, string s) {
 	*stream << "[i " + std::to_string(clock()) + "]" << c << ": " << s << std::endl;
 #endif
 	std::cout << "[i]" << c << ": " << s << std::endl;
+#ifdef PLATFORM_ADR
+	__android_log_print(ANDROID_LOG_INFO, "ChokoLait", &s[0]);
+#endif
 }
 void Debug::Warning(string c, string s) {
 #ifndef IS_EDITOR
 	*stream << "[w]" << c << ": " << s << std::endl;
+#ifdef PLATFORM_ADR
+	__android_log_print(ANDROID_LOG_WARN, "ChokoLait", &s[0]);
+#endif
 #else
 	std::cout << "[w]" << c << ": " << s << std::endl;
 	Editor::instance->_Warning(c, s);
@@ -1571,6 +1587,9 @@ void Debug::Warning(string c, string s) {
 void Debug::Error(string c, string s) {
 #ifndef IS_EDITOR
 	*stream << "[e]" << c << ": " << s << std::endl;
+#ifdef PLATFORM_ADR
+	__android_log_print(ANDROID_LOG_ERROR, "ChokoLait", &s[0]);
+#endif
 #else
 	std::cout << "[e]" << c << " says: " << s << std::endl;
 	__debugbreak();
@@ -1613,9 +1632,9 @@ void Debug::Init(string s) {
 //-----------------io class-----------------------
 std::vector<string> IO::GetFiles(const string& folder, string ext)
 {
-#ifdef PLATFORM_WIN
 	if (folder == "") return std::vector<string>();
 	std::vector<string> names;
+#ifdef PLATFORM_WIN
 	string search_path = folder + "/*" + ext;
 	WIN32_FIND_DATA fd;
 	HANDLE hFind = FindFirstFile(search_path.c_str(), &fd);
@@ -1629,9 +1648,18 @@ std::vector<string> IO::GetFiles(const string& folder, string ext)
 		} while (FindNextFile(hFind, &fd));
 		FindClose(hFind);
 	}
-	return names;
+#elif defined(PLATFORM_ADR)
+	DIR* dir = opendir(&folder[0]);
+	dirent* ep;
+	do {
+		string nm (ep->d_name);
+		if (nm != "." && nm != "..")
+			names.push_back(nm);
+	} while (ep = readdir(dir));
 #endif
+	return names;
 }
+
 #ifdef IS_EDITOR
 std::vector<EB_Browser_File> IO::GetFilesE (Editor* e, const string& folder)
 {
@@ -1854,7 +1882,11 @@ void Font::Init() {
 
 	string error;
 	GLuint vs, fs;
+#ifdef PLATFORM_WIN
 	string frag = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = vec4(1, 1, 1, texture(sampler, UV).r)*col;\n}";
+#else
+	string frag = "#version 300 es\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = vec4(1.0, 1.0, 1.0, texture(sampler, UV).r)*col;\n}";
+#endif
 	if (!Shader::LoadShader(GL_VERTEX_SHADER, DefaultResources::GetStr("fontVert.txt"), vs, &error)) {
 		Debug::Error("Engine", "Fatal: Cannot init font shader(v)! " + error);
 		abort();
@@ -1886,8 +1918,10 @@ void Font::Init() {
 }
 
 Font::Font(const string& path, int size) {
-	if (FT_New_Face(_ftlib, path.c_str(), 0, &_face) != FT_Err_Ok) {
-		Debug::Error("Font", "Failed to load font!");
+	Debug::Message("Font", "opening font at " + path);
+	auto err = FT_New_Face(_ftlib, path.c_str(), 0, &_face);
+	if (err != FT_Err_Ok) {
+		Debug::Error("Font", "Failed to load font! " + std::to_string(err));
 		return;
 	}
 	//FT_Set_Char_Size(_face, 0, (FT_F26Dot6)(size * 64.0f), Display::dpi, 0); // set pixel size based on dpi
@@ -1895,6 +1929,7 @@ Font::Font(const string& path, int size) {
 	FT_Select_Charmap(_face, FT_ENCODING_UNICODE);
 	CreateGlyph(size, true);
 	SizeVec(20);
+	loaded = true;
 }
 
 void Font::SizeVec(uint sz) {
@@ -1921,7 +1956,7 @@ GLuint Font::CreateGlyph(uint sz, bool recalc) {
 	_glyphs.emplace(sz, 0);
 	glGenTextures(1, &_glyphs[sz]);
 	glBindTexture(GL_TEXTURE_2D, _glyphs[sz]);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (sz + 1) * 16, (sz + 1) * 16, 0, GL_RED, GL_UNSIGNED_BYTE, NULL);
+	glTexStorage2D(GL_TEXTURE_2D, 1, GL_R8, (sz + 1) * 16, (sz + 1) * 16);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -2373,7 +2408,7 @@ void DefaultResources::Init(string path) {
 		cc[sz] = 0;
 		datas.push_back(cc);
 	}
-	std::cout << "Default Resources OK (" << std::to_string(names.size()) << " files loaded)" << std::endl;
+	Debug::Message("Default Resources", "OK (" + std::to_string(names.size()) + " files loaded)");
 }
 
 string DefaultResources::GetStr(string name) {

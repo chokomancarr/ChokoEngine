@@ -39,11 +39,15 @@ Global stuff, normally not macro-protected
 #else
 #include <GLES3\gl3.h>
 #endif
-#include <GLES\gl.h>
+//#include <GLES\gl.h>
 #include <GLES\glext.h>
+#include <GLES3\gl3ext.h>
 typedef void GLFWwindow;
 typedef unsigned int size_t;
 #define NULL 0
+
+#include <android/log.h>
+#define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "Choko Engine", __VA_ARGS__))
 
 //define some functions not available is OPENGL ES
 extern void glPolygonMode(GLenum a, GLenum b);
@@ -541,6 +545,7 @@ public:
 
 	friend int main(int argc, char **argv);
 	friend class ChokoLait;
+	friend void Start();
 protected:
 	static std::ofstream* stream;
 	static void Init(string path);
@@ -992,6 +997,7 @@ public:
 	//byte GetAsset(string name);
 	friend int main(int argc, char **argv);
 	friend class ChokoLait;
+	friend void Start();
 protected:
 	static void Init(string path = "");
 	static bool LoadDatas(string path);
