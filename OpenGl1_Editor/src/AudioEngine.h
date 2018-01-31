@@ -19,7 +19,7 @@ extern const IID IID_IAudioClient;
 extern const IID IID_IAudioRenderClient;
 #endif
 
-typedef bool(*audioRequestPacketCallback) (byte* data, uint count); //datasize = count*channels*samples
+typedef bool(*audioRequestPacketCallback) (byte* data, uint count); //datasize = count*channels*sizeof(type)
 
 class AudioEngine {
 public:
@@ -34,7 +34,8 @@ public:
 	static UINT32 numFramesAvailable;
 	static UINT32 numFramesPadding;
 	static BYTE *pData;
-	static DWORD flags;
+	static DWORD flags, samplesPerSec;
+	static WORD sampleSize;
 #endif
 
 	static audioRequestPacketCallback callback;

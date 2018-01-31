@@ -33,6 +33,8 @@ Global stuff, normally not macro-protected
 #pragma comment(lib, "glew_win.lib")
 #include <glew.h>
 #include <glfw3.h>
+typedef GLFWwindow NativeWindow;
+#define LOGI(...)
 #elif defined(PLATFORM_ADR)
 #ifdef FEATURE_COMPUTE_SHADERS
 #include <GLES3\gl31.h>
@@ -42,12 +44,15 @@ Global stuff, normally not macro-protected
 //#include <GLES\gl.h>
 #include <GLES\glext.h>
 #include <GLES3\gl3ext.h>
+#include <android/input.h>
+#include <android/native_window.h>
 typedef void GLFWwindow;
 typedef unsigned int size_t;
+typedef ANativeWindow NativeWindow;
 #define NULL 0
 
 #include <android/log.h>
-#define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "Choko Engine", __VA_ARGS__))
+#define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "ChokoLait", __VA_ARGS__))
 
 //define some functions not available is OPENGL ES
 extern void glPolygonMode(GLenum a, GLenum b);
@@ -772,6 +777,21 @@ public:
 
 	static bool KeyDown(InputKey key), KeyHold(InputKey key), KeyUp(InputKey key);
 
+	static uint touchCount;
+	static std::array<uint, 10> touchIds;
+	static std::array<Vec2, 10> touchPoss;
+	//static std::array<float, 10> touchForce;
+	static std::array<byte, 10> touchStates;
+	class Motion {
+	public:
+		static Vec2 Pan();
+		static Vec2 Zoom();
+		static Vec3 Rotate();
+	};
+#ifdef PLATFORM_ADR
+	static void UpdateAdr(AInputEvent* e);
+#endif
+
 	Vec2 _mousePos, _mousePosRelative, _mouseDelta, _mouseDownPos;
 	bool _mouse0, _mouse1, _mouse2;
 	bool _keyStatuses[256];
@@ -801,8 +821,8 @@ public:
 	friend void FocusGL(GLFWwindow* window, int focus);
 	friend class PopupSelector;
 	friend class ChokoLait;
-protected:
-	static GLFWwindow* window;
+//protected:
+	static NativeWindow* window;
 };
 
 #ifdef FEATURE_COMPUTE_SHADERS

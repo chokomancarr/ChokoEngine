@@ -53,10 +53,40 @@ void KillSplash();
 //	MessageBox(hwnd, "aaa", "title", MB_OK);
 //}
 
-char Get(std::istream& strm) {
-	char c;
-	strm.read(&c, 1);
-	return c;
+float _t = 0.0f;
+float freq = 200.0f;
+float vol = 0.5f;
+bool isSq = false;
+float sign(float f) {
+	if (f > 0) return 1.0f;
+	else return -1.0f;
+}
+static bool GenTone(byte* data, uint count) {
+	uint bs = AudioEngine::sampleSize / 8;
+	for (uint a = 0; a < count; a++) {
+		if (bs == 4) {
+			if (isSq) {
+				*(float*)data = (float)sign(sin(_t * 2 * PI)) * vol;
+				data += 4;
+				*(float*)data = (float)sign(sin(_t * 2 * PI)) * vol;
+				data += 4;
+			}
+			else {
+				*(float*)data = (float)sin(_t * 2 * PI) * vol;
+				data += 4;
+				*(float*)data = (float)sin(_t * 2 * PI) * vol;
+				data += 4;
+			}
+		}
+		else {
+			*(short*)data = (short)round(65535*sin(_t * 2 * PI*deg2rad)/2);
+			data += 2;
+			*(short*)data = (short)round(65535*sin(_t * 2 * PI*deg2rad)/2);
+			data += 2;
+		}
+		_t += Repeat(freq / AudioEngine::samplesPerSec, 0.0f, 100.0f);
+	}
+	return true;
 }
 
 int main(int argc, char **argv)
@@ -172,6 +202,8 @@ int main(int argc, char **argv)
 	new Water("D:\\water.compute", 4, 1, 1);
 #endif
 
+	AudioEngine::Start(&GenTone);
+
 	PopupSelector::Init();
 	glfwMakeContextCurrent(window);
 
@@ -209,6 +241,17 @@ int main(int argc, char **argv)
 		}
 
 		renderScene();
+
+		Engine::DrawQuad(0, 0, Display::width, Display::height, black());
+		if (Engine::Button(Display::width*0.3f, Display::height*0.5f - 100, 100, 30, white(1, isSq? 0.3f : 0.5f), "Sine", 14, font, white()) == MOUSE_RELEASE) {
+			isSq = false;
+		}
+		if (Engine::Button(Display::width*0.3f + 110, Display::height*0.5f - 100, 100, 30, white(1, isSq ? 0.5f : 0.3f), "Square", 14, font, white()) == MOUSE_RELEASE) {
+			isSq = true;
+		}
+		freq = Engine::DrawSliderFill(Display::width*0.3f, Display::height*0.5f - 50, Display::width*0.4f, 30, 100, 1000, freq, white(0.8f, 0.5f), white(1, 0.7f));
+		vol = Engine::DrawSliderFill(Display::width*0.3f, Display::height*0.5f + 20, Display::width*0.4f, 30, 0, 1, vol, white(0.8f, 0.5f), white(1, 0.7f));
+
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 

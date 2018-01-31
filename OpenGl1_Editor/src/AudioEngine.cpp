@@ -18,6 +18,8 @@ UINT32 AudioEngine::numFramesAvailable;
 UINT32 AudioEngine::numFramesPadding;
 BYTE *AudioEngine::pData;
 DWORD AudioEngine::flags = 0;
+DWORD AudioEngine::samplesPerSec = 0;
+WORD AudioEngine::sampleSize = 0;
 #endif
 
 audioRequestPacketCallback AudioEngine::callback = nullptr;
@@ -56,9 +58,10 @@ bool AudioEngine::Init() {
 		NULL);
 	EXIT_ON_ERROR(hr);
 
+	sampleSize = pwfx->wBitsPerSample;
+
 	// Tell the audio source which format to use.
 	//hr = pMySource->SetFormat(pwfx);
-	EXIT_ON_ERROR(hr);
 
 	// Get the actual size of the allocated buffer.
 	hr = pAudioClient->GetBufferSize(&bufferFrameCount);
@@ -69,19 +72,7 @@ bool AudioEngine::Init() {
 		(void**)&pRenderClient);
 	EXIT_ON_ERROR(hr);
 
-	// Grab the entire buffer for the initial fill operation.
-	hr = pRenderClient->GetBuffer(bufferFrameCount, &pData);
-	EXIT_ON_ERROR(hr);
-
-	// Load the initial data into the shared buffer.
-	//hr = pMySource->LoadData(bufferFrameCount, pData, &flags);
-	EXIT_ON_ERROR(hr);
-
-	hr = pRenderClient->ReleaseBuffer(bufferFrameCount, flags);
-	EXIT_ON_ERROR(hr);
-
-	// Calculate the actual duration of the allocated buffer.
-	actualSamples = REFTIMES_PER_SEC * bufferFrameCount / pwfx->nSamplesPerSec;
+	samplesPerSec = pwfx->nSamplesPerSec;
 
 	Debug::Message("AudioEngine", "WASAPI Initialized.");
 	return true;
@@ -89,9 +80,10 @@ bool AudioEngine::Init() {
 	return false;
 }
 
-void AudioEngine::Start(audioRequestPacketCallback callback) {
+void AudioEngine::Start(audioRequestPacketCallback cb) {
 	if (thread) return;
 	forcestop = false;
+	callback = cb;
 	thread = new std::thread(_DoPlayStream);
 }
 
@@ -104,6 +96,19 @@ void AudioEngine::Stop() {
 void AudioEngine::_DoPlayStream()
 {
 #ifdef PLATFORM_WIN
+	bufferFrameCount = 500;
+
+	// Grab the entire buffer for the initial fill operation.
+	pRenderClient->GetBuffer(bufferFrameCount, &pData);
+
+	callback(pData, bufferFrameCount);
+
+	pRenderClient->ReleaseBuffer(bufferFrameCount, flags);
+
+	// Calculate the actual duration of the allocated buffer.
+	actualSamples = REFTIMES_PER_SEC * bufferFrameCount / samplesPerSec;
+
+	pAudioClient->Start();
 	while (!forcestop)
 	{
 		// Sleep for half the buffer duration.

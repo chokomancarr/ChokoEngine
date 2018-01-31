@@ -809,7 +809,6 @@ void UI::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4, floa
 	uint sz = st.size();
 	GLuint tex = font->glyph((uint)round(s));
 	font->SizeVec(sz);
-
 	byte align = (byte)font->alignment;
 	if ((align & 15) > 0) {
 		float totalW = 0;
@@ -839,6 +838,8 @@ void UI::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4, floa
 		font->cs[i + 2] = c;
 		font->cs[i + 3] = c;
 		x = ceil(x + font->w2s[c]*s + s*0.1f);
+
+		//Debug::Message("", std::to_string(Vec3(x, y - s, 1)*ds) + " " + std::to_string(-Vec3(font->off[c].x, font->off[c].y, 0)*s*ds));
 	}
 	font->poss[sz * 4] = Vec3(x, 0, 0)*ds;
 
@@ -869,6 +870,11 @@ void UI::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4, floa
 	glUseProgram(0);
 
 	glDisableClientState(GL_VERTEX_ARRAY);
+	//Debug::Message("", "-> " + std::to_string(prog) + " " + std::to_string(baseColLoc) + " " + std::to_string(baseImageLoc));
+	//for (uint a = 0; a < sz * 4; a++) {
+	//	Debug::Message("", "  " + std::to_string(font->poss[a]));
+	//}
+	//abort();
 }
 
 MOUSE_STATUS Engine::Button(float x, float y, float w, float h) {
@@ -1468,8 +1474,23 @@ void Engine::DrawCubeLinesW(float x0, float x1, float y0, float y1, float z0, fl
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
+
+#pragma region Input
+
+Vec2 Input::mousePos = Vec2(0, 0);
+Vec2 Input::mousePosRelative = Vec2(0, 0);
+Vec2 Input::mousePosOld = Vec2(0, 0);
+Vec2 Input::mouseDelta = Vec2(0, 0);
+Vec2 Input::mouseDownPos = Vec2(0, 0);
+
 bool Input::keyStatusOld[] = {};
 bool Input::keyStatusNew[] = {};
+
+uint Input::touchCount;
+std::array<uint, 10> Input::touchIds = std::array<uint, 10>();
+std::array<Vec2, 10> Input::touchPoss = std::array<Vec2, 10>();
+//std::array<float, 10> Input::touchForce = std::array<float, 10>();
+std::array<byte, 10> Input::touchStates = std::array<byte, 10>();
 
 bool Input::KeyDown(InputKey k) {
 	return keyStatusNew[k] && !keyStatusOld[k];
@@ -1478,7 +1499,6 @@ bool Input::KeyDown(InputKey k) {
 bool Input::KeyHold(InputKey k) {
 	return keyStatusNew[k];
 }
-
 
 bool Input::KeyUp(InputKey k) {
 	return !keyStatusNew[k] && keyStatusOld[k];
@@ -1545,10 +1565,59 @@ void Input::UpdateMouseNKeyboard(bool* src) {
 	mousePosOld = mousePos;
 }
 
+Vec2 Input::Motion::Pan() {
+	return Vec2();
+}
+
+Vec2 Input::Motion::Zoom() {
+	return Vec2();
+}
+
+Vec3 Input::Motion::Rotate() {
+	return Vec3();
+}
+
+#ifdef PLATFORM_ADR
+void Input::UpdateAdr(AInputEvent* e) {
+	if (e) {
+		touchCount = AMotionEvent_getPointerCount(e);
+		for (uint a = 0; a < touchCount; a++) {
+			touchIds[a] = AMotionEvent_getPointerId(e, a);
+			touchPoss[a].x = AMotionEvent_getRawX(e, a);
+			touchPoss[a].y = AMotionEvent_getRawY(e, a);
+			//touchForce[a] = AMotionEvent_getPressure(e, a);
+		}
+		auto act = AMotionEvent_getAction(e);
+		uint id = act >> 8;
+		switch (act & 255) {
+		case AMOTION_EVENT_ACTION_DOWN:
+		case AMOTION_EVENT_ACTION_POINTER_DOWN:
+			touchStates[id] = MOUSE_DOWN;
+			break;
+		case AMOTION_EVENT_ACTION_UP:
+		case AMOTION_EVENT_ACTION_POINTER_UP:
+			touchStates[id] = MOUSE_UP;
+			break;
+		default:
+			touchStates[id] = MOUSE_HOLD;
+			break;
+		}
+	}
+	else {
+		if (touchCount == 1 && touchStates[0] == MOUSE_UP)
+			touchCount = 0;
+	}
+}
+#endif
+
+#pragma endregion
+
 void Display::Resize(int x, int y, bool maximize) {
 #ifdef PLATFORM_WIN
 	ShowWindow(GetActiveWindow(), maximize? SW_MAXIMIZE : SW_NORMAL);
 	glfwSetWindowSize(window, x, y);
+#elif defined(PLATFORM_ADR)
+	ANativeWindow_setBuffersGeometry(window, x, y, 0);
 #endif
 }
 
@@ -1886,6 +1955,7 @@ void Font::Init() {
 	string frag = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = vec4(1, 1, 1, texture(sampler, UV).r)*col;\n}";
 #else
 	string frag = "#version 300 es\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = vec4(1.0, 1.0, 1.0, texture(sampler, UV).r)*col;\n}";
+	//string frag = "#version 300 es\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = vec4(1.0, 0.0, 0.0, 1.0);\n}";
 #endif
 	if (!Shader::LoadShader(GL_VERTEX_SHADER, DefaultResources::GetStr("fontVert.txt"), vs, &error)) {
 		Debug::Error("Engine", "Fatal: Cannot init font shader(v)! " + error);
@@ -1997,14 +2067,8 @@ Font* Font::Align(ALIGNMENT a) {
 int Display::width = 512;
 int Display::height = 512;
 glm::mat3 Display::uiMatrix = glm::mat3();
-GLFWwindow* Display::window = nullptr;
+NativeWindow* Display::window = nullptr;
 
-//--------------------Input class--------------
-Vec2 Input::mousePos = Vec2(0, 0);
-Vec2 Input::mousePosRelative = Vec2(0, 0);
-Vec2 Input::mousePosOld = Vec2(0, 0);
-Vec2 Input::mouseDelta = Vec2(0, 0);
-Vec2 Input::mouseDownPos = Vec2(0, 0);
 
 float BezierSolveApprox(Vec2& v1, Vec2& v2, Vec2& v3, Vec2& v4, float x, float acc = 0.5f) {
 	if (x < v1.x)
