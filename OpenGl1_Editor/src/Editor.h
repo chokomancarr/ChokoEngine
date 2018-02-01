@@ -200,6 +200,16 @@ public:
 	Vec3 modAxisDir;
 	Camera* seeingCamera;
 
+	float previewWidth, previewHeight;
+	float previewWidth_o, previewHeight_o;
+	static GLuint d_fbo, d_texs[4], d_depthTex;
+	static GLuint b_fbo, b_texs[2], bb_fbo, bb_tex;
+
+	void InitGBuffer();
+	void _InitDummyBBuffer();
+	void _RenderLights(Vec4 v);
+	void _RenderSky(Mat4x4 mat), _DrawLights(std::vector<pSceneObject> oo, Mat4x4 ip);
+
 	Mat4x4 invMatrix, projMatrix;
 	void MakeMatrix();
 

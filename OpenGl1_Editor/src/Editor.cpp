@@ -691,6 +691,16 @@ Vec2 xy(Vec3 v) {
 	return Vec2(v.x, v.y);
 }
 
+
+GLuint EB_Viewer::d_fbo = 0;
+GLuint EB_Viewer::d_texs[] = { 0, 0, 0 };
+GLuint EB_Viewer::d_depthTex = 0;
+
+GLuint EB_Viewer::b_fbo = 0;
+GLuint EB_Viewer::b_texs[] = { 0, 0 };
+GLuint EB_Viewer::bb_fbo = 0;
+GLuint EB_Viewer::bb_tex = 0;
+
 void EB_Viewer::DrawSceneObjectsOpaque(EB_Viewer* ebv, const std::vector<pSceneObject>& oo) {
 	for (auto& sc : oo)
 	{
@@ -746,11 +756,19 @@ void EB_Viewer::Draw() {
 	if (maximize) v = Vec4(0, 0, Display::width, Display::height);
 	DrawHeaders(editor, this, &v, "Viewer: SceneNameHere");
 
+	previewWidth = v.b;
+	previewHeight = v.a;
+	if (previewWidth != previewWidth_o || previewHeight != previewHeight_o) {
+		previewWidth_o = previewWidth;
+		previewHeight_o = previewHeight;
+		InitGBuffer();
+	}
+
 	//Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
-	glViewport((int)v.r, (int)(Display::height - v.g - v.a), (int)v.b, (int)(v.a - EB_HEADER_SIZE - 2));
+	//glViewport((int)v.r, (int)(Display::height - v.g - v.a), (int)v.b, (int)(v.a - EB_HEADER_SIZE - 2));
 
 	Vec2 v2 = Vec2(Display::width, Display::height)*0.03f;
-	Engine::DrawQuad(0, 0, (float)Display::width, (float)Display::height, white(1, 0.2f));//editor->checkers->pointer, Vec2(), Vec2(v2.x, 0), Vec2(0, v2.y), v2, true, white(0.05f));
+	Engine::DrawQuad(v.r, v.g + EB_HEADER_SIZE - 1, v.b, v.a - EB_HEADER_SIZE - 2, white(1, 0.2f));//editor->checkers->pointer, Vec2(), Vec2(v2.x, 0), Vec2(0, v2.y), v2, true, white(0.05f));
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	float ww1 = editor->xPoss[x1];
@@ -800,15 +818,42 @@ void EB_Viewer::Draw() {
 	Mat4x4 tmpMat = (Mat4x4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]));
 	invMatrix = glm::inverse(projMatrix * tmpMat);
 
+	float zero[] = { 0,0,0,0 };
+	float one = 1;
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, b_fbo);
+	glClearBufferfv(GL_COLOR, 0, zero);
+	glClearBufferfv(GL_DEPTH, 0, &one);
+
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, d_fbo);
+	glClearBufferfv(GL_COLOR, 0, zero);
+	glClearBufferfv(GL_DEPTH, 0, &one);
+	glClearBufferfv(GL_COLOR, 1, zero);
+	glClearBufferfv(GL_COLOR, 2, zero);
+	glClearBufferfv(GL_COLOR, 3, zero);
+	//glDrawBuffer(0);
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LEQUAL);
+	glDepthMask(true);
+	glDisable(GL_BLEND);
+
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	//render opaque
+
+	glViewport(0, 0, (int)previewWidth, (int)previewHeight);
+
 	if (editor->playSyncer.status == Editor_PlaySyncer::EPS_Offline) {
 		if (editor->sceneLoaded()) {
 			//draw scene
 			glDepthFunc(GL_LEQUAL);
 			glDepthMask(true);
-			DrawSceneObjectsOpaque(this, editor->activeScene->objects);
-			DrawSceneObjectsGizmos(this, editor->activeScene->objects);
+
+			Camera::DrawSceneObjectsOpaque(editor->activeScene->objects);
+			//DrawSceneObjectsOpaque(this, editor->activeScene->objects);
+			//DrawSceneObjectsGizmos(this, editor->activeScene->objects);
 			glDepthMask(false);
-			DrawSceneObjectsTrans(this, editor->activeScene->objects);
+			//DrawSceneObjectsTrans(this, editor->activeScene->objects);
 
 			/*draw background
 			glDepthFunc(GL_EQUAL);
@@ -822,6 +867,30 @@ void EB_Viewer::Draw() {
 	else if (!!editor->playSyncer.syncedSceneSz) {
 
 	}
+
+	_RenderLights(v);
+	glDisable(GL_BLEND);
+	glViewport(0, 0, Display::width, Display::height);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, b_fbo);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+	glReadBuffer(GL_COLOR_ATTACHMENT0);
+	glBlitFramebuffer(0, 0, (int)previewWidth, (int)previewHeight, (int)v.r, (int)(Display::height - v.g - v.a), (int)(v.b + v.r), (int)(Display::height - v.g - EB_HEADER_SIZE - 2), GL_COLOR_BUFFER_BIT, GL_NEAREST);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, d_fbo);
+	glReadBuffer(GL_DEPTH_ATTACHMENT);
+	glBlitFramebuffer(0, 0, (int)previewWidth, (int)previewHeight, (int)v.r, (int)(Display::height - v.g - v.a), (int)(v.b + v.r), (int)(Display::height - v.g - EB_HEADER_SIZE - 2), GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+	//glEnable(GL_BLEND);
+	glEnable(GL_DEPTH_TEST);
+	glDepthMask(true);
+
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glMultMatrixf(glm::value_ptr(projMatrix));
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+
+	glViewport((int)v.r, (int)(Display::height - v.g - v.a), (int)v.b, (int)(v.a - EB_HEADER_SIZE - 2));
 
 	//draw grid
 	if (editor->_showGrid) {
@@ -870,6 +939,10 @@ void EB_Viewer::Draw() {
 				Engine::DrawLineW(sel->transform.position() + modAxisDir*-100000.0f, sel->transform.position() + modAxisDir*100000.0f, white(), 2);
 		}
 	}
+
+	glEnable(GL_BLEND);
+	glDisable(GL_DEPTH_TEST);
+	glDepthMask(false);
 	glDepthFunc(GL_ALWAYS);
 
 	//Color::DrawPicker(150, 50, editor->cc);

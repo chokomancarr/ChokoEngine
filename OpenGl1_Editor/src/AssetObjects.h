@@ -467,7 +467,7 @@ public:
 	}
 
 //protected:
-	std::vector<short> _data;
+	std::vector<float> _data;
 	uint dataSize, loadPtr;
 	float length;
 	uint sampleRate, channels;

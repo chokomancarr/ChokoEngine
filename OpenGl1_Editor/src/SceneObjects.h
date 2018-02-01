@@ -549,6 +549,7 @@ public:
 	friend void Deserialize(std::ifstream& stream, SceneObject* obj);
 	friend class Camera;
 	friend class Engine;
+	friend class EB_Viewer;
 	friend class EB_Previewer;
 	_allowshared(Light);
 protected:

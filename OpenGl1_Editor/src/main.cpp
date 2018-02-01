@@ -50,10 +50,11 @@ void KillSplash();
 
 uint off = 0;
 bool GenSong(byte* data, uint count) {
-	float* d = (float*)data;
-	for (uint a = 0; a < count*2; a++) {
-		d[a] = ac->_data[off + a] * 2.0f / 65535;
-	}
+	//float* d = (float*)data;
+	//for (uint a = 0; a < count*2; a++) {
+	//	d[a] = ac->_data[off + a];
+	//}
+	memcpy(data, &ac->_data[off], count * 2 * sizeof(float));
 	off += count * 2;
 	return true;
 }
@@ -172,8 +173,8 @@ int main(int argc, char **argv)
 	new Water("D:\\water.compute", 4, 1, 1);
 #endif
 
-	ac = new AudioClip("D:\\trysail.mp3");
-	AudioEngine::Start(&GenSong);
+	//ac = new AudioClip("D:\\pripri.mp3");
+	//AudioEngine::Start(&GenSong);
 
 	PopupSelector::Init();
 	glfwMakeContextCurrent(window);
@@ -213,10 +214,6 @@ int main(int argc, char **argv)
 
 		renderScene();
 
-		Engine::DrawQuad(0, 0, Display::width, Display::height, black());
-		UI::Label(Display::width*0.3f, Display::height*0.4f, 40, std::to_string(off) + " / " + std::to_string(ac->dataSize), font, white());
-		off = (uint)Engine::DrawSliderFill(Display::width*0.2f, Display::height*0.6f, Display::width*0.6f, 20, 0, ac->dataSize, off, white(0.4f), white(1, 0.8f));
-		
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 

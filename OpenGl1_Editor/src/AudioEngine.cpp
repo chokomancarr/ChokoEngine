@@ -101,7 +101,7 @@ void AudioEngine::Stop() {
 void AudioEngine::_DoPlayStream()
 {
 #ifdef PLATFORM_WIN
-	bufferFrameCount = 500;
+	bufferFrameCount = 1000;
 
 	// Grab the entire buffer for the initial fill operation.
 	pRenderClient->GetBuffer(bufferFrameCount, &pData);

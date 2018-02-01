@@ -205,6 +205,41 @@ void Camera::InitGBuffer() {
 
 #ifdef IS_EDITOR
 
+void EB_Viewer::_InitDummyBBuffer() {
+	glGenFramebuffers(1, &b_fbo);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, b_fbo);
+
+	glGenTextures(2, b_texs);
+
+	glBindTexture(GL_TEXTURE_2D, b_texs[0]);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, (int)previewWidth, (int)previewHeight, 0, GL_RGBA, GL_FLOAT, NULL);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, b_texs[0], 0);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	glBindTexture(GL_TEXTURE_2D, b_texs[1]);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, (int)previewWidth, (int)previewHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, b_texs[1], 0);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	GLenum DrawBuffers[] = { GL_COLOR_ATTACHMENT0 };// , GL_COLOR_ATTACHMENT1};
+	glDrawBuffers(1, DrawBuffers);
+
+	glGenFramebuffers(1, &bb_fbo);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, bb_fbo);
+
+	glGenTextures(1, &bb_tex);
+	glBindTexture(GL_TEXTURE_2D, bb_tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, (int)previewWidth, (int)previewHeight, 0, GL_RGBA, GL_FLOAT, NULL);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bb_tex, 0);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	GLenum DrawBuffers2[] = { GL_COLOR_ATTACHMENT0 };
+	glDrawBuffers(1, DrawBuffers2);
+}
+
 void EB_Previewer::_InitDummyBBuffer() {
 	glGenFramebuffers(1, &b_fbo);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, b_fbo);
@@ -223,9 +258,8 @@ void EB_Previewer::_InitDummyBBuffer() {
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-	GLenum DrawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-	glDrawBuffers(2, DrawBuffers);
-
+	GLenum DrawBuffers[] = { GL_COLOR_ATTACHMENT0 };// , GL_COLOR_ATTACHMENT1};
+	glDrawBuffers(1, DrawBuffers);
 
 	glGenFramebuffers(1, &bb_fbo);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, bb_fbo);
@@ -278,6 +312,28 @@ void EB_Previewer::_InitDebugPrograms() {
 		glDeleteShader(vs);
 		glDeleteShader(fs);
 	}
+}
+
+void EB_Viewer::InitGBuffer() {
+	if (previewWidth < 1 || previewHeight < 1) return;
+	if (d_fbo != 0) {
+		glDeleteTextures(4, d_texs);
+		glDeleteTextures(1, &d_depthTex);
+		glDeleteFramebuffers(1, &d_fbo);
+		glDeleteTextures(2, b_texs);
+		glDeleteFramebuffers(1, &b_fbo);
+	}
+	_InitGBuffer(&d_fbo, d_texs, &d_depthTex, previewWidth, previewHeight);
+	GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if (Status != GL_FRAMEBUFFER_COMPLETE) {
+		Debug::Error("Previewer", "Fatal FB (MRT) error:" + std::to_string(Status));
+	}
+	_InitDummyBBuffer();
+	Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if (Status != GL_FRAMEBUFFER_COMPLETE) {
+		Debug::Error("Previewer", "Fatal FB (back) error:" + std::to_string(Status));
+	}
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 }
 
 void EB_Previewer::InitGBuffer() {
@@ -408,6 +464,24 @@ void EB_Previewer::DrawPreview(Vec4 v) {
 	glDepthMask(false);
 }
 
+void EB_Viewer::_RenderLights(Vec4 v) {
+	glDisable(GL_DEPTH_TEST);
+	glDepthMask(false);
+	glEnable(GL_BLEND);
+	glBlendEquation(GL_FUNC_ADD);
+	glBlendFunc(GL_ONE, GL_ONE);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, b_fbo);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, b_fbo);
+
+	Camera::_ApplyEmission(d_fbo, d_texs, previewWidth, previewHeight, b_fbo);
+	Mat4x4 mat = glm::inverse(GetMatrix(GL_PROJECTION_MATRIX));
+	Camera::_RenderSky(mat, d_texs, d_depthTex, previewWidth, previewHeight); //wont work well on ortho, will it?
+	//glViewport(v.r, Display::height - v.g - v.a, v.b, v.a - EB_HEADER_SIZE - 2);
+	_DrawLights(Scene::active->objects, mat);
+	//glViewport(0, 0, Display::width, Display::height);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+}
+
 void EB_Previewer::_RenderLights(Vec4 v) {
 	glDisable(GL_DEPTH_TEST);
 	glDepthMask(false);
@@ -424,6 +498,31 @@ void EB_Previewer::_RenderLights(Vec4 v) {
 	_DrawLights(Scene::active->objects, mat);
 	//glViewport(0, 0, Display::width, Display::height);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+}
+
+void EB_Viewer::_DrawLights(std::vector<pSceneObject> oo, Mat4x4 ip) {
+	for (auto& o : oo) {
+		if (!o->active)
+			continue;
+		for (auto& c : o->_components) {
+			if (c->componentType == COMP_LHT) {
+				Light* l = (Light*)c.get();
+				switch (l->_lightType) {
+				case LIGHTTYPE_POINT:
+					Camera::_DoDrawLight_Point(l, ip, d_fbo, d_texs, d_depthTex, bb_fbo, bb_tex, previewWidth, previewHeight, b_fbo);
+					break;
+				case LIGHTTYPE_SPOT:
+					Camera::_DoDrawLight_Spot(l, ip, d_fbo, d_texs, d_depthTex, bb_fbo, bb_tex, previewWidth, previewHeight, b_fbo);
+					break;
+				}
+			}
+			else if (c->componentType == COMP_RFQ) {
+				Camera::_DoDrawLight_ReflQuad((ReflectiveQuad*)c.get(), ip, d_fbo, d_texs, d_depthTex, bb_fbo, bb_tex, previewWidth, previewHeight, b_fbo);
+			}
+		}
+
+		_DrawLights(o->children, ip);
+	}
 }
 
 void EB_Previewer::_DrawLights(std::vector<pSceneObject> oo, Mat4x4 ip) {

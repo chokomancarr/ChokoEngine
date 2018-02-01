@@ -299,7 +299,7 @@ void AudioClip::_Init_ffmpeg(const string& path) {
 	AVPacket packet;
 	AVFrame* frame = av_frame_alloc();
 	dataSize = 0;
-	uint fds = 0;
+	//uint fds = 0;
 	float ds = AudioEngine::samplesPerSec / (float)sampleRate;
 	while (av_read_frame(formatCtx, &packet) >= 0) {
 		if (packet.stream_index == audioStrm) {
@@ -307,7 +307,7 @@ void AudioClip::_Init_ffmpeg(const string& path) {
 			av_packet_unref(&packet);
 			while (!avcodec_receive_frame(_codecCtx, frame)) {
 				//auto ds = av_samples_get_buffer_size(NULL, channels, frame->nb_samples, _codecCtx->sample_fmt, 1);
-				fds += ds*channels*frame->nb_samples;
+				//fds += ds*channels*frame->nb_samples;
 				uint ds2 = ceil(dataSize + ds*channels*frame->nb_samples);
 				uint sc2 = ds2 - dataSize;
 				_data.resize(ds2);
@@ -315,8 +315,8 @@ void AudioClip::_Init_ffmpeg(const string& path) {
 				short* srr = (short*)frame->data[1];
 				for (uint a = 0; a < sc2/2; a++) {
 					uint i = (uint)floor(a/ds);
-					_data[dataSize++] = srl[i];
-					_data[dataSize++] = srr[i];
+					_data[dataSize++] = srl[i] * 2.0f / 65535;
+					_data[dataSize++] = srr[i] * 2.0f / 65535;
 				}
 			}
 		}
