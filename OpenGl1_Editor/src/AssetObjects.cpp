@@ -260,41 +260,70 @@ AssetObject* AssetManager::GenCache(ASSETTYPE t, ASSETID i) {
 
 #ifndef DISABLE_AV_CODECS
 void AudioClip::_Init_ffmpeg(const string& path) {
-/*
-#define fail {Debug::Warning("VideoTexture", ffmpeg_getmsg(err)); return;}
+#define fail {Debug::Warning("AudioClip", ffmpeg_getmsg(err)); return;}
 	auto err = avformat_open_input(&formatCtx, &path[0], NULL, NULL);
 	if (!!err) fail;
 	err = avformat_find_stream_info(formatCtx, NULL);
 	if (!!err) fail;
 	av_dump_format(formatCtx, 0, &path[0], 0);
+	audioStrm = -1;
 	for (uint i = 0; i < formatCtx->nb_streams; i++) {
-		if (formatCtx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
-			videoStrm = i;
+		if (formatCtx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
+			audioStrm = i;
 			break;
 		}
 	}
-	if (videoStrm == -1) {
-		Debug::Warning("VideoTexture", "No video data found!");
+	if (audioStrm == -1) {
+		Debug::Warning("AudioClip", "No audio data found!");
 		return;
 	}
-	codecCtx0 = formatCtx->streams[videoStrm]->codecpar;
+	codecCtx0 = formatCtx->streams[audioStrm]->codecpar;
 	codec = avcodec_find_decoder(codecCtx0->codec_id);
 	if (!codec) {
-		Debug::Warning("VideoTexture", "Unsupported codec!");
+		Debug::Warning("AudioClip", "Unsupported codec!");
 		return;
 	}
 	codecCtx = avcodec_parameters_alloc();
 	if (!!avcodec_parameters_copy(codecCtx, codecCtx0)) {
-		Debug::Warning("VideoTexture", "Could not copy codec!");
+		Debug::Warning("AudioClip", "Could not copy codec!");
 		return;
 	}
-	width = codecCtx->width;
-	height = codecCtx->height;
 
-	swsCtx = sws_getContext(width, height, (AVPixelFormat)codecCtx->format, width, height, AV_PIX_FMT_RGB24, SWS_BILINEAR, 0, 0, 0);
-	Debug::Message("VideoTexture", "loaded " + path);
+	sampleRate = codecCtx->sample_rate;
+	channels = codecCtx->channels;
+
+	AVCodecContext* _codecCtx = avcodec_alloc_context3(codec);
+	avcodec_parameters_to_context(_codecCtx, codecCtx);
+	avcodec_open2(_codecCtx, codec, NULL);
+
+	AVPacket packet;
+	AVFrame* frame = av_frame_alloc();
+	dataSize = 0;
+	uint fds = 0;
+	float ds = AudioEngine::samplesPerSec / (float)sampleRate;
+	while (av_read_frame(formatCtx, &packet) >= 0) {
+		if (packet.stream_index == audioStrm) {
+			avcodec_send_packet(_codecCtx, &packet);
+			av_packet_unref(&packet);
+			while (!avcodec_receive_frame(_codecCtx, frame)) {
+				//auto ds = av_samples_get_buffer_size(NULL, channels, frame->nb_samples, _codecCtx->sample_fmt, 1);
+				fds += ds*channels*frame->nb_samples;
+				uint ds2 = ceil(dataSize + ds*channels*frame->nb_samples);
+				uint sc2 = ds2 - dataSize;
+				_data.resize(ds2);
+				short* srl = (short*)frame->data[0];
+				short* srr = (short*)frame->data[1];
+				for (uint a = 0; a < sc2/2; a++) {
+					uint i = (uint)floor(a/ds);
+					_data[dataSize++] = srl[i];
+					_data[dataSize++] = srr[i];
+				}
+			}
+		}
+	}
+	av_frame_free(&frame);
+	Debug::Message("AudioClip", "loaded " + path);
 #undef fail
-*/
 }
 #endif
 

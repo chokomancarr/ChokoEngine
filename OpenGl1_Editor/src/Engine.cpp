@@ -492,6 +492,8 @@ void Engine::Init(string path) {
 	unlitProgramC = Shader::FromVF(vertcode, fragcode3);
 	skyProgram = Shader::FromVF(vertcode, fragcodeSky);
 
+	ffmpeg_init finit = ffmpeg_init();
+
 	Material::LoadOris();
 	Light::InitShadow();
 	Camera::InitShaders();

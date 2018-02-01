@@ -466,16 +466,16 @@ public:
 #endif
 	}
 
-protected:
-	std::vector<ushort> _data;
+//protected:
+	std::vector<short> _data;
 	uint dataSize, loadPtr;
 	float length;
-	uint sampleRate;
+	uint sampleRate, channels;
 
 #ifdef FEATURE_AV_CODECS
 	AVFormatContext* formatCtx = 0;
-	AVCodecContext* codecCtx0 = 0;
-	AVCodecContext* codecCtx = 0;
+	AVCodecParameters* codecCtx0 = 0;
+	AVCodecParameters* codecCtx = 0;
 	AVCodec* codec = 0;
 	uint audioStrm;
 #endif

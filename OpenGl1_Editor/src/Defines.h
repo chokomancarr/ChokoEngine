@@ -18,7 +18,7 @@ On android, API 5.0 (OPENGL ES 3.1) is required.
 
 
 //uncomment out to not use during building
-#define DISABLE_AV_CODECS
+//#define DISABLE_AV_CODECS
 
 
 

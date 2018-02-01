@@ -107,6 +107,14 @@ extern "C"
 #include <libswscale/swscale.h>
 }
 extern std::string ffmpeg_getmsg(int i);
+class ffmpeg_init {
+public:
+	ffmpeg_init() {
+		av_register_all();
+	};
+};
+#else
+class ffmpeg_init {};
 #endif
 #pragma endregion
 

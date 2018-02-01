@@ -36,6 +36,12 @@ public:
 	static BYTE *pData;
 	static DWORD flags, samplesPerSec;
 	static WORD sampleSize;
+
+	static bool Init_win();
+#elif defined(PLATFORM_ADR)
+
+
+	static bool Init_adr();
 #endif
 
 	static audioRequestPacketCallback callback;

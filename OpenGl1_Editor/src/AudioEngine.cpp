@@ -20,16 +20,10 @@ BYTE *AudioEngine::pData;
 DWORD AudioEngine::flags = 0;
 DWORD AudioEngine::samplesPerSec = 0;
 WORD AudioEngine::sampleSize = 0;
-#endif
 
-audioRequestPacketCallback AudioEngine::callback = nullptr;
-bool AudioEngine::forcestop = false;
-std::thread* AudioEngine::thread;
-
-bool AudioEngine::Init() {
-#ifdef PLATFORM_WIN
+bool AudioEngine::Init_win() {
 	HRESULT hr;
-	
+
 	CoInitializeEx(NULL, COINIT_MULTITHREADED);
 	hr = CoCreateInstance(
 		CLSID_MMDeviceEnumerator, NULL,
@@ -76,8 +70,19 @@ bool AudioEngine::Init() {
 
 	Debug::Message("AudioEngine", "WASAPI Initialized.");
 	return true;
+}
 #endif
-	return false;
+
+audioRequestPacketCallback AudioEngine::callback = nullptr;
+bool AudioEngine::forcestop = false;
+std::thread* AudioEngine::thread;
+
+bool AudioEngine::Init() {
+#ifdef PLATFORM_WIN
+	return Init_win();
+#elif defined(PLATFORM_ADR)
+	return Init_adr();
+#endif
 }
 
 void AudioEngine::Start(audioRequestPacketCallback cb) {
