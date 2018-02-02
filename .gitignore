@@ -30,6 +30,7 @@ bld/
 [Oo]bjs/
 [Ll]og/
 packages/
+[Dd]oc/
 
 OpenGl1_Editor/Debug/
 OpenGl1_Painter/Debug/
