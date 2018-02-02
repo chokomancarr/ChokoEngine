@@ -48,17 +48,6 @@ HWND splashHwnd;
 void ShowSplash(string bitmap, uint cx, uint cy, uint sw, uint sh);
 void KillSplash();
 
-uint off = 0;
-bool GenSong(byte* data, uint count) {
-	//float* d = (float*)data;
-	//for (uint a = 0; a < count*2; a++) {
-	//	d[a] = ac->_data[off + a];
-	//}
-	memcpy(data, &ac->_data[off], count * 2 * sizeof(float));
-	off += count * 2;
-	return true;
-}
-
 //extern "C" void abort_func(int signum)
 //{
 //	MessageBox(hwnd, "aaa", "title", MB_OK);
@@ -173,8 +162,10 @@ int main(int argc, char **argv)
 	new Water("D:\\water.compute", 4, 1, 1);
 #endif
 
-	//ac = new AudioClip("D:\\pripri.mp3");
-	//AudioEngine::Start(&GenSong);
+	//ac = new AudioClip("D:\\kimiiro.mp3");
+	//AudioEngine::Start(&Audio::Gen);
+
+	Audio::Play(ac);
 
 	PopupSelector::Init();
 	glfwMakeContextCurrent(window);
@@ -213,6 +204,10 @@ int main(int argc, char **argv)
 		}
 
 		renderScene();
+
+		//Engine::DrawQuad(0,0,Display::width, Display::height, black());
+		//off = (uint)Engine::DrawSliderFill(Display::width*0.2f, Display::height*0.7f, Display::width*0.6f, 20, 0, ac->dataSize, off, white(0.3f), white(1, 0.7f));
+
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();

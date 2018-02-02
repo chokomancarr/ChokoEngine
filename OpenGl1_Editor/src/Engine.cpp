@@ -1614,6 +1614,13 @@ void Input::UpdateAdr(AInputEvent* e) {
 
 #pragma endregion
 
+#pragma region Display
+
+int Display::width = 512;
+int Display::height = 512;
+glm::mat3 Display::uiMatrix = glm::mat3();
+NativeWindow* Display::window = nullptr;
+
 void Display::Resize(int x, int y, bool maximize) {
 #ifdef PLATFORM_WIN
 	ShowWindow(GetActiveWindow(), maximize? SW_MAXIMIZE : SW_NORMAL);
@@ -1622,6 +1629,44 @@ void Display::Resize(int x, int y, bool maximize) {
 	ANativeWindow_setBuffersGeometry(window, x, y, 0);
 #endif
 }
+
+#pragma endregion
+
+#pragma region Audio
+
+std::vector<Audio::Playback*> Audio::sources = std::vector<Audio::Playback*>();
+
+Audio::Playback::Playback(AudioClip* clip, float pos) : clip(clip), pos(0) {
+
+}
+
+bool Audio::Playback::Gen(byte* data, uint count) {
+	memcpy(data, &clip->_data[pos], count * 2 * sizeof(float));
+	pos += count * 2;
+	return true;
+}
+
+Audio::Playback* Audio::Play(AudioClip* clip, float pos) {
+	auto pb = new Playback(clip, pos);
+	sources.push_back(pb);
+	return pb;
+}
+
+bool Audio::Gen(byte* data, uint count) {
+	auto sz = sources.size();
+	if (!sz) {
+		SecureZeroMemory(data, count * AudioEngine::pwfx->nChannels * sizeof(float));
+		return true;
+	}
+	else {
+		//
+		return sources[0]->Gen(data, count);
+	}
+}
+
+
+#pragma endregion
+
 
 ulong Engine::idCounter = 0;
 ulong Engine::GetNewId() {
@@ -2064,13 +2109,6 @@ Font* Font::Align(ALIGNMENT a) {
 	alignment = a;
 	return this;
 }
-
-//--------------------Display class--------------
-int Display::width = 512;
-int Display::height = 512;
-glm::mat3 Display::uiMatrix = glm::mat3();
-NativeWindow* Display::window = nullptr;
-
 
 float BezierSolveApprox(Vec2& v1, Vec2& v2, Vec2& v3, Vec2& v4, float x, float acc = 0.5f) {
 	if (x < v1.x)

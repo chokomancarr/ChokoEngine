@@ -220,6 +220,8 @@ template <typename T> float InverseLerp(T a, T b, T c) {
 	return Clamp((float)((c - a) / (b - a)), 0.0f, 1.0f);
 }
 
+#include "AudioEngine.h"
+
 //shorthands
 Vec4 black(float f = 1);
 Vec4 red(float f = 1, float i = 1), green(float f = 1, float i = 1), blue(float f = 1, float i = 1), cyan(float f = 1, float i = 1), yellow(float f = 1, float i = 1), white(float f = 1, float i = 1);
@@ -831,6 +833,31 @@ public:
 	friend class ChokoLait;
 //protected:
 	static NativeWindow* window;
+};
+
+class Audio {
+public:
+	class Playback {
+	public:
+		uint pos;
+		AudioClip* clip;
+
+		friend class Audio;
+	protected:
+		Playback(AudioClip* clip, float pos);
+
+		bool Gen(byte* data, uint count);
+	};
+
+	/*!
+	Plays an audio clip directly into stream, ignoring effects
+	[av] */
+	static Playback* Play(AudioClip* clip, float pos = 0);
+
+//protected:
+	static std::vector<Playback*> sources;
+
+	static bool Gen(byte* data, uint count);
 };
 
 #ifdef FEATURE_COMPUTE_SHADERS
