@@ -32,8 +32,15 @@ bld/
 packages/
 [Dd]oc/
 
-OpenGl1_Editor/Debug/
-OpenGl1_Painter/Debug/
+# library files
+ffmpeg/
+freetype/
+glew/
+glfw/
+glm/
+hdr/
+jpeg/
+png/
 
 # Visual Studio 2015 cache/options directory
 .vs/
