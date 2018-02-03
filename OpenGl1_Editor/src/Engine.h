@@ -846,7 +846,7 @@ public:
 	protected:
 		Playback(AudioClip* clip, float pos);
 
-		bool Gen(byte* data, uint count);
+		bool Gen(float* data, uint count);
 	};
 
 	/*!

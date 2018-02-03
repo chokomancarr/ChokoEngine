@@ -2,6 +2,7 @@
 
 GLFWwindow* ChokoLait::window = nullptr;
 int ChokoLait::initd = 0;
+rCamera ChokoLait::mainCamera = rCamera();
 
 void ChokoLait::_InitVars() {
 		char cpath[200];
@@ -42,6 +43,9 @@ void ChokoLait::Init(int scrW, int scrH) {
 		Engine::_mainThreadId = std::this_thread::get_id();
 
 		Scene::active = new Scene();
+		pSceneObject cam = std::make_shared<SceneObject>();
+		Scene::AddObject(cam);
+		mainCamera(cam->AddComponent<Camera>());
 
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glFrontFace(GL_CW);

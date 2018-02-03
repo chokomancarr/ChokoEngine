@@ -162,11 +162,6 @@ int main(int argc, char **argv)
 	new Water("D:\\water.compute", 4, 1, 1);
 #endif
 
-	//ac = new AudioClip("D:\\kimiiro.mp3");
-	//AudioEngine::Start(&Audio::Gen);
-
-	Audio::Play(ac);
-
 	PopupSelector::Init();
 	glfwMakeContextCurrent(window);
 
@@ -204,10 +199,6 @@ int main(int argc, char **argv)
 		}
 
 		renderScene();
-
-		//Engine::DrawQuad(0,0,Display::width, Display::height, black());
-		//off = (uint)Engine::DrawSliderFill(Display::width*0.2f, Display::height*0.7f, Display::width*0.6f, 20, 0, ac->dataSize, off, white(0.3f), white(1, 0.7f));
-
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
