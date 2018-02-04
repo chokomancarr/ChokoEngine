@@ -53,6 +53,11 @@ void KillSplash();
 //	MessageBox(hwnd, "aaa", "title", MB_OK);
 //}
 
+static void datagot(uint ip, uint port, byte* data, uint dataCount) {
+	string s((char*)data);
+	std::cout << s << std::endl;
+}
+
 int main(int argc, char **argv)
 {
 	path = argv[0];
@@ -154,18 +159,11 @@ int main(int argc, char **argv)
 	updateThread = std::thread(UpdateLoop);
 	atexit(OnDie);
 
-
-	//vt = new VideoTexture("D:\\bg.mp4");
-
-	//new MD("D:\\md.compute", 4, 1, 1);
 #ifdef _WATERY
 	new Water("D:\\water.compute", 4, 1, 1);
 #endif
 
-	//ac = new AudioClip("D:\\kimiiro.mp3");
-	//AudioEngine::Start(&Audio::Gen);
-
-	Audio::Play(ac);
+	auto ad = Net::MyIp();
 
 	PopupSelector::Init();
 	glfwMakeContextCurrent(window);
@@ -205,9 +203,15 @@ int main(int argc, char **argv)
 
 		renderScene();
 
-		//Engine::DrawQuad(0,0,Display::width, Display::height, black());
-		//off = (uint)Engine::DrawSliderFill(Display::width*0.2f, Display::height*0.7f, Display::width*0.6f, 20, 0, ac->dataSize, off, white(0.3f), white(1, 0.7f));
-
+		static const char* msg = "meowww";
+		Engine::DrawQuad(0,0,1000, 1000, black());
+		if (Engine::Button(0, 0, 200, 30, white()) == MOUSE_RELEASE) {
+			Net::Listen(8888, datagot);
+		}
+		if (Engine::Button(0, 40, 200, 30, white()) == MOUSE_RELEASE) {
+			auto res = Net::Send("127.0.0.1", 8888, (byte*)msg, 7);
+			std::cout << res << std::endl;
+		}
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();

@@ -24,7 +24,14 @@ Global stuff, normally not macro-protected
 
 #pragma region includes
 #if defined(IS_EDITOR) || defined(PLATFORM_WIN)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
 #include <Windows.h>
+#include <WinSock2.h>
+#pragma comment(lib, "Secur32.lib")
+#pragma comment(lib, "ws2_32.lib")
+#pragma comment(lib, "iphlpapi.lib")
 #endif
 
 /* gl (windows) */
@@ -96,8 +103,6 @@ extern void glPolygonMode(GLenum a, GLenum b);
 /* ffmpeg */
 #ifdef FEATURE_AV_CODECS
 #ifdef PLATFORM_WIN
-#pragma comment(lib, "Secur32.lib")
-#pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "ffmpeg_win.lib")
 #endif
 extern "C"
@@ -221,6 +226,7 @@ template <typename T> float InverseLerp(T a, T b, T c) {
 }
 
 #include "AudioEngine.h"
+#include "Networking.h"
 
 //shorthands
 Vec4 black(float f = 1);
@@ -846,7 +852,7 @@ public:
 	protected:
 		Playback(AudioClip* clip, float pos);
 
-		bool Gen(byte* data, uint count);
+		bool Gen(float* data, uint count);
 	};
 
 	/*!

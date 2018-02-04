@@ -913,6 +913,8 @@ public:
 	friend class Scene;
 	friend class Editor;
 	friend struct Editor_PlaySyncer;
+
+	_allowshared(SceneObject);
 protected:
 	//set transform.object after construction
 	SceneObject(Vec3 pos, Quat rot = Quat(), Vec3 scale = Vec3(1, 1, 1));

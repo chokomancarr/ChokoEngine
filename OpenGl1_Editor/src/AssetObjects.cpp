@@ -308,15 +308,23 @@ void AudioClip::_Init_ffmpeg(const string& path) {
 			while (!avcodec_receive_frame(_codecCtx, frame)) {
 				//auto ds = av_samples_get_buffer_size(NULL, channels, frame->nb_samples, _codecCtx->sample_fmt, 1);
 				//fds += ds*channels*frame->nb_samples;
-				uint ds2 = ceil(dataSize + ds*channels*frame->nb_samples);
+				uint ds2 = (uint)ceil(dataSize + ds*channels*frame->nb_samples);
 				uint sc2 = ds2 - dataSize;
 				_data.resize(ds2);
 				short* srl = (short*)frame->data[0];
-				short* srr = (short*)frame->data[1];
-				for (uint a = 0; a < sc2/2; a++) {
-					uint i = (uint)floor(a/ds);
-					_data[dataSize++] = srl[i] * 2.0f / 65535;
-					_data[dataSize++] = srr[i] * 2.0f / 65535;
+				if (channels > 1) {
+					short* srr = (short*)frame->data[1];
+					for (uint a = 0; a < sc2 / 2; a++) {
+						uint i = (uint)floor(a / ds);
+						_data[dataSize++] = srl[i] * 2.0f / 65535;
+						_data[dataSize++] = srr[i] * 2.0f / 65535;
+					}
+				}
+				else {
+					for (uint a = 0; a < sc2; a++) {
+						uint i = (uint)floor(a / ds);
+						_data[dataSize++] = srl[i] * 2.0f / 65535;
+					}
 				}
 			}
 		}

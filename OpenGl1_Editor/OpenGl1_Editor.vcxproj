@@ -194,6 +194,7 @@ xcopy /y "$(SolutionDir)Debug\Library\include\*" "D:\TestProject2\System\"</Comm
     <ClCompile Include="src\EditorShortcuts.cpp" />
     <ClCompile Include="src\Engine.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\Networking.cpp" />
     <ClCompile Include="src\RenderEngine.cpp" />
     <ClCompile Include="src\SceneObjects.cpp" />
     <ClCompile Include="src\Shader.cpp" />
@@ -210,6 +211,7 @@ xcopy /y "$(SolutionDir)Debug\Library\include\*" "D:\TestProject2\System\"</Comm
     <ClInclude Include="src\Defines.h" />
     <ClInclude Include="src\Editor.h" />
     <ClInclude Include="src\Engine.h" />
+    <ClInclude Include="src\Networking.h" />
     <ClInclude Include="src\SceneObjects.h" />
     <ClInclude Include="src\SceneScriptResolver.h" />
     <ClInclude Include="src\Xml.h" />

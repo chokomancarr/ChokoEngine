@@ -43,6 +43,8 @@ public:
 		}
 	}
 
+	static rCamera mainCamera;
+
 	static void Init(int scrW, int scrH);
 
 	static bool alive();

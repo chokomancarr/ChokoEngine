@@ -892,6 +892,11 @@ void EB_Viewer::Draw() {
 
 	glViewport((int)v.r, (int)(Display::height - v.g - v.a), (int)v.b, (int)(v.a - EB_HEADER_SIZE - 2));
 
+	//DrawSceneObjectsOpaque(this, editor->activeScene->objects);
+	DrawSceneObjectsGizmos(this, editor->activeScene->objects);
+	//glDepthMask(false);
+	//DrawSceneObjectsTrans(this, editor->activeScene->objects);
+
 	//draw grid
 	if (editor->_showGrid) {
 		glEnableClientState(GL_VERTEX_ARRAY);

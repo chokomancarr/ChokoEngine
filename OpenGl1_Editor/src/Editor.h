@@ -2,8 +2,6 @@
 
 #ifdef IS_EDITOR
 
-#include <Windows.h>
-#include "Defines.h"
 #include "Engine.h"
 #include "Xml.h"
 /*
