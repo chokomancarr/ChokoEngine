@@ -23,7 +23,8 @@ Global stuff, normally not macro-protected
 #define STRINGMRG(a,b) STRINGMRGDO(a,b)
 
 #pragma region includes
-#if defined(IS_EDITOR) || defined(PLATFORM_WIN)
+/* OS-specific headers */
+#if defined(PLATFORM_WIN)
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -32,6 +33,9 @@ Global stuff, normally not macro-protected
 #pragma comment(lib, "Secur32.lib")
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "iphlpapi.lib")
+#else //networking is identical on unix systems
+#include <arpa/inet.h>
+#include <sys/socket.h>
 #endif
 
 /* gl (windows) */

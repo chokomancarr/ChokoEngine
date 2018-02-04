@@ -1657,6 +1657,7 @@ Audio::Playback* Audio::Play(AudioClip* clip, float pos) {
 }
 
 bool Audio::Gen(byte* data, uint count) {
+#ifdef PLATFORM_WIN
 	auto pc = count * AudioEngine::pwfx->nChannels;
 	auto sz = sources.size();
 	SecureZeroMemory(data, pc * sizeof(float));
@@ -1675,6 +1676,8 @@ bool Audio::Gen(byte* data, uint count) {
 		}
 	}
 	return true;
+#endif
+	return false;
 }
 
 

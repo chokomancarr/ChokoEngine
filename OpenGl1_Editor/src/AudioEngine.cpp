@@ -81,8 +81,9 @@ bool AudioEngine::Init() {
 #ifdef PLATFORM_WIN
 	return Init_win();
 #elif defined(PLATFORM_ADR)
-	return Init_adr();
+	//return Init_adr();
 #endif
+	return false;
 }
 
 void AudioEngine::Start(audioRequestPacketCallback cb) {

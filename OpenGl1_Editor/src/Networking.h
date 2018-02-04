@@ -2,6 +2,12 @@
 #include "Engine.h"
 #include <mutex>
 
+#ifndef PLATFORM_WIN
+#define SOCKET_ERROR -1
+#define INVALID_SOCKET -1
+#define ERROR_SUCCESS 0
+#endif
+
 typedef void(*dataReceivedCallback)(uint ip, uint port, byte* data, uint dataCount);
 
 class Net {
@@ -19,11 +25,16 @@ public:
 	static dataReceivedCallback onDataReceived;
 
 protected:
-	static bool InitWsa();
-
+#ifdef PLATFORM_WIN
 	static WSADATA* wsa;
 	static SOCKET socket;
-	static sockaddr_in me, other;
+
+	static bool InitWsa();
+#else
+	static int socket;
+#endif
+	static sockaddr_in me;
+	static sockaddr_in other;
 
 	//static std::mutex mutex;
 	static std::thread* receivingThread;
