@@ -164,7 +164,7 @@ int main(int argc, char **argv)
 #endif
 
 	auto ad = Net::MyIp();
-
+	
 	PopupSelector::Init();
 	glfwMakeContextCurrent(window);
 
