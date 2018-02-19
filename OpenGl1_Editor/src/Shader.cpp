@@ -1,6 +1,9 @@
 #include "Engine.h"
 #include "Editor.h"
 #include <limits>
+//#include <android/log.h>
+
+//#define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "ChokoLait", __VA_ARGS__))
 
 #pragma region Shader
 
@@ -32,9 +35,13 @@ bool Shader::LoadShader(GLenum shaderType, string source, GLuint& shader, string
 				glGetShaderInfoLog(shader, info_log_length, NULL, &shader_log[0]);
 				shader = 0;
 				*err += string(&shader_log[0]);
+				//LOGI(&shader_log[0]);
+				Debug::Error("Shader", *err);
 			}
 		}
 		glDeleteShader(shader);
+		//LOGI("fail!");
+		//abort();
 		return false;
 	}
 	//std::std::cout << "shader compiled" << std::endl;
@@ -309,24 +316,22 @@ Shader::Shader(const string& vert, const string& frag) : AssetObject(ASSETTYPE_S
 GLuint Shader::FromVF(const string& vert, const string& frag) {
 	GLuint vertex_shader, fragment_shader;
 	string err = "";
-	if (vert != "") {
+	if (vert == "" || frag == "") {
+		Debug::Error("Shader Compiler", "vert or frag is empty!");
+	}
+
 		//std::cout << "Vertex Shader: " << std::endl << vert;
 		if (!LoadShader(GL_VERTEX_SHADER, vert, vertex_shader, &err)) {
 			Debug::Error("Shader Compiler", "Vert error: " + err);
 			abort();
 			return 0;
 		}
-	}
-	else return 0;
-	if (frag != "") {
 		//std::cout << "Fragment Shader: " << std::endl << frag;
 		if (!LoadShader(GL_FRAGMENT_SHADER, frag, fragment_shader, &err)) {
 			Debug::Error("Shader Compiler", "Frag error: " + err);
 			abort();
 			return 0;
 		}
-	}
-	else return 0;
 
 	GLuint pointer = glCreateProgram();
 	glAttachShader(pointer, vertex_shader);
@@ -692,7 +697,7 @@ void IComputeBuffer::Set(void* data, uint padding, uint stride) {
 	if (!padding) memcpy(tar, data, size);
 	else {
 		for (uint a = 0; a*padding < size; a++) {
-			memcpy((void*)((uint)tar + a*padding), (void*)((uint)data + a*stride), stride);
+			memcpy((void*)((char*)tar + a*padding), (void*)((char*)data + a*stride), stride);
 		}
 	}
 	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
@@ -712,6 +717,8 @@ ComputeShader::ComputeShader(string str) {
 	{
 		glGetShaderInfoLog(mComputeShader, 500, &length, err);
 		Debug::Error("ComputeShader", string(err));
+		glDeleteShader(mComputeShader);
+		return;
 	}
 	glAttachShader(pointer, mComputeShader);
 	glLinkProgram(pointer);

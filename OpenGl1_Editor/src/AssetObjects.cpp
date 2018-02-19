@@ -24,8 +24,8 @@ std::vector<std::ifstream*> AssetManager::streams = {};
 string AssetManager::eBasePath = "";
 std::unordered_map<ASSETTYPE, std::vector<string>, std::hash<byte>> AssetManager::dataELocs = std::unordered_map<ASSETTYPE, std::vector<string>, std::hash<byte>>();
 std::unordered_map<ASSETTYPE, std::vector<std::pair<byte*, uint>>, std::hash<byte>> AssetManager::dataECaches = std::unordered_map<ASSETTYPE, std::vector<std::pair<byte*, uint>>, std::hash<byte>>();
-std::vector<uint> AssetManager::dataECacheLocs = {};
-std::vector<uint> AssetManager::dataECacheSzLocs = {};
+std::vector<size_t> AssetManager::dataECacheLocs = {};
+std::vector<size_t> AssetManager::dataECacheSzLocs = {};
 #endif
 std::vector<std::pair<ASSETTYPE, ASSETID>> AssetManager::dataECacheIds = {};
 
@@ -80,7 +80,7 @@ void AssetManager::Init(string dpath) {
 			dataECacheIds.push_back(std::pair<ASSETTYPE, ASSETID>(type, id));
 			dataECaches[type].push_back(std::pair<byte*, uint>(nullptr, 0));
 			dataECacheLocs.push_back(0);
-			dataECacheSzLocs.push_back((uint)(new uint(0)));
+			dataECacheSzLocs.push_back((size_t)(new uint(0)));
 		}
 	}
 	else {
@@ -151,7 +151,7 @@ void AssetManager::AllocECache() {
 		b.first = (byte*)malloc(b.second + 1);
 		*b.first = 0;
 		//if (!!b.second) std::cout << "Allocating: " << b.second << "B" << std::endl;
-		dataECacheLocs[c] = (uint)b.first;
+		dataECacheLocs[c] = (size_t)b.first;
 #ifdef VERBOSE
 		std::cout << "Allocated " << (int)a.first << "." << a.second << ": " << b.second;
 		std::cout << " (" << (uint)&b.second << ")";

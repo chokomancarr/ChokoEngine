@@ -58,6 +58,7 @@ static void datagot(uint ip, uint port, byte* data, uint dataCount) {
 	std::cout << s << std::endl;
 }
 
+GLuint _vao, _vbo;
 int main(int argc, char **argv)
 {
 	path = argv[0];
@@ -163,7 +164,7 @@ int main(int argc, char **argv)
 	new Water("D:\\water.compute", 4, 1, 1);
 #endif
 
-	auto ad = Net::MyIp();
+	//auto ad = Net::MyIp();
 	
 	PopupSelector::Init();
 	glfwMakeContextCurrent(window);
@@ -203,6 +204,7 @@ int main(int argc, char **argv)
 
 		renderScene();
 
+		/*
 		static const char* msg = "meowww";
 		Engine::DrawQuad(0,0,1000, 1000, black());
 		if (Engine::Button(0, 0, 200, 30, white()) == MOUSE_RELEASE) {
@@ -212,6 +214,7 @@ int main(int argc, char **argv)
 			auto res = Net::Send("127.0.0.1", 8888, (byte*)msg, 7);
 			std::cout << res << std::endl;
 		}
+		*/
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -395,16 +398,18 @@ void renderScene()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glClearColor(0, 0, 0, 1.0f);
 		glDisable(GL_DEPTH_TEST);
-		glDepthFunc(GL_LEQUAL);
+		glDepthFunc(GL_ALWAYS);
 		glEnable(GL_BLEND);
 
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
-		DrawOverlay();
 
-		//MD::me->DrawUI();
+		DrawOverlay();
+		//Engine::DrawQuad(10, 20, 500, 300, red());
+		//Engine::DrawLine(Vec2(300, 500), Vec2(700, 0), green(), 1);
+
 		redrawn = true;
 	}
 }

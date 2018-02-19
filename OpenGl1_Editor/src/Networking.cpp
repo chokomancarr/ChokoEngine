@@ -119,7 +119,7 @@ bool Net::InitWsa() {
 void Net::HostLoop() {
 	byte buffer[256];
 	uint sz;
-	int ss = sizeof(sockaddr);
+	socklen_t ss = sizeof(sockaddr);
 	while (listening) {
 		//memset(buffer, 0, sz);
 		if ((sz = recvfrom(socket, (char*)buffer, 255, 0, (sockaddr*)&other, &ss)) == SOCKET_ERROR) {

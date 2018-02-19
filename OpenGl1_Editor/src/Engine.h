@@ -36,6 +36,9 @@ Global stuff, normally not macro-protected
 #else //networking is identical on unix systems
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#ifdef PLATFORM_LNX
+#include <unistd.h>
+#endif
 #endif
 
 /* gl (windows) */
@@ -71,6 +74,11 @@ extern void glPolygonMode(GLenum a, GLenum b);
 #define GL_BGRA GL_RGBA
 #define GL_LINE 0U
 #define GL_FILL 0U
+
+#elif defined(PLATFORM_LNX)
+#include "GL/glew.h"
+#include "GLFW/glfw3.h"
+typedef GLFWwindow NativeWindow;
 #endif
 
 #include <string>
@@ -82,13 +90,13 @@ extern void glPolygonMode(GLenum a, GLenum b);
 #include <array>
 #include <memory>
 #include <thread>
-#include <lodepng.h>
+#include "lodepng.h"
 #include <math.h>
-#include <glm/glm.hpp>
-#include <glm/gtx/quaternion.hpp>
-#include <glm/gtx/transform.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
+#include "glm/glm.hpp"
+#include "glm/gtx/quaternion.hpp"
+#include "glm/gtx/transform.hpp"
+#include "glm/gtc/matrix_transform.hpp"
+#include "glm/gtc/type_ptr.hpp"
 
 /* freetype */
 #ifdef PLATFORM_WIN
@@ -101,8 +109,8 @@ extern void glPolygonMode(GLenum a, GLenum b);
 #ifdef PLATFORM_WIN
 #pragma comment(lib, "jpeg_win.lib")
 #endif
-#include <jpeglib.h>
-#include <jerror.h>
+#include "jpeglib.h"
+#include "jerror.h"
 
 /* ffmpeg */
 #ifdef FEATURE_AV_CODECS
@@ -129,12 +137,15 @@ class ffmpeg_init {};
 
 enum PLATFORM : unsigned char {
 	PLATFORM_WINDOWS,
-	PLATFORM_ANDROID
+	PLATFORM_ANDROID,
+	PLATFORM_LINUX
 };
 #if defined(PLATFORM_WIN)
 const PLATFORM platform = PLATFORM_WINDOWS;
 #elif defined(PLATFORM_ADR)
 const PLATFORM platform = PLATFORM_ANDROID;
+#elif defined(PLATFORM_LNX)
+const PLATFORM platform = PLATFORM_LINUX;
 #endif
 
 #ifndef IS_EDITOR
@@ -238,7 +249,8 @@ Vec4 red(float f = 1, float i = 1), green(float f = 1, float i = 1), blue(float 
 
 #define push_val(var, nm, val) auto var = nm; nm = val;
 
-#ifndef PLATFORM_WIN
+/* cmake for msvc does not have to_string */
+#if defined(PLATFORM_ADR)
 namespace std {
 	template <typename T> string to_string(T val) {
 		std::ostringstream strm;
@@ -251,6 +263,9 @@ namespace std {
 	unsigned long stoul(const string& s);
 }
 
+void fopen_s(FILE** f, const char* c, const char* m);
+void sscanf_s(const char* b, const char* m, ...);
+#elif defined(PLATFORM_LNX)
 void fopen_s(FILE** f, const char* c, const char* m);
 void sscanf_s(const char* b, const char* m, ...);
 #endif
@@ -355,6 +370,8 @@ typedef unsigned char DRAWORDER;
 #elif defined(PLATFORM_ADR)
 #define _allowshared(T) friend class __gnu_cxx::new_allocator<T>
 //#define _allowshared(T) friend class std::__libcpp_compressed_pair_imp<std::allocator<T>, T, 1>
+#elif defined(PLATFORM_LNX)
+#define _allowshared(T) friend class __gnu_cxx::new_allocator<T>
 #endif
 
 template <class T> class Ref;
@@ -766,7 +783,7 @@ public:
 	friend class UI;
 protected:
 	static FT_Library _ftlib;
-	static void Init();
+	static void Init(), InitVao(uint sz);
 	FT_Face _face;
 	static GLuint fontProgram;
 
@@ -780,6 +797,9 @@ protected:
 	std::vector<uint> ids;
 	std::vector<float> cs;
 	void SizeVec(uint sz);
+
+	static uint vaoSz;
+	static GLuint vao, vbos[3];
 
 	std::unordered_map<uint, GLuint> _glyphs; //each glyph size is fontSize*16
 	GLuint CreateGlyph (uint size, bool recalcW2h = false);
@@ -981,12 +1001,17 @@ public:
 	friend void FocusGL(GLFWwindow* window, int focus);
 	friend class PopupSelector;
 protected:
+
 	static bool focused;
 	static uint _editTextCursorPos, _editTextCursorPos2;
 	static string _editTextString;
 	static float _editTextBlinkTime;
 
 	static Style _defaultStyle;
+
+	static void InitVao(), SetVao(uint sz, void* verts, void* uvs = nullptr);
+	static uint _vboSz;
+	static GLuint _vao, _vboV, _vboU;
 	
 	static void Init();
 };
@@ -1027,7 +1052,8 @@ public:
 	static void RotateUI(float a, Vec2 point);
 	static void ResetUIMatrix();
 
-	static uint unlitProgram, unlitProgramA, unlitProgramC, skyProgram;
+	static GLuint defProgram, unlitProgram, unlitProgramA, unlitProgramC, skyProgram;
+	static GLint defColLoc;
 	//static uint blurProgram, blurSBProgram;
 	static Font* defaultFont;
 	

@@ -34,7 +34,7 @@ Vec4 cyan(float f, float i) { return Vec4(i*0.09f, i*0.706f, i, f); }
 Vec4 yellow(float f, float i) { return Vec4(i, i, 0, f); }
 Vec4 white(float f, float i) { return Vec4(i, i, i, f); }
 
-#ifndef PLATFORM_WIN
+#ifdef PLATFORM_ADR
 namespace std {
 	int stoi(const string& s) {
 		return 1;
@@ -53,6 +53,17 @@ void fopen_s(FILE** f, const char* c, const char* m) {
 void sscanf_s(const char* b, const char* m, ...) {
 	__va_list args;
 	sscanf(b, m, args);
+}
+
+#endif
+
+#ifdef PLATFORM_LNX
+
+void fopen_s(FILE** f, const char* c, const char* m) {
+	*f = fopen(c, m);
+}
+void sscanf_s(const char* b, const char* m, ...) {
+	sscanf(b, m);
 }
 
 #endif
@@ -452,10 +463,13 @@ return now.tv_sec * 1000LL + now.tv_nsec/1000000LL;
 
 Texture* Engine::fallbackTex = nullptr;
 
-uint Engine::unlitProgram = 0;
-uint Engine::unlitProgramA = 0;
-uint Engine::unlitProgramC = 0;
-uint Engine::skyProgram = 0;
+GLuint Engine::defProgram = 0;
+GLuint Engine::unlitProgram = 0;
+GLuint Engine::unlitProgramA = 0;
+GLuint Engine::unlitProgramC = 0;
+GLuint Engine::skyProgram = 0;
+GLint Engine::defColLoc = 0;
+
 Font* Engine::defaultFont;
 Rect* Engine::stencilRect = nullptr;
 bool Input::mouse0 = false;
@@ -474,26 +488,31 @@ void Engine::Init(string path) {
 	}
 	Engine::_mainThreadId = std::this_thread::get_id();
 
-#ifdef PLATFORM_WIN
-	string vertcode = "#version 330 core\nlayout(location = 0) in vec3 pos;\nlayout(location = 1) in vec2 uv;\nout vec2 UV;\nvoid main(){ \ngl_Position.xyz = pos;\ngl_Position.w = 1.0;\nUV = uv;\n}";
-	string fragcode = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nuniform float level;\nout vec4 color;void main(){\ncolor = textureLod(sampler, UV, level)*col;\n}"; //out vec3 Vec4;\n
-	string fragcode2 = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nuniform float level;\nout vec4 color;void main(){\ncolor = vec4(1, 1, 1, textureLod(sampler, UV, level).r)*col;\n}"; //out vec3 Vec4;\n
-	string fragcode3 = "#version 330 core\nin vec2 UV;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = col;\n}";
-	string fragcodeSky = "#version 330 core\nin vec2 UV;uniform sampler2D sampler;uniform vec2 dir;uniform float length;out vec4 color;void main(){float ay = asin((UV.y) / length);float l2 = length*cos(ay);float ax = asin((dir.x + UV.x) / l2);color = textureLod(sampler, vec2((dir.x + ax / 3.14159)*sin(dir.y + ay / 3.14159) + 0.5, (dir.y + ay / 3.14159)), 0);color.a = 1;}";
-#else
+#if defined(PLATFORM_WIN) || defined(PLATFORM_LNX)
+	string vertcode = "#version 330\nlayout(location = 0) in vec3 pos;\nlayout(location = 1) in vec2 uv;\nout vec2 UV;\nvoid main(){ \ngl_Position.xyz = pos;\ngl_Position.w = 1.0;\nUV = uv;\n}";
+	string fragcode = "#version 330\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nuniform float level;\nout vec4 color;void main(){\ncolor = textureLod(sampler, UV, level)*col;\n}"; //out vec3 Vec4;\n
+	string fragcode2 = "#version 330\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nuniform float level;\nout vec4 color;void main(){\ncolor = vec4(1, 1, 1, textureLod(sampler, UV, level).r)*col;\n}"; //out vec3 Vec4;\n
+	string fragcode3 = "#version 330\nin vec2 UV;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = col;\n}";
+	string fragcodeSky = "#version 330\nin vec2 UV;uniform sampler2D sampler;uniform vec2 dir;uniform float length;out vec4 color;void main(){float ay = asin((UV.y) / length);float l2 = length*cos(ay);float ax = asin((dir.x + UV.x) / l2);color = textureLod(sampler, vec2((dir.x + ax / 3.14159)*sin(dir.y + ay / 3.14159) + 0.5, (dir.y + ay / 3.14159)), 0);color.a = 1;}";
+#elif defined(PLATFORM_ADR)
 	string vertcode = "#version 300 es\nlayout(location = 0) in vec3 pos;\nlayout(location = 1) in vec2 uv;\nout vec2 UV;\nvoid main(){ \ngl_Position.xyz = pos;\ngl_Position.w = 1.0;\nUV = uv;\n}";
 	string fragcode = "#version 300 es\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nuniform float level;\nout vec4 color;void main(){\ncolor = textureLod(sampler, UV, level)*col;\n}"; //out vec3 Vec4;\n
 	string fragcode2 = "#version 300 es\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nuniform float level;\nout vec4 color;void main(){\ncolor = vec4(1, 1, 1, textureLod(sampler, UV, level).r)*col;\n}"; //out vec3 Vec4;\n
 	string fragcode3 = "#version 300 es\nin vec2 UV;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = col;\n}";
 	string fragcodeSky = "#version 300 es\nin vec2 UV;uniform sampler2D sampler;uniform vec2 dir;uniform float length;out vec4 color;void main(){float ay = asin((UV.y) / length);float l2 = length*cos(ay);float ax = asin((dir.x + UV.x) / l2);color = textureLod(sampler, vec2((dir.x + ax / 3.14159)*sin(dir.y + ay / 3.14159) + 0.5, (dir.y + ay / 3.14159)), 0.0);color.a = 1.0;}";
 #endif
+	std::cout << "loading shaders..." << std::endl;
+
 	unlitProgram = Shader::FromVF(vertcode, fragcode);
 	unlitProgramA = Shader::FromVF(vertcode, fragcode2);
 	unlitProgramC = Shader::FromVF(vertcode, fragcode3);
+	defProgram = unlitProgramC;
 	skyProgram = Shader::FromVF(vertcode, fragcodeSky);
 
-	ffmpeg_init finit = ffmpeg_init();
+	std::cout << "...done" << std::endl;
 
+	UI::Init();
+	ffmpeg_init finit = ffmpeg_init();
 	Material::LoadOris();
 	Light::InitShadow();
 	Camera::InitShaders();
@@ -583,12 +602,61 @@ string UI::_editTextString = "";
 float UI::_editTextBlinkTime = 0;
 UI::Style UI::_defaultStyle = {};
 
+uint UI::_vboSz = 32;
+GLuint UI::_vao = 0;
+GLuint UI::_vboV = 0;
+GLuint UI::_vboU = 0;
+
 void UI::Init() {
 	_defaultStyle.fontSize = 12;
 	_defaultStyle.normal.Set(white(1, 0.3f), black());
 	_defaultStyle.mouseover.Set(white(), black());
 	_defaultStyle.highlight.Set(blue(), white());
 	_defaultStyle.press.Set(white(1, 0.5f), black());
+
+	InitVao();
+}
+
+void UI::InitVao() {
+	glGenVertexArrays(1, &_vao);
+	glGenBuffers(1, &_vboV);
+	glGenBuffers(1, &_vboU);
+	glBindBuffer(GL_ARRAY_BUFFER, _vboV);
+	glBufferStorage(GL_ARRAY_BUFFER, _vboSz * sizeof(Vec3), nullptr, GL_DYNAMIC_STORAGE_BIT);
+	glBindBuffer(GL_ARRAY_BUFFER, _vboU);
+	glBufferStorage(GL_ARRAY_BUFFER, _vboSz * sizeof(Vec2), nullptr, GL_DYNAMIC_STORAGE_BIT);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(_vao);
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glBindBuffer(GL_ARRAY_BUFFER, _vboV);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+	glBindBuffer(GL_ARRAY_BUFFER, _vboU);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+}
+
+void UI::SetVao(uint sz, void* verts, void* uvs) {
+	assert(!!sz && verts);
+	if (sz > _vboSz) {
+		glDeleteBuffers(1, &_vboV);
+		glDeleteBuffers(1, &_vboU);
+		glDeleteVertexArrays(1, &_vao);
+		_vboSz = sz;
+		InitVao();
+	}
+	glBindBuffer(GL_ARRAY_BUFFER, _vboV);
+	auto d = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+	memcpy(d, verts, sz * sizeof(Vec3));
+	glUnmapBuffer(GL_ARRAY_BUFFER);
+	if (uvs) {
+		glBindBuffer(GL_ARRAY_BUFFER, _vboU);
+		d = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+		memcpy(d, uvs, sz * sizeof(Vec2));
+		glUnmapBuffer(GL_ARRAY_BUFFER);
+	}
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 void UI_Trace(uint fpar, uint numb, uint* tar) {
@@ -845,6 +913,37 @@ void UI::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4, floa
 	}
 	font->poss[sz * 4] = Vec3(x, 0, 0)*ds;
 
+	if (sz * 4 > Font::vaoSz) {
+		Font::InitVao(sz * 4);
+	}
+	glBindBuffer(GL_ARRAY_BUFFER, Font::vbos[0]);
+	auto d = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+	memcpy(d, &font->poss[0], sz * 4 * sizeof(Vec3));
+	glUnmapBuffer(GL_ARRAY_BUFFER);
+	glBindBuffer(GL_ARRAY_BUFFER, Font::vbos[1]);
+	d = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+	memcpy(d, &font->uvs[0], sz * 4 * sizeof(Vec2));
+	glUnmapBuffer(GL_ARRAY_BUFFER);
+	glBindBuffer(GL_ARRAY_BUFFER, Font::vbos[2]);
+	d = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+	memcpy(d, &font->cs[0], sz * 4 * sizeof(float));
+	glUnmapBuffer(GL_ARRAY_BUFFER);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	glUseProgram(font->fontProgram);
+	GLint baseColLoc = glGetUniformLocation(font->fontProgram, "col");
+	glUniform4f(baseColLoc, Vec4.r, Vec4.g, Vec4.b, Vec4.a);
+	GLint baseImageLoc = glGetUniformLocation(font->fontProgram, "sampler");
+	glUniform1i(baseImageLoc, 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, tex);
+
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glBindVertexArray(Font::vao);
+	glDrawElements(GL_TRIANGLES, 6 * sz, GL_UNSIGNED_INT, &font->ids[0]);
+	glBindVertexArray(0);
+	glUseProgram(0);
+	/*
 	uint prog = font->fontProgram;
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(3, GL_FLOAT, 0, &font->poss[0]);
@@ -872,11 +971,7 @@ void UI::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4, floa
 	glUseProgram(0);
 
 	glDisableClientState(GL_VERTEX_ARRAY);
-	//Debug::Message("", "-> " + std::to_string(prog) + " " + std::to_string(baseColLoc) + " " + std::to_string(baseImageLoc));
-	//for (uint a = 0; a < sz * 4; a++) {
-	//	Debug::Message("", "  " + std::to_string(font->poss[a]));
-	//}
-	//abort();
+	*/
 }
 
 MOUSE_STATUS Engine::Button(float x, float y, float w, float h) {
@@ -1116,6 +1211,8 @@ void Engine::ScanQuadParams() {
 	drawQuadLocsA[2] = glGetUniformLocation(unlitProgramA, "level");
 
 	drawQuadLocsC[0] = glGetUniformLocation(unlitProgramC, "col");
+
+	defColLoc = drawQuadLocsC[0];
 }
 
 void Engine::DrawQuad(float x, float y, float w, float h, uint texture, float miplevel) {
@@ -1124,7 +1221,7 @@ void Engine::DrawQuad(float x, float y, float w, float h, uint texture, float mi
 void Engine::DrawQuad(float x, float y, float w, float h, uint texture, Vec4 Vec4) {
 	DrawQuad(x, y, w, h, texture, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, Vec4);
 }
-void Engine::DrawQuad(float x, float y, float w, float h, Vec4 Vec4) {
+void Engine::DrawQuad(float x, float y, float w, float h, Vec4 col) {
 	Vec3 quadPoss[4];
 	quadPoss[0].x = x;
 	quadPoss[0].y = y;
@@ -1139,8 +1236,17 @@ void Engine::DrawQuad(float x, float y, float w, float h, Vec4 Vec4) {
 		//Vec3 v = quadPoss[y];
 		quadPoss[y] = Ds(Display::uiMatrix*quadPoss[y]);
 	}
-	uint quadIndexes[6] = { 0, 1, 2, 1, 3, 2 };
-	uint prog = unlitProgramC;
+	uint quadIndexes[6] = { 0, 2, 1, 2, 3, 1 };
+
+	UI::SetVao(4, quadPoss);
+
+	glUseProgram(Engine::defProgram);
+	glUniform4f(Engine::defColLoc, col.r, col.g, col.b, col.a);
+	glBindVertexArray(UI::_vao);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, quadIndexes);
+	glBindVertexArray(0);
+	glUseProgram(0);
+	/*
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
 	glUseProgram(prog);
@@ -1156,38 +1262,41 @@ void Engine::DrawQuad(float x, float y, float w, float h, Vec4 Vec4) {
 	glDisableVertexAttribArray(0);
 	glUseProgram(0);
 
-	/*
-	glVec43f(1.0f, 0.0f, 0.0f);
-	glLineWidth(1);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	glDrawElements(GL_QUADS, 4, GL_UNSIGNED_INT, &quadIndexes[0]);
-	*/
-
 	glDisableClientState(GL_VERTEX_ARRAY);
+	*/
 }
 
 void Engine::DrawQuad(float x, float y, float w, float h, GLuint texture, Vec2 uv0, Vec2 uv1, Vec2 uv2, Vec2 uv3, bool single, Vec4 Vec4, float miplevel) {
 	Vec3 quadPoss[4];
-	quadPoss[0].x = x;
-	quadPoss[0].y = y;
-	quadPoss[1].x = x + w;
-	quadPoss[1].y = y;
-	quadPoss[2].x = x;
-	quadPoss[2].y = y + h;
-	quadPoss[3].x = x + w;
-	quadPoss[3].y = y + h;
+	quadPoss[0].x = x;		quadPoss[0].y = y;
+	quadPoss[1].x = x + w;	quadPoss[1].y = y;
+	quadPoss[2].x = x;		quadPoss[2].y = y + h;
+	quadPoss[3].x = x + w;	quadPoss[3].y = y + h;
 	for (int y = 0; y < 4; y++) {
 		quadPoss[y].z = 1;
-		//Vec3 v = quadPoss[y];
 		quadPoss[y] = Ds(Display::uiMatrix*quadPoss[y]);
 	}
-	Vec2 quadUv[4]{uv0, uv1, uv2, uv3};
+	Vec2 quadUvs[4]{ uv0, uv1, uv2, uv3 };
 	uint quadIndexes[6] = { 0, 1, 2, 1, 3, 2 };
 	uint prog = single ? unlitProgramA : unlitProgram;
+
+	UI::SetVao(4, quadPoss, quadUvs);
+
+	glUseProgram(prog);
+	glUniform1i(single ? drawQuadLocsA[0] : drawQuadLocs[0], 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glUniform4f(single ? drawQuadLocsA[1] : drawQuadLocs[1], Vec4.r, Vec4.g, Vec4.b, Vec4.a);
+	glUniform1f(single ? drawQuadLocsA[2] : drawQuadLocs[2], miplevel);
+
+	glBindVertexArray(UI::_vao);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, quadIndexes);
+	glBindVertexArray(0);
+	glUseProgram(0);
+	/*
 	glEnableClientState(GL_VERTEX_ARRAY);
 	
 	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
-	//glTexCoordPointer(2, GL_FLOAT, 0, &quadUv);
 	glUseProgram(prog);
 
 	glUniform1i(single? drawQuadLocsA[0] : drawQuadLocs[0], 0);
@@ -1209,16 +1318,8 @@ void Engine::DrawQuad(float x, float y, float w, float h, GLuint texture, Vec2 u
 	glDisableVertexAttribArray(1);
 	glUseProgram(0);
 
-	/*
-	glVec43f(1.0f, 0.0f, 0.0f);
-	glLineWidth(1);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	glDrawElements(GL_QUADS, 4, GL_UNSIGNED_INT, &quadIndexes[0]);
-	*/
-
 	glDisableClientState(GL_VERTEX_ARRAY);
-	//glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-	//glDisable(GL_DEPTH_TEST);
+	*/
 }
 
 void Engine::DrawCube(Vec3 pos, float dx, float dy, float dz, Vec4 Vec4) {
@@ -1236,6 +1337,18 @@ void Engine::DrawCube(Vec3 pos, float dx, float dy, float dz, Vec4 Vec4) {
 		0, 1, 2, 1, 3, 2,		4, 5, 6, 5, 7, 6, 
 		0, 2, 4, 2, 6, 4,		1, 3, 5, 3, 7, 5, 
 		0, 1, 4, 1, 5, 4,		2, 3, 6, 3, 7, 6 };
+
+	UI::SetVao(8, quadPoss);
+
+	glUseProgram(Engine::defProgram);
+	glUniform4f(Engine::defColLoc, Vec4.r, Vec4.g, Vec4.b, Vec4.a);
+
+	glBindVertexArray(UI::_vao);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, &quadIndexes[0]);
+	glBindVertexArray(0);
+	glUseProgram(0);
+	/*
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
 	glColor4f(Vec4.r, Vec4.g, Vec4.b, Vec4.a);
@@ -1244,6 +1357,7 @@ void Engine::DrawCube(Vec3 pos, float dx, float dy, float dz, Vec4 Vec4) {
 	glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, &quadIndexes[0]);
 
 	glDisableClientState(GL_VERTEX_ARRAY);
+	*/
 }
 
 void Engine::DrawIndices(const Vec3* poss, const int* is, int length, float r, float g, float b) {
@@ -1311,6 +1425,7 @@ void Engine::DrawLine(Vec3 v1, Vec3 v2, Vec4 col, float width) {
 	for (int y = 0; y < 2; y++) {
 		quadPoss[y] = Ds(Display::uiMatrix*quadPoss[y]);
 	}
+	/*
 	uint quadIndexes[2] = { 0, 1 };
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
@@ -1322,6 +1437,15 @@ void Engine::DrawLine(Vec3 v1, Vec3 v2, Vec4 col, float width) {
 	glDrawElements(GL_LINES, 2, GL_UNSIGNED_INT, &quadIndexes[0]);
 	//glDisableVertexAttribArray(0);
 	glDisableClientState(GL_VERTEX_ARRAY);
+	*/
+	UI::SetVao(2, quadPoss);
+
+	glUseProgram(Engine::defProgram);
+	glUniform4f(Engine::defColLoc, col.r, col.g, col.b, col.a);
+	glBindVertexArray(UI::_vao);
+	glDrawArrays(GL_LINES, 0, 2);
+	glBindVertexArray(0);
+	glUseProgram(0);
 }
 void Engine::DrawLineW(Vec3 v1, Vec3 v2, Vec4 col, float width) {
 	Vec3 quadPoss[2];
@@ -1700,9 +1824,10 @@ void Debug::Message(string c, string s) {
 #ifndef IS_EDITOR
 	*stream << "[i " + std::to_string(clock()) + "]" << c << ": " << s << std::endl;
 #endif
-	std::cout << "[i]" << c << ": " << s << std::endl;
 #ifdef PLATFORM_ADR
 	__android_log_print(ANDROID_LOG_INFO, "ChokoLait", &s[0]);
+#else
+	std::cout << "[i]" << c << ": " << s << std::endl;
 #endif
 }
 void Debug::Warning(string c, string s) {
@@ -1721,6 +1846,8 @@ void Debug::Error(string c, string s) {
 	*stream << "[e]" << c << ": " << s << std::endl;
 #ifdef PLATFORM_ADR
 	__android_log_print(ANDROID_LOG_ERROR, "ChokoLait", &s[0]);
+#else
+	std::cout << "[e]" << c << ": " << s << std::endl;
 #endif
 #else
 	std::cout << "[e]" << c << " says: " << s << std::endl;
@@ -1756,7 +1883,7 @@ void Debug::ObjectTree(const std::vector<pSceneObject>& o) {
 std::ofstream* Debug::stream = nullptr;
 void Debug::Init(string s) {
 #ifndef IS_EDITOR
-	string ss = s + "Log.txt";
+	string ss = s + "/Log.txt";
 	stream = new std::ofstream(ss.c_str(), std::ios::out | std::ios::trunc);
 	Message("Debug", "Log Initialized");
 #endif
@@ -1996,15 +2123,19 @@ HWND WinFunc::GetHwndFromProcessID(DWORD id) {
 }
 #endif
 
-//-----------------time class---------------------
 long long Time::startMillis = 0;
 long long Time::millis = 0;
 double Time::time = 0;
 float Time::delta = 0;
 
-//-----------------font class---------------------
+#pragma region Font
+
 FT_Library Font::_ftlib = nullptr;
 GLuint Font::fontProgram = 0;
+uint Font::vaoSz = 0;
+GLuint Font::vao = 0;
+GLuint Font::vbos[] = { 0, 0, 0 };
+
 void Font::Init() {
 	int err = FT_Init_FreeType(&_ftlib);
 	if (err != FT_Err_Ok) {
@@ -2016,9 +2147,11 @@ void Font::Init() {
 	GLuint vs, fs;
 #ifdef PLATFORM_WIN
 	string frag = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = vec4(1, 1, 1, texture(sampler, UV).r)*col;\n}";
-#else
+#elif defined(PLATFORM_ADR)
 	string frag = "#version 300 es\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = vec4(1.0, 1.0, 1.0, texture(sampler, UV).r)*col;\n}";
 	//string frag = "#version 300 es\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = vec4(1.0, 0.0, 0.0, 1.0);\n}";
+#elif defined(PLATFORM_LNX)
+	string frag = "#version 330\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = vec4(1.0, 1.0, 1.0, texture(sampler, UV).r)*col;\n}";
 #endif
 	if (!Shader::LoadShader(GL_VERTEX_SHADER, DefaultResources::GetStr("fontVert.txt"), vs, &error)) {
 		Debug::Error("Engine", "Fatal: Cannot init font shader(v)! " + error);
@@ -2048,6 +2181,33 @@ void Font::Init() {
 	glDetachShader(fontProgram, fs);
 	glDeleteShader(vs);
 	glDeleteShader(fs);
+
+	InitVao(50);
+}
+
+void Font::InitVao(uint sz) {
+	vaoSz = sz;
+	glGenVertexArrays(1, &vao);
+	glGenBuffers(3, vbos);
+	glBindBuffer(GL_ARRAY_BUFFER, vbos[0]);
+	glBufferStorage(GL_ARRAY_BUFFER, vaoSz * sizeof(Vec3), nullptr, GL_DYNAMIC_STORAGE_BIT);
+	glBindBuffer(GL_ARRAY_BUFFER, vbos[1]);
+	glBufferStorage(GL_ARRAY_BUFFER, vaoSz * sizeof(Vec2), nullptr, GL_DYNAMIC_STORAGE_BIT);
+	glBindBuffer(GL_ARRAY_BUFFER, vbos[2]);
+	glBufferStorage(GL_ARRAY_BUFFER, vaoSz * sizeof(float), nullptr, GL_DYNAMIC_STORAGE_BIT);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(vao);
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glEnableVertexAttribArray(2);
+	glBindBuffer(GL_ARRAY_BUFFER, vbos[0]);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+	glBindBuffer(GL_ARRAY_BUFFER, vbos[1]);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+	glBindBuffer(GL_ARRAY_BUFFER, vbos[2]);
+	glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 0, NULL);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
 }
 
 Font::Font(const string& path, int size) {
@@ -2125,6 +2285,8 @@ Font* Font::Align(ALIGNMENT a) {
 	alignment = a;
 	return this;
 }
+
+#pragma endregion
 
 float BezierSolveApprox(Vec2& v1, Vec2& v2, Vec2& v3, Vec2& v4, float x, float acc = 0.5f) {
 	if (x < v1.x)

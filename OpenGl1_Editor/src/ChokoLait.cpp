@@ -6,18 +6,27 @@ rCamera ChokoLait::mainCamera = rCamera();
 
 void ChokoLait::_InitVars() {
 		char cpath[200];
+#ifdef PLATFORM_WIN
 		GetModuleFileName(NULL, cpath, 200);
 		string path = cpath;
 		path = path.substr(0, path.find_last_of('\\') + 1);
-
+#elif defined(PLATFORM_LNX)
+		getcwd(cpath, 199);
+		string path = cpath;
+#endif
 		Debug::Init(path);
-		DefaultResources::Init(path + "defaultresources.bin");
+		DefaultResources::Init(path + "/defaultresources.bin");
 
 		if (!glfwInit()) {
 			Debug::Error("System", "Fatal: Cannot init glfw!");
 			abort();
 		}
 		glfwWindowHint(GLFW_VISIBLE, 0);
+#ifdef PLATFORM_LNX
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR,3);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR,3);
+		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#endif
 		window = glfwCreateWindow(10, 10, "ChokoLait Application", NULL, NULL);
 		Display::window = window;
 		if (!window) {
@@ -61,6 +70,7 @@ void ChokoLait::Init(int scrW, int scrH) {
 		glfwSetMouseButtonCallback(window, MouseGL);
 		glfwSetScrollCallback(window, MouseScrGL);
 
+		glClearColor(0, 0, 0, 1.0f);
 		/*
 		glfwSetCursorPosCallback(window, MotionGL);
 		glfwSetMouseButtonCallback(window, MouseGL);
@@ -72,6 +82,7 @@ void ChokoLait::Init(int scrW, int scrH) {
 		*/
 
 		initd = 2;
+		Debug::Message("ChokoLait", "Init finished.");
 	}
 }
 
@@ -90,7 +101,6 @@ void ChokoLait::Update(emptyCallbackFunc func) {
 
 void ChokoLait::Paint(emptyCallbackFunc func) {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glClearColor(0, 0, 0, 1.0f);
 	glDisable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
 	glEnable(GL_BLEND);
@@ -100,10 +110,12 @@ void ChokoLait::Paint(emptyCallbackFunc func) {
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
+#ifdef PLATFORM_WIN
 	if (!UI::drawFuncLoc) {
 		__trace(funcLoc);
 		UI::drawFuncLoc = funcLoc;
 	}
+#endif
 	UI::PreLoop();
 
 	if (func) func();
