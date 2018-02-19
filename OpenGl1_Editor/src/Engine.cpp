@@ -55,9 +55,7 @@ void sscanf_s(const char* b, const char* m, ...) {
 	sscanf(b, m, args);
 }
 
-#endif
-
-#ifdef PLATFORM_LNX
+#elif defined(PLATFORM_LNX)
 
 void fopen_s(FILE** f, const char* c, const char* m) {
 	*f = fopen(c, m);
@@ -647,6 +645,14 @@ void UI::SetVao(uint sz, void* verts, void* uvs) {
 		InitVao();
 	}
 	glBindBuffer(GL_ARRAY_BUFFER, _vboV);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sz * sizeof(Vec3), verts);
+	if (uvs) {
+		glBindBuffer(GL_ARRAY_BUFFER, _vboU);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, sz * sizeof(Vec2), uvs);
+	}
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	/*
+	glBindBuffer(GL_ARRAY_BUFFER, _vboV);
 	auto d = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
 	memcpy(d, verts, sz * sizeof(Vec3));
 	glUnmapBuffer(GL_ARRAY_BUFFER);
@@ -657,6 +663,7 @@ void UI::SetVao(uint sz, void* verts, void* uvs) {
 		glUnmapBuffer(GL_ARRAY_BUFFER);
 	}
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	*/
 }
 
 void UI_Trace(uint fpar, uint numb, uint* tar) {
@@ -874,7 +881,7 @@ string UI::EditText(float x, float y, float w, float h, float s, Vec4 bcol, cons
 #endif
 }
 
-void UI::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4, float maxw) {
+void UI::Label(float x, float y, float s, string st, Font* font, Vec4 col, float maxw) {
 	if (s <= 0) return;
 	uint sz = st.size();
 	GLuint tex = font->glyph((uint)round(s));
@@ -917,22 +924,16 @@ void UI::Label(float x, float y, float s, string st, Font* font, Vec4 Vec4, floa
 		Font::InitVao(sz * 4);
 	}
 	glBindBuffer(GL_ARRAY_BUFFER, Font::vbos[0]);
-	auto d = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
-	memcpy(d, &font->poss[0], sz * 4 * sizeof(Vec3));
-	glUnmapBuffer(GL_ARRAY_BUFFER);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sz * 4 * sizeof(Vec3), &font->poss[0]);
 	glBindBuffer(GL_ARRAY_BUFFER, Font::vbos[1]);
-	d = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
-	memcpy(d, &font->uvs[0], sz * 4 * sizeof(Vec2));
-	glUnmapBuffer(GL_ARRAY_BUFFER);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sz * 4 * sizeof(Vec2), &font->uvs[0]);
 	glBindBuffer(GL_ARRAY_BUFFER, Font::vbos[2]);
-	d = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
-	memcpy(d, &font->cs[0], sz * 4 * sizeof(float));
-	glUnmapBuffer(GL_ARRAY_BUFFER);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sz * 4 * sizeof(float), &font->cs[0]);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	glUseProgram(font->fontProgram);
 	GLint baseColLoc = glGetUniformLocation(font->fontProgram, "col");
-	glUniform4f(baseColLoc, Vec4.r, Vec4.g, Vec4.b, Vec4.a);
+	glUniform4f(baseColLoc, col.r, col.g, col.b, col.a);
 	GLint baseImageLoc = glGetUniformLocation(font->fontProgram, "sampler");
 	glUniform1i(baseImageLoc, 0);
 	glActiveTexture(GL_TEXTURE0);
@@ -2145,13 +2146,11 @@ void Font::Init() {
 
 	string error;
 	GLuint vs, fs;
-#ifdef PLATFORM_WIN
-	string frag = "#version 330 core\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = vec4(1, 1, 1, texture(sampler, UV).r)*col;\n}";
+#if defined(PLATFORM_WIN) || defined(PLATFORM_LNX)
+	string frag = "#version 330\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = col;//vec4(1, 1, 1, texture(sampler, UV).r)*col;\n}";
 #elif defined(PLATFORM_ADR)
 	string frag = "#version 300 es\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = vec4(1.0, 1.0, 1.0, texture(sampler, UV).r)*col;\n}";
 	//string frag = "#version 300 es\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = vec4(1.0, 0.0, 0.0, 1.0);\n}";
-#elif defined(PLATFORM_LNX)
-	string frag = "#version 330\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = vec4(1.0, 1.0, 1.0, texture(sampler, UV).r)*col;\n}";
 #endif
 	if (!Shader::LoadShader(GL_VERTEX_SHADER, DefaultResources::GetStr("fontVert.txt"), vs, &error)) {
 		Debug::Error("Engine", "Fatal: Cannot init font shader(v)! " + error);
@@ -2187,6 +2186,10 @@ void Font::Init() {
 
 void Font::InitVao(uint sz) {
 	vaoSz = sz;
+	if (!!vao) {
+		glDeleteVertexArrays(1, &vao);
+		glDeleteBuffers(3, vbos);
+	}
 	glGenVertexArrays(1, &vao);
 	glGenBuffers(3, vbos);
 	glBindBuffer(GL_ARRAY_BUFFER, vbos[0]);
@@ -2210,7 +2213,7 @@ void Font::InitVao(uint sz) {
 	glBindVertexArray(0);
 }
 
-Font::Font(const string& path, int size) {
+Font::Font(const string& path, int size) : vecSize(0) {
 	Debug::Message("Font", "opening font at " + path);
 	auto err = FT_New_Face(_ftlib, path.c_str(), 0, &_face);
 	if (err != FT_Err_Ok) {
