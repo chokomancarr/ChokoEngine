@@ -4,44 +4,49 @@ GLFWwindow* ChokoLait::window = nullptr;
 int ChokoLait::initd = 0;
 rCamera ChokoLait::mainCamera = rCamera();
 
-void ChokoLait::_InitVars() {
-		char cpath[200];
+void _dieded(int i) {
 #ifdef PLATFORM_WIN
-		GetModuleFileName(NULL, cpath, 200);
-		string path = cpath;
-		path = path.substr(0, path.find_last_of('\\') + 1);
+	MessageBox(glfwGetWin32Window(Display::window), "Beep Boop, I Crashed.", "fuck", MB_OK);
+#endif
+}
+
+void ChokoLait::_InitVars() {
+#ifdef PLATFORM_WIN
+	SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
+	signal(SIGABRT, &_dieded);
 #elif defined(PLATFORM_LNX)
-		getcwd(cpath, 199);
-		string path = cpath;
-#endif
-		Debug::Init(path);
-		DefaultResources::Init(path + "/defaultresources.bin");
 
-		if (!glfwInit()) {
-			Debug::Error("System", "Fatal: Cannot init glfw!");
-			abort();
-		}
-		glfwWindowHint(GLFW_VISIBLE, 0);
+#endif
+
+	const string& path = IO::InitPath();
+	Debug::Init(path);
+	DefaultResources::Init(path + "/defaultresources.bin");
+
+	if (!glfwInit()) {
+		Debug::Error("System", "Fatal: Cannot init glfw!");
+		abort();
+	}
+	glfwWindowHint(GLFW_VISIBLE, 0);
 #ifdef PLATFORM_LNX
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR,3);
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR,3);
-		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR,4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR,5);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #endif
-		window = glfwCreateWindow(10, 10, "ChokoLait Application", NULL, NULL);
-		Display::window = window;
-		if (!window) {
-			Debug::Error("System", "Fatal: Cannot create glfw window!");
-			abort();
-		}
-		glfwMakeContextCurrent(window);
+	window = glfwCreateWindow(10, 10, "ChokoLait Application", NULL, NULL);
+	Display::window = window;
+	if (!window) {
+		Debug::Error("System", "Fatal: Cannot create glfw window!");
+		abort();
+	}
+	glfwMakeContextCurrent(window);
 
-		GLint GlewInitResult = glewInit();
-		if (GLEW_OK != GlewInitResult)
-		{
-			Debug::Error("System", "Glew error: " + string((const char*)glewGetErrorString(GlewInitResult)));
-			abort();
-		}
-		Engine::Init(path);
+	GLint GlewInitResult = glewInit();
+	if (GLEW_OK != GlewInitResult)
+	{
+		Debug::Error("System", "Glew error: " + string((const char*)glewGetErrorString(GlewInitResult)));
+		abort();
+	}
+	Engine::Init(path);
 }
 
 void ChokoLait::Init(int scrW, int scrH) {
@@ -52,7 +57,7 @@ void ChokoLait::Init(int scrW, int scrH) {
 		Engine::_mainThreadId = std::this_thread::get_id();
 
 		Scene::active = new Scene();
-		pSceneObject cam = std::make_shared<SceneObject>();
+		pSceneObject cam = SceneObject::New(Vec3());
 		Scene::AddObject(cam);
 		mainCamera(cam->AddComponent<Camera>());
 
@@ -101,12 +106,9 @@ void ChokoLait::Update(emptyCallbackFunc func) {
 
 void ChokoLait::Paint(emptyCallbackFunc func) {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glDisable(GL_DEPTH_TEST);
-	glDepthFunc(GL_LEQUAL);
-	glEnable(GL_BLEND);
+	
+	mainCamera->Render();
 
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
@@ -117,6 +119,9 @@ void ChokoLait::Paint(emptyCallbackFunc func) {
 	}
 #endif
 	UI::PreLoop();
+
+	glDisable(GL_DEPTH_TEST);
+	glEnable(GL_BLEND);
 
 	if (func) func();
 

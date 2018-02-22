@@ -32,6 +32,7 @@ bld/
 packages/
 [Dd]oc/
 [Ll]ait/
+TestLait/
 
 # library files
 ffmpeg/

@@ -16,6 +16,7 @@ See https://chokomancarr.github.io/ChokoLait/ for documentation and examples.
 
 #ifndef CHOKO_LAIT_BUILD
 #define CHOKO_LAIT
+#ifndef TEST_LAIT
 #if defined(PLATFORM_WIN)
 #pragma comment(lib, "chokolait_win.lib")
 #elif defined(PLATFORM_ADR)
@@ -23,6 +24,7 @@ See https://chokomancarr.github.io/ChokoLait/ for documentation and examples.
 #endif
 #pragma comment(lib, "opengl32.lib")
 #pragma comment(lib, "chokolibs_win.lib")
+#endif
 #endif
 
 #define CHOKOLAIT_INIT_VARS ChokoLait __chokolait_instance;

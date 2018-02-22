@@ -1,9 +1,5 @@
 #pragma once
 
-#define PLATFORM_WIN
-
-#define CHOKO_LAIT_BUILD
-
 //comment out to not use during runtime
 /*
 Use the ffmpeg library. If commented out, VideoTexture will not be available.

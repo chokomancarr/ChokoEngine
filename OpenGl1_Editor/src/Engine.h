@@ -29,15 +29,19 @@ Global stuff, normally not macro-protected
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <Windows.h>
+#include <Dbghelp.h>
 #include <WinSock2.h>
+#include <signal.h>
 #pragma comment(lib, "Secur32.lib")
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "iphlpapi.lib")
+#pragma comment(lib, "Dbghelp.lib")
 #else //networking is identical on unix systems
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #ifdef PLATFORM_LNX
 #include <unistd.h>
+#include <execinfo.h>
 #endif
 #endif
 
@@ -47,6 +51,9 @@ Global stuff, normally not macro-protected
 #pragma comment(lib, "glew_win.lib")
 #include <glew.h>
 #include <glfw3.h>
+#define GLFW_EXPOSE_NATIVE_WIN32
+#define GLFW_EXPOSE_NATIVE_WGL
+#include <glfw3native.h>
 typedef GLFWwindow NativeWindow;
 #define LOGI(...)
 #elif defined(PLATFORM_ADR)
@@ -78,6 +85,9 @@ extern void glPolygonMode(GLenum a, GLenum b);
 #elif defined(PLATFORM_LNX)
 #include "GL/glew.h"
 #include "GLFW/glfw3.h"
+#define GLFW_EXPOSE_NATIVE_X11
+#define GLFW_EXPOSE_NATIVE_GLX
+#include <glfw3native.h>
 typedef GLFWwindow NativeWindow;
 #endif
 
@@ -585,15 +595,23 @@ public:
 	static void Error(string c, string s);
 	static void ObjectTree(const std::vector<pSceneObject>& o);
 
+	static void InitStackTrace();
+	static void** StackTrace(uint* count = nullptr);
+	static std::vector<string> StackTraceNames();
+	static void DumpStackTrace();
+
 	friend int main(int argc, char **argv);
 	friend class ChokoLait;
-	friend void Start();
 protected:
 	static std::ofstream* stream;
 	static void Init(string path);
 
 private:
 	static void DoDebugObjectTree(const std::vector<pSceneObject>& o, int i);
+	
+#ifdef PLATFORM_WIN
+	static HANDLE winHandle;
+#endif
 };
 
 /*! Base class of instantiatable object
@@ -743,6 +761,13 @@ public:
 #endif
 	static string GetText(const string& path);
 	static std::vector<byte> GetBytes(const string& path);
+
+	static string path;
+
+	friend class ChokoLait;
+	friend class Engine;
+protected:
+	static const string& InitPath();
 };
 
 #ifdef PLATFORM_WIN

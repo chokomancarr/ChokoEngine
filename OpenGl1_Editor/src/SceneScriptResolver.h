@@ -1,5 +1,3 @@
-#include <vector>
-#include <fstream>
 #include "Engine.h"
 typedef SceneScript*(*sceneScriptInstantiator)();
 class SceneScriptResolver {

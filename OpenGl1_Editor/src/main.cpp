@@ -14,9 +14,6 @@
 #include "Compressors.h"
 #include <shellapi.h>
 
-#define GLFW_EXPOSE_NATIVE_WIN32
-#define GLFW_EXPOSE_NATIVE_WGL
-#include <glfw3native.h>
 //#include "MD.h"
 //#include "Water.h"
 
@@ -539,6 +536,50 @@ void ShowSplash(string bitmap, uint cx, uint cy, uint sw, uint sh) {
 
 void KillSplash() {
 	DestroyWindow(splashHwnd);
+}
+
+#elif defined TEST_LAIT
+
+#define PLATFORM_WIN
+#include "ChokoLait.h"
+#include "Water.h"
+CHOKOLAIT_INIT_VARS;
+
+Font* font = new Font(IO::path + "/arimo.ttf");
+Water* water;
+
+double told = 0;
+uint fpsc = 0;
+uint fps;
+
+void paintfunc() {
+	//Engine::DrawQuad(0, 0, 100, 40, sky->pointer, white());
+	water->Draw();
+
+	if (++fpsc == 1000) {
+		fps = (uint)roundf(1000.0f / (Time::time - told));
+		told = Time::time;
+		fpsc = 0;
+	}
+	UI::Label(10, 10, 12, "fps: " + std::to_string(fps), font, white());
+}
+
+int main(int argc, char **argv)
+{
+	ChokoLait::Init(500, 500);
+	ChokoLait::mainCamera->object->transform.localPosition(Vec3(0, 0, -1.7f));
+
+	font->Align(ALIGN_TOPLEFT);
+	water = new Water("D:\\water.compute", 4, 182, 298);
+
+	while (ChokoLait::alive()) {
+		ChokoLait::Update();
+		//if (Input::KeyHold(Key_D)) tr.Rotate(0, Time::delta * 60, 0);
+		//if (Input::KeyHold(Key_A)) tr.Rotate(0, -Time::delta * 60, 0);
+		water->Update();
+
+		ChokoLait::Paint(paintfunc);
+	}
 }
 
 #endif

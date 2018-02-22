@@ -9,6 +9,7 @@ const float _si_t = 1e-12f;
 const float _si_q = 1.602e-19f;
 
 const float _ast = 0.1f;
+const float kB = 1.38e-44f;
 
 const float BOND_LENGTH = 1 * _ast;
 const float BOND_ANGLE = 109.47f * deg2rad;

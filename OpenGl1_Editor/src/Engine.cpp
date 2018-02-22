@@ -895,7 +895,7 @@ void UI::Label(float x, float y, float s, string st, Font* font, Vec4 col, float
 		}
 		x -= totalW * (align & 15) * 0.5f;
 	}
-
+	
 	y -= (1-(0.5f * (align >> 4))) * s;
 
 	y = Display::height - y;
@@ -1823,7 +1823,7 @@ ulong Engine::GetNewId() {
 //-----------------debug class-----------------------
 void Debug::Message(string c, string s) {
 #ifndef IS_EDITOR
-	*stream << "[i " + std::to_string(clock()) + "]" << c << ": " << s << std::endl;
+	if (stream) *stream << "[i " + std::to_string(clock()) + "]" << c << ": " << s << std::endl;
 #endif
 #ifdef PLATFORM_ADR
 	__android_log_print(ANDROID_LOG_INFO, "ChokoLait", &s[0]);
@@ -1833,28 +1833,24 @@ void Debug::Message(string c, string s) {
 }
 void Debug::Warning(string c, string s) {
 #ifndef IS_EDITOR
-	*stream << "[w]" << c << ": " << s << std::endl;
+	if (stream) *stream << "[w]" << c << ": " << s << std::endl;
+#else
+	Editor::instance->_Warning(c, s);
+#endif
 #ifdef PLATFORM_ADR
 	__android_log_print(ANDROID_LOG_WARN, "ChokoLait", &s[0]);
 #endif
-#else
 	std::cout << "[w]" << c << ": " << s << std::endl;
-	Editor::instance->_Warning(c, s);
-#endif
 }
 void Debug::Error(string c, string s) {
 #ifndef IS_EDITOR
-	*stream << "[e]" << c << ": " << s << std::endl;
+	if (stream) *stream << "[e]" << c << ": " << s << std::endl;
+#endif
 #ifdef PLATFORM_ADR
 	__android_log_print(ANDROID_LOG_ERROR, "ChokoLait", &s[0]);
-#else
+#endif
 	std::cout << "[e]" << c << ": " << s << std::endl;
-#endif
-#else
-	std::cout << "[e]" << c << " says: " << s << std::endl;
 	__debugbreak();
-	//abort();
-#endif
 }
 
 void Debug::DoDebugObjectTree(const std::vector<pSceneObject>& o, int i) {
@@ -1881,7 +1877,69 @@ void Debug::ObjectTree(const std::vector<pSceneObject>& o) {
 	Message("ObjectTree", "End");
 }
 
+void** Debug::StackTrace(uint* count) {
+	void** frames = new void*[10];
+	uint c;
+#ifdef PLATFORM_WIN
+	c = CaptureStackBackTrace(0, 10, frames, NULL);
+#elif defined(PLATFORM_LNX)
+	c = backtrace(frames, 10);
+#endif
+	if (count) *count = c;
+	return frames;
+}
+
+void Debug::InitStackTrace() {
+#ifdef PLATFORM_WIN
+	winHandle = GetCurrentProcess();// glfwGetWin32Window(Display::window);
+	if (SymInitialize(winHandle, NULL, true)) {
+		Message("Debug", "Symbols loaded.");
+	}
+	else {
+		Message("Debug", "No symbols loaded.");
+	}
+#endif
+}
+
+std::vector<string> Debug::StackTraceNames() {
+	uint count;
+	void** frames = StackTrace(&count);
+	auto names = std::vector<string>(count);
+#ifdef PLATFORM_WIN
+	auto handle = GetCurrentProcess();
+	char buffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
+	PSYMBOL_INFO sym = (PSYMBOL_INFO)buffer;
+	sym->SizeOfStruct = sizeof(SYMBOL_INFO);
+	sym->MaxNameLen = MAX_SYM_NAME;
+	DWORD64 off = 0;
+	for (uint a = 0; a < count; a++) {
+		DWORD64 frame = (DWORD64)frames[a];
+		std::stringstream stream;
+		stream << std::hex << frame;
+		if (SymFromAddr(handle, frame, &off, sym)) {
+			names[a] = string((char*)sym->Name)
+			+ " (0x" + stream.str() + ")";
+		}
+		else {
+			names[a] = "0x" + stream.str() + " (no pdb loaded)";
+		}
+	}
+#endif
+	return names;
+}
+
+void Debug::DumpStackTrace() {
+	auto res = Debug::StackTraceNames();
+	Message("Debug", "Dumping stack trace (" + std::to_string(res.size()) + " frames)...");
+	for (auto& r : res) {
+		Message("Debug", "   " + r);
+	}
+}
+
 std::ofstream* Debug::stream = nullptr;
+#ifdef PLATFORM_WIN
+HANDLE Debug::winHandle = 0;
+#endif
 void Debug::Init(string s) {
 #ifndef IS_EDITOR
 	string ss = s + "/Log.txt";
@@ -1889,7 +1947,12 @@ void Debug::Init(string s) {
 	Message("Debug", "Log Initialized");
 #endif
 }
-//-----------------io class-----------------------
+
+
+#pragma region IO
+
+string IO::path = "";
+
 std::vector<string> IO::GetFiles(const string& folder, string ext)
 {
 	if (folder == "") return std::vector<string>();
@@ -2056,6 +2119,23 @@ string IO::GetText(const string& path) {
 	return ss.str();
 }
 
+const string& IO::InitPath() {
+	char cpath[200];
+#ifdef PLATFORM_WIN
+	GetModuleFileName(NULL, cpath, 200);
+	path = cpath;
+	path = path.substr(0, path.find_last_of('\\') + 1);
+#elif defined(PLATFORM_LNX)
+	getcwd(cpath, 199);
+	path = cpath;
+#endif
+	Debug::Message("IO", "Path set to " + path);
+
+	return path;
+}
+
+#pragma endregion
+
 #ifdef PLATFORM_WIN
 std::vector<string> SerialPort::GetNames() {
 	HKEY hkey;
@@ -2147,7 +2227,7 @@ void Font::Init() {
 	string error;
 	GLuint vs, fs;
 #if defined(PLATFORM_WIN) || defined(PLATFORM_LNX)
-	string frag = "#version 330\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = col;//vec4(1, 1, 1, texture(sampler, UV).r)*col;\n}";
+	string frag = "#version 330\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = vec4(1, 1, 1, texture(sampler, UV).r)*col;\n}";
 #elif defined(PLATFORM_ADR)
 	string frag = "#version 300 es\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = vec4(1.0, 1.0, 1.0, texture(sampler, UV).r)*col;\n}";
 	//string frag = "#version 300 es\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = vec4(1.0, 0.0, 0.0, 1.0);\n}";

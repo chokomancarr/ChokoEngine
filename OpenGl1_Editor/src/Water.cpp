@@ -73,7 +73,7 @@ Water::Water(string path, uint _c, float d, float t): particlecount((uint)pow(_c
 	iVec4* ios = new iVec4[particlecount];
 
 	uint i = 0;
-	wall = pow(particlecount / d, 0.333f);
+	wall = pow(particlecount / 3.0f / d, 0.333f);
 	const float ds = wall / _c;
 	const float dds = ds / 4;
 	for (uint a = 0; a < _c; a++) {
@@ -94,11 +94,13 @@ Water::Water(string path, uint _c, float d, float t): particlecount((uint)pow(_c
 					Vec3 d2 = Normalize(Vec3(_rand, _rand, _rand));
 
 					pts[i + 1] = pss[d] + Vec4(d1 * BOND_LENGTH, 0);
+					ios[i + 1].x = 0;
 					ios[i + 1].y = i;
 					ios[i + 1].z = i + 2;
 					Vec3 d3 = Normalize(cross(d1, d2));
-					Vec3 d4 = d1 * cos(BOND_ANGLE) + d3 * sin(BOND_ANGLE);
+					Vec3 d4 = d1 * cos(BOND_ANGLE * 1.1f) + d3 * sin(BOND_ANGLE * 1.1f);
 					pts[i + 2] = pss[d] + Vec4(d4 * BOND_LENGTH, 0);
+					ios[i + 2].x = 0;
 					ios[i + 2].y = i;
 					ios[i + 2].z = i + 1;
 
@@ -119,13 +121,14 @@ Water::Water(string path, uint _c, float d, float t): particlecount((uint)pow(_c
 	tot /= (float)particlecount;
 	float myt = 0;
 	for (uint a = 0; a < particlecount; a++) {
-		vls[a] = vls[a] / tot;
-		myt += pow(vls[a].x, 2) + pow(vls[a].y, 2) + pow(vls[a].z, 2);
+		vls[a] -= tot;
+		float m = (a % 3 == 0) ? MASS_O : MASS_H;
+		myt += m * (pow(vls[a].x, 2) + pow(vls[a].y, 2) + pow(vls[a].z, 2));
 	}
-	myt /= (particlecount * 3);
-	for (uint a = 0; a < particlecount; a++) {
-		vls[a] = vls[a] * sqrt(temp / myt);
-	}
+	myt /= 3;
+	//for (uint a = 0; a < particlecount; a++) {
+	//	vls[a] = vls[a] * sqrt(temp / myt);
+	//}
 	vlb = new ComputeBuffer<Vec4>(particlecount, vls);
 
 	float* prm = new float[4];
@@ -141,6 +144,14 @@ Water::Water(string path, uint _c, float d, float t): particlecount((uint)pow(_c
 	shader->SetBuffer(5, vlb);
 	shader->SetBuffer(6, iob);
 	shader->SetBuffer(7, prb);
+
+	colors = new Vec4[particlecount];
+	for (uint a = 0; a < particlecount; a+=3) {
+		colors[a] = red();
+		colors[a + 1] = white();
+		colors[a + 2] = white();
+	}
+	colors[0] = green();
 }
 
 double ta = 0, to = 0;
@@ -160,13 +171,13 @@ void Water::Draw() {
 	glTranslatef(-wall / 2, -wall / 2, -wall / 2);
 
 	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-	glPointSize(4);
+	glPointSize(6);
 	glEnableClientState(GL_VERTEX_ARRAY);
-	//glEnableClientState(GL_COLOR_ARRAY);
+	glEnableClientState(GL_COLOR_ARRAY);
 	glVertexPointer(3, GL_FLOAT, 16, 0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	//glColorPointer(4, GL_FLOAT, 0, MD::me->colors);
+	glColorPointer(4, GL_FLOAT, 0, colors);
 	glDrawArrays(GL_POINTS, 0, particlecount);
 	glDisableClientState(GL_VERTEX_ARRAY);
-	//glDisableClientState(GL_COLOR_ARRAY);
+	glDisableClientState(GL_COLOR_ARRAY);
 }
