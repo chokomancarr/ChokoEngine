@@ -129,7 +129,7 @@ Water::Water(string path, uint _c, float d, float t): particlecount((uint)pow(_c
 
 	string tempPath = IO::path + "/temp.txt";
 	string msdPath = IO::path + "/msd.txt";
-	string vcfPath = IO::path + "/msd.txt";
+	string vcfPath = IO::path + "/vcf.txt";
 	tempOut = new std::ofstream(tempPath, std::ios::out | std::ios::binary);
 	msdOut = new std::ofstream(msdPath, std::ios::out | std::ios::binary);
 	vcfOut = new std::ofstream(vcfPath, std::ios::out | std::ios::binary);
@@ -137,10 +137,14 @@ Water::Water(string path, uint _c, float d, float t): particlecount((uint)pow(_c
 }
 
 double ta = 0, to = 0;
-ulong rec_time = 0;
-uint rec_step = 0;
+ulong rec_time = -1;
+uint rec_step = 10;
 
 Vec3 _res_meanOffset = Vec3();
+
+uint rdfNum = 0, rdf_step = 0;
+uint rdf[100] = {};
+uint rdfTot[100] = {};
 
 void Water::Update() {
 	shader->Dispatch(threads, 1, 1);
@@ -173,13 +177,45 @@ void Water::Update() {
 		res_vcf += m * glm::dot(res[a], vel0[a]);
 	}
 	res_vcf /= MASS_WATER * particlecount;
-	
-	if (++rec_step >= 50) {
+
+	if (++rec_step >= 10) {
 		rec_time++;
-		*tempOut << 0.5f * rec_time << " " << res_tmp << "\n";
-		*msdOut << 0.5f * rec_time << " " << res_msd << "\n";
-		*vcfOut << 0.5f * rec_time << " " << res_vcf << "\n";
+		*tempOut << 0.01f * rec_time << " " << res_tmp << "\n";
+		*msdOut << 0.01f * rec_time << " " << res_msd << "\n";
+		*vcfOut << 0.01f * rec_time << " " << res_vcf << "\n";
 		rec_step = 0;
+		//if (++rdf_step >= 50) {
+			const float dw = wall / 200;
+			rdfNum++;
+			psb->Get<Vec4>(res);
+			for (uint i = 0; i < particlecount; i += 3) {
+				Vec3 mypos = *(Vec3*)(res + i);
+				for (uint c = 0; c < particlecount; c += 3) {
+					if (c != i) {
+						Vec3 dp = *(Vec3*)(res + c) - mypos;
+						dp /= wall;
+						dp -= glm::round(dp);
+						dp *= wall;
+						float dst = glm::length(dp);
+						uint loc = (uint)roundf(dst * 200.0f / wall);
+						if (loc >= 100)
+							continue;
+						rdf[loc]++;
+						rdfTot[loc]++;
+					}
+				}
+			}
+		if (++rdf_step >= 50) {
+			rdf_step = 0;
+			
+			std::ofstream rdfOut(IO::path + "/rdf.txt", std::ios::out | std::ios::binary);
+			for (uint a = 0; a < 100; a++) {
+				float val = rdfTot[a] / (4 * PI * pow(wall*a / 2 + dw / 2, 2) * dw);
+				rdfOut << (a * dw) << " " << (val * 3 / particlecount / rdfNum) << "\n";
+			}
+			
+			std::cout << "rdf" << std::endl;
+		}
 	}
 }
 

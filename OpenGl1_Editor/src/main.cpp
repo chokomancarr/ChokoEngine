@@ -618,7 +618,7 @@ void paintfunc() {
 		fpsc = 0;
 	}
 	UI::Label(10, 10, 12, "fps: " + std::to_string(fps) + "  u: " + std::to_string(Water::me->res_pot), font, white());
-	UI::Label(10, 25, 12, "t: " + std::to_string(++simtime / 10) + " ps", font, white());
+	UI::Label(10, 25, 12, "t: " + std::to_string(++simtime / 1000) + " ps", font, white());
 	UI::Label(10, 40, 12, "T: " + std::to_string((int)roundf(Water::me->res_tmp)) + " K", font, white());
 }
 
@@ -642,7 +642,7 @@ int main(int argc, char **argv)
 		//if (Input::KeyHold(Key_D)) tr.Rotate(0, Time::delta * 60, 0);
 		//if (Input::KeyHold(Key_A)) tr.Rotate(0, -Time::delta * 60, 0);
 		water->Update();
-
+		
 		ChokoLait::Paint(rendFunc, paintfunc);
 	}
 }
