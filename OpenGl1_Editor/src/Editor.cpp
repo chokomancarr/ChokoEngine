@@ -1798,6 +1798,7 @@ uint PopupSelector::width, PopupSelector::height;
 Vec2 PopupSelector::mousePos, PopupSelector::mouseDownPos;
 bool PopupSelector::mouse0, PopupSelector::mouse1, PopupSelector::mouse2;
 byte PopupSelector::mouse0State, PopupSelector::mouse1State, PopupSelector::mouse2State;
+GLuint PopupSelector::_vao, PopupSelector::_vaof;
 
 POPUP_SELECT_TYPE PopupSelector::_type;
 rSceneObject* PopupSelector::_browseTargetObj;
@@ -1829,6 +1830,47 @@ void PopupSelector::Init() {
 
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glFrontFace(GL_CW);
+	glClearColor(0, 0, 0, 1.0f);
+
+	InitVao();
+	InitVaoF();
+}
+
+void PopupSelector::InitVao() {
+	glfwMakeContextCurrent(window);
+	if (_vao)
+		glDeleteVertexArrays(1, &_vao);
+	glGenVertexArrays(1, &_vao);
+	glBindVertexArray(_vao);
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glBindBuffer(GL_ARRAY_BUFFER, UI::_vboV);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+	glBindBuffer(GL_ARRAY_BUFFER, UI::_vboU);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+	glfwMakeContextCurrent(Display::window);
+}
+
+void PopupSelector::InitVaoF() {
+	glfwMakeContextCurrent(window);
+	if (_vaof)
+		glDeleteVertexArrays(1, &_vaof);
+	glGenVertexArrays(1, &_vaof);
+	glBindVertexArray(_vaof);
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glEnableVertexAttribArray(2);
+	glBindBuffer(GL_ARRAY_BUFFER, Font::vbos[0]);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+	glBindBuffer(GL_ARRAY_BUFFER, Font::vbos[1]);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+	glBindBuffer(GL_ARRAY_BUFFER, Font::vbos[2]);
+	glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 0, NULL);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+	glfwMakeContextCurrent(Display::window);
 }
 
 void PopupSelector::Enable_Object(rSceneObject* target) {
@@ -1882,6 +1924,9 @@ void PopupSelector::Draw() {
 		auto m1s = Input::mouse1State;
 		auto m2s = Input::mouse2State;
 		auto mdp = Input::mouseDownPos;
+		auto vo = UI::_vao;
+		auto vof = Font::vao;
+
 		UI::focused = focused;
 		Display::width = width;
 		Display::height = height;
@@ -1894,12 +1939,18 @@ void PopupSelector::Draw() {
 		Input::mouse1State = mouse1State;
 		Input::mouse2State = mouse2State;
 		Input::mouseDownPos = mouseDownPos;
+		UI::_vao = _vao;
+		Font::vao = _vaof;
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glClearColor(0, 0, 0, 1.0f);
 		glDisable(GL_DEPTH_TEST);
-		glDepthFunc(GL_LEQUAL);
+		glDepthFunc(GL_ALWAYS);
 		glEnable(GL_BLEND);
+
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
 
 		if (editor->backgroundTex)
 			UI::Texture(0, 0, (float)width, (float)height, editor->backgroundTex, editor->backgroundAlpha*0.01f, DRAWTEX_CROP);
@@ -1925,6 +1976,8 @@ void PopupSelector::Draw() {
 		Input::mouse1State = m1s;
 		Input::mouse2State = m2s;
 		Input::mouseDownPos = mdp;
+		UI::_vao = vo;
+		Font::vao = vof;
 
 		if (!show) Close();
 	}

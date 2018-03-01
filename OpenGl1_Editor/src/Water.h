@@ -9,7 +9,7 @@ const float _si_t = 1e-12f;
 const float _si_q = 1.602e-19f;
 
 const float _ast = 0.1f;
-const float kB = 1.38e-44f;
+const float kB = 1.38e-2f / 1.66f;
 
 const float BOND_LENGTH = 1 * _ast;
 const float BOND_ANGLE = 109.47f * deg2rad;
@@ -19,20 +19,7 @@ const float dt = 1e-4f; //0.1fs
 
 const float MASS_H = 1.0f;
 const float MASS_O = 15.99f;
-
-/*
-class WaterParticle {
-public:
-	bool is_oxygen;
-
-	float charge;
-	dVec3 position, velocity, force;
-	uint p1, p2; //h1, h2 if oxygen, o, h2 if hydrogen
-	double energy;
-
-	void repos(), f_bond();
-};
-*/
+const float MASS_WATER = MASS_O + 2 * MASS_H;
 
 class Water {
 public:
@@ -45,13 +32,13 @@ public:
 	//static const WaterParticle* Get(uint i);
 	void Update(), Draw();
 
-	IComputeBuffer* frb, *psb, *vlb, *iob, *prb;
+	IComputeBuffer* frb, *psb, *vlb, *iob, *prb, *oub;
 	ComputeShader* shader;
 
 	float dens, temp, wall;
 
+	float res_pot, res_tmp, res_prs, res_msd, res_vcf;
+
 	const uint particlecount, threads;
-	GLuint forSSBO, posSSBO, velSSBO, prmSSBO, rdfSSBO;
-	GLuint computeprog;
 	Vec4* colors;
 };

@@ -585,7 +585,7 @@ GLuint Camera::DoFetchTexture(string s) {
 	return 0;
 }
 
-void Camera::Render(RenderTexture* target) {
+void Camera::Render(RenderTexture* target, renderFunc func) {
 	float zero[] = { 0,0,0,0 };
 	float one = 1;
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
@@ -602,15 +602,22 @@ void Camera::Render(RenderTexture* target) {
 	ApplyGL();
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
+
 	DrawSceneObjectsOpaque(Scene::active->objects);
+	//if (func) func();
+	//glMatrixMode(GL_MODELVIEW);
+	//glLoadIdentity();
 
 	glDisable(GL_DEPTH_TEST);
 	glDepthMask(false);
 
+	//DumpBuffers();
+	//return;
 //#ifdef SHOW_GBUFFERS
 	//DumpBuffers();
 //#else
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+
 	RenderLights();
 //#endif
 }

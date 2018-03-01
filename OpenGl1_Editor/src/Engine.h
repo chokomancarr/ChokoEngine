@@ -806,6 +806,9 @@ public:
 
 	friend class Engine;
 	friend class UI;
+#ifdef IS_EDITOR
+	friend class PopupSelector;
+#endif
 protected:
 	static FT_Library _ftlib;
 	static void Init(), InitVao(uint sz);

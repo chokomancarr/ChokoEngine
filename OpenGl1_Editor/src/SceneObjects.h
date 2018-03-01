@@ -2,6 +2,8 @@
 
 #include "Engine.h"
 
+typedef void (*renderFunc)(void);
+
 class SceneSettings {
 public:
 	SceneSettings() : sky(nullptr), skyId(-1), skyStrength(1) {
@@ -202,7 +204,7 @@ public:
 	rRenderTexture targetRT;
 	std::vector<rCameraEffect> effects;
 	
-	void Render(RenderTexture* target = nullptr);
+	void Render(RenderTexture* target = nullptr, renderFunc func = nullptr);
 
 	friend int main(int argc, char **argv);
 	friend void Serialize(Editor* e, SceneObject* o, std::ofstream* stream);

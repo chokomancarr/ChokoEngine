@@ -104,10 +104,10 @@ void ChokoLait::Update(emptyCallbackFunc func) {
 	if (func) func();
 }
 
-void ChokoLait::Paint(emptyCallbackFunc func) {
+void ChokoLait::Paint(emptyCallbackFunc rendFunc, emptyCallbackFunc paintFunc) {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	
-	mainCamera->Render();
+	mainCamera->Render(nullptr, rendFunc);
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
@@ -121,9 +121,10 @@ void ChokoLait::Paint(emptyCallbackFunc func) {
 	UI::PreLoop();
 
 	glDisable(GL_DEPTH_TEST);
+	glDepthMask(false);
 	glEnable(GL_BLEND);
 
-	if (func) func();
+	if (paintFunc) paintFunc();
 
 	glfwSwapBuffers(window);
 	glfwPollEvents();

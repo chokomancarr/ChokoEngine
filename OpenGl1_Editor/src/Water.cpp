@@ -1,68 +1,32 @@
 #include "Water.h"
 #include "Editor.h"
 
-/*
-void WaterParticle::repos() {
-	auto dp = velocity * dt + (force / (is_oxygen? MASS_O : MASS_H)) * dt * dt * 0.5;
-	position = position + dp;
-}
+Water* Water::me = nullptr;
 
-void WaterParticle::f_bond() {
-	dVec3 fold = dVec3(force);
-
-	auto other1 = Water::Get(p1);
-	auto other2 = Water::Get(p2);
-
-	dVec3 dir = other1->position - position;
-	double dst = glm::length(dir);
-	force = K_LINEAR * Normalize(dir) * (dst - BOND_LENGTH);
-	if (is_oxygen) {
-		dVec3 dir2 = other2->position - position;
-		double dst2 = glm::length(dir2);
-		force += K_LINEAR * Normalize(dir2) * (dst2 - BOND_LENGTH);
-
-		//H <--dir-- me --dir2--> H
-		dVec3 t1 = Normalize(glm::cross(dir2, dir));
-
-		dVec3 rdir1 = Normalize(glm::cross(dir, t1));
-		dVec3 rdir2 = Normalize(glm::cross(t1, dir2));
-
-		double angle = acos(Clamp(glm::dot(Normalize(dir), Normalize(dir2)), -1.0, 1.0));
-		force -= (rdir1/dst + rdir2/dst2)*K_RADIAL*(angle - BOND_ANGLE);
-
-		velocity += (fold + force) * 0.5 * dt / MASS_O;
-		
-		energy = 0.5 * K_RADIAL * pow((angle - BOND_ANGLE), 2);
-		energy += 0.5 * MASS_O * glm::dot(velocity, velocity);
-	}
-	else {
-		dVec3 dir1 = -dir;
-		dVec3 dir2 = other2->position - other1->position;
-		//me <--dir1-- O --dir2--> H
-		dVec3 t1 = Normalize(glm::cross(dir2, dir1));
-		dVec3 rdir = Normalize(glm::cross(dir1, t1));
-
-		double angle = acos(Clamp(glm::dot(Normalize(dir1), Normalize(dir2)), -1.0, 1.0));
-		force += (rdir/dst)*K_RADIAL*(angle - BOND_ANGLE);
-
-		auto dv = (fold + force) * 0.5 * dt / MASS_H;
-		velocity = velocity + dv;
-
-		energy = 0.5 * K_LINEAR * pow(dst - BOND_LENGTH, 2);
-		energy += 0.5 * MASS_H * glm::dot(velocity, velocity);
-	}
-}
-*/
-
-Water* Water::me = 0;
+std::ofstream* tempOut, *msdOut, *vcfOut;
 
 #define _rand (rand()%100 - 50)*0.02f
+
+Vec4* res, *vel0;
 
 struct iVec4 {
 	iVec4() : x(0), y(0), z(0), w(0) {}
 
 	int x, y, z, w;
 };
+
+float GetTemp(Vec4* vels) {
+	float t = 0;
+	for (uint a = 0; a < Water::me->particlecount; a += 3) {
+		Vec3 mv = Vec3();
+		for (uint b = 0; b < 3; b++) {
+			float m = (!b) ? MASS_O : MASS_H;
+			mv += *(Vec3*)(vels + a) * m;
+		}
+		t += (pow(mv.x, 2) + pow(mv.y, 2) + pow(mv.z, 2)) / 2 / MASS_WATER;
+	}
+	return t / (Water::me->particlecount * 3 * kB);
+}
 
 Water::Water(string path, uint _c, float d, float t): particlecount((uint)pow(_c, 3) * 4 * 3), threads((uint)ceilf(particlecount / 64.0f)), dens(d), temp(t) {
 	me = this;
@@ -114,23 +78,26 @@ Water::Water(string path, uint _c, float d, float t): particlecount((uint)pow(_c
 
 	Vec4* vls = new Vec4[particlecount];
 	Vec4 tot;
-	for (uint a = 0; a < particlecount; a++) {
-		vls[a] = Vec4(Random::Value() * 2 - 1, Random::Value() * 2 - 1, Random::Value() * 2 - 1, 0);
-		tot += vls[a];
+	for (uint a = 0; a < particlecount; a += 3) {
+		auto rand = Vec4(Random::Value() * 2 - 1, Random::Value() * 2 - 1, Random::Value() * 2 - 1, 0);
+		vls[a] = rand;
+		vls[a + 1] = rand;
+		vls[a + 2] = rand;
+		tot += rand * 3.0f;
 	}
 	tot /= (float)particlecount;
-	float myt = 0;
-	for (uint a = 0; a < particlecount; a++) {
+	for (uint a = 0; a < Water::me->particlecount; a += 3) {
 		vls[a] -= tot;
-		float m = (a % 3 == 0) ? MASS_O : MASS_H;
-		myt += m * (pow(vls[a].x, 2) + pow(vls[a].y, 2) + pow(vls[a].z, 2));
 	}
-	myt /= 3;
-	//for (uint a = 0; a < particlecount; a++) {
-	//	vls[a] = vls[a] * sqrt(temp / myt);
-	//}
+	float myt = GetTemp(vls);
+	for (uint a = 0; a < particlecount; a++) {
+		vls[a] = vls[a] * sqrt(temp / myt);
+	}
 	vlb = new ComputeBuffer<Vec4>(particlecount, vls);
-
+	
+	vel0 = new Vec4[particlecount];
+	memcpy(vel0, vls, particlecount*sizeof(Vec4));
+	
 	float* prm = new float[4];
 	prm[0] = wall;
 	prm[1] = temp;
@@ -138,12 +105,15 @@ Water::Water(string path, uint _c, float d, float t): particlecount((uint)pow(_c
 	prm[3] = particlecount + 0.1f;
 	prb = new ComputeBuffer<float>(4, prm);
 
+	oub = new ComputeBuffer<Vec4>(particlecount, nullptr);
+
 	shader = new ComputeShader(IO::GetText(path));
 	shader->SetBuffer(3, frb);
 	shader->SetBuffer(4, psb);
 	shader->SetBuffer(5, vlb);
 	shader->SetBuffer(6, iob);
 	shader->SetBuffer(7, prb);
+	shader->SetBuffer(8, oub);
 
 	colors = new Vec4[particlecount];
 	for (uint a = 0; a < particlecount; a+=3) {
@@ -152,16 +122,65 @@ Water::Water(string path, uint _c, float d, float t): particlecount((uint)pow(_c
 		colors[a + 2] = white();
 	}
 	colors[0] = green();
+	colors[1] = yellow();
+	colors[2] = yellow();
+
+	res = new Vec4[particlecount];
+
+	string tempPath = IO::path + "/temp.txt";
+	string msdPath = IO::path + "/msd.txt";
+	string vcfPath = IO::path + "/msd.txt";
+	tempOut = new std::ofstream(tempPath, std::ios::out | std::ios::binary);
+	msdOut = new std::ofstream(msdPath, std::ios::out | std::ios::binary);
+	vcfOut = new std::ofstream(vcfPath, std::ios::out | std::ios::binary);
+
 }
 
 double ta = 0, to = 0;
+ulong rec_time = 0;
+uint rec_step = 0;
+
+Vec3 _res_meanOffset = Vec3();
 
 void Water::Update() {
+	shader->Dispatch(threads, 1, 1);
 
-	//GLint bufmask = GL_MAP_READ_BIT | GL_MAP_WRITE_BIT;
-	//for (uint n = 0; n < 5; n++) {
-		shader->Dispatch(threads, 1, 1);
-	//}
+	oub->Get<Vec4>(res);
+	Vec4 sum = Vec4();
+	for (uint a = 0; a < particlecount; a++) {
+		sum += res[a];
+	}
+	res_pot = sum.x / particlecount;
+
+	vlb->Get<Vec4>(res);
+	sum = Vec4();
+	res_tmp = GetTemp(res);
+
+	Vec3 dv = Vec3();
+	for (uint a = 0; a < particlecount; a++) {
+		float m = (a % 3 == 0) ? MASS_O : MASS_H;
+		dv += *(Vec3*)(res + a) * m;
+	}
+	dv /= MASS_WATER * particlecount;
+
+	_res_meanOffset += dv;
+
+	res_msd = glm::length(_res_meanOffset) * dt;
+	
+	res_vcf = 0;
+	for (uint a = 0; a < particlecount; a ++) {
+		float m = (a % 3 == 0) ? MASS_O : MASS_H;
+		res_vcf += m * glm::dot(res[a], vel0[a]);
+	}
+	res_vcf /= MASS_WATER * particlecount;
+	
+	if (++rec_step >= 50) {
+		rec_time++;
+		*tempOut << 0.5f * rec_time << " " << res_tmp << "\n";
+		*msdOut << 0.5f * rec_time << " " << res_msd << "\n";
+		*vcfOut << 0.5f * rec_time << " " << res_vcf << "\n";
+		rec_step = 0;
+	}
 }
 
 void Water::Draw() {

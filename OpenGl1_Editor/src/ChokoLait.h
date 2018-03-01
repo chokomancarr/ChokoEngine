@@ -52,7 +52,7 @@ public:
 	static bool alive();
 
 	static void Update(emptyCallbackFunc func = 0);
-	static void Paint(emptyCallbackFunc func = 0);
+	static void Paint(emptyCallbackFunc rendFunc = 0, emptyCallbackFunc paintFunc = 0);
 
 protected:
 	static int initd;

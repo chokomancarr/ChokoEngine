@@ -643,13 +643,18 @@ void UI::SetVao(uint sz, void* verts, void* uvs) {
 		glDeleteVertexArrays(1, &_vao);
 		_vboSz = sz;
 		InitVao();
+#ifdef IS_EDITOR
+		PopupSelector::InitVao();
+#endif
 	}
+	auto e = glGetError();
 	glBindBuffer(GL_ARRAY_BUFFER, _vboV);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, sz * sizeof(Vec3), verts);
 	if (uvs) {
 		glBindBuffer(GL_ARRAY_BUFFER, _vboU);
 		glBufferSubData(GL_ARRAY_BUFFER, 0, sz * sizeof(Vec2), uvs);
 	}
+	e = glGetError();
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	/*
 	glBindBuffer(GL_ARRAY_BUFFER, _vboV);
@@ -922,6 +927,9 @@ void UI::Label(float x, float y, float s, string st, Font* font, Vec4 col, float
 
 	if (sz * 4 > Font::vaoSz) {
 		Font::InitVao(sz * 4);
+#ifdef IS_EDITOR
+		PopupSelector::InitVaoF();
+#endif
 	}
 	glBindBuffer(GL_ARRAY_BUFFER, Font::vbos[0]);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, sz * 4 * sizeof(Vec3), &font->poss[0]);
@@ -1289,7 +1297,6 @@ void Engine::DrawQuad(float x, float y, float w, float h, GLuint texture, Vec2 u
 	glBindTexture(GL_TEXTURE_2D, texture);
 	glUniform4f(single ? drawQuadLocsA[1] : drawQuadLocs[1], Vec4.r, Vec4.g, Vec4.b, Vec4.a);
 	glUniform1f(single ? drawQuadLocsA[2] : drawQuadLocs[2], miplevel);
-
 	glBindVertexArray(UI::_vao);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, quadIndexes);
 	glBindVertexArray(0);

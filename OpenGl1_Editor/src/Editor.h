@@ -482,6 +482,8 @@ public:
 	static bool mouse0, mouse1, mouse2;
 	static byte mouse0State, mouse1State, mouse2State;
 	static Vec2 mousePos, mouseDownPos;
+	static GLuint _vao, _vaof;
+	
 	static Editor* editor;
 
 	static POPUP_SELECT_TYPE _type;
@@ -501,7 +503,7 @@ public:
 	static void Enable_Object(rSceneObject* target);
 	static void Enable_Asset(ASSETTYPE type, int* target, callbackFunc callback, void* param);
 
-	static void Init(), Draw(), Close();
+	static void Init(), InitVao(), InitVaoF(), Draw(), Close();
 	static void Draw_Object(), Draw_Asset(), Draw_Component();
 	static bool Do_Draw_Object(const std::vector<pSceneObject>& objs, uint& off, uint inc);
 
