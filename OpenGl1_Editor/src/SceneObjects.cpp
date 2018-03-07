@@ -387,17 +387,19 @@ void MeshRenderer::DrawDeferred(GLuint shader) {
 	MeshFilter* mf = (MeshFilter*)dependacyPointers[0].raw();
 	if (!mf->mesh || !mf->mesh->loaded)
 		return;
-	glEnableClientState(GL_VERTEX_ARRAY);
+	//glEnableClientState(GL_VERTEX_ARRAY);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glEnable(GL_CULL_FACE);
-	glVertexPointer(3, GL_FLOAT, 0, &(mf->mesh->vertices[0]));
-	glLineWidth(1);
+	//glVertexPointer(3, GL_FLOAT, 0, &(mf->mesh->vertices[0]));
+	//glLineWidth(1);
 	GLfloat matrix[16], matrix2[16];
 	glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
 	glGetFloatv(GL_PROJECTION_MATRIX, matrix2);
 	Mat4x4 m1(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
 	Mat4x4 m2(matrix2[0], matrix2[1], matrix2[2], matrix2[3], matrix2[4], matrix2[5], matrix2[6], matrix2[7], matrix2[8], matrix2[9], matrix2[10], matrix2[11], matrix2[12], matrix2[13], matrix2[14], matrix2[15]);
-
+	
+	glBindVertexArray(mf->mesh->vao);
+	/*
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
 	glEnableVertexAttribArray(2);
@@ -406,6 +408,7 @@ void MeshRenderer::DrawDeferred(GLuint shader) {
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->uv0[0]));
 	glVertexAttribPointer(2, 3, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->normals[0]));
 	glVertexAttribPointer(3, 3, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->tangents[0]));
+	*/
 	for (uint m = 0; m < mf->mesh->materialCount; m++) {
 		if (!materials[m])
 			continue;
@@ -414,13 +417,15 @@ void MeshRenderer::DrawDeferred(GLuint shader) {
 
 		glDrawElements(GL_TRIANGLES, mf->mesh->_matTriangles[m].size(), GL_UNSIGNED_INT, &(mf->mesh->_matTriangles[m][0]));
 	}
+	/*
 	glDisableVertexAttribArray(0);
 	glDisableVertexAttribArray(1);
 	glDisableVertexAttribArray(2);
 	glDisableVertexAttribArray(3);
-
+	*/
 	glUseProgram(0);
-	glDisableClientState(GL_VERTEX_ARRAY);
+	glBindVertexArray(0);
+	//glDisableClientState(GL_VERTEX_ARRAY);
 	glDisable(GL_CULL_FACE);
 }
 

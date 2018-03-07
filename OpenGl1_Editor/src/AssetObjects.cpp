@@ -1840,9 +1840,11 @@ Mesh::Mesh(const std::vector<Vec3>& verts, const std::vector<Vec3>& norms, const
 	uv0 = std::vector<Vec2>(uvs);
 	materialCount = 1;
 	_matTriangles.push_back(std::vector<int>(tris));
-	CalcTangents();
-	RecalculateBoundingBox();
 	loaded = (vertexCount > 0) && (normals.size() == vertexCount) && (triangleCount > 0);
+	if (!loaded) return;
+	CalcTangents();
+	RecalculateBoundingBox(); 
+	InitVao();
 }
 
 Mesh::Mesh(Editor* e, int i) : AssetObject(ASSETTYPE_MESH) {
@@ -1856,6 +1858,7 @@ Mesh::Mesh(Editor* e, int i) : AssetObject(ASSETTYPE_MESH) {
 	triangleCount = m2->triangleCount;
 	boundingBox = m2->boundingBox;
 	loaded = m2->loaded;
+	if (loaded) InitVao();
 }
 
 Mesh::Mesh(std::istream& stream, uint offset) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0), triangleCount(0), materialCount(0) {
@@ -1955,6 +1958,7 @@ Mesh::Mesh(std::istream& stream, uint offset) : AssetObject(ASSETTYPE_MESH), loa
 			}
 			CalcTangents();
 			RecalculateBoundingBox();
+			InitVao();
 			loaded = true;
 		}
 		return;
@@ -2091,6 +2095,7 @@ Mesh::Mesh(string p) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0
 		}
 		CalcTangents();
 		RecalculateBoundingBox();
+		InitVao();
 
 		GenECache();
 		loaded = true;
@@ -2225,6 +2230,36 @@ void Mesh::GenECache() {
 	assert(off == _eCacheSz+1);
 #undef CPY
 #endif
+}
+
+void Mesh::InitVao() {
+	glGenVertexArrays(1, &vao);
+	glGenBuffers(4, vbos);
+	glBindBuffer(GL_ARRAY_BUFFER, vbos[0]); //pos
+	glBufferStorage(GL_ARRAY_BUFFER, vertexCount * sizeof(Vec3), &vertices[0], GL_DYNAMIC_STORAGE_BIT);
+	glBindBuffer(GL_ARRAY_BUFFER, vbos[1]); //uv
+	glBufferStorage(GL_ARRAY_BUFFER, vertexCount * sizeof(Vec2), &uv0[0], GL_DYNAMIC_STORAGE_BIT);
+	glBindBuffer(GL_ARRAY_BUFFER, vbos[2]); //norm
+	glBufferStorage(GL_ARRAY_BUFFER, vertexCount * sizeof(Vec3), &normals[0], GL_DYNAMIC_STORAGE_BIT);
+	glBindBuffer(GL_ARRAY_BUFFER, vbos[3]); //tan
+	glBufferStorage(GL_ARRAY_BUFFER, vertexCount * sizeof(Vec3), &tangents[0], GL_DYNAMIC_STORAGE_BIT);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(vao);
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glEnableVertexAttribArray(2);
+	glEnableVertexAttribArray(3);
+	glBindBuffer(GL_ARRAY_BUFFER, vbos[0]);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+	glBindBuffer(GL_ARRAY_BUFFER, vbos[1]);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ARRAY_BUFFER, vbos[2]);
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+	glBindBuffer(GL_ARRAY_BUFFER, vbos[3]);
+	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
 }
 
 #ifdef IS_EDITOR

@@ -323,6 +323,9 @@ protected:
 
 	void CalcTangents();
 	void GenECache() override;
+	void InitVao();
+
+	GLuint vao, vbos[4];
 
 #ifdef IS_EDITOR
 	static bool ParseBlend(Editor* e, string s);
@@ -331,6 +334,7 @@ protected:
 	std::vector<std::vector<int>> _matTriangles;
 	//void Draw(Material* mat);
 	//void Load();
+
 };
 
 class AnimClip_Key {
