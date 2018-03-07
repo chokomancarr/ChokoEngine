@@ -133,7 +133,6 @@ Water::Water(string path, uint _c, float d, float t): particlecount((uint)pow(_c
 	tempOut = new std::ofstream(tempPath, std::ios::out | std::ios::binary);
 	msdOut = new std::ofstream(msdPath, std::ios::out | std::ios::binary);
 	vcfOut = new std::ofstream(vcfPath, std::ios::out | std::ios::binary);
-
 }
 
 double ta = 0, to = 0;
@@ -155,10 +154,14 @@ void Water::Update() {
 		sum += res[a];
 	}
 	res_pot = sum.x / particlecount;
+	auto vr = sum.y;
 
 	vlb->Get<Vec4>(res);
 	sum = Vec4();
 	res_tmp = GetTemp(res);
+
+	auto vol = pow(wall, 3);
+	res_prs = kB*res_tmp*particlecount / (3 * vol);// +K_VIRIAL*vr / (3 * vol);
 
 	Vec3 dv = Vec3();
 	for (uint a = 0; a < particlecount; a++) {
@@ -185,37 +188,39 @@ void Water::Update() {
 		*vcfOut << 0.01f * rec_time << " " << res_vcf << "\n";
 		rec_step = 0;
 		//if (++rdf_step >= 50) {
-			const float dw = wall / 200;
-			rdfNum++;
-			psb->Get<Vec4>(res);
-			for (uint i = 0; i < particlecount; i += 3) {
-				Vec3 mypos = *(Vec3*)(res + i);
-				for (uint c = 0; c < particlecount; c += 3) {
-					if (c != i) {
-						Vec3 dp = *(Vec3*)(res + c) - mypos;
-						dp /= wall;
-						dp -= glm::round(dp);
-						dp *= wall;
-						float dst = glm::length(dp);
-						uint loc = (uint)roundf(dst * 200.0f / wall);
-						if (loc >= 100)
-							continue;
-						rdf[loc]++;
-						rdfTot[loc]++;
-					}
+		const float dw = wall / 200;
+		rdfNum++;
+		psb->Get<Vec4>(res);
+		for (uint i = 0; i < particlecount; i += 3) {
+			Vec3 mypos = *(Vec3*)(res + i);
+			for (uint c = 0; c < particlecount; c += 3) {
+				if (c != i) {
+					Vec3 dp = *(Vec3*)(res + c) - mypos;
+					dp /= wall;
+					dp -= glm::round(dp);
+					dp *= wall;
+					float dst = glm::length(dp);
+					uint loc = (uint)roundf(dst * 200.0f / wall);
+					if (loc >= 100)
+						continue;
+					rdf[loc]++;
+					rdfTot[loc]++;
 				}
 			}
+		}
 		if (++rdf_step >= 50) {
 			rdf_step = 0;
-			
+
 			std::ofstream rdfOut(IO::path + "/rdf.txt", std::ios::out | std::ios::binary);
 			for (uint a = 0; a < 100; a++) {
 				float val = rdfTot[a] / (4 * PI * pow(wall*a / 2 + dw / 2, 2) * dw);
 				rdfOut << (a * dw) << " " << (val * 3 / particlecount / rdfNum) << "\n";
 			}
-			
+
 			std::cout << "rdf" << std::endl;
 		}
+
+
 	}
 }
 

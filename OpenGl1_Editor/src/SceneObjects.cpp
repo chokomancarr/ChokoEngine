@@ -83,7 +83,8 @@ Camera::Camera() : Component("Camera", COMP_CAM, DRAWORDER_NONE), ortographic(fa
 #ifdef IS_EDITOR
 	UpdateCamVerts();
 #else
-	if (!d_fbo) InitGBuffer();
+	//if (!d_fbo)
+		InitGBuffer();
 #endif
 }
 

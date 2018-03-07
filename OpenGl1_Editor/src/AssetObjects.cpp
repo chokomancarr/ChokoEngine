@@ -1044,7 +1044,7 @@ Background::Background(const string& path) : width(0), height(0), AssetObject(AS
 		height_1 = height_2 + 0;
 		mips++;
 	}
-
+	
 	glGenTextures(1, &pointer);
 	glBindTexture(GL_TEXTURE_2D, pointer);
 	for (uint a = 0; a <= mips; a++) {

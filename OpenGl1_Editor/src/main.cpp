@@ -540,7 +540,7 @@ void KillSplash() {
 #include "Water.h"
 CHOKOLAIT_INIT_VARS;
 
-Background* bg = new Background(IO::path + "/refl.hdr");
+//Background* bg = new Background(IO::path + "/refl.hdr");
 Font* font = new Font(IO::path + "/arimo.ttf");
 Water* water;
 
@@ -617,24 +617,30 @@ void paintfunc() {
 		told = Time::time;
 		fpsc = 0;
 	}
-	UI::Label(10, 10, 12, "fps: " + std::to_string(fps) + "  u: " + std::to_string(Water::me->res_pot), font, white());
+	UI::Label(10, 10, 12, "fps: " + std::to_string(fps), font, white());
 	UI::Label(10, 25, 12, "t: " + std::to_string(++simtime / 1000) + " ps", font, white());
-	UI::Label(10, 40, 12, "T: " + std::to_string((int)roundf(Water::me->res_tmp)) + " K", font, white());
+	//UI::Label(10, 40, 12, "T: " + std::to_string((int)roundf(Water::me->res_tmp)) + " K", font, white());
+	//UI::Label(10, 55, 12, "P: " + std::to_string(Water::me->res_prs) + " atm", font, white());
+
+	//auto& set = Scene::active->settings;
+	//set.skyStrength = Engine::DrawSliderFill(400, 10, 150, 20, 0, 3, set.skyStrength, white(0.5f, 0.3f), white());
 }
 
 int main(int argc, char **argv)
 {
 	ChokoLait::Init(500, 500);
-
+	
+	Background* bg = new Background(IO::path + "/refl.hdr");
 	auto& set = Scene::active->settings;
 	set.sky = bg;
+	set.skyStrength = 2;
 
-	shad = new Shader(IO::GetText("D:\\instV.txt"), IO::GetText("D:\\instF.txt"));
+	shad = new Shader(IO::GetText(IO::path + "/instV.txt"), IO::GetText(IO::path + "/instF.txt"));
 	mat = new Material(shad);
 	mesh = Procedurals::UVSphere(20, 10);
 
 	font->Align(ALIGN_TOPLEFT);
-	water = new Water("D:\\water.compute", 4, 1000.0f / 1.66f / 17.99f, 200);
+	water = new Water(IO::path + "/water.compute", 4, 1000.0f / 1.66f / 17.99f, 200);
 
 	while (ChokoLait::alive()) {
 		ChokoLait::Update(updateFunc);

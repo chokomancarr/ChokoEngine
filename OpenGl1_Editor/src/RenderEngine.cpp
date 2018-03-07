@@ -604,7 +604,7 @@ void Camera::Render(RenderTexture* target, renderFunc func) {
 	glLoadIdentity();
 
 	DrawSceneObjectsOpaque(Scene::active->objects);
-	//if (func) func();
+	if (func) func();
 	//glMatrixMode(GL_MODELVIEW);
 	//glLoadIdentity();
 
@@ -1190,10 +1190,10 @@ void Camera::DumpBuffers() {
 
 	GLsizei HalfWidth = (GLsizei)(Display::width / 2.0f);
 	GLsizei HalfHeight = (GLsizei)(Display::height / 2.0f);
-
+	
 	glReadBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_DIFFUSE);
 	glBlitFramebuffer(0, 0, Display::width, Display::height, 0, HalfHeight, HalfWidth, Display::height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
-
+	
 	glReadBuffer(GL_COLOR_ATTACHMENT0 + GBUFFER_NORMAL);
 	glBlitFramebuffer(0, 0, Display::width, Display::height, HalfWidth, HalfHeight, Display::width, Display::height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 

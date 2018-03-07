@@ -15,6 +15,7 @@ const float BOND_LENGTH = 1 * _ast;
 const float BOND_ANGLE = 109.47f * deg2rad;
 const float K_LINEAR = 345000; //kJ / mol nm^2
 const float K_RADIAL = 383; //kJ / mol rad^2
+const float K_VIRIAL = 16.6f;
 const float dt = 1e-3f; //1fs
 
 const float MASS_H = 1.0f;
