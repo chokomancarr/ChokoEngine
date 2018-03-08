@@ -238,8 +238,7 @@ public:
 	std::unordered_map<SHADER_VARTYPE, std::unordered_map <GLint, void*>, std::hash<byte>> vals;
 	std::unordered_map<SHADER_VARTYPE, std::vector<string>, std::hash<byte>> valNames;
 	//std::unordered_map<GLint, ShaderVariable> vals;
-	void SetBuffer(string name, IComputeBuffer* buffer);
-	void SetBuffer(GLint id, IComputeBuffer* buffer);
+	void SetBuffer(uint location, IComputeBuffer* buffer);
 	void SetTexture(string name, Texture* texture);
 	void SetTexture(GLint id, Texture* texture);
 	void SetFloat(string name, float val);

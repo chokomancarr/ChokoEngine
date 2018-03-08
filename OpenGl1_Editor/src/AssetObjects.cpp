@@ -1580,14 +1580,8 @@ void Material::ResetVals() {
 	valOrders = std::vector<SHADER_VARTYPE>();
 }
 
-void Material::SetBuffer(string name, IComputeBuffer* buffer) {
-	SetBuffer(glGetUniformLocation(_shader->pointer, name.c_str()), buffer);
-}
-void Material::SetBuffer(GLint id, IComputeBuffer* buffer) {
-	if (id > -1) {
-		//if (vals[SHADER_BUFFER].find(id) == vals[SHADER_BUFFER].end()) vals[SHADER_BUFFER][id] = new 
-		vals[SHADER_BUFFER][id] = buffer;
-	}
+void Material::SetBuffer(uint location, IComputeBuffer* buffer) {
+	vals[SHADER_BUFFER][location] = buffer;
 }
 
 void Material::SetTexture(string name, Texture* texture) {
@@ -1763,6 +1757,9 @@ void Material::ApplyGL(Mat4x4& _mv, Mat4x4& _p) {
 				glBindTexture(GL_TEXTURE_2D, tx->defTex);
 			else
 				glBindTexture(GL_TEXTURE_2D, tx->tex->pointer);
+		}
+		for (auto&a : vals[SHADER_BUFFER]) {
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, a.first, ((IComputeBuffer*)a.second)->pointer);
 		}
 		bool wm;
 		for (uint m = 0; m < GBUFFER_NUM_TEXTURES - 1; m++) {

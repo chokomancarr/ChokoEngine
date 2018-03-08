@@ -250,11 +250,14 @@ protected:
 	Vec3 camVerts[6];
 	static const int camVertsIds[19];
 	GLuint d_fbo, d_texs[4], d_depthTex;
+	uint d_w, d_h;
 	static GLuint d_probeMaskProgram, d_probeProgram, d_blurProgram, d_blurSBProgram, d_skyProgram, d_pLightProgram, d_sLightProgram, d_sLightCSProgram, d_sLightRSMProgram, d_sLightRSMFluxProgram;
 	static GLuint d_reflQuadProgram;
+	static GLint d_skyProgramLocs[];
 
-	static Vec2 screenRectVerts[];
-	static const int screenRectIndices[];
+	static GLuint fullscreenVao, fullscreenVbo;
+	static const float fullscreenVerts[];
+	static const int fullscreenIndices[];
 
 	int _tarRT;
 

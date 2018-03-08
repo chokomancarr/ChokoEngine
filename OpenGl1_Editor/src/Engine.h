@@ -1028,6 +1028,7 @@ public:
 	friend class Engine;
 	friend void FocusGL(GLFWwindow* window, int focus);
 	friend class PopupSelector;
+	friend class RenderTexture;
 protected:
 
 	static bool focused;
