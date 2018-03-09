@@ -47,21 +47,14 @@ namespace std {
 	}
 }
 
-void fopen_s(FILE** f, const char* c, const char* m) {
-	*f = fopen(c, m);
-}
-void sscanf_s(const char* b, const char* m, ...) {
-	__va_list args;
-	sscanf(b, m, args);
-}
-
 #elif defined(PLATFORM_LNX)
 
+#endif
+
+#ifndef PLATFORM_WIN
+
 void fopen_s(FILE** f, const char* c, const char* m) {
 	*f = fopen(c, m);
-}
-void sscanf_s(const char* b, const char* m, ...) {
-	sscanf(b, m);
 }
 
 #endif
@@ -1860,7 +1853,9 @@ void Debug::Error(string c, string s) {
 	__android_log_print(ANDROID_LOG_ERROR, "ChokoLait", &s[0]);
 #endif
 	std::cout << "[e]" << c << ": " << s << std::endl;
+#ifdef PLATFORM_WIN
 	__debugbreak();
+#endif
 }
 
 void Debug::DoDebugObjectTree(const std::vector<pSceneObject>& o, int i) {
@@ -2610,6 +2605,10 @@ std::vector<string> Scene::sceneEPaths = {};
 #endif
 std::vector<string> Scene::sceneNames = {};
 std::vector<long> Scene::scenePoss = {};
+
+Scene::Scene() : sceneName("newScene"), settings() {
+	std::vector<pSceneObject>().swap(objects);
+}
 
 #ifndef CHOKO_LAIT
 Scene::Scene(std::ifstream& stream, long pos) : sceneName("") {

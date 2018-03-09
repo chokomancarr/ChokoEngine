@@ -122,16 +122,18 @@ void RenderTexture::Blit(GLuint src, RenderTexture* dst, GLuint shd, string texN
 	glUniform1i(loc, 0);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, src);
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glVertexPointer(2, GL_FLOAT, 0, &Camera::fullscreenVerts[0]);
+	//glEnableClientState(GL_VERTEX_ARRAY);
+	//glVertexPointer(2, GL_FLOAT, 0, &Camera::fullscreenVerts[0]);
+	glBindVertexArray(Camera::fullscreenVao);
 
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, &Camera::fullscreenVerts[0]);
+	//glEnableVertexAttribArray(0);
+	//glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, &Camera::fullscreenVerts[0]);
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, &Camera::fullscreenIndices[0]);
 
-	glDisableVertexAttribArray(0);
+	glBindVertexArray(0);
+	//glDisableVertexAttribArray(0);
 	glUseProgram(0);
 
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
@@ -151,16 +153,17 @@ void RenderTexture::Blit(Texture* src, RenderTexture* dst, Material* mat, string
 	Mat4x4 dm = Mat4x4();
 	mat->ApplyGL(dm, dm);
 
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glVertexPointer(2, GL_FLOAT, 0, &Camera::fullscreenVerts[0]);
-
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, &Camera::fullscreenVerts[0]);
+	//glEnableClientState(GL_VERTEX_ARRAY);
+	//glVertexPointer(2, GL_FLOAT, 0, &Camera::fullscreenVerts[0]);
+	glBindVertexArray(Camera::fullscreenVao);
+	//glEnableVertexAttribArray(0);
+	//glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, &Camera::fullscreenVerts[0]);
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, &Camera::fullscreenIndices[0]);
 
-	glDisableVertexAttribArray(0);
+	glBindVertexArray(0);
+	//glDisableVertexAttribArray(0);
 	glUseProgram(0);
 
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
@@ -372,12 +375,13 @@ void EB_Previewer::Blit(GLuint prog, uint w, uint h) {
 	GLint inTexLoc = glGetUniformLocation(prog, "inColor");
 	GLint scrSzLoc = glGetUniformLocation(prog, "screenSize");
 
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glVertexPointer(2, GL_FLOAT, 0, Camera::screenRectVerts);
+	glBindVertexArray(Camera::fullscreenVao);
+	//glEnableClientState(GL_VERTEX_ARRAY);
+	//glVertexPointer(2, GL_FLOAT, 0, Camera::screenRectVerts);
 	glUseProgram(prog);
 
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, Camera::screenRectVerts);
+	//glEnableVertexAttribArray(0);
+	//glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, Camera::screenRectVerts);
 
 	glUniform2f(scrSzLoc, (float)w, (float)h);
 	glUniform1i(inTexLoc, 0);
@@ -385,11 +389,12 @@ void EB_Previewer::Blit(GLuint prog, uint w, uint h) {
 	glBindTexture(GL_TEXTURE_2D, blitting2 ? bb_tex : b_texs[0]);
 	
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, Camera::screenRectIndices);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, Camera::fullscreenIndices);
 
-	glDisableVertexAttribArray(0);
+	glBindVertexArray(0);
+	//glDisableVertexAttribArray(0);
 	glUseProgram(0);
-	glDisableClientState(GL_VERTEX_ARRAY);
+	//glDisableClientState(GL_VERTEX_ARRAY);
 
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
@@ -637,12 +642,13 @@ void Camera::_DoRenderProbeMask(ReflectionProbe* p, Mat4x4& ip) {
 	GLint prbSftLoc = glGetUniformLocation(d_probeMaskProgram, "softness");
 	GLint depthLoc = glGetUniformLocation(d_probeMaskProgram, "inDepth");
 
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glVertexPointer(2, GL_FLOAT, 0, fullscreenVerts);
+	glBindVertexArray(Camera::fullscreenVao);
+	//glEnableClientState(GL_VERTEX_ARRAY);
+	//glVertexPointer(2, GL_FLOAT, 0, fullscreenVerts);
 	glUseProgram(d_probeMaskProgram);
 
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, fullscreenVerts);
+	//glEnableVertexAttribArray(0);
+	//glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, fullscreenVerts);
 
 	glUniformMatrix4fv(_IP, 1, GL_FALSE, glm::value_ptr(ip));
 
@@ -659,9 +665,10 @@ void Camera::_DoRenderProbeMask(ReflectionProbe* p, Mat4x4& ip) {
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, fullscreenIndices);
 
-	glDisableVertexAttribArray(0);
+	glBindVertexArray(0);
+	//glDisableVertexAttribArray(0);
 	glUseProgram(0);
-	glDisableClientState(GL_VERTEX_ARRAY);
+	//glDisableClientState(GL_VERTEX_ARRAY);
 }
 
 //mask shaded parts with alpha += influence/4
@@ -868,12 +875,13 @@ void Camera::_DoDrawLight_Point(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_tex
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, d_fbo);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, tar);
 #define sloc l->paramLocs_Point
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glVertexPointer(2, GL_FLOAT, 0, fullscreenVerts);
+	glBindVertexArray(Camera::fullscreenVao);
+	//glEnableClientState(GL_VERTEX_ARRAY);
+	//glVertexPointer(2, GL_FLOAT, 0, fullscreenVerts);
 	glUseProgram(d_pLightProgram);
 
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, fullscreenVerts);
+	//glEnableVertexAttribArray(0);
+	//glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, fullscreenVerts);
 
 	glUniformMatrix4fv(sloc[0], 1, GL_FALSE, glm::value_ptr(ip));
 
@@ -918,9 +926,10 @@ void Camera::_DoDrawLight_Point(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_tex
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, fullscreenIndices);
 
-	glDisableVertexAttribArray(0);
+	glBindVertexArray(0);
+	//glDisableVertexAttribArray(0);
 	glUseProgram(0);
-	glDisableClientState(GL_VERTEX_ARRAY);
+	//glDisableClientState(GL_VERTEX_ARRAY);
 }
 
 void Camera::_DoDrawLight_Spot_Contact(Light* l, Mat4x4& p, GLuint d_depthTex, float w, float h, GLuint src, GLuint tar) {
@@ -1087,12 +1096,13 @@ void Camera::_DoDrawLight_ReflQuad(ReflectiveQuad* l, Mat4x4& ip, GLuint d_fbo, 
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, d_fbo);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, tar);
 #define sloc l->paramLocs
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glVertexPointer(2, GL_FLOAT, 0, fullscreenVerts);
+	glBindVertexArray(Camera::fullscreenVao);
+	//glEnableClientState(GL_VERTEX_ARRAY);
+	//glVertexPointer(2, GL_FLOAT, 0, fullscreenVerts);
 	glUseProgram(d_reflQuadProgram);
 
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, fullscreenVerts);
+	//glEnableVertexAttribArray(0);
+	//glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, fullscreenVerts);
 
 	glUniformMatrix4fv(sloc[0], 1, GL_FALSE, glm::value_ptr(ip));
 
@@ -1126,9 +1136,10 @@ void Camera::_DoDrawLight_ReflQuad(ReflectiveQuad* l, Mat4x4& ip, GLuint d_fbo, 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, fullscreenIndices);
 
-	glDisableVertexAttribArray(0);
+	glBindVertexArray(0);
+	//glDisableVertexAttribArray(0);
 	glUseProgram(0);
-	glDisableClientState(GL_VERTEX_ARRAY);
+	//glDisableClientState(GL_VERTEX_ARRAY);
 }
 
 void Camera::_DrawLights(std::vector<pSceneObject>& oo, Mat4x4& ip, GLuint targetFbo) {
@@ -1425,12 +1436,13 @@ void Light::BlitRSMFlux() {
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, _shadowFbo);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _fluxFbo);
 #define sloc paramLocs_SpotFluxer
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glVertexPointer(2, GL_FLOAT, 0, Camera::fullscreenVerts);
+	glBindVertexArray(Camera::fullscreenVao);
+	//glEnableClientState(GL_VERTEX_ARRAY);
+	//glVertexPointer(2, GL_FLOAT, 0, Camera::fullscreenVerts);
 	glUseProgram(Camera::d_sLightRSMFluxProgram);
 
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, Camera::fullscreenVerts);
+	//glEnableVertexAttribArray(0);
+	//glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, Camera::fullscreenVerts);
 
 	glUniform2f(sloc[0], 512.0f, 512.0f);
 	glUniform1i(sloc[1], 0);
@@ -1448,9 +1460,9 @@ void Light::BlitRSMFlux() {
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, Camera::fullscreenIndices);
 
-	glDisableVertexAttribArray(0);
+	//glDisableVertexAttribArray(0);
 	glUseProgram(0);
-	glDisableClientState(GL_VERTEX_ARRAY);
+	//glDisableClientState(GL_VERTEX_ARRAY);
 }
 
 void Light::DrawRSM(Mat4x4& ip, Mat4x4& lp, float w, float h, GLuint gtexs[], GLuint gdepth) {

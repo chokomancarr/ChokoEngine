@@ -84,8 +84,8 @@ protected:
 	static string eBasePath;
 	static std::unordered_map<ASSETTYPE, std::vector<string>, std::hash<byte>> dataELocs;
 	static std::unordered_map<ASSETTYPE, std::vector<std::pair<byte*, uint>>, std::hash<byte>> dataECaches;
-	static std::vector<uint> dataECacheLocs;
-	static std::vector<uint> dataECacheSzLocs;
+	static std::vector<size_t> dataECacheLocs;
+	static std::vector<size_t> dataECacheSzLocs;
 	static void AllocECache();
 #endif
 	static std::vector <std::pair<ASSETTYPE, ASSETID>> dataECacheIds;

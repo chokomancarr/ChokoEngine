@@ -1343,13 +1343,20 @@ void EBI_DrawAss_Mat(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 		UI::Texture(v.r + 2, off, 16, 16, editor->matVarTexs[mat->valOrders[q]]);
 		UI::Label(v.r + 19, off + 2, 12, mat->valNames[mat->valOrders[q]][mat->valOrderIds[q]], editor->font, white());
 		void* bbs = mat->vals[mat->valOrders[q]][mat->valOrderGLIds[q]];
+		auto& svar = mat->_shader->vars[q];
 		assert(bbs != nullptr);
 		switch (mat->valOrders[q]) {
 		case SHADER_INT:
 			Engine::Button(v.r + v.b * 0.3f + 17, off, v.b*0.7f - 17, 16, grey1(), std::to_string(*(int*)bbs), 12, editor->font, white());
 			break;
 		case SHADER_FLOAT:
-			Engine::Button(v.r + v.b * 0.3f + 17, off, v.b*0.7f - 17, 16, grey1(), std::to_string(*(float*)bbs), 12, editor->font, white());
+			if (svar->min > -100000 && svar->max < 100000) {
+				Engine::Button(v.r + v.b * 0.3f + 17, off, v.b*0.2f - 10, 16, grey1(), std::to_string(*(float*)bbs), 12, editor->font, white());
+				*(float*)bbs = Engine::DrawSliderFill(v.r + v.b * 0.5f + 8, off, v.b * 0.5f - 8, 16, svar->min, svar->max, *(float*)bbs, grey1(), white());
+			}
+			else
+				Engine::Button(v.r + v.b * 0.3f + 17, off, v.b*0.7f - 17, 16, grey1(), std::to_string(*(float*)bbs), 12, editor->font, white());
+			
 			break;
 		case SHADER_SAMPLER:
 			ASSETID* id = &ASSETID(((MatVal_Tex*)bbs)->id);
@@ -2914,24 +2921,26 @@ void Editor::UpdateLerpers() {
 
 Color _col(Vec4(1.0f, 0.0f, 0.0f, 1.0f));
 void Editor::DrawPopup() {
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glVertexPointer(2, GL_FLOAT, 0, Camera::screenRectVerts);
+	glBindVertexArray(Camera::fullscreenVao);
+	//glEnableClientState(GL_VERTEX_ARRAY);
+	//glVertexPointer(2, GL_FLOAT, 0, Camera::screenRectVerts);
 	glUseProgram(popupShadeProgram);
 
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, Camera::screenRectVerts);
+	//glEnableVertexAttribArray(0);
+	//glVertexAttribPointer(0, 2, GL_FLOAT, GL_TRUE, 0, Camera::screenRectVerts);
 
 	glUniform2f(glGetUniformLocation(popupShadeProgram, "screenSize"), (float)Display::width, (float)Display::height);
 	glUniform1f(glGetUniformLocation(popupShadeProgram, "distance"), 10.0f);
 	glUniform1f(glGetUniformLocation(popupShadeProgram, "intensity"), 0.2f);
 	glUniform4f(glGetUniformLocation(popupShadeProgram, "pos"), popupPos.x, Display::height - popupPos.y - popup->h, (float)popup->w, (float)popup->h);
-
+	
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, Camera::screenRectIndices);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, Camera::fullscreenIndices);
 
-	glDisableVertexAttribArray(0);
+	glBindVertexArray(0);
+	//glDisableVertexAttribArray(0);
 	glUseProgram(0);
-	glDisableClientState(GL_VERTEX_ARRAY);
+	//glDisableClientState(GL_VERTEX_ARRAY);
 	popup->Draw();
 }
 

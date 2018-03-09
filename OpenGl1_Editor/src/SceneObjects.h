@@ -6,10 +6,6 @@ typedef void (*renderFunc)(void);
 
 class SceneSettings {
 public:
-	SceneSettings() : sky(nullptr), skyId(-1), skyStrength(1) {
-		sky = 0;
-	}
-
 	Background* sky;
 	float skyStrength;
 	Color ambientCol;
@@ -24,6 +20,13 @@ public:
 	friend class EB_Inspector;
 	friend class Scene;
 protected:
+	SceneSettings() : sky(nullptr), skyId(-1), skyStrength(1) {
+		sky = 0;
+	}
+	
+	SceneSettings(const SceneSettings&);
+	SceneSettings& operator= (const SceneSettings&);
+
 	int skyId;
 };
 
@@ -31,18 +34,21 @@ protected:
 */
 class Scene {
 public:
+	Scene();
+
 #ifndef CHOKO_LAIT
-	Scene() : sceneName("newScene"), settings() {}
+//	Scene() : sceneName("newScene"), settings(), objects() {}
 	Scene(std::ifstream& stream, long pos);
 	~Scene() {}
 	static bool loaded() {
 		return active != nullptr;
 	}
-	string sceneName;
 	int sceneId;
 
 	static void Load(uint i), Load(string name);
 #endif
+
+	string sceneName;
 
 	/*! The current active scene.
 	In Lait versions, this value cannot be changed.

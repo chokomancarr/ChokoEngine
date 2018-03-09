@@ -56,6 +56,7 @@ Global stuff, normally not macro-protected
 #include <glfw3native.h>
 typedef GLFWwindow NativeWindow;
 #define LOGI(...)
+
 #elif defined(PLATFORM_ADR)
 #ifdef FEATURE_COMPUTE_SHADERS
 #include <GLES3\gl31.h>
@@ -85,9 +86,10 @@ extern void glPolygonMode(GLenum a, GLenum b);
 #elif defined(PLATFORM_LNX)
 #include "GL/glew.h"
 #include "GLFW/glfw3.h"
-#define GLFW_EXPOSE_NATIVE_X11
-#define GLFW_EXPOSE_NATIVE_GLX
-#include <glfw3native.h>
+//#define GLFW_EXPOSE_NATIVE_X11
+//#define GLFW_EXPOSE_NATIVE_GLX
+//#include "GLFW/glfw3native.h"
+//typedef void* NativeWindow;
 typedef GLFWwindow NativeWindow;
 #endif
 
@@ -224,11 +226,11 @@ const char char0 = 0;
 
 template <typename T> const T& min(const T& a, const T& b) {
 	if (a > b) return b;
-	return a;
+	else return a;
 }
 template <typename T> const T& max(const T& a, const T& b) {
 	if (a > b) return a;
-	return b;
+	else return b;
 }
 template <typename T> T Repeat(T t, T a, T b) {
 	while (t > b)
@@ -273,12 +275,14 @@ namespace std {
 	unsigned long stoul(const string& s);
 }
 
-void fopen_s(FILE** f, const char* c, const char* m);
-void sscanf_s(const char* b, const char* m, ...);
 #elif defined(PLATFORM_LNX)
-void fopen_s(FILE** f, const char* c, const char* m);
-void sscanf_s(const char* b, const char* m, ...);
 #endif
+
+#ifndef PLATFORM_WIN
+void fopen_s(FILE** f, const char* c, const char* m);
+#define sscanf_s sscanf
+#endif
+
 namespace std {
 	string to_string(Vec2 v);
 	string to_string(Vec3 v);
