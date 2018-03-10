@@ -1801,6 +1801,7 @@ void PB_ProceduralGenerator::Draw() {
 Editor* PopupSelector::editor = nullptr;
 bool PopupSelector::focused = false;
 bool PopupSelector::show = false;
+bool PopupSelector::drawing = false;
 uint PopupSelector::width, PopupSelector::height;
 Vec2 PopupSelector::mousePos, PopupSelector::mouseDownPos;
 bool PopupSelector::mouse0, PopupSelector::mouse1, PopupSelector::mouse2;
@@ -1818,6 +1819,7 @@ bool PopupSelector::drawIcons = false;
 float PopupSelector::minIconSize = 100;
 
 GLFWwindow* PopupSelector::window;
+GLFWwindow* PopupSelector::mainWindow;
 
 void PopupSelector::Init() {
 	glfwWindowHint(GLFW_VISIBLE, 0);
@@ -1841,6 +1843,8 @@ void PopupSelector::Init() {
 
 	InitVao();
 	InitVaoF();
+
+	mainWindow = Display::window;
 }
 
 void PopupSelector::InitVao() {
@@ -1857,7 +1861,8 @@ void PopupSelector::InitVao() {
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, NULL);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
-	glfwMakeContextCurrent(Display::window);
+	if (!drawing)
+		glfwMakeContextCurrent(mainWindow);
 }
 
 void PopupSelector::InitVaoF() {
@@ -1877,7 +1882,8 @@ void PopupSelector::InitVaoF() {
 	glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 0, NULL);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
-	glfwMakeContextCurrent(Display::window);
+	if (!drawing)
+		glfwMakeContextCurrent(mainWindow);
 }
 
 void PopupSelector::Enable_Object(rSceneObject* target) {
@@ -1901,6 +1907,7 @@ void PopupSelector::Enable_Asset(ASSETTYPE type, int* target, callbackFunc callb
 
 void PopupSelector::Draw() {
 	if (!glfwWindowShouldClose(window)) {
+		drawing = true;
 		if (mouse0)
 			mouse0State = min<byte>(mouse0State + 1U, MOUSE_HOLD);
 		else
@@ -1985,7 +1992,7 @@ void PopupSelector::Draw() {
 		Input::mouseDownPos = mdp;
 		UI::_vao = vo;
 		Font::vao = vof;
-
+		
 		if (!show) Close();
 	}
 	else Close();
@@ -2025,10 +2032,12 @@ void PopupSelector::Draw_Asset() {
 		}
 	}
 	else {
-		for (uint a = 0; a < editor->normalAssets[assettype].size(); a++) {
+		for (uint a = 0, aa = editor->normalAssets[assettype].size(); a < aa; a++) {
 			if (Engine::Button(1.0f, 20.0f + 17 * a, width - 2.0f, 16.0f, grey1(), editor->normalAssets[assettype][a], 12, editor->font, white()) == MOUSE_RELEASE) {
 				(*_browseTarget) = a;
 				if (_browseCallback) _browseCallback(_browseCallbackParam);
+
+				glViewport(0, 0, Display::width, Display::height);
 				show = false;
 			}
 		}

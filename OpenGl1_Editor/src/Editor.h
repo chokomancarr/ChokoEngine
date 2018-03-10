@@ -477,7 +477,7 @@ enum POPUP_SELECT_TYPE {
 
 class PopupSelector {
 public:
-	static bool focused, show;
+	static bool focused, show, drawing;
 	static uint width, height;
 	static bool mouse0, mouse1, mouse2;
 	static byte mouse0State, mouse1State, mouse2State;
@@ -498,7 +498,7 @@ public:
 	static bool drawIcons;
 	static float minIconSize;
 
-	static GLFWwindow* window;
+	static GLFWwindow* window, *mainWindow;
 
 	static void Enable_Object(rSceneObject* target);
 	static void Enable_Asset(ASSETTYPE type, int* target, callbackFunc callback, void* param);

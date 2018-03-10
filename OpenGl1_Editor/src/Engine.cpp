@@ -640,14 +640,14 @@ void UI::SetVao(uint sz, void* verts, void* uvs) {
 		PopupSelector::InitVao();
 #endif
 	}
-	auto e = glGetError();
+	//auto e = glGetError();
 	glBindBuffer(GL_ARRAY_BUFFER, _vboV);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, sz * sizeof(Vec3), verts);
 	if (uvs) {
 		glBindBuffer(GL_ARRAY_BUFFER, _vboU);
 		glBufferSubData(GL_ARRAY_BUFFER, 0, sz * sizeof(Vec2), uvs);
 	}
-	e = glGetError();
+	//e = glGetError();
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	/*
 	glBindBuffer(GL_ARRAY_BUFFER, _vboV);
@@ -2270,6 +2270,10 @@ void Font::Init() {
 }
 
 void Font::InitVao(uint sz) {
+#ifdef IS_EDITOR
+	if (PopupSelector::drawing)
+		glfwMakeContextCurrent(PopupSelector::mainWindow);
+#endif
 	vaoSz = sz;
 	if (!!vao) {
 		glDeleteVertexArrays(1, &vao);
@@ -2296,6 +2300,10 @@ void Font::InitVao(uint sz) {
 	glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 0, NULL);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
+#ifdef IS_EDITOR
+	if (PopupSelector::drawing)
+		glfwMakeContextCurrent(PopupSelector::window);
+#endif
 }
 
 Font::Font(const string& path, int size) : vecSize(0) {
