@@ -1956,7 +1956,7 @@ void Debug::Init(string s) {
 
 #pragma region IO
 
-string IO::path = "";
+string IO::path = IO::InitPath();
 
 std::vector<string> IO::GetFiles(const string& folder, string ext)
 {
@@ -2125,17 +2125,18 @@ string IO::GetText(const string& path) {
 }
 
 const string& IO::InitPath() {
-	char cpath[200];
+	if (path == "") {
+		char cpath[200];
 #ifdef PLATFORM_WIN
-	GetModuleFileName(NULL, cpath, 200);
-	path = cpath;
-	path = path.substr(0, path.find_last_of('\\') + 1);
+		GetModuleFileName(NULL, cpath, 200);
+		path = cpath;
+		path = path.substr(0, path.find_last_of('\\') + 1);
 #elif defined(PLATFORM_LNX)
-	getcwd(cpath, 199);
-	path = cpath;
+		getcwd(cpath, 199);
+		path = cpath;
 #endif
-	Debug::Message("IO", "Path set to " + path);
-
+		Debug::Message("IO", "Path set to " + path);
+	}
 	return path;
 }
 
