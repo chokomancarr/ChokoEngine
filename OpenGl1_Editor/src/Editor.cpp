@@ -549,8 +549,9 @@ void EB_Browser::Draw() {
 	Engine::BeginStencil(v.r, v.g + EB_HEADER_SIZE + 1, v.b, v.a - EB_HEADER_SIZE - 2);
 	glDisable(GL_DEPTH_TEST);
 
+	scrollDirs = Clamp(scrollDirs, 0, maxScrollDirs + 1);
 	for (int y = dirs.size() - 1; y >= 0; y--) {
-		if (Engine::EButton((editor->editorLayer == 0), v.r, v.g + EB_HEADER_SIZE + 1 + (16 * y), 150, 15, grey1()) == MOUSE_RELEASE) {
+		if (Engine::EButton((editor->editorLayer == 0), v.r, v.g + EB_HEADER_SIZE + 1 + (16 * y) - scrollDirs, 150, 15, grey1()) == MOUSE_RELEASE) {
 			if (dirs.at(y) != ".") {
 				if (dirs.at(y) == "..") {
 					if (currentDir.size() < (editor->projectFolder.size() + 7) || currentDir.substr(0, editor->projectFolder.size() + 7) != (editor->projectFolder + "Assets\\"))
@@ -563,8 +564,10 @@ void EB_Browser::Draw() {
 				return;
 			}
 		}
-		UI::Label(v.r + 2, v.g + EB_HEADER_SIZE + (16 * y), 12, dirs.at(y), editor->font, white(), 150);
+		UI::Label(v.r + 2, v.g + EB_HEADER_SIZE + (16 * y) - scrollDirs, 12, dirs.at(y), editor->font, white(), 150);
 	}
+	maxScrollDirs = max((int)(EB_HEADER_SIZE + 1 + (16 * dirs.size()) - v.a), 0);
+
 	float ww = 0;
 	int hh = 0;
 	byte fileSize = 70;
@@ -631,6 +634,11 @@ void EB_Browser::Refresh() {
 	}
 #endif
 }
+
+void EB_Browser::OnMouseScr(bool up) {
+	scrollDirs += (up? -20 : 20);
+}
+
 
 EB_Viewer::EB_Viewer(Editor* e, int x1, int y1, int x2, int y2) : rz(45), rw(45), scale(1), fov(60), rotCenter(0, 0, 0) {
 	editorType = 2;
@@ -1807,6 +1815,7 @@ Vec2 PopupSelector::mousePos, PopupSelector::mouseDownPos;
 bool PopupSelector::mouse0, PopupSelector::mouse1, PopupSelector::mouse2;
 byte PopupSelector::mouse0State, PopupSelector::mouse1State, PopupSelector::mouse2State;
 GLuint PopupSelector::_vao, PopupSelector::_vaof;
+int PopupSelector::scrollPos = 0, PopupSelector::maxScroll = 0;
 
 POPUP_SELECT_TYPE PopupSelector::_type;
 rSceneObject* PopupSelector::_browseTargetObj;
@@ -2021,6 +2030,8 @@ bool PopupSelector::Do_Draw_Object(const std::vector<pSceneObject>& objs, uint& 
 }
 
 void PopupSelector::Draw_Asset() {
+	Engine::BeginStencil(0, 20, Display::width, Display::height);
+	scrollPos = Clamp(scrollPos, 0, maxScroll + 1);
 	if (drawIcons) {
 		uint nx = (uint)ceil(width / minIconSize);
 		uint sx = width / nx;
@@ -2032,22 +2043,30 @@ void PopupSelector::Draw_Asset() {
 		}
 	}
 	else {
-		for (uint a = 0, aa = editor->normalAssets[assettype].size(); a < aa; a++) {
-			if (Engine::Button(1.0f, 20.0f + 17 * a, width - 2.0f, 16.0f, grey1(), editor->normalAssets[assettype][a], 12, editor->font, white()) == MOUSE_RELEASE) {
+		auto aa = editor->normalAssets[assettype].size();
+		for (uint a = 0; a < aa; a++) {
+			if (Engine::Button(1.0f, 20.0f + 17 * a - scrollPos, width - 2.0f, 16.0f, grey1(), editor->normalAssets[assettype][a], 12, editor->font, white()) == MOUSE_RELEASE) {
 				(*_browseTarget) = a;
-				if (_browseCallback) _browseCallback(_browseCallbackParam);
+				if (_browseCallback) {
+					glfwMakeContextCurrent(Display::window);
+					_browseCallback(_browseCallbackParam);
+				}
 
-				glViewport(0, 0, Display::width, Display::height);
+				//glViewport(0, 0, Display::width, Display::height);
 				show = false;
 			}
 		}
+		maxScroll = max<int>(20 + 17 * aa - Display::height, 0);
 	}
+	Engine::EndStencil();
 }
 
 void PopupSelector::Close() {
 	show = false;
 	glfwHideWindow(window);
 	glfwSetWindowShouldClose(window, false);
+	mousePos = Vec2();
+	scrollPos = 0;
 }
 
 void PopupSelector::Reshape(GLFWwindow* window, int w, int h) {

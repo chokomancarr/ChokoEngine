@@ -14,9 +14,6 @@
 #include "Compressors.h"
 #include <shellapi.h>
 
-//#include "MD.h"
-//#include "Water.h"
-
 void MouseGL(GLFWwindow* window, int button, int state, int mods);
 void MouseScrGL(GLFWwindow* window, double xoff, double yoff);
 void MotionGL(GLFWwindow* window, double x, double y);
@@ -58,16 +55,15 @@ static void datagot(uint ip, uint port, byte* data, uint dataCount) {
 GLuint _vao, _vbo;
 int main(int argc, char **argv)
 {
-	path = argv[0];
 	editor = new Editor();
-	editor->dataPath = path.substr(0, path.find_last_of('\\') + 1);
+	editor->dataPath = path = IO::InitPath();// path.substr(0, path.find_last_of('\\') + 1);
 	editor->lockMutex = &lockMutex;
 
 	HMONITOR monitor = MonitorFromWindow(editor->hwnd, MONITOR_DEFAULTTONEAREST);
 	MONITORINFO info;
 	info.cbSize = sizeof(MONITORINFO);
 	GetMonitorInfo(monitor, &info);
-	ShowSplash(editor->dataPath + "res\\splash.png", (info.rcMonitor.right - info.rcMonitor.left) / 2, (info.rcMonitor.bottom - info.rcMonitor.top) / 2, 600, 300);
+	ShowSplash(path + "res\\splash.png", (info.rcMonitor.right - info.rcMonitor.left) / 2, (info.rcMonitor.bottom - info.rcMonitor.top) / 2, 600, 300);
 	
 	editor->scrW = info.rcMonitor.right - info.rcMonitor.left;
 	editor->scrH = info.rcMonitor.bottom - info.rcMonitor.top;
@@ -76,7 +72,7 @@ int main(int argc, char **argv)
 	//std::getline(std::cin, editor->projectFolder);
 	editor->projectFolder = "D:\\TestProject2\\";
 
-	DefaultResources::Init(editor->dataPath + "res\\defaultresources.bin");
+	DefaultResources::Init(path + "res\\defaultresources.bin");
 	editor->xPoss.push_back(0);
 	editor->xPoss.push_back(1);
 	//editor->xPoss.push_back(0.95f);
@@ -146,7 +142,7 @@ int main(int argc, char **argv)
 	editor->blockCombos[1]->blocks.push_back(editor->blocks[6]);
 	editor->blockCombos[1]->blocks.push_back(editor->blocks[3]);
 	editor->blockCombos[1]->Set();
-	editor->SetBackground(editor->dataPath + "res\\bg.jpg", 0.3f);
+	editor->SetBackground(path + "res\\bg.jpg", 0.3f);
 	font = editor->font;
 
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -436,8 +432,13 @@ void MouseGL(GLFWwindow* window, int button, int state, int mods) {
 }
 
 void MouseScrGL(GLFWwindow* window, double xoff, double yoff) {
-	if (yoff != 0 && editor->editorLayer == 0) {
-		editor->blocks[editor->mouseOnP]->OnMouseScr(yoff > 0);
+	if (window == Display::window) {
+		if (yoff != 0 && editor->editorLayer == 0) {
+			editor->blocks[editor->mouseOnP]->OnMouseScr(yoff > 0);
+		}
+	}
+	else {
+		PopupSelector::scrollPos += (yoff > 0 ? -20 : 20);
 	}
 }
 

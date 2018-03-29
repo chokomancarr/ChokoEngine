@@ -770,8 +770,8 @@ public:
 
 	friend class ChokoLait;
 	friend class Engine;
-protected:
-	static const string& InitPath();
+//protected:
+	static string InitPath();
 };
 
 #ifdef PLATFORM_WIN

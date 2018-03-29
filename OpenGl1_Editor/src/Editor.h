@@ -167,8 +167,13 @@ public:
 	std::vector<string> dirs;
 	std::vector<EB_Browser_File> files;
 
+	int scrollDirs = 0, scrollFiles = 0;
+	int maxScrollDirs = 0, maxScrollFiles = 0;
+
 	void Draw();
 	void Refresh();
+
+	void OnMouseScr(bool up) override;
 
 	static void _AddAsset(EditorBlock* b);
 	static void _DoAddAssetH(EditorBlock* b), _DoAddAssetMat(EditorBlock* b), _DoAddAssetShad(EditorBlock* b), _DoAddAssetEff(EditorBlock* b);
@@ -483,7 +488,8 @@ public:
 	static byte mouse0State, mouse1State, mouse2State;
 	static Vec2 mousePos, mouseDownPos;
 	static GLuint _vao, _vaof;
-	
+	static int scrollPos, maxScroll;
+
 	static Editor* editor;
 
 	static POPUP_SELECT_TYPE _type;

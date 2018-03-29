@@ -2124,20 +2124,22 @@ string IO::GetText(const string& path) {
 	return ss.str();
 }
 
-const string& IO::InitPath() {
+string IO::InitPath() {
+	auto path2 = path;
 	if (path == "") {
 		char cpath[200];
 #ifdef PLATFORM_WIN
 		GetModuleFileName(NULL, cpath, 200);
-		path = cpath;
-		path = path.substr(0, path.find_last_of('\\') + 1);
+		path2 = cpath;
+		path2 = path2.substr(0, path2.find_last_of('\\') + 1);
 #elif defined(PLATFORM_LNX)
 		getcwd(cpath, 199);
-		path = cpath;
+		path2 = cpath;
 #endif
+		path = path2;
 		Debug::Message("IO", "Path set to " + path);
 	}
-	return path;
+	return path2;
 }
 
 #pragma endregion
@@ -2267,7 +2269,7 @@ void Font::Init() {
 	glDeleteShader(vs);
 	glDeleteShader(fs);
 
-	InitVao(50);
+	InitVao(500);
 }
 
 void Font::InitVao(uint sz) {
