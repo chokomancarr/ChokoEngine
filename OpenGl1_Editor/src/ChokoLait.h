@@ -23,7 +23,6 @@ See https://chokomancarr.github.io/ChokoLait/ for documentation and examples.
 //#pragma comment(lib, "chokolait_adr.so")
 #endif
 #pragma comment(lib, "opengl32.lib")
-#pragma comment(lib, "chokolibs_win.lib")
 #endif
 #endif
 

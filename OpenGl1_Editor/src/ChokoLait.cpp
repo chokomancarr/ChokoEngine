@@ -88,6 +88,7 @@ void ChokoLait::Init(int scrW, int scrH) {
 
 		initd = 2;
 		Debug::Message("ChokoLait", "Init finished.");
+		Time::millis = milliseconds();
 	}
 }
 

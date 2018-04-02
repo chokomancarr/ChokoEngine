@@ -130,9 +130,7 @@
     </Link>
     <PostBuildEvent>
       <Command>xcopy /y "$(ProjectDir)src\*.h" "C:\Users\Pua Kai\Documents\Visual Studio 2017\Projects\TestChokoLait\TestChokoLait\ChokoLait\src\"
-del "C:\Users\Pua Kai\Documents\Visual Studio 2017\Projects\TestChokoLait\TestChokoLait\ChokoLait\src\Defines.h"
-copy "C:\Users\Pua Kai\Documents\GitHub\ChokoEngine\Lait\OpenGL1_Editor.lib" "C:\Users\Pua Kai\Documents\Visual Studio 2017\Projects\TestChokoLait\TestChokoLait\ChokoLait\bin\chokolait_win.lib"
-copy NUL "C:\Users\Pua Kai\Documents\Visual Studio 2017\Projects\TestChokoLait\TestChokoLait\ChokoLait\src\Defines.h"</Command>
+copy "C:\Users\Pua Kai\Documents\GitHub\ChokoEngine\Lait\OpenGL1_Editor.lib" "C:\Users\Pua Kai\Documents\Visual Studio 2017\Projects\TestChokoLait\TestChokoLait\ChokoLait\bin\chokolait_win.lib"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">

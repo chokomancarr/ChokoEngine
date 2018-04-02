@@ -73,17 +73,18 @@ bool AudioEngine::Init_win() {
 }
 #endif
 
+bool AudioEngine::alive = false;
 audioRequestPacketCallback AudioEngine::callback = nullptr;
 bool AudioEngine::forcestop = false;
 std::thread* AudioEngine::thread;
 
 bool AudioEngine::Init() {
 #ifdef PLATFORM_WIN
-	return Init_win();
+	alive = Init_win();
 #elif defined(PLATFORM_ADR)
-	//return Init_adr();
+	//alive = Init_adr();
 #endif
-	return false;
+	return alive;
 }
 
 void AudioEngine::Start(audioRequestPacketCallback cb) {

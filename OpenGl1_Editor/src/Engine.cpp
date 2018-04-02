@@ -509,7 +509,7 @@ void Engine::Init(string path) {
 	Camera::InitShaders();
 	Font::Init();
 	SkinnedMeshRenderer::InitSkinning();
-	if (!AudioEngine::Init()) Debug::Error("AudioEngine", "Failed to initialize audio output!");
+	if (!AudioEngine::Init()) Debug::Warning("AudioEngine", "Failed to initialize audio output!");
 #ifdef IS_EDITOR
 	Editor::InitShaders();
 	Editor::instance->InitMaterialPreviewer();

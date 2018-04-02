@@ -39,11 +39,10 @@ public:
 
 	static bool Init_win();
 #elif defined(PLATFORM_ADR)
-
-
 	static bool Init_adr();
 #endif
 
+	static bool alive;
 	static audioRequestPacketCallback callback;
 	static bool forcestop;
 	static std::thread* thread;
