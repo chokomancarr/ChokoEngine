@@ -54,7 +54,7 @@ enum CAM_CLEARTYPE : byte {
 	CAM_CLEAR_SKY
 };
 
-enum GBUFFERS {
+enum GBUFFERS : byte {
 	GBUFFER_DIFFUSE,
 	GBUFFER_NORMAL,
 	GBUFFER_SPEC_GLOSS,
@@ -503,6 +503,10 @@ public:
 	uint width, height;
 	GLuint pointer;
 	TEX_TYPE texType() { return _texType; }
+
+	bool tiled = false;
+	Int2 tileSize = Int2(1, 1);
+	float tileSpeed = 2;
 
 	static byte* LoadPixels(const string& path, byte& chn, uint& w, uint& h);
 

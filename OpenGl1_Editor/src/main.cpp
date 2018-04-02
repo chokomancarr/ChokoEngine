@@ -47,12 +47,6 @@ void KillSplash();
 //	MessageBox(hwnd, "aaa", "title", MB_OK);
 //}
 
-static void datagot(uint ip, uint port, byte* data, uint dataCount) {
-	string s((char*)data);
-	std::cout << s << std::endl;
-}
-
-GLuint _vao, _vbo;
 int main(int argc, char **argv)
 {
 	editor = new Editor();
@@ -192,18 +186,6 @@ int main(int argc, char **argv)
 		}
 
 		renderScene();
-
-		/*
-		static const char* msg = "meowww";
-		Engine::DrawQuad(0,0,1000, 1000, black());
-		if (Engine::Button(0, 0, 200, 30, white()) == MOUSE_RELEASE) {
-			Net::Listen(8888, datagot);
-		}
-		if (Engine::Button(0, 40, 200, 30, white()) == MOUSE_RELEASE) {
-			auto res = Net::Send("127.0.0.1", 8888, (byte*)msg, 7);
-			std::cout << res << std::endl;
-		}
-		*/
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();

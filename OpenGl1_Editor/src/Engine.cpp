@@ -742,17 +742,32 @@ void UI::Texture(float x, float y, float w, float h, ::Texture* texture, float a
 void UI::Texture(float x, float y, float w, float h, ::Texture* texture, Vec4 tint, DRAWTEX_SCALING scl, float miplevel) {
 	_checkdraw;
 	GLuint tex = (texture->loaded) ? texture->pointer : Engine::fallbackTex->pointer;
-	if (scl == DRAWTEX_STRETCH)
-		Engine::DrawQuad(x, y, w, h, tex, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint, miplevel);
-	else if (scl == DRAWTEX_FIT) {
-		float w2h = ((float)texture->width) / texture->height;
-		if (w / h > w2h)
-			Engine::DrawQuad(x + 0.5f*(w - h*w2h), y, h*w2h, h, tex, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint, miplevel);
-		else
-			Engine::DrawQuad(x, y + 0.5f*(h - w / w2h), w, w / w2h, tex, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint, miplevel);
+	if (!texture->tiled) {
+		if (scl == DRAWTEX_STRETCH)
+			Engine::DrawQuad(x, y, w, h, tex, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint, miplevel);
+		else if (scl == DRAWTEX_FIT) {
+			float w2h = ((float)texture->width) / texture->height;
+			if (w / h > w2h)
+				Engine::DrawQuad(x + 0.5f*(w - h*w2h), y, h*w2h, h, tex, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint, miplevel);
+			else
+				Engine::DrawQuad(x, y + 0.5f*(h - w / w2h), w, w / w2h, tex, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint, miplevel);
+		}
+		else {
+			Engine::DrawQuad(x, y, w, h, tex, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint, miplevel);
+		}
 	}
 	else {
-		Engine::DrawQuad(x, y, w, h, tex, Vec2(0, 1), Vec2(1, 1), Vec2(0, 0), Vec2(1, 0), false, tint, miplevel);
+		int ix = (int)floor(Repeat<float>(Time::time * texture->tileSpeed, 0, texture->tileSize.x));
+		int iy = (int)floor(Repeat<float>(Time::time * texture->tileSpeed / texture->tileSize.x, 0, texture->tileSize.y));
+		ix = min(ix, texture->tileSize.x - 1);
+		iy = min(iy, texture->tileSize.y - 1);
+		const float dx = 1.0f / texture->tileSize.x;
+		const float dy = 1.0f / texture->tileSize.y;
+		const float x1 = dx * ix;
+		const float x2 = dx * (ix + 1);
+		const float y1 = 1 - dy * (iy + 1);
+		const float y2 = 1 - dy * (iy);
+		Engine::DrawQuad(x, y, w, h, tex, Vec2(x1, y2), Vec2(x2, y2), Vec2(x1, y1), Vec2(x2, y1), false, tint, miplevel);
 	}
 }
 
@@ -2705,7 +2720,7 @@ void Scene::AddObject(pSceneObject object, pSceneObject parent) {
 void Scene::DeleteObject(pSceneObject o) {
 	if (!active)
 		return;
-	o->_pendingDelete = true;
+	o->dead = true;
 }
 
 void Scene::ReadD0() {
@@ -2742,6 +2757,15 @@ void Scene::ReadD0() {
 
 void Scene::Unload() {
 
+}
+
+void Scene::CleanDeadObjects() {
+	for (int a = active->objectCount - 1; a >= 0; a--) {
+		if (active->objects[a]->dead) {
+			active->objects.erase(active->objects.begin() + a);
+			active->objectCount--;
+		}
+	}
 }
 
 #ifdef IS_EDITOR

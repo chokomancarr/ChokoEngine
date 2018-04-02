@@ -69,8 +69,8 @@ public:
 	friend struct Editor_PlaySyncer;
 	friend class AssetManager;
 	friend class Component;
-protected:
 
+protected:
 	static std::ifstream* strm;
 	//#ifndef IS_EDITOR
 	static std::vector<string> sceneEPaths;
@@ -80,6 +80,7 @@ protected:
 
 	static void ReadD0();
 	static void Unload();
+	static void CleanDeadObjects();
 #ifdef IS_EDITOR
 	void Save(Editor* e);
 #endif
@@ -947,6 +948,4 @@ protected:
 	} _offsets;
 
 	void Refresh();
-
-	bool _pendingDelete;
 };
