@@ -52,6 +52,9 @@ int main(int argc, char **argv)
 	editor = new Editor();
 	editor->dataPath = path = IO::InitPath();// path.substr(0, path.find_last_of('\\') + 1);
 	editor->lockMutex = &lockMutex;
+	editor->projectFolder = "D:\\TestProject2\\";
+
+	editor->GenerateScriptXml();
 
 	HMONITOR monitor = MonitorFromWindow(editor->hwnd, MONITOR_DEFAULTTONEAREST);
 	MONITORINFO info;
@@ -64,7 +67,6 @@ int main(int argc, char **argv)
 
 	//std::cout << "Enter project folder path" << std::endl;
 	//std::getline(std::cin, editor->projectFolder);
-	editor->projectFolder = "D:\\TestProject2\\";
 
 	DefaultResources::Init(path + "res\\defaultresources.bin");
 	editor->xPoss.push_back(0);

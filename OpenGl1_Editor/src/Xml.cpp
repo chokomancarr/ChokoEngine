@@ -1,82 +1,70 @@
 #include "Xml.h"
-#include "Engine.h"
 
-uint _spacecount(char* c) {
-	uint i = 0;
-	while (*(c++) == ' ') i++;
-	return i;
-}
-
-char* ParseSection(std::ifstream& strm, XmlTable* table, uint offset, char* c = 0) {
-	char cc[500];
-	std::string line;
-	while (1) {
-		if (!c) strm.getline(cc, 500, '\n');
-		else {
-			memcpy(cc, c, 500);
-			delete[](c);
-			c = 0;
-		}
-		if (strm.eof()) return 0;
-		line = std::string(cc);
-		auto sc = _spacecount(cc);
-		if (sc != offset) {
-			if (sc > offset) {
-				c = new char[500];
-				memcpy(c, cc, 500);
-				if (sc - offset > 3) {
-					table->children.back().children.push_back(XmlTable());
-					c = ParseSection(strm, &table->children.back().children.back(), offset + 4, c);
-				}
-				else {
-					table->children.push_back(XmlTable());
-					c = ParseSection(strm, &table->children.back(), offset + 2, c);
-				}
-			}
-			else {
-				c = new char[500];
-				memcpy(c, cc, 500);
-				return c;
-			}
-		}
-		else if (!!table->name.size() && line.substr(sc, 2) != "</") {
-			c = new char[500];
-			memcpy(c, cc, 500);
-			table->children.push_back(XmlTable());
-			c = ParseSection(strm, &table->children.back(), offset, c);
-		}
-		else {
-			auto bp = line.find_first_of('>');
-			bool nc = false;
-			if (cc[bp - 1] == '/') {
-				bp--;
-				nc = true;
-			}
-			auto nm = line.substr(sc + 1, bp - sc - 1);
-			auto ss = string_split(nm, ' ');
-			auto ep = line.find('/');
-			if (ep > sc + 1 && cc[ep + 1] != '>' && !table->name.size()) table->name = ss[0];
-			for (uint ds = 1; ds < ss.size(); ds++) {
-				auto eq = ss[ds].find('=');
-				auto pn = ss[ds].substr(0, eq);
-				auto pv = ss[ds].substr(eq + 2, ss[ds].size() - eq - 3);
-				table->params.push_back(std::pair<std::string, std::string>(pn, pv));
-			}
-			if (ep != std::string::npos && cc[ep - 1] == '<') {
-				table->value = line.substr(bp + 1, ep - bp - 2);
-				return 0;
-			}
-			if (nc) return 0;
+void RemoveNewLine(string& s) {
+	for (int a = s.size() - 1; a > 0; a--) {
+		if (s[a] == '\t' || s[a] == '\r' || s[a] == '\n') {
+			s.replace(a, 1, " ");
 		}
 	}
 }
 
-XmlTable* Xml::Parse(const std::string& path) {
-	std::ifstream strm(path, std::ios::binary);
-	if (!strm.is_open()) return nullptr;
-	XmlTable* table = new XmlTable();
-	char cc[500];
-	strm.getline(cc, 500); //first line is garbage
-	ParseSection(strm, table, 0);
-	return table;
+XmlNode* Xml::Parse(const string& path) {
+	auto str = IO::GetText(path);
+	RemoveNewLine(str);
+	
+	XmlNode* node = new XmlNode();
+	uint pos = 0, sz = str.size();
+	while (pos < sz) {
+		if (!Read(str, pos, node)) {
+			delete(node);
+			return nullptr;
+		}
+	}
+	return node;
+}
+
+bool Xml::Read(string& s, uint& pos, XmlNode* parent) {
+	uint off, off2;
+	off = s.find_first_of('<', pos);
+	off2 = s.find_first_of('>', off);
+	if (off2 < off) return false;
+	if (off == string::npos) {
+		pos = s.size();
+		return true;
+	}
+	pos = off2 + 1;
+	if (s[off + 1] == '?' && s[off2 - 1] == '?') {
+		return true;
+	}
+
+	XmlNode n = {};
+	auto ss = string_split(s.substr(off + 1, off2 - off - 1), ' ');
+	if (!ss.size()) return false;
+	n.name = ss[0];
+	for (uint a = 1; a < ss.size(); a++) {
+		if (ss[a] == "") continue;
+		auto ss2 = string_split(ss[a], '=');
+		n.params.push_back(std::pair<string, string>(ss2[0], ss2[1].substr(1, ss2[1].size() - 2)));
+	}
+
+	if (s[off2-1] == '/') {
+		auto& lp = n.params.back().second;
+		lp = lp.substr(0, lp.size()-1);
+	}
+	else {
+		auto ep = string_find(s, "</" + n.name + ">", off2 + 1);
+		if (ep == -1) return false;
+		if (s[off2 + 1] != ' ') {
+			n.value = s.substr(off2 + 1, ep - off2 - 1);
+		}
+		else {
+			while (pos < ep) {
+				std::cout << pos << " " << ep << std::endl;
+				Read(s, pos, &n);
+			}
+		}
+		pos = ep + n.name.size() + 2;
+	}
+	parent->children.push_back(n);
+	return true;
 }

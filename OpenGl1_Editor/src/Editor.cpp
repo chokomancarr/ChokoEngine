@@ -2783,6 +2783,108 @@ void AddH(Editor* e, string dir, std::vector<string>* h, std::vector<string>* cp
 	}
 }
 
+void Editor::GenerateScriptXml() {
+	SECURITY_ATTRIBUTES sa;
+	sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+	sa.bInheritHandle = TRUE;
+	sa.lpSecurityDescriptor = NULL;
+	HANDLE stdOutR, stdOutW, stdInR, stdInW;
+	if (!CreatePipe(&stdInR, &stdInW, &sa, 0)) {
+		std::cout << "failed to create pipe for stdin!";
+		return;
+	}
+	if (!SetHandleInformation(stdInW, HANDLE_FLAG_INHERIT, 0)) {
+		std::cout << "failed to set handle for stdin!";
+		return;
+	}
+	if (!CreatePipe(&stdOutR, &stdOutW, &sa, 0)) {
+		std::cout << "failed to create pipe for stdout!";
+		return;
+	}
+	if (!SetHandleInformation(stdOutR, HANDLE_FLAG_INHERIT, 0)) {
+		std::cout << "failed to set handle for stdout!";
+		return;
+	}
+	STARTUPINFO startInfo;
+	PROCESS_INFORMATION processInfo;
+	ZeroMemory(&startInfo, sizeof(STARTUPINFO));
+	ZeroMemory(&processInfo, sizeof(PROCESS_INFORMATION));
+	startInfo.cb = sizeof(STARTUPINFO);
+	startInfo.hStdInput = stdInR;
+	startInfo.hStdOutput = stdOutW;
+	startInfo.dwFlags |= STARTF_USESTDHANDLES;
+
+	bool failed = true;
+	string cmd1("C:\n"); //root
+	string cmd2("cd " + Editor::dataPath + "\\bin\\\n");
+	string cmd3("doxygen \"" + Editor::projectFolder + "\\System\\xml\\config.txt\"\n");
+	//outputs object list, and meshes in subdir
+	if (CreateProcess("C:\\Windows\\System32\\cmd.exe", 0, NULL, NULL, true, CREATE_NO_WINDOW, NULL, &Editor::projectFolder[0], &startInfo, &processInfo) != 0) {
+		std::cout << "executing Doxygen..." << std::endl;
+		bool bSuccess = false;
+		DWORD dwWrite;
+		bSuccess = WriteFile(stdInW, cmd1.c_str(), cmd1.size(), &dwWrite, NULL) != 0;
+		if (!bSuccess || dwWrite == 0) {
+			Debug::Error("Script Parser", "can't get to drive root!");
+			return;
+		}
+		bSuccess = WriteFile(stdInW, cmd2.c_str(), cmd2.size(), &dwWrite, NULL) != 0;
+		if (!bSuccess || dwWrite == 0) {
+			Debug::Error("Script Parser", "can't get to Doxygen dir!");
+			return;
+		}
+		bSuccess = WriteFile(stdInW, cmd3.c_str(), cmd3.size(), &dwWrite, NULL) != 0;
+		if (!bSuccess || dwWrite == 0) {
+			Debug::Error("Script Parser", "can't execute Doxygen!");
+			return;
+		}
+		DWORD w;
+		bool finish = false;
+		do {
+			w = WaitForSingleObject(processInfo.hProcess, DWORD(200));
+
+			DWORD dwRead;
+			CHAR chBuf[4096];
+			string out = "";
+			bSuccess = ReadFile(stdOutR, chBuf, 4096, &dwRead, NULL) != 0;
+			if (bSuccess && dwRead > 0) {
+				string s(chBuf, dwRead);
+				out += s;
+			}
+			for (uint r = 0; r < out.size();) {
+				int rr = out.find_first_of('\n', r);
+				if (rr == string::npos)
+					rr = out.size() - 1;
+				string sss = out.substr(r, rr - r);
+				//std::cout << sss << std::endl;
+				r = rr + 1;
+				if (sss.size() > 11 && sss.substr(0, 11) == "finished...") {
+					TerminateProcess(processInfo.hProcess, 0);
+					failed = false;
+					finish = true;
+				}
+			}
+		} while (w == WAIT_TIMEOUT && !finish);
+		CloseHandle(processInfo.hProcess);
+		CloseHandle(processInfo.hThread);
+		if (failed)
+			return;
+	}
+	else {
+		DWORD err = GetLastError();
+		std::cout << "Cannot start Blender! (Error code " << std::to_string(err) << ")" << std::endl;
+		CloseHandle(stdOutR);
+		CloseHandle(stdOutW);
+		CloseHandle(stdInR);
+		CloseHandle(stdInW);
+		return;
+	}
+	CloseHandle(stdOutR);
+	CloseHandle(stdOutW);
+	std::cout << "Doxygen OK" << std::endl;
+	return;
+}
+
 void Editor::GenerateScriptResolver() {
 	std::ifstream vcxIn(dataPath + "res\\vcxproj.txt", std::ios::in);
 	if (!vcxIn.is_open()) {

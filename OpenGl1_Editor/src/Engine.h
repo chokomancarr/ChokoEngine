@@ -337,6 +337,7 @@ namespace std {
 }
 
 std::vector<string> string_split(string s, char c);
+int string_find(const string& s, const string& s2, int start = -1);
 
 int TryParse(string str, int defVal);
 uint TryParse(string str, uint defVal);

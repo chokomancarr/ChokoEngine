@@ -85,6 +85,18 @@ std::vector<string> string_split(string s, char c) {
 	return o;
 }
 
+int string_find(const string& s, const string& s2, int start) {
+	uint ss = s.size();
+	uint s2s = s2.size();
+	int p = start;
+	for (;;) {
+		p = s.find_first_of(s2[0], p + 1);
+		if (p == -1) return -1;
+		if (s.substr(p, s2s) == s2) return p;
+	}
+	return -1;
+}
+
 int TryParse(string str, int defVal) {
 	try {
 		return std::stoi(str);

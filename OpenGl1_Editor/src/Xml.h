@@ -1,20 +1,16 @@
 #pragma once
 #define _ITERATOR_DEBUG_LEVEL 0
-#include <string>
-#include <vector>
+#include "Engine.h"
 
-/*
-This header is for parsing Doxygen output files.
-It might not work as intended on other xml files.
-*/
-
-struct XmlTable {
+struct XmlNode {
 	std::string name = "", value = "";
-	std::vector<std::pair<std::string, std::string>> params;
-	std::vector<XmlTable> children;
+	std::vector<std::pair<string, string>> params;
+	std::vector<XmlNode> children;
 };
 
 class Xml {
 public:
-	static XmlTable* Parse(const std::string& path);
+	static XmlNode* Parse(const string& path);
+protected:
+	static bool Read(string& s, uint& pos, XmlNode* parent);
 };

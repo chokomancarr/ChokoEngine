@@ -2311,17 +2311,17 @@ bool Mesh::ParseBlend(Editor* e, string s) {
 		DWORD dwWrite;
 		bSuccess = WriteFile(stdInW, cmd1.c_str(), cmd1.size(), &dwWrite, NULL) != 0;
 		if (!bSuccess || dwWrite == 0) {
-			std::cout << "can't get to root!" << std::endl;
+			Debug::Error("Blender Parser", "can't get to drive root!");
 			return false;
 		}
 		bSuccess = WriteFile(stdInW, cmd2.c_str(), cmd2.size(), &dwWrite, NULL) != 0;
 		if (!bSuccess || dwWrite == 0) {
-			std::cout << "can't navigate to blender dir!" << std::endl;
+			Debug::Error("Blender Parser", "can't get to blender dir!");
 			return false;
 		}
 		bSuccess = WriteFile(stdInW, cmd3.c_str(), cmd3.size(), &dwWrite, NULL) != 0;
 		if (!bSuccess || dwWrite == 0) {
-			std::cout << "can't execute blender!" << std::endl;
+			Debug::Error("Blender Parser", "can't execute blender!");
 			return false;
 		}
 		DWORD w;

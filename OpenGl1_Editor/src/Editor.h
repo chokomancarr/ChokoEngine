@@ -696,6 +696,7 @@ public:
 
 	void ReadPrefs(), SavePrefs();
 	void LoadDefaultAssets();
+	void GenerateScriptXml();
 	void GenerateScriptResolver();
 	void GenerateScriptValuesReader(string& s);
 	void NewScene();
