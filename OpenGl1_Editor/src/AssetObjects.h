@@ -536,6 +536,18 @@ protected:
 	void GenECache(byte* dat, byte chn, bool isrgb, std::vector<RenderTexture*>* rts);
 };
 
+class Texture3D : public AssetObject {
+public:
+	Texture3D(const string& path, TEX_FILTERING filter = TEX_FILTER_TRILINEAR);
+	
+	bool loaded;
+	uint length;
+	GLuint pointer;
+
+protected:
+	Texture3D() : AssetObject(ASSETTYPE_TEXCUBE) {}
+};
+
 #ifdef FEATURE_AV_CODECS
 class VideoTexture : public Texture {
 public:

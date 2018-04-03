@@ -1082,7 +1082,7 @@ public:
 	friend void FocusGL(GLFWwindow* window, int focus);
 	friend class PopupSelector;
 	friend class RenderTexture;
-protected:
+//protected:
 
 	static bool focused;
 	static uint _editTextCursorPos, _editTextCursorPos2;

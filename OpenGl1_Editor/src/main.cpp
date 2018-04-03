@@ -38,6 +38,9 @@ std::mutex lockMutex;
 
 AudioClip* ac;
 
+Texture3D* tex3;
+Shader* shad3;
+
 HWND splashHwnd;
 void ShowSplash(string bitmap, uint cx, uint cy, uint sw, uint sh);
 void KillSplash();
@@ -47,14 +50,40 @@ void KillSplash();
 //	MessageBox(hwnd, "aaa", "title", MB_OK);
 //}
 
+void Draw3(float x, float y, float w, float h, float off) {
+	Vec3 quadPoss[4];
+	quadPoss[0].x = x;
+	quadPoss[0].y = y;
+	quadPoss[1].x = x + w;
+	quadPoss[1].y = y;
+	quadPoss[2].x = x;
+	quadPoss[2].y = y + h;
+	quadPoss[3].x = x + w;
+	quadPoss[3].y = y + h;
+	uint quadIndexes[6] = { 0, 2, 1, 2, 3, 1 };
+
+	UI::SetVao(4, quadPoss);
+
+	glUseProgram(shad3->pointer);
+	auto loc = glGetUniformLocation(shad3->pointer, "tex");
+	auto loc2 = glGetUniformLocation(shad3->pointer, "off");
+	glUniform1i(loc, 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_3D, tex3->pointer);
+	glUniform1f(loc2, off);
+	glBindVertexArray(UI::_vao);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, quadIndexes);
+	glBindVertexArray(0);
+	glBindTexture(GL_TEXTURE_3D, 0);
+	glUseProgram(0);
+}
+
 int main(int argc, char **argv)
 {
 	editor = new Editor();
 	editor->dataPath = path = IO::InitPath();// path.substr(0, path.find_last_of('\\') + 1);
 	editor->lockMutex = &lockMutex;
 	editor->projectFolder = "D:\\TestProject2\\";
-
-	editor->GenerateScriptXml();
 
 	HMONITOR monitor = MonitorFromWindow(editor->hwnd, MONITOR_DEFAULTTONEAREST);
 	MONITORINFO info;
@@ -174,6 +203,12 @@ int main(int argc, char **argv)
 
 	auto mills = milliseconds();
 
+
+	string vertcode = "#version 330\nlayout(location = 0) in vec3 pos;\nlayout(location = 1) in vec2 uv;\nout vec2 UV;\nvoid main(){ \ngl_Position.xyz = pos;\ngl_Position.w = 1.0;\nUV = uv;\n}";
+	shad3 = new Shader(vertcode, IO::GetText("D:\\frag_test3d.txt"));
+	tex3 = new Texture3D("");
+	float off = 0;
+
 	while (!glfwWindowShouldClose(window)) {
 		if (PopupSelector::show) {
 			glfwMakeContextCurrent(PopupSelector::window);
@@ -189,6 +224,10 @@ int main(int argc, char **argv)
 
 		UpdateLoop();
 		renderScene();
+
+		Engine::DrawQuad(0, 0, Display::width, Display::height, black());
+		Draw3(-0.9f, 0.9f, 1, -1, off);
+		off = Engine::DrawSliderFill(Display::width*0.05f, Display::height*0.6f, Display::width*0.5f, 20, 0, 1, off, grey2(), white());
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();

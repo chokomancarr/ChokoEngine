@@ -941,6 +941,41 @@ bool Texture::DrawPreview(uint x, uint y, uint w, uint h) {
 #pragma endregion
 
 
+#pragma region Texture3D
+
+Texture3D::Texture3D(const string& path, TEX_FILTERING filter) : Texture3D() {
+	length = 16;
+
+	byte data[16 * 16 * 16 * 3] = {};
+	for (int a = 0; a < 16; a++) {
+		for (int b = 0; b < 16; b++) {
+			for (int c = 0; c < 16; c++) {
+				auto v = Vec3(a - 7.5f, b - 7.5f, c - 7.5f);
+				auto l = glm::length(v);
+				if (l < 7 || l > 8) {
+					auto pos = (a + b * 16 + c * 16 * 16) * 3;
+					data[pos] = (byte)(a * 16);
+					data[pos + 1] = (byte)(b * 16);
+					data[pos + 2] = (byte)(c * 16);
+				}
+			}
+		}
+	}
+
+	glGenTextures(1, &pointer);
+	glBindTexture(GL_TEXTURE_3D, pointer);
+	glTexImage3D(GL_TEXTURE_3D, 0, GL_RGB, length, length, length, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, (filter == TEX_FILTER_TRILINEAR)? GL_LINEAR : GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, (filter == TEX_FILTER_TRILINEAR) ? GL_LINEAR : GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glBindTexture(GL_TEXTURE_3D, 0);
+}
+
+#pragma endregion
+
+
 #pragma region VideoTexture
 #ifndef DISABLE_AV_CODECS
 
