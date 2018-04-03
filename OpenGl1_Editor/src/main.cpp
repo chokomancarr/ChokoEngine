@@ -27,10 +27,10 @@ void renderScene();
 
 Font *font;
 
-std::thread updateThread;
+//std::thread updateThread;
 uint fps;
-bool redrawn = false;
-bool die = false;
+//bool redrawn = false;
+//bool die = false;
 
 string path;
 Editor* editor;
@@ -146,7 +146,7 @@ int main(int argc, char **argv)
 
 	Time::startMillis = milliseconds();
 
-	updateThread = std::thread(UpdateLoop);
+	//updateThread = std::thread(UpdateLoop);
 	atexit(OnDie);
 	
 	PopupSelector::Init();
@@ -185,6 +185,7 @@ int main(int argc, char **argv)
 			glfwMakeContextCurrent(window);
 		}
 
+		UpdateLoop();
 		renderScene();
 
 		glfwSwapBuffers(window);
@@ -305,26 +306,27 @@ void DoUpdate() {
 	}
 }
 
+
 void UpdateLoop() {
-	while (!die) {
-		if (redrawn)
-		{
+	//while (!die) {
+	//	if (redrawn)
+	//	{
 			//lock_guard<mutex> lock(lockMutex);
-			redrawn = false;
+			//redrawn = false;
 			long long millis = milliseconds();
 			Time::delta = (millis - Time::millis)*0.001f;
-			Time::time = (millis - Time::startMillis)*0.001;
+			Time::time = (millis - Time::startMillis)*0.001f;
 			Time::millis = millis;
 			Input::UpdateMouseNKeyboard();
 			Editor::onFocus = GetForegroundWindow() == Editor::hwnd2;
 			DoUpdate();
-		}
-	}
+	//	}
+	//}
 }
 
 void OnDie() {
-	die = true;
-	updateThread.join();
+	//die = true;
+	//updateThread.join();
 	editor->playSyncer.Terminate();
 }
 
@@ -364,7 +366,7 @@ void DrawOverlay() {
 
 void renderScene()
 {
-	if (!redrawn || editor->editorLayer == 6) {
+	//if (!redrawn || editor->editorLayer == 6) {
 		fps++;
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glDisable(GL_DEPTH_TEST);
@@ -380,8 +382,8 @@ void renderScene()
 		//Engine::DrawQuad(10, 20, 500, 300, red());
 		//Engine::DrawLine(Vec2(300, 500), Vec2(700, 0), green(), 1);
 
-		redrawn = true;
-	}
+		//redrawn = true;
+	//}
 }
 
 void MouseGL(GLFWwindow* window, int button, int state, int mods) {

@@ -171,6 +171,7 @@ copy "C:\Users\Pua Kai\Documents\GitHub\ChokoEngine\Lait\OpenGL1_Editor.lib" "C:
       <AdditionalIncludeDirectories>./src;./glew;./glfw;./glm;./jpeg;./hdr;./png;./freetype;./ffmpeg</AdditionalIncludeDirectories>
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <PreprocessorDefinitions>_MBCS;TEST_LAIT;PLATFORM_WIN;CHOKO_LAIT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ShowIncludes>false</ShowIncludes>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>

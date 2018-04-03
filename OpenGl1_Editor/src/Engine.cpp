@@ -757,8 +757,8 @@ void UI::Texture(float x, float y, float w, float h, ::Texture* texture, Vec4 ti
 		}
 	}
 	else {
-		int ix = (int)floor(Repeat<float>(Time::time * texture->tileSpeed, 0, texture->tileSize.x));
-		int iy = (int)floor(Repeat<float>(Time::time * texture->tileSpeed / texture->tileSize.x, 0, texture->tileSize.y));
+		int ix = (int)floor(Repeat<float>(Time::time * texture->tileSpeed, 0.0f, texture->tileSize.x));
+		int iy = (int)floor(Repeat<float>(Time::time * texture->tileSpeed / texture->tileSize.x, 0.0f, texture->tileSize.y));
 		ix = min(ix, texture->tileSize.x - 1);
 		iy = min(iy, texture->tileSize.y - 1);
 		const float dx = 1.0f / texture->tileSize.x;
@@ -1841,7 +1841,7 @@ ulong Engine::GetNewId() {
 //-----------------debug class-----------------------
 void Debug::Message(string c, string s) {
 #ifndef IS_EDITOR
-	if (stream) *stream << "[i " + std::to_string(clock()) + "]" << c << ": " << s << std::endl;
+	if (stream) *stream << "[i]" << c << ": " << s << std::endl;
 #endif
 #ifdef PLATFORM_ADR
 	__android_log_print(ANDROID_LOG_INFO, "ChokoLait", &s[0]);
@@ -1870,6 +1870,7 @@ void Debug::Error(string c, string s) {
 	std::cout << "[e]" << c << ": " << s << std::endl;
 #ifdef PLATFORM_WIN
 	__debugbreak();
+	abort();
 #endif
 }
 
@@ -1897,6 +1898,7 @@ void Debug::ObjectTree(const std::vector<pSceneObject>& o) {
 	Message("ObjectTree", "End");
 }
 
+/*
 void** Debug::StackTrace(uint* count) {
 	void** frames = new void*[10];
 	uint c;
@@ -1955,6 +1957,7 @@ void Debug::DumpStackTrace() {
 		Message("Debug", "   " + r);
 	}
 }
+*/
 
 std::ofstream* Debug::stream = nullptr;
 #ifdef PLATFORM_WIN
@@ -2229,7 +2232,7 @@ HWND WinFunc::GetHwndFromProcessID(DWORD id) {
 
 long long Time::startMillis = 0;
 long long Time::millis = 0;
-double Time::time = 0;
+float Time::time = 0;
 float Time::delta = 0;
 
 #pragma region Font
@@ -2328,7 +2331,7 @@ Font::Font(const string& path, int size) : vecSize(0) {
 	Debug::Message("Font", "opening font at " + path);
 	auto err = FT_New_Face(_ftlib, path.c_str(), 0, &_face);
 	if (err != FT_Err_Ok) {
-		Debug::Error("Font", "Failed to load font! " + std::to_string(err));
+		Debug::Warning("Font", "Failed to load font! " + std::to_string(err));
 		return;
 	}
 	//FT_Set_Char_Size(_face, 0, (FT_F26Dot6)(size * 64.0f), Display::dpi, 0); // set pixel size based on dpi

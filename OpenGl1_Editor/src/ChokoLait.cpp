@@ -6,7 +6,8 @@ rCamera ChokoLait::mainCamera = rCamera();
 
 void _dieded(int i) {
 #ifdef PLATFORM_WIN
-	MessageBox(glfwGetWin32Window(Display::window), "Beep Boop, I Crashed.", "fuck", MB_OK);
+	MessageBox(glfwGetWin32Window(Display::window), "Beep Boop, I Crashed.\
+		See Log.txt for details.", "fuck", MB_OK);
 #endif
 }
 

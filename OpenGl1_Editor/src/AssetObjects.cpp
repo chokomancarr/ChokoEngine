@@ -316,14 +316,14 @@ void AudioClip::_Init_ffmpeg(const string& path) {
 					short* srr = (short*)frame->data[1];
 					for (uint a = 0; a < sc2 / 2; a++) {
 						uint i = (uint)floor(a / ds);
-						_data[dataSize++] = srl[i] * 2.0f / 65535;
-						_data[dataSize++] = srr[i] * 2.0f / 65535;
+						_data[dataSize++] = (ushort)(srl[i] * 2.0f / 65535);
+						_data[dataSize++] = (ushort)(srr[i] * 2.0f / 65535);
 					}
 				}
 				else {
 					for (uint a = 0; a < sc2; a++) {
 						uint i = (uint)floor(a / ds);
-						_data[dataSize++] = srl[i] * 2.0f / 65535;
+						_data[dataSize++] = (ushort)(srl[i] * 2.0f / 65535);
 					}
 				}
 			}
@@ -503,37 +503,35 @@ byte* Texture::LoadPixels(const string& path, byte& chn, uint& w, uint& h) {
 }
 
 Texture::Texture(const string& path, bool mipmap, TEX_FILTERING filter, byte aniso, TEX_WARPING warp) : AssetObject(ASSETTYPE_TEXTURE), _mipmap(mipmap), _filter(filter), _aniso(aniso) {
-	string sss = path.substr(path.find_last_of('.'), string::npos);
+	string sss = path.substr(path.find_last_of('.') + 1, string::npos);
 	byte *data;
 	std::vector<byte> dataV;
 	byte chn;
 	//std::cout << "opening image at " << path << std::endl;
 	GLenum rgb = GL_RGB, rgba = GL_RGBA;
-	if (sss == ".bmp") {
+	if (sss == "bmp") {
 		if (!LoadBMP(path, width, height, chn, &data)) {
-			std::cout << "load bmp failed! " << path << std::endl;
+			Debug::Warning("Texture", "load bmp failed! " + path);
 			return;
 		}
 		rgb = GL_BGR;
 		rgba = GL_BGRA;
 	}
-	else if (sss == ".jpg") {
+	else if (sss == "jpg") {
 		if (!LoadJPEG(path, width, height, chn, &data)) {
-			std::cout << "load jpg failed! " << path << std::endl;
+			Debug::Warning("Texture", "load jpg failed! " + path);
 			return;
 		}
 	}
-	//*
-	else if (sss == ".png") {
+	else if (sss == "png") {
 		if (!LoadPNG(path, width, height, chn, dataV)) {
-			std::cout << "load png failed! " << path << std::endl;
+			Debug::Warning("Texture", "load png failed! " + path);
 			return;
 		}
 		data = &dataV[0];
 	}
-	//*/
 	else {
-		std::cout << "Image extension invalid! " << path << std::endl;
+		Debug::Warning("Texture", "invalid extension! " + sss);
 		return;
 	}
 
@@ -644,7 +642,7 @@ Texture::Texture(std::istream& strm, uint offset) : AssetObject(ASSETTYPE_TEXTUR
 		byte* data;
 		TEX_TYPE t = _ReadStrm(this, strm, chn, rgb, rgba);
 		if (t == TEX_TYPE_UNDEF) {
-			Debug::Error("Texture", "Texture header wrong/missing!");
+			Debug::Warning("Texture", "Texture header wrong/missing!");
 			return;
 		}
 		if (t == TEX_TYPE_RENDERTEXTURE) {

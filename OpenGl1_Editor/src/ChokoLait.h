@@ -15,7 +15,9 @@ See https://chokomancarr.github.io/ChokoLait/ for documentation and examples.
 #endif
 
 #ifndef CHOKO_LAIT_BUILD
+#ifndef CHOKO_LAIT
 #define CHOKO_LAIT
+#endif
 #ifndef TEST_LAIT
 #if defined(PLATFORM_WIN)
 #pragma comment(lib, "chokolait_win.lib")
