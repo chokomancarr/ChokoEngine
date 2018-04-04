@@ -482,6 +482,65 @@ TextureRenderer::TextureRenderer(std::ifstream& stream, SceneObject* o, long pos
 
 #pragma endregion
 
+#pragma region VR
+
+const Vec3 VoxelRenderer::cubeVerts[] = { 
+	Vec3(-1, -1, -1), Vec3(1, -1, -1), Vec3(-1, 1, -1), Vec3(1, 1, -1),
+	Vec3(-1, -1, 1), Vec3(1, -1, 1), Vec3(-1, 1, 1), Vec3(1, 1, 1) };
+
+const uint VoxelRenderer::cubeIndices[] = {
+	0, 1, 2, 1, 3, 2,	4, 5, 6, 5, 7, 6,
+	0, 2, 4, 2, 6, 4,	1, 3, 5, 3, 7, 5,
+	0, 1, 4, 1, 5, 4,	2, 3, 6, 3, 7, 6 };
+
+Shader* VoxelRenderer::_shader = 0;
+int VoxelRenderer::_shaderLocs[] = {};
+
+void VoxelRenderer::Init() {
+	_shader = new Shader(DefaultResources::GetStr("voxelVert.txt"), DefaultResources::GetStr("voxelFrag.txt"));
+	_shaderLocs[0] = glGetUniformLocation(_shader->pointer, "tex");
+	_shaderLocs[1] = glGetUniformLocation(_shader->pointer, "size");
+	_shaderLocs[2] = glGetUniformLocation(_shader->pointer, "_MV");
+	_shaderLocs[3] = glGetUniformLocation(_shader->pointer, "_P");
+	_shaderLocs[4] = glGetUniformLocation(_shader->pointer, "_IP");
+}
+
+void VoxelRenderer::Draw() {
+	if (!texture || !texture->loaded) return;
+	UI::SetVao(8, (void*)cubeVerts);
+
+	GLfloat matrix[16], matrix2[16];
+	glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
+	glGetFloatv(GL_PROJECTION_MATRIX, matrix2);
+	Mat4x4 m1(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
+	Mat4x4 m2(matrix2[0], matrix2[1], matrix2[2], matrix2[3], matrix2[4], matrix2[5], matrix2[6], matrix2[7], matrix2[8], matrix2[9], matrix2[10], matrix2[11], matrix2[12], matrix2[13], matrix2[14], matrix2[15]);
+
+	glUseProgram(_shader->pointer);
+
+	glUniform1i(_shaderLocs[0], 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_3D, texture->pointer);
+	glUniform1f(_shaderLocs[1], size);
+	glUniformMatrix4fv(_shaderLocs[2], 1, GL_FALSE, glm::value_ptr(m1));
+	glUniformMatrix4fv(_shaderLocs[3], 1, GL_FALSE, glm::value_ptr(m2));
+	glUniformMatrix4fv(_shaderLocs[4], 1, GL_FALSE, glm::value_ptr(glm::inverse(m2)));
+
+	glBindVertexArray(UI::_vao);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, cubeIndices);
+	glBindVertexArray(0);
+	glUseProgram(0);
+}
+
+void VoxelRenderer::_UpdateTexture(void* i) {
+#ifdef IS_EDITOR
+	auto r = (VoxelRenderer*)i;
+	r->texture = _GetCache<Texture3D>(ASSETTYPE_TEXCUBE, r->_texture);
+#endif
+}
+
+#pragma endregion
+
 #pragma region SMR
 
 ComputeShader* SkinnedMeshRenderer::skinningProg = 0;
@@ -1481,6 +1540,7 @@ void MeshRenderer::Serialize(Editor* e, std::ofstream* stream) {
 		_StreamWriteAsset(e, stream, ASSETTYPE_MATERIAL, i);
 }
 
+
 void TextureRenderer::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
 	//MeshRenderer* mrd = (MeshRenderer*)c;
 	if (DrawComponentHeader(e, v, pos, this)) {
@@ -1493,6 +1553,22 @@ void TextureRenderer::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) 
 
 void TextureRenderer::Serialize(Editor* e, std::ofstream* stream) {
 	_StreamWriteAsset(e, stream, ASSETTYPE_TEXTURE, _texture);
+}
+
+
+void VoxelRenderer::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) {
+	if (DrawComponentHeader(e, v, pos, this)) {
+		auto vr = (VoxelRenderer*)c;
+
+		UI::Label(v.r + 2, v.g + pos + 20, 12, "3D Texture", e->font, white());
+		e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos + 17, v.b*0.7f, 16, grey1(), ASSETTYPE_TEXCUBE, 12, e->font, &_texture, &_UpdateTexture, this);
+		pos += 34;
+		UI::Label(v.r + 2, v.g + pos, 12, "size", e->font, white());
+		//size = std::stoi(UI::EditText(v.r + v.b * 0.3f, v.g + pos, v.b * 0.7f, 16, 12, grey2(), std::to_string(size), e->font, true, nullptr, white()));
+		size = Engine::DrawSliderFill(v.r + v.b * 0.3f, v.g + pos, v.b * 0.7f, 16, 1, 10, size, grey2(), white());
+		pos += 17;
+	}
+	else pos += 17;
 }
 
 

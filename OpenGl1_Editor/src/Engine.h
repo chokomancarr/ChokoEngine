@@ -623,7 +623,7 @@ enum COMPONENT_TYPE : byte {
 	COMP_MRD = 0x10, //mesh renderer
 	COMP_TRD = 0x11, //texture renderer
 	COMP_SRD = 0x12, //skinned mesh renderer
-	COMP_PST = 0x13, //particle system
+	COMP_VRD = 0x13, //voxel renderer
 	COMP_LHT = 0x20, //light
 	COMP_RFQ = 0x22, //reflective quad
 	COMP_RDP = 0x25, //render probe
@@ -632,6 +632,7 @@ enum COMPONENT_TYPE : byte {
 	COMP_INK = 0x35, //inverse kinematics
 	COMP_AUS = 0x40, //audio source
 	COMP_AUL = 0x41, //audio listener
+	COMP_PST = 0x50, //particle system
 	COMP_SCR = 0xff //script
 };
 

@@ -971,6 +971,16 @@ Texture3D::Texture3D(const string& path, TEX_FILTERING filter) : Texture3D() {
 	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glBindTexture(GL_TEXTURE_3D, 0);
+
+	loaded = true;
+}
+
+bool Texture3D::Parse(Editor* e, const string& path) {
+	return false;
+}
+
+bool Parse(Editor* e, const string& path) {
+	return false;
 }
 
 #pragma endregion

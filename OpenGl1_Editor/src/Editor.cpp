@@ -168,7 +168,7 @@ bool ShortcutTriggered(int i, bool c, bool a, bool s) {
 	}
 }
 
-ASSETTYPE GetFormatEnum(string ext) {
+ASSETTYPE GetFormatEnum(const string& ext) {
 	if (ext == ".mesh")
 		return ASSETTYPE_MESH;
 	else if (ext == ".blend")
@@ -189,6 +189,22 @@ ASSETTYPE GetFormatEnum(string ext) {
 		return ASSETTYPE_CAMEFFECT;
 
 	else return ASSETTYPE_UNDEF;
+}
+
+ASSETTYPE GetFormatEnumExtended(const string& nm, string& ext, ASSETTYPE type) {
+	auto n = nm.size();
+	auto n2 = ext.size() + 2;
+	
+	switch (type) {
+	case ASSETTYPE_TEXTURE:
+		if (n > n2 && nm.substr(n - n2) == (".3" + ext)) {
+			ext = ".3" + ext;
+			return ASSETTYPE_TEXCUBE;
+		}
+		else return type;
+	default:
+		return type;
+	}
 }
 
 void DrawHeaders(Editor* e, EditorBlock* b, Vec4* v, string title) {
@@ -899,6 +915,12 @@ void EB_Viewer::Draw() {
 	glLoadIdentity();
 
 	glViewport((int)v.r, (int)(Display::height - v.g - v.a), (int)v.b, (int)(v.a - EB_HEADER_SIZE - 2));
+
+	if (editor->playSyncer.status == Editor_PlaySyncer::EPS_Offline) {
+		if (editor->sceneLoaded()) {
+			Camera::DrawSceneObjectsOverlay(editor->activeScene->objects);
+		}
+	}
 
 	//DrawSceneObjectsOpaque(this, editor->activeScene->objects);
 	DrawSceneObjectsGizmos(this, editor->activeScene->objects);
@@ -2672,6 +2694,7 @@ void Editor::LoadDefaultAssets() {
 	assetIconsExt.push_back("animclip");
 	assetIconsExt.push_back("animator");
 	assetIconsExt.push_back("bmp jpg png");
+	assetIconsExt.push_back("3.bmp 3.jpg 3.png");
 	assetIconsExt.push_back("effect");
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_header.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_blend.bmp", false));
@@ -2683,6 +2706,7 @@ void Editor::LoadDefaultAssets() {
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_animclip.jpg", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_animator.jpg", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_tex.bmp", false));
+	assetIcons.push_back(new Texture(dataPath + "res\\asset_tex3d.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_effect.bmp", false));
 
 	matVarTexs.emplace(SHADER_INT, GetRes("mat_i"));
@@ -2739,6 +2763,9 @@ void Editor::LoadDefaultAssets() {
 	assetTypes.emplace("jpg", ASSETTYPE_TEXTURE);
 	assetTypes.emplace("rendtex", ASSETTYPE_TEXTURE);
 	assetTypes.emplace("hdr", ASSETTYPE_HDRI);
+	assetTypes.emplace("3.bmp", ASSETTYPE_TEXTURE);
+	assetTypes.emplace("3.png", ASSETTYPE_TEXTURE);
+	assetTypes.emplace("3.jpg", ASSETTYPE_TEXTURE);
 	assetTypes.emplace("animclip", ASSETTYPE_ANIMCLIP);
 	assetTypes.emplace("animator", ASSETTYPE_ANIMATION);
 
@@ -2749,6 +2776,7 @@ void Editor::LoadDefaultAssets() {
 	allAssets.emplace(ASSETTYPE_MATERIAL, std::vector<string>());
 	allAssets.emplace(ASSETTYPE_CAMEFFECT, std::vector<string>());
 	allAssets.emplace(ASSETTYPE_TEXTURE, std::vector<string>());
+	allAssets.emplace(ASSETTYPE_TEXCUBE, std::vector<string>());
 	allAssets.emplace(ASSETTYPE_HDRI, std::vector<string>());
 }
 
@@ -3467,6 +3495,9 @@ void DoScanAssetsGet(Editor* e, std::vector<string>& list, string p, bool rec) {
 		string ww = w.substr(w.find_last_of("."), string::npos);
 		ASSETTYPE type = GetFormatEnum(ww);
 		if (type != ASSETTYPE_UNDEF) {
+
+			type = GetFormatEnumExtended(w, ww, type);
+
 			//std::cout << "file " << w << std::endl;
 			string ss = w + ".meta";//ss.substr(0, ss.size() - 5);
 			ww = (w.substr(e->projectFolder.size() + 7, string::npos));
@@ -3591,6 +3622,7 @@ void Editor::DeselectFile() { //do not free pointer as cache is reused
 
 void Editor::ResetAssetMap() {
 	normalAssets[ASSETTYPE_TEXTURE] = std::vector<string>();
+	normalAssets[ASSETTYPE_TEXCUBE] = std::vector<string>();
 	normalAssets[ASSETTYPE_HDRI] = std::vector<string>();
 	normalAssets[ASSETTYPE_MATERIAL] = std::vector<string>();
 	normalAssets[ASSETTYPE_MESH] = std::vector<string>();
@@ -3602,6 +3634,7 @@ void Editor::ResetAssetMap() {
 	derivedAssets[ASSETTYPE_TEXTURE_REND] = std::pair<ASSETTYPE, std::vector<uint>>(ASSETTYPE_TEXTURE, std::vector<uint>());
 
 	normalAssetCaches[ASSETTYPE_TEXTURE] = std::vector<pAssetObject>(); //Texture*
+	normalAssetCaches[ASSETTYPE_TEXCUBE] = std::vector<pAssetObject>(); //Texture3D*
 	normalAssetCaches[ASSETTYPE_HDRI] = std::vector<pAssetObject>(); //Background*
 	normalAssetCaches[ASSETTYPE_MATERIAL] = std::vector<pAssetObject>(); //Material*
 	normalAssetCaches[ASSETTYPE_MESH] = std::vector<pAssetObject>(); //Mesh*
@@ -3610,6 +3643,7 @@ void Editor::ResetAssetMap() {
 	normalAssetCaches[ASSETTYPE_CAMEFFECT] = std::vector<pAssetObject>(); //CameraEffect*
 
 	normalAssetMakings[ASSETTYPE_TEXTURE] = std::vector<bool>();
+	normalAssetMakings[ASSETTYPE_TEXCUBE] = std::vector<bool>();
 	normalAssetMakings[ASSETTYPE_HDRI] = std::vector<bool>();
 	normalAssetMakings[ASSETTYPE_MATERIAL] = std::vector<bool>();
 	normalAssetMakings[ASSETTYPE_MESH] = std::vector<bool>();
@@ -3685,7 +3719,10 @@ bool Editor::ParseAsset(string path) {
 		ok = Mesh::ParseBlend(this, path);
 	}
 	else if (ext == "bmp" || ext == "jpg" || ext == "png") {
-		ok = Texture::Parse(this, path);
+		if (GetFormatEnumExtended(path, ext, ASSETTYPE_TEXTURE) == ASSETTYPE_TEXCUBE)
+			ok = Texture3D::Parse(this, path);
+		else
+			ok = Texture::Parse(this, path);
 	}
 	else if (ext == "rendtex") {
 		ok = RenderTexture::Parse(path);

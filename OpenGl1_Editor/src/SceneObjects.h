@@ -238,6 +238,7 @@ protected:
 	std::vector<ASSETID> _effects;
 
 	static void DrawSceneObjectsOpaque(std::vector<pSceneObject> oo, GLuint shader = 0);
+	static void DrawSceneObjectsOverlay(std::vector<pSceneObject> oo, GLuint shader = 0);
 	void RenderLights(GLuint targetFbo = 0);
 	void DumpBuffers();
 
@@ -363,7 +364,7 @@ protected:
 
 class TextureRenderer : public Component {
 public:
-	TextureRenderer(): _texture(-1), Component("Texture Renderer", COMP_TRD, DRAWORDER_OVERLAY) {}
+	TextureRenderer() : _texture(-1), Component("Texture Renderer", COMP_TRD, DRAWORDER_OVERLAY) {}
 	
 	Texture* texture;
 
@@ -379,6 +380,35 @@ public:
 protected:
 	TextureRenderer(std::ifstream& stream, SceneObject* o, long pos = -1);
 	int _texture;
+};
+
+class VoxelRenderer : public Component {
+public:
+	VoxelRenderer() : _texture(-1), size(1), Component("Voxel Renderer", COMP_VRD, DRAWORDER_OVERLAY) {}
+
+	Texture3D* texture;
+	float size;
+
+#ifdef IS_EDITOR
+	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
+	void Serialize(Editor* e, std::ofstream* stream) override {}
+#endif
+
+	void Draw();
+
+	friend class Engine;
+	friend class Editor;
+protected:
+	static void Init();
+
+	static Shader* _shader;
+	static int _shaderLocs[3];
+
+	static const Vec3 cubeVerts[8];
+	static const uint cubeIndices[36];
+
+	int _texture;
+	static void _UpdateTexture(void* i);
 };
 
 #define SKINNED_MAX_VERTICES 65535

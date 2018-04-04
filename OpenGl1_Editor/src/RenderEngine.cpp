@@ -23,15 +23,27 @@ void Camera::DrawSceneObjectsOpaque(std::vector<pSceneObject> oo, GLuint shader)
 		glMultMatrixf(glm::value_ptr(sc->transform.localMatrix()));
 		auto mrd = sc->GetComponent<MeshRenderer>();
 		if (mrd) {
-			//Debug::Message("Cam", "Drawing " + sc->name);
 			mrd->DrawDeferred(shader);
 		}
 		auto smd = sc->GetComponent<SkinnedMeshRenderer>();
 		if (smd) {
-			//Debug::Message("Cam", "Drawing " + sc->name);
 			smd->DrawDeferred(shader);
 		}
-		Camera::DrawSceneObjectsOpaque(sc->children, shader);
+		DrawSceneObjectsOpaque(sc->children, shader);
+		glPopMatrix();
+	}
+}
+
+void Camera::DrawSceneObjectsOverlay(std::vector<pSceneObject> oo, GLuint shader) {
+	for (auto& sc : oo)
+	{
+		glPushMatrix();
+		glMultMatrixf(glm::value_ptr(sc->transform.localMatrix()));
+		auto vrd = sc->GetComponent<VoxelRenderer>();
+		if (vrd) {
+			vrd->Draw();
+		}
+		DrawSceneObjectsOverlay(sc->children, shader);
 		glPopMatrix();
 	}
 }

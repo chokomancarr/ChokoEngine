@@ -521,6 +521,7 @@ void Engine::Init(string path) {
 	Camera::InitShaders();
 	Font::Init();
 	SkinnedMeshRenderer::InitSkinning();
+	VoxelRenderer::Init();
 	if (!AudioEngine::Init()) Debug::Warning("AudioEngine", "Failed to initialize audio output!");
 #ifdef IS_EDITOR
 	Editor::InitShaders();
@@ -1321,33 +1322,6 @@ void Engine::DrawQuad(float x, float y, float w, float h, GLuint texture, Vec2 u
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, quadIndexes);
 	glBindVertexArray(0);
 	glUseProgram(0);
-	/*
-	glEnableClientState(GL_VERTEX_ARRAY);
-	
-	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
-	glUseProgram(prog);
-
-	glUniform1i(single? drawQuadLocsA[0] : drawQuadLocs[0], 0);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texture);
-
-	glUniform4f(single ? drawQuadLocsA[1] : drawQuadLocs[1], Vec4.r, Vec4.g, Vec4.b, Vec4.a);
-	glUniform1f(single ? drawQuadLocsA[2] : drawQuadLocs[2], miplevel);
-
-	glEnableVertexAttribArray(0);
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &quadPoss[0]);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, &quadUv[0]);
-
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, &quadIndexes[0]);
-
-	glDisableVertexAttribArray(0);
-	glDisableVertexAttribArray(1);
-	glUseProgram(0);
-
-	glDisableClientState(GL_VERTEX_ARRAY);
-	*/
 }
 
 void Engine::DrawCube(Vec3 pos, float dx, float dy, float dz, Vec4 Vec4) {
@@ -1376,16 +1350,6 @@ void Engine::DrawCube(Vec3 pos, float dx, float dy, float dz, Vec4 Vec4) {
 	glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, &quadIndexes[0]);
 	glBindVertexArray(0);
 	glUseProgram(0);
-	/*
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
-	glColor4f(Vec4.r, Vec4.g, Vec4.b, Vec4.a);
-
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, &quadIndexes[0]);
-
-	glDisableClientState(GL_VERTEX_ARRAY);
-	*/
 }
 
 void Engine::DrawIndices(const Vec3* poss, const int* is, int length, float r, float g, float b) {
@@ -1415,31 +1379,13 @@ void Engine::DrawMeshInstanced(Mesh* mesh, uint matId, Material* mat, uint count
 	glGetFloatv(GL_PROJECTION_MATRIX, matrix2);
 	Mat4x4 m1(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
 	Mat4x4 m2(matrix2[0], matrix2[1], matrix2[2], matrix2[3], matrix2[4], matrix2[5], matrix2[6], matrix2[7], matrix2[8], matrix2[9], matrix2[10], matrix2[11], matrix2[12], matrix2[13], matrix2[14], matrix2[15]);
-	/*
-	glEnableVertexAttribArray(0);
-	glEnableVertexAttribArray(1);
-	glEnableVertexAttribArray(2);
-	glEnableVertexAttribArray(3);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &(mesh->vertices[0]));
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, &(mesh->uv0[0]));
-	glVertexAttribPointer(2, 3, GL_FLOAT, GL_TRUE, 0, &(mesh->normals[0]));
-	glVertexAttribPointer(3, 3, GL_FLOAT, GL_TRUE, 0, &(mesh->tangents[0]));
-	glVertexAttribDivisor(0, 0);
-	glVertexAttribDivisor(1, 0);
-	glVertexAttribDivisor(2, 0);
-	glVertexAttribDivisor(3, 0);
-	*/
+
 	glBindVertexArray(mesh->vao);
 	matId = min(mesh->materialCount-1, matId);
 	mat->ApplyGL(m1, m2);
 	
 	glDrawElementsInstanced(GL_TRIANGLES, mesh->_matTriangles[matId].size(), GL_UNSIGNED_INT, &(mesh->_matTriangles[matId][0]), count);
-	/*
-	glDisableVertexAttribArray(0);
-	glDisableVertexAttribArray(1);
-	glDisableVertexAttribArray(2);
-	glDisableVertexAttribArray(3);
-	*/
+
 	glUseProgram(0);
 	glBindVertexArray(0);
 	//glDisableClientState(GL_VERTEX_ARRAY);
