@@ -849,7 +849,7 @@ public:
 [av]*/
 class Font {
 public:
-	Font(const string& path, int size = 12);
+	Font(const string& path, ALIGNMENT align = ALIGN_TOPLEFT);
 	bool loaded = false;
 	//bool useSubpixel; //glyphs are rgba if true, else r (does it look good in games?)
 	GLuint glyph(uint size) { if (_glyphs.count(size) == 1) return _glyphs[size]; else return CreateGlyph(size); }

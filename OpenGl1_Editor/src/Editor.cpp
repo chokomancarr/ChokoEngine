@@ -2639,7 +2639,7 @@ void Editor::SavePrefs() {
 }
 
 void Editor::LoadDefaultAssets() {
-	font = new Font(dataPath + "res\\arial.ttf", 32);
+	font = new Font(dataPath + "res\\arial.ttf");
 
 	tex_buttonX = GetRes("xbutton");
 	tex_buttonExt = GetRes("extbutton");

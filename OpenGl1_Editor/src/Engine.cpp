@@ -2285,7 +2285,7 @@ void Font::InitVao(uint sz) {
 #endif
 }
 
-Font::Font(const string& path, int size) : vecSize(0) {
+Font::Font(const string& path, ALIGNMENT align) : vecSize(0), alignment(align) {
 	Debug::Message("Font", "opening font at " + path);
 	auto err = FT_New_Face(_ftlib, path.c_str(), 0, &_face);
 	if (err != FT_Err_Ok) {
@@ -2293,9 +2293,9 @@ Font::Font(const string& path, int size) : vecSize(0) {
 		return;
 	}
 	//FT_Set_Char_Size(_face, 0, (FT_F26Dot6)(size * 64.0f), Display::dpi, 0); // set pixel size based on dpi
-	FT_Set_Pixel_Sizes(_face, 0, size); // set pixel size directly
+	FT_Set_Pixel_Sizes(_face, 0, 12); // set pixel size directly
 	FT_Select_Charmap(_face, FT_ENCODING_UNICODE);
-	CreateGlyph(size, true);
+	CreateGlyph(12, true);
 	SizeVec(20);
 	loaded = true;
 }
