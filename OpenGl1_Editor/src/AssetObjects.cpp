@@ -944,19 +944,22 @@ bool Texture::DrawPreview(uint x, uint y, uint w, uint h) {
 #pragma region Texture3D
 
 Texture3D::Texture3D(const string& path, TEX_FILTERING filter) : Texture3D() {
-	length = 16;
+	length = 64;
 
-	byte data[16 * 16 * 16 * 3] = {};
-	for (int a = 0; a < 16; a++) {
-		for (int b = 0; b < 16; b++) {
-			for (int c = 0; c < 16; c++) {
-				auto v = Vec3(a - 7.5f, b - 7.5f, c - 7.5f);
-				auto l = glm::length(v);
-				if (l < 7 || l > 8) {
-					auto pos = (a + b * 16 + c * 16 * 16) * 3;
-					data[pos] = (byte)(a * 16);
-					data[pos + 1] = (byte)(b * 16);
-					data[pos + 2] = (byte)(c * 16);
+	byte* data = new byte[(uint)pow(length, 3) * 3]{};
+	for (int a = 0; a < length; a++) {
+		for (int b = 0; b < length; b++) {
+			for (int c = 0; c < length; c++) {
+				//auto v = Vec3(a, b, c) - Vec3(1,1,1) * (0.5f * (length - 1));
+				//auto l = glm::length(v);
+				auto f = sinf((a + 2*c) * 2 * PI / length);
+				auto l = abs(f - ((b / (float)length)*2-1));
+				if (l < -0.2 || l > 0.2) {
+				//if (l < length * 0.4f || l > length / 2) {
+					auto pos = (a + b * length + c * length * length) * 3;
+					data[pos] = (byte)(a * 256 / length);
+					data[pos + 1] = (byte)(b * 256 / length);
+					data[pos + 2] = (byte)(c * 256 / length);
 				}
 			}
 		}
@@ -973,6 +976,7 @@ Texture3D::Texture3D(const string& path, TEX_FILTERING filter) : Texture3D() {
 	glBindTexture(GL_TEXTURE_3D, 0);
 
 	loaded = true;
+	delete[](data);
 }
 
 bool Texture3D::Parse(Editor* e, const string& path) {

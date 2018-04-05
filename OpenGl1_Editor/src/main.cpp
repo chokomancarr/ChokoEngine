@@ -168,11 +168,6 @@ int main(int argc, char **argv)
 
 	glfwSetWindowFocusCallback(PopupSelector::window, FocusGL);
 
-
-	auto o = SceneObject::New("Voxel Object");
-	o->AddComponent<VoxelRenderer>()->texture = new Texture3D("");
-	Scene::active->AddObject(o);
-
 	auto mills = milliseconds();
 
 	while (!glfwWindowShouldClose(window)) {

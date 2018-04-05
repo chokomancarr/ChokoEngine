@@ -916,12 +916,6 @@ void EB_Viewer::Draw() {
 
 	glViewport((int)v.r, (int)(Display::height - v.g - v.a), (int)v.b, (int)(v.a - EB_HEADER_SIZE - 2));
 
-	if (editor->playSyncer.status == Editor_PlaySyncer::EPS_Offline) {
-		if (editor->sceneLoaded()) {
-			Camera::DrawSceneObjectsOverlay(editor->activeScene->objects);
-		}
-	}
-
 	//DrawSceneObjectsOpaque(this, editor->activeScene->objects);
 	DrawSceneObjectsGizmos(this, editor->activeScene->objects);
 	//glDepthMask(false);
@@ -942,6 +936,13 @@ void EB_Viewer::Draw() {
 		glDrawElements(GL_LINES, 2, GL_UNSIGNED_INT, &editor->gridId[66]);
 		glDisableClientState(GL_VERTEX_ARRAY);
 	}
+
+	if (editor->playSyncer.status == Editor_PlaySyncer::EPS_Offline) {
+		if (editor->sceneLoaded()) {
+			Camera::DrawSceneObjectsOverlay(editor->activeScene->objects);
+		}
+	}
+
 
 	//draw tooltip
 	auto sel = editor->selected();
