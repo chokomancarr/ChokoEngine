@@ -770,8 +770,8 @@ void UI::Texture(float x, float y, float w, float h, ::Texture* texture, Vec4 ti
 		}
 	}
 	else {
-		int ix = (int)floor(Repeat<float>(Time::time * texture->tileSpeed, 0.0f, texture->tileSize.x));
-		int iy = (int)floor(Repeat<float>(Time::time * texture->tileSpeed / texture->tileSize.x, 0.0f, texture->tileSize.y));
+		int ix = (int)floor(Repeat<float>(Time::time * texture->tileSpeed, 0.0f, (float)texture->tileSize.x));
+		int iy = (int)floor(Repeat<float>(Time::time * texture->tileSpeed / texture->tileSize.x, 0.0f, (float)texture->tileSize.y));
 		ix = min(ix, texture->tileSize.x - 1);
 		iy = min(iy, texture->tileSize.y - 1);
 		const float dx = 1.0f / texture->tileSize.x;
@@ -1200,7 +1200,7 @@ Vec2 Engine::DrawSliderFill2D(float x, float y, float w, float h, Vec2 min, Vec2
 	Vec2 v = val, vv = (val - min) / (max - min);
 	if (Rect(x, y, w, h).Inside(Input::mouseDownPos)) {
 		if (Input::mouse0) {
-			vv = clamp((Input::mousePos - Vec2(x + 1, y + 1)) / Vec2(w - 2, h - 2), Vec2(0, 0), Vec2(1, 1));
+			vv = Clamp<Vec2>((Input::mousePos - Vec2(x + 1, y + 1)) / Vec2(w - 2, h - 2), Vec2(0, 0), Vec2(1, 1));
 			vv.y = 1 - vv.y;
 			v = vv*(max - min) + min;
 			DrawQuad(x + 1, y + 1 + (h - 2)*(1 - vv.y), (w - 2)*vv.x, (h - 2)*vv.y, foreground*white(1, 0.4f));
@@ -2582,6 +2582,60 @@ void Deserialize(std::ifstream& stream, SceneObject* obj) {
 	Debug::Message("Object Deserializer", "-- End --");
 #endif
 }
+
+
+std::vector<std::complex<float>> FFT::Evaluate(const std::vector<float>& vals, FFT_WINDOW window) {
+	const auto& sz = vals.size();
+	assert(isGoodLength(sz));
+	std::vector<std::complex<float>> res(sz);
+	for (uint i = 0; i < sz; i++) {
+		res[i] = applyWindow(vals[i], i * 1.0f / (sz-1));
+	}
+	doFft(&res[0], sz);
+	return res;
+}
+
+bool FFT::isGoodLength(uint v) {
+	for (uint a = 1; a <= 31; a++) {
+		if (v == (1 << a)) return true;
+	}
+	return false;
+}
+
+float FFT::applyWindow(float val, float pos) {
+	return val;
+}
+
+void FFT::doFft(std::complex<float>* v, uint c) {
+	if (c >= 2) {
+		const uint hc = c / 2;
+		separate(v, hc);
+		doFft(v, hc);
+		doFft(v + hc, hc);
+		for (uint i = 0; i < hc; i++) {
+			auto e = v[i];
+			auto o = v[i + hc];
+			auto w = exp(std::complex<float>(0, -2.0f*PI * i / c));
+			v[i] = e + w * o;
+			v[i + hc] = e - w * o;
+		}
+	}
+}
+
+void FFT::separate(std::complex<float>* v, uint hc) {
+	auto t = new std::complex<float>[hc];
+	for (uint i = 0; i < hc; i++) {
+		t[i] = v[i*2 + 1];
+	}
+	for (uint i = 0; i < hc; i++) {
+		v[i] = v[i*2];
+	}
+	for (uint i = 0; i < hc; i++) {
+		v[i + hc] = t[i];
+	}
+	delete[](t);
+}
+
 
 Scene::_offset_map Scene::_offsets = {};
 

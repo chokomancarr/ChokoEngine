@@ -947,9 +947,9 @@ Texture3D::Texture3D(const string& path, TEX_FILTERING filter) : Texture3D() {
 	length = 64;
 
 	byte* data = new byte[(uint)pow(length, 3) * 3]{};
-	for (int a = 0; a < length; a++) {
-		for (int b = 0; b < length; b++) {
-			for (int c = 0; c < length; c++) {
+	for (uint a = 0; a < length; a++) {
+		for (uint b = 0; b < length; b++) {
+			for (uint c = 0; c < length; c++) {
 				//auto v = Vec3(a, b, c) - Vec3(1,1,1) * (0.5f * (length - 1));
 				//auto l = glm::length(v);
 				auto f = sinf((a + 2*c) * 2 * PI / length);

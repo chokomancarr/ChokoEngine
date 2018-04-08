@@ -1,6 +1,5 @@
 #ifdef IS_EDITOR
 
-#define _USE_MATH_DEFINES
 #define _ITERATOR_DEBUG_LEVEL 0
 
 #include "Engine.h"

@@ -7,7 +7,7 @@ std::ofstream* tempOut, *msdOut, *vcfOut;
 
 #define _rand (rand()%100 - 50)*0.02f
 
-Vec4* res, *vel0;
+Vec4* res, *vel0, *hvel0;
 
 struct iVec4 {
 	iVec4() : x(0), y(0), z(0), w(0) {}
@@ -98,6 +98,13 @@ Water::Water(string path, uint _c, float d, float t): particlecount((uint)pow(_c
 	vel0 = new Vec4[particlecount];
 	memcpy(vel0, vls, particlecount*sizeof(Vec4));
 	
+	hvel0 = new Vec4[particlecount];
+	for (uint a = 0; a < particlecount; a++) {
+		if ((a % 3) > 0) {
+			hvel0[a] = vel0[a] - vel0[a - (a % 3)];
+		}
+	}
+
 	float* prm = new float[4];
 	prm[0] = wall;
 	prm[1] = temp;
@@ -180,6 +187,35 @@ void Water::Update() {
 		res_vcf += m * glm::dot(res[a], vel0[a]);
 	}
 	res_vcf /= MASS_WATER * particlecount;
+
+
+	for (uint a = 0; a < particlecount; a++) {
+		if ((a % 3) > 0) {
+			res_hvcf[res_hvcf_counter] += glm::dot(res[a] - res[a - (a % 3)], hvel0[a]);
+		}
+	}
+	res_hvcf[res_hvcf_counter] /= 2 * particlecount / 3;
+	res_hvcf_counter++;
+	if (res_hvcf_counter == 1024) {
+		std::ofstream hvcfOut(IO::path + "/hvcf.txt", std::ios::out | std::ios::binary);
+		for (uint a = 0; a < 1024; a++) {
+			hvcfOut << a << " " << res_hvcf[a] << "\n";
+		}
+		hvcfOut.close();
+
+		std::cout << "hvcf" << std::endl;
+
+		auto fft = FFT::Evaluate(res_hvcf, FFT_WINDOW_RECTANGLE);
+
+		std::ofstream hvcfOut2(IO::path + "/hspectrum.txt", std::ios::out | std::ios::binary);
+		for (uint a = 0; a < 1024; a++) {
+			hvcfOut2 << a << " " << fft[a].real() << " " << fft[a].imag() << "\n";
+		}
+		hvcfOut2.close();
+
+		std::cout << "hvcf fft" << std::endl;
+		exit(0);
+	}
 
 	if (++rec_step >= 10) {
 		rec_time++;

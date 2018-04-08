@@ -139,6 +139,7 @@ extern void glPolygonMode(GLenum a, GLenum b);
 typedef GLFWwindow NativeWindow;
 #endif
 
+#include <complex>
 #include <string>
 #include <iostream>
 #include <fstream>
@@ -636,6 +637,13 @@ enum COMPONENT_TYPE : byte {
 	COMP_SCR = 0xff //script
 };
 
+
+enum FFT_WINDOW : byte {
+	FFT_WINDOW_RECTANGLE,
+	FFT_WINDOW_HAMMING,
+	FFT_WINDOW_BLACKMAN
+};
+
 #pragma endregion
 
 /*! Debugging functions. Output is saved in Log.txt beside the executable.
@@ -1039,7 +1047,19 @@ protected:
 };
 #endif
 
-//#define EditText(x,y,w,h,s,str,font) _EditText(__COUNTER__, x,y,w,h,s,str,font)
+
+/*! Cooley-Tukey FFT
+[av] */
+class FFT {
+public:
+	static std::vector<std::complex<float>> Evaluate(const std::vector<float>& values, FFT_WINDOW window);
+	
+private:
+	static bool isGoodLength(uint a);
+	static float applyWindow(float val, float pos);
+	static void doFft(std::complex<float>* v, uint c);
+	static void separate(std::complex<float>* v, uint c);
+};
 
 
 /*! 2D drawing to the screen.

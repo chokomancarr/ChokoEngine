@@ -534,7 +534,7 @@ void VoxelRenderer::Draw() {
 	glUniformMatrix4fv(_shaderLocs[2], 1, GL_FALSE, glm::value_ptr(m1));
 	glUniformMatrix4fv(_shaderLocs[3], 1, GL_FALSE, glm::value_ptr(m2));
 	glUniformMatrix4fv(_shaderLocs[4], 1, GL_FALSE, glm::value_ptr(im2));
-	glUniform2f(_shaderLocs[5], Display::width, Display::height);
+	glUniform2f(_shaderLocs[5], (float)Display::width, (float)Display::height);
 
 	glBindVertexArray(UI::_vao);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);

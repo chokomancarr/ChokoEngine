@@ -40,6 +40,9 @@ public:
 
 	float res_pot, res_tmp, res_prs, res_msd, res_vcf;
 
+	std::vector<float> res_hvcf = std::vector<float>(1024);
+	uint res_hvcf_counter = 0;
+
 	const uint particlecount, threads;
 	Vec4* colors;
 };

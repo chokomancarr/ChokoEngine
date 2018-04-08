@@ -58,7 +58,7 @@ bool Xml::Read(string& s, uint& pos, XmlNode* parent) {
 			n.value = s.substr(off2 + 1, ep - off2 - 1);
 		}
 		else {
-			while (pos < ep) {
+			while (pos < (uint)ep) {
 				std::cout << pos << " " << ep << std::endl;
 				Read(s, pos, &n);
 			}

@@ -2053,7 +2053,7 @@ bool PopupSelector::Do_Draw_Object(const std::vector<pSceneObject>& objs, uint& 
 }
 
 void PopupSelector::Draw_Asset() {
-	Engine::BeginStencil(0, 20, Display::width, Display::height);
+	Engine::BeginStencil(0.0f, 20.0f, (float)Display::width, (float)Display::height);
 	scrollPos = Clamp(scrollPos, 0, maxScroll + 1);
 	if (drawIcons) {
 		uint nx = (uint)ceil(width / minIconSize);
