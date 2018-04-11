@@ -31,7 +31,7 @@ public:
 	//std::vector<WaterParticle*> particles;
 
 	//static const WaterParticle* Get(uint i);
-	void Update(), Draw();
+	void Update();
 
 	IComputeBuffer* frb, *psb, *vlb, *iob, *prb, *oub;
 	ComputeShader* shader;
@@ -40,7 +40,7 @@ public:
 
 	float res_pot, res_tmp, res_prs, res_msd, res_vcf;
 
-	std::vector<float> res_hvcf = std::vector<float>(1024);
+	std::vector<float> res_hvcf;
 	uint res_hvcf_counter = 0;
 
 	const uint particlecount, threads;

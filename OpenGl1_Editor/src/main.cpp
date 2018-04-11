@@ -167,7 +167,9 @@ int main(int argc, char **argv)
 
 	glfwSetWindowFocusCallback(PopupSelector::window, FocusGL);
 
-	auto mills = milliseconds();
+	auto millis = Time::startMillis = milliseconds();
+
+	AudioEngine::Start(&Editor::AudioCallback);
 
 	while (!glfwWindowShouldClose(window)) {
 		if (PopupSelector::show) {
@@ -188,9 +190,8 @@ int main(int argc, char **argv)
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 
-		auto mills2 = milliseconds();
-		if (mills2 - mills > 1000) {
-			mills = mills2;
+		if (Time::millis - millis > 1000) {
+			millis = Time::millis;
 
 			PROCESS_MEMORY_COUNTERS pmc;
 			GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc));

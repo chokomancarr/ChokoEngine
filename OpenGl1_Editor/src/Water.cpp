@@ -28,7 +28,7 @@ float GetTemp(Vec4* vels) {
 	return t / (Water::me->particlecount * 3 * kB);
 }
 
-Water::Water(string path, uint _c, float d, float t): particlecount((uint)pow(_c, 3) * 4 * 3), threads((uint)ceilf(particlecount / 64.0f)), dens(d), temp(t) {
+Water::Water(string path, uint _c, float d, float t) : res_hvcf(4096), particlecount((uint)pow(_c, 3) * 4 * 3), threads((uint)ceilf(particlecount / 64.0f)), dens(d), temp(t) {
 	me = this;
 
 	frb = new ComputeBuffer<Vec4>(particlecount);
@@ -196,9 +196,9 @@ void Water::Update() {
 	}
 	res_hvcf[res_hvcf_counter] /= 2 * particlecount / 3;
 	res_hvcf_counter++;
-	if (res_hvcf_counter == 1024) {
+	if (res_hvcf_counter == 4096) {
 		std::ofstream hvcfOut(IO::path + "/hvcf.txt", std::ios::out | std::ios::binary);
-		for (uint a = 0; a < 1024; a++) {
+		for (uint a = 0; a < 4096; a++) {
 			hvcfOut << a << " " << res_hvcf[a] << "\n";
 		}
 		hvcfOut.close();
@@ -208,8 +208,8 @@ void Water::Update() {
 		auto fft = FFT::Evaluate(res_hvcf, FFT_WINDOW_RECTANGLE);
 
 		std::ofstream hvcfOut2(IO::path + "/hspectrum.txt", std::ios::out | std::ios::binary);
-		for (uint a = 0; a < 1024; a++) {
-			hvcfOut2 << a << " " << fft[a].real() << " " << fft[a].imag() << "\n";
+		for (uint a = 0; a < 4096; a++) {
+			hvcfOut2 << a << " " << fft[a].real() << "\n";
 		}
 		hvcfOut2.close();
 
@@ -258,22 +258,4 @@ void Water::Update() {
 
 
 	}
-}
-
-void Water::Draw() {
-	glBindBuffer(GL_ARRAY_BUFFER, psb->pointer);
-	glUseProgram(0);
-
-	glTranslatef(-wall / 2, -wall / 2, -wall / 2);
-
-	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-	glPointSize(6);
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glEnableClientState(GL_COLOR_ARRAY);
-	glVertexPointer(3, GL_FLOAT, 16, 0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glColorPointer(4, GL_FLOAT, 0, colors);
-	glDrawArrays(GL_POINTS, 0, particlecount);
-	glDisableClientState(GL_VERTEX_ARRAY);
-	glDisableClientState(GL_COLOR_ARRAY);
 }

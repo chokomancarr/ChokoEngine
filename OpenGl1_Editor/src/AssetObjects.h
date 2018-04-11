@@ -469,11 +469,28 @@ public:
 #endif
 	}
 
-//protected:
-	std::vector<ushort> _data;
-	uint dataSize, loadPtr;
+	bool loaded = false;
+
 	float length;
 	uint sampleRate, channels;
+#ifdef IS_EDITOR
+	std::array<float, 256> _eData;
+	std::array<Vec3, 256> _eDataV;
+#endif
+
+	friend class Audio;
+	friend class Editor;
+	_allowshared(AudioClip);
+protected:
+	std::vector<ushort> _data;
+	uint dataSize, loadPtr;
+
+#ifdef IS_EDITOR
+
+	AudioClip(uint i, Editor* e);
+
+	static bool Parse(string path);
+#endif
 
 #ifdef FEATURE_AV_CODECS
 	AVFormatContext* formatCtx = 0;

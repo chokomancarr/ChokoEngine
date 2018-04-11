@@ -187,6 +187,8 @@ ASSETTYPE GetFormatEnum(const string& ext) {
 		return ASSETTYPE_SHADER;
 	else if (ext == ".effect")
 		return ASSETTYPE_CAMEFFECT;
+	else if (ext == ".mp3" || ext == ".wav")
+		return ASSETTYPE_AUDIOCLIP;
 
 	else return ASSETTYPE_UNDEF;
 }
@@ -1426,6 +1428,40 @@ void EBI_DrawAss_Eff(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 	off += 34;
 }
 
+void EBI_DrawAss_Aud(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
+	Engine::DrawQuad(v.r + 9, off + 20, v.b - 18, 100, black(0.5f));
+	glViewport((int)v.r + 10, (int)(Display::height - off - 110), (int)v.b - 20, 80);
+	AudioClip* clip = (AudioClip*)editor->selectedFileCache;
+	UI::SetVao(clip->_eDataV.size(), &clip->_eDataV[0]);
+	glUseProgram(Engine::defProgram);
+	glUniform4f(Engine::defColLoc, 1.0f, 1.0f, 0.0f, 1.0f);
+	glBindVertexArray(UI::_vao);
+	glDrawArrays(GL_LINE_STRIP, 0, clip->_eDataV.size());
+	glBindVertexArray(0);
+	glUseProgram(0);
+	glViewport(0, 0, (int)Display::width, (int)Display::height);
+	float poss = editor->clipPreviewBuffer.second / clip->length / clip->sampleRate / clip->channels;
+	float pos = Engine::DrawSliderFill(v.r + 9, off + 20, v.b - 18, 100, 0, 1, poss, black(0.0f), black(0.0f));
+	if (abs(pos - poss) > 0.0001f) {
+		editor->clipPreviewBuffer.second = (uint)floor(pos * clip->length * clip->sampleRate * clip->channels);
+	}
+	Engine::DrawLine(Vec2(v.r + 10 + pos * (v.b - 20), off + 21), Vec2(v.r + 10 + pos * (v.b - 20), off + 118), white(), 1);
+	off += 121;
+
+	if (!editor->clipPreviewBuffer.first) {
+		if (Engine::Button(v.r + 9, off, 30, 30, grey1()) == MOUSE_RELEASE) {
+			editor->clipPreviewBuffer.first = clip;
+			editor->clipPreviewBuffer.second = 0;
+		}
+	}
+	else {
+		if (Engine::Button(v.r + 9, off, 30, 30, grey1()) == MOUSE_RELEASE) {
+			editor->clipPreviewBuffer.first = nullptr;
+			editor->clipPreviewBuffer.second = 0;
+		}
+	}
+}
+
 void EBI_DrawAss_Txt(Vec4 v, Editor* editor, EB_Inspector* b, float off) {
 	uint sz = editor->selectedFileTexts.size();
 	Engine::DrawQuad(v.r + 2.0f, off, v.b - 4.0f, 14.0f*sz + 4.0f, black(0.8f));
@@ -1486,6 +1522,10 @@ void EB_Inspector::Draw() {
 			break;
 		case ASSETTYPE_CAMEFFECT:
 			EBI_DrawAss_Eff(v, editor, this, off);
+			canApply = true;
+			break;
+		case ASSETTYPE_AUDIOCLIP:
+			EBI_DrawAss_Aud(v, editor, this, off);
 			canApply = true;
 			break;
 		}
@@ -2697,6 +2737,7 @@ void Editor::LoadDefaultAssets() {
 	assetIconsExt.push_back("bmp jpg png");
 	assetIconsExt.push_back("3.bmp 3.jpg 3.png");
 	assetIconsExt.push_back("effect");
+	assetIconsExt.push_back("mp3 wav");
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_header.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_blend.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_cpp.bmp", false));
@@ -2709,6 +2750,7 @@ void Editor::LoadDefaultAssets() {
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_tex.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_tex3d.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_effect.bmp", false));
+	assetIcons.push_back(new Texture(dataPath + "res\\asset_audioclip.bmp", false));
 
 	matVarTexs.emplace(SHADER_INT, GetRes("mat_i"));
 	matVarTexs.emplace(SHADER_FLOAT, GetRes("mat_f"));
@@ -2769,6 +2811,8 @@ void Editor::LoadDefaultAssets() {
 	assetTypes.emplace("3.jpg", ASSETTYPE_TEXTURE);
 	assetTypes.emplace("animclip", ASSETTYPE_ANIMCLIP);
 	assetTypes.emplace("animator", ASSETTYPE_ANIMATION);
+	assetTypes.emplace("mp3", ASSETTYPE_AUDIOCLIP);
+	assetTypes.emplace("wav", ASSETTYPE_AUDIOCLIP);
 
 	allAssets.emplace(ASSETTYPE_SCENE, std::vector<string>());
 	allAssets.emplace(ASSETTYPE_MESH, std::vector<string>());
@@ -2779,6 +2823,7 @@ void Editor::LoadDefaultAssets() {
 	allAssets.emplace(ASSETTYPE_TEXTURE, std::vector<string>());
 	allAssets.emplace(ASSETTYPE_TEXCUBE, std::vector<string>());
 	allAssets.emplace(ASSETTYPE_HDRI, std::vector<string>());
+	allAssets.emplace(ASSETTYPE_AUDIOCLIP, std::vector<string>());
 }
 
 void AddH(Editor* e, string dir, std::vector<string>* h, std::vector<string>* cpp) {
@@ -3631,6 +3676,7 @@ void Editor::ResetAssetMap() {
 	normalAssets[ASSETTYPE_ANIMCLIP] = std::vector<string>();
 	normalAssets[ASSETTYPE_ANIMATION] = std::vector<string>();
 	normalAssets[ASSETTYPE_CAMEFFECT] = std::vector<string>();
+	normalAssets[ASSETTYPE_AUDIOCLIP] = std::vector<string>();
 
 	derivedAssets[ASSETTYPE_TEXTURE_REND] = std::pair<ASSETTYPE, std::vector<uint>>(ASSETTYPE_TEXTURE, std::vector<uint>());
 
@@ -3642,7 +3688,8 @@ void Editor::ResetAssetMap() {
 	normalAssetCaches[ASSETTYPE_ANIMCLIP] = std::vector<pAssetObject>(); //AnimClip*
 	normalAssetCaches[ASSETTYPE_ANIMATION] = std::vector<pAssetObject>(); //Animator*
 	normalAssetCaches[ASSETTYPE_CAMEFFECT] = std::vector<pAssetObject>(); //CameraEffect*
-
+	normalAssetCaches[ASSETTYPE_AUDIOCLIP] = std::vector<pAssetObject>(); //AudioClip*
+	
 	normalAssetMakings[ASSETTYPE_TEXTURE] = std::vector<bool>();
 	normalAssetMakings[ASSETTYPE_TEXCUBE] = std::vector<bool>();
 	normalAssetMakings[ASSETTYPE_HDRI] = std::vector<bool>();
@@ -3652,6 +3699,7 @@ void Editor::ResetAssetMap() {
 	normalAssetMakings[ASSETTYPE_ANIMCLIP] = std::vector<bool>();
 	normalAssetMakings[ASSETTYPE_ANIMATION] = std::vector<bool>();
 	normalAssetMakings[ASSETTYPE_CAMEFFECT] = std::vector<bool>();
+	normalAssetMakings[ASSETTYPE_AUDIOCLIP] = std::vector<bool>();
 
 	if (!internalAssetsLoaded) {
 		internalAssets = std::unordered_map<ASSETTYPE, std::vector<string>>(normalAssets);
@@ -3730,6 +3778,9 @@ bool Editor::ParseAsset(string path) {
 	}
 	else if (ext == "hdr") {
 		ok = Background::Parse(path);
+	}
+	else if (ext == "mp3" || ext == "wav") {
+		ok = AudioClip::Parse(path);
 	}
 	else {
 		_Message("Asset Parser", "format not supported! (" + ext + ")");
@@ -3861,6 +3912,9 @@ AssetObject* Editor::GenCache(ASSETTYPE type, int i, bool async) {
 	case ASSETTYPE_CAMEFFECT:
 		normalAssetCaches[type][i] = std::make_shared<CameraEffect>(pth);
 		break;
+	case ASSETTYPE_AUDIOCLIP:
+		normalAssetCaches[type][i] = std::make_shared<AudioClip>(i, this);
+		break;
 	default:
 		return nullptr;
 	}
@@ -3910,6 +3964,7 @@ bool Editor::MergeAssets_(Editor* e) {
 			case ASSETTYPE_SHADER:
 			case ASSETTYPE_TEXTURE:
 			case ASSETTYPE_HDRI:
+			case ASSETTYPE_AUDIOCLIP:
 				file << as2 + ".meta" << char0;
 				break;
 			default:
@@ -4313,6 +4368,26 @@ void BlockCombo::Draw() {
 	if (Engine::EButton(editor->editorLayer == 0, v.r + v.b - EB_HEADER_PADDING - 2 - EB_HEADER_SIZE*(blocks.size() + 1)*1.2f, v.g + 1, EB_HEADER_SIZE - 2, EB_HEADER_SIZE - 2, editor->tex_buttonPlus, white(a)) == MOUSE_RELEASE) {
 
 	}
+}
+
+bool Editor::AudioCallback(byte* data, uint count) {
+	if (instance->clipPreviewBuffer.first) {
+		auto clip = instance->clipPreviewBuffer.first;
+		auto& pos = instance->clipPreviewBuffer.second;
+		for (uint a = 0; a < count; a++) {
+			*(float*)data = (clip->_data[pos++] / 65535.0f) * 2.0f - 1.0f;
+			data += 4;
+			*(float*)data = (clip->_data[pos++] / 65535.0f) * 2.0f - 1.0f;
+			data += 4;
+			if (pos >= clip->dataSize) {
+				instance->clipPreviewBuffer.first = nullptr;
+				pos = 0;
+				break;
+			}
+		}
+		return true;
+	}
+	else return false;
 }
 
 #else

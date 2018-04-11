@@ -29,6 +29,12 @@ bool ShortcutTriggered(int i, bool c, bool a, bool s);
 
 Vec4 grey1(), grey2(), headerCol(), hlCol();
 
+enum SOUND_MSG : byte {
+	SOUND_ERROR,
+	SOUND_WARNING,
+	SOUND_PING
+};
+
 class EditorBlock {
 public:
 
@@ -737,6 +743,12 @@ public:
 	static void Undo(Editor* e), Redo(Editor* e);
 
 	void DoCompile();
+
+	static bool AudioCallback(byte* data, uint count);
+	void PlaySound(AudioClip* clip);
+	void PlaySound(SOUND_MSG type);
+	std::vector<std::pair<AudioClip*, uint>> soundBuffer;
+	std::pair<AudioClip*, uint> clipPreviewBuffer;
 
 private:
 	Editor(Editor const &);

@@ -316,14 +316,14 @@ void AudioClip::_Init_ffmpeg(const string& path) {
 					short* srr = (short*)frame->data[1];
 					for (uint a = 0; a < sc2 / 2; a++) {
 						uint i = (uint)floor(a / ds);
-						_data[dataSize++] = (ushort)(srl[i] * 2.0f / 65535);
-						_data[dataSize++] = (ushort)(srr[i] * 2.0f / 65535);
+						_data[dataSize++] = (ushort)(srl[i] + (65535 / 2));//(ushort)(srl[i] * 2.0f / 65535);
+						_data[dataSize++] = (ushort)(srr[i] + (65535 / 2));//(ushort)(srr[i] * 2.0f / 65535);
 					}
 				}
 				else {
 					for (uint a = 0; a < sc2; a++) {
 						uint i = (uint)floor(a / ds);
-						_data[dataSize++] = (ushort)(srl[i] * 2.0f / 65535);
+						_data[dataSize++] = (ushort)(srl[i] + (65535 / 2));//(ushort)(srl[i] * 2.0f / 65535);
 					}
 				}
 			}
@@ -331,7 +331,9 @@ void AudioClip::_Init_ffmpeg(const string& path) {
 	}
 	av_frame_free(&frame);
 	Debug::Message("AudioClip", "loaded " + path);
+	
 #undef fail
+	loaded = true;
 }
 #endif
 
@@ -345,6 +347,36 @@ void AudioClip::_Init_adr(const string& path) {
 
 }
 #endif
+
+#ifdef IS_EDITOR
+AudioClip::AudioClip(uint i, Editor* e) : AssetObject(ASSETTYPE_AUDIOCLIP), channels(0) {
+	auto s = e->projectFolder + "Assets\\" + e->normalAssets[ASSETTYPE_AUDIOCLIP][i] + ".meta";
+	std::ifstream strm(s, std::ios::in | std::ios::binary);
+
+	_Strm2Val(strm, sampleRate);
+	_Strm2Val(strm, (byte&)channels);
+	_Strm2Val(strm, dataSize);
+	_data.resize(dataSize);
+	strm.read((char*)&_data[0], dataSize * sizeof(ushort));
+	length = (float)dataSize / channels / sampleRate;
+
+	for (uint a = 0; a < 256; a++) {
+		_eData[a] = (_data[(uint)floor(a * dataSize / 256.0f)] / 65535.0f) * 2.0f - 1.0f;
+		_eDataV[a] = Vec3((a / 256.0f) * 2.0f - 1.0f, _eData[a], 0);
+	}
+}
+
+bool AudioClip::Parse(string path) {
+	auto clip = AudioClip(path);
+	std::ofstream strm(path + ".meta", std::ios::out | std::ios::binary);
+	_StreamWrite(&clip.sampleRate, &strm, 4);
+	_StreamWrite(&clip.channels, &strm, 1);
+	_StreamWrite(&clip.dataSize, &strm, 4);
+	_StreamWrite(&clip._data[0], &strm, clip.dataSize * sizeof(ushort));
+	return true;
+}
+#endif
+
 #pragma endregion
 
 

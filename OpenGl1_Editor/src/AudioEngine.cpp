@@ -53,6 +53,7 @@ bool AudioEngine::Init_win() {
 	EXIT_ON_ERROR(hr);
 
 	sampleSize = pwfx->wBitsPerSample;
+	samplesPerSec = pwfx->nSamplesPerSec;
 
 	// Tell the audio source which format to use.
 	//hr = pMySource->SetFormat(pwfx);
@@ -65,8 +66,6 @@ bool AudioEngine::Init_win() {
 		IID_IAudioRenderClient,
 		(void**)&pRenderClient);
 	EXIT_ON_ERROR(hr);
-
-	samplesPerSec = pwfx->nSamplesPerSec;
 
 	Debug::Message("AudioEngine", "WASAPI Initialized.");
 	return true;
@@ -103,7 +102,7 @@ void AudioEngine::Stop() {
 void AudioEngine::_DoPlayStream()
 {
 #ifdef PLATFORM_WIN
-	bufferFrameCount = 1000;
+	bufferFrameCount = 5000;
 
 	// Grab the entire buffer for the initial fill operation.
 	pRenderClient->GetBuffer(bufferFrameCount, &pData);
@@ -126,10 +125,8 @@ void AudioEngine::_DoPlayStream()
 
 		numFramesAvailable = bufferFrameCount - numFramesPadding;
 
-		// Grab all the available space in the shared buffer.
 		pRenderClient->GetBuffer(numFramesAvailable, &pData);
 
-		// Get next 1/2-second of data from the audio source.
 		flags = callback(pData, numFramesAvailable)? 0 : AUDCLNT_BUFFERFLAGS_SILENT;
 
 		pRenderClient->ReleaseBuffer(numFramesAvailable, flags);
