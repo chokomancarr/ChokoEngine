@@ -41,25 +41,27 @@ bool Xml::Read(string& s, uint& pos, XmlNode* parent) {
 	auto ss = string_split(s.substr(off + 1, off2 - off - 1), ' ');
 	if (!ss.size()) return false;
 	n.name = ss[0];
+	
+	string ps = "";
 	for (uint a = 1; a < ss.size(); a++) {
 		if (ss[a] == "") continue;
 		auto ss2 = string_split(ss[a], '=');
-		n.params.push_back(std::pair<string, string>(ss2[0], ss2[1].substr(1, ss2[1].size() - 2)));
+		ps = ss2[0];
+		n.params.emplace(ss2[0], ss2[1].substr(1, ss2[1].size() - 2));
 	}
 
 	if (s[off2-1] == '/') {
-		auto& lp = n.params.back().second;
+		auto& lp = n.params[ps];
 		lp = lp.substr(0, lp.size()-1);
 	}
 	else {
-		auto ep = string_find(s, "</" + n.name + ">", off2 + 1);
+		auto ep = string_find(s, "</" + n.name + ">", off2);
 		if (ep == -1) return false;
 		if (s[off2 + 1] != ' ') {
 			n.value = s.substr(off2 + 1, ep - off2 - 1);
 		}
 		else {
 			while (pos < (uint)ep) {
-				std::cout << pos << " " << ep << std::endl;
 				Read(s, pos, &n);
 			}
 		}

@@ -107,7 +107,8 @@ int TryParse(string str, int defVal) {
 }
 uint TryParse(string str, uint defVal) {
 	try {
-		return std::stoul(str);
+		if (str[0] == '-') return 0;
+		else return std::stoul(str);
 	}
 	catch (...) {
 		return defVal;

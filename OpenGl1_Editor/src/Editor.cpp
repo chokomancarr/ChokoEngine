@@ -1320,9 +1320,9 @@ void EB_Inspector::DrawObj(Vec4 v, Editor* editor, EB_Inspector* b, SceneObject*
 	o->name = UI::EditText(v.r + 20, v.g + 2 + EB_HEADER_SIZE, v.b - 21, 18, 12, grey2(), o->name, editor->font, true, nullptr, white());
 
 	//TRS (don't chain them together or the latter may be skipped)
-	bool chg = b->DrawVector3(editor, v, 21, "Position", o->transform._localPosition, &o->transform.dirty);
-	chg |= b->DrawVector3(editor, v, 38, "Rotation", o->transform._localEulerRotation, &o->transform.dirty);
-	chg |= b->DrawVector3(editor, v, 55, "Scale", o->transform._localScale, &o->transform.dirty);
+	bool chg = DrawVector3(editor, v, 21, "Position", o->transform._localPosition, &o->transform.dirty);
+	chg |= DrawVector3(editor, v, 38, "Rotation", o->transform._localEulerRotation, &o->transform.dirty);
+	chg |= DrawVector3(editor, v, 55, "Scale", o->transform._localScale, &o->transform.dirty);
 	if (chg || o->transform.dirty) {
 		o->transform._L2WPos();
 		o->transform._UpdateLQuat();
@@ -1866,6 +1866,11 @@ void PB_ColorPicker::Draw() {
 
 void PB_ProceduralGenerator::Draw() {
 	Engine::DrawQuad(x(), y(), (float)w, (float)h, white(0.8f, 0.1f));
+}
+
+void AssRef::SetObj(void* v) {
+	auto a = (AssRef*)v;
+	a->asset = _GetCache<AssetObject>(a->type, a->_asset);
 }
 
 
@@ -2519,6 +2524,7 @@ void Editor::InitShaders() {
 	Camera::GenShaderFromPath("lightPassVert.txt", "e_popupShadowFrag.txt", &instance->popupShadeProgram);
 }
 
+/*
 ASSETID Editor::GetAssetInfoH(string p) {
 	ushort i = 0;
 	for (string s : headerAssets) {
@@ -2528,6 +2534,7 @@ ASSETID Editor::GetAssetInfoH(string p) {
 	}
 	return -1;
 }
+*/
 
 ASSETID Editor::GetAssetInfo(string p, ASSETTYPE &type, ASSETID& i) {
 	for (auto& t : normalAssets) {
@@ -2946,7 +2953,7 @@ void Editor::GenerateScriptXml() {
 	}
 	else {
 		DWORD err = GetLastError();
-		std::cout << "Cannot start Blender! (Error code " << std::to_string(err) << ")" << std::endl;
+		std::cout << "Cannot start Doxygen! (Error code " << std::to_string(err) << ")" << std::endl;
 		CloseHandle(stdOutR);
 		CloseHandle(stdOutW);
 		CloseHandle(stdInR);
@@ -2994,7 +3001,14 @@ void Editor::GenerateScriptResolver() {
 	vcxOut.close();
 
 	//SceneScriptResolver.h
-	string h = "#include <vector>\n#include <fstream>\n#include \"Engine.h\"\ntypedef SceneScript*(*sceneScriptInstantiator)();\ntypedef void (*sceneScriptAssigner)(SceneScript*, std::ifstream&);\nclass SceneScriptResolver {\npublic:\n\tSceneScriptResolver();\n\tstatic SceneScriptResolver* instance;\n\tstd::vector<string> names;\n\tstd::vector<sceneScriptInstantiator> map;\n\tstd::vector<sceneScriptAssigner> ass;\n\t\tSceneScript* Resolve(std::ifstream& strm);\n";
+	string h = "\// Auto-generated script. Do not modify. \n\n\
+#pragma once\n#include \"Engine.h\"\n\ntypedef SceneScript*(*sceneScriptInstantiator)();\ntypedef void (*sceneScriptAssigner)(SceneScript*, std::ifstream&);\n\n";
+	for (auto& s : headerAssets) {
+		h += "_canref(" + s.substr(0, s.size() - 2) + ");\n";
+	}
+	h += "\nclass SceneScriptResolver {\
+\npublic:\n\tSceneScriptResolver(); \n\tstatic SceneScriptResolver* instance; \n\tstd::vector<string> names; \n\
+\tstd::vector<sceneScriptInstantiator> map;\n\tstd::vector<sceneScriptAssigner> ass;\n\tSceneScript* Resolve(std::ifstream& strm);\n";
 	//*
 	h += "\n\tstatic SceneScript ";
 	for (int a = 0, b = headerAssets.size(); a < b; a++) {
@@ -3057,6 +3071,8 @@ void Editor::GenerateScriptResolver() {
 }
 
 void Editor::GenerateScriptValuesReader(string& s) {
+	return;
+
 	string tmpl = "\tushort sz = 0;\n\t_Strm2Val<ushort>(strm, sz);\n\tSCR_VARTYPE t;\n";
 	tmpl += "\tfor (ushort x = 0; x < sz; x++) {\n\t\t_Strm2Val<SCR_VARTYPE>(strm, t);\n";
 	tmpl += "\t\tchar c[100];\n\t\tstrm.getline(&c[0], 100, 0);\n\t\tstring s(c);\n\n";
@@ -3093,10 +3109,6 @@ void Editor::GenerateScriptValuesReader(string& s) {
 			case SCR_VAR_FLOAT:
 				s += "\t\t\tfloat ff;\n\t\t\t_Strm2Val<float>(strm, ff);\n";
 				s += "\t\t\tscr->" + vn + "+=ff;";
-				break;
-			case SCR_VAR_TEXTURE:
-				s += "\t\t\tASSETTYPE tdd;\n\t\t\tASSETID idd;\n\t\t\t_Strm2Asset(strm, nullptr, tdd, idd);\n";
-				s += "\t\t\tif (idd > -1) {\n\t\t\t\tscr->" + vn + "=_GetCache<Texture>(tdd, idd);\n\t\t\t}\n";
 				break;
 			}
 			s += "\n\t\t}\n";
@@ -3536,6 +3548,7 @@ void Editor::_Error(string a, string b) {
 }
 
 void DoScanAssetsGet(Editor* e, std::vector<string>& list, string p, bool rec) {
+	e->progressDesc = "scanning " + p;
 	std::vector<string> files = IO::GetFiles(p);
 	for (string w : files) {
 		string ww = w.substr(w.find_last_of("."), string::npos);
@@ -3610,14 +3623,15 @@ void DoScanMeshesGet(Editor* e, std::vector<string>& list, string p, bool rec) {
 }
 
 void DoReloadAssets(Editor* e, string path, bool recursive, std::mutex* l) {
+	e->progressName = "Loading assets...";
 	std::vector<string> files;
 	DoScanAssetsGet(e, files, path, recursive);
 	int r = files.size(), i = 0;
 	for (string f : files) {
-		{
-			std::lock_guard<std::mutex> lock(*l);
+		//{
+		//	std::lock_guard<std::mutex> lock(*l);
 			e->progressDesc = f;
-		}
+		//}
 		e->ParseAsset(f);
 		i++;
 		e->progressValue = i*100.0f / r;
@@ -3628,16 +3642,18 @@ void DoReloadAssets(Editor* e, string path, bool recursive, std::mutex* l) {
 		e->headerAssets.clear();
 		AddH(e, e->projectFolder + "Assets", &e->headerAssets, &e->cppAssets);
 	}
-	for (string s : e->headerAssets) {
+	e->progressName = "Parsing scripts...";
+	e->progressDesc = "";
+	e->progressValue = 0;
+	e->GenerateScriptXml();
+	for (r = e->headerAssets.size(), i = r-1; i >= 0; i--) {
 		std::lock_guard<std::mutex> lock(*l);
-		SceneScript::Parse(s, e);
+		if (!SceneScript::Check(e->headerAssets[i], e)) e->headerAssets.erase(e->headerAssets.begin() + i);
+		else SceneScript::userClasses.push_back(e->headerAssets[i].substr(0, e->headerAssets[i].size()-2));
 	}
-	{
-		//e->GenerateScriptResolver();
-		for (EditorBlock* eb : e->blocks) {
-			if (eb->editorType == 1)
-				eb->Refresh();
-		}
+	e->GenerateScriptResolver();
+	for (auto& h : e->headerAssets) {
+		SceneScript::Parse(h, e);
 	}
 	e->editorLayer = 0;
 	std::lock_guard<std::mutex> lock(*l);
@@ -3744,7 +3760,6 @@ void Editor::ReloadAssets(string path, bool recursive) {
 
 	blendAssets.clear();
 	editorLayer = 4;
-	progressName = "Loading assets...";
 	progressValue = 0;
 	std::thread t(DoReloadAssets, this, path, recursive, lockMutex);
 	t.detach();

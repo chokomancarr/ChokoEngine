@@ -481,6 +481,8 @@ _canref(ReflectiveQuad);
 _canref(SceneScript);
 _canref(SkinnedMeshRenderer);
 _canref(TextureRenderer);
+_canref(VoxelRenderer);
+_canref(InverseKinematics);
 _canref(AudioSource);
 _canref(AudioListener);
 
@@ -818,7 +820,7 @@ void _StreamWriteAsset(Editor* e, std::ofstream* stream, ASSETTYPE t, ASSETID i)
 
 template<typename T> void _Strm2Val(std::istream& strm, T &val) {
 	long long pos = strm.tellg();
-	strm.read((char*)&val, (byte)sizeof(T));
+	strm.read((char*)&val, (std::streamsize)sizeof(T));
 	if (strm.fail()) {
 		Debug::Error("Strm2Val", "Fail bit raised! (probably eof reached) " + std::to_string(pos));
 	}
@@ -1225,3 +1227,4 @@ protected:
 #include "AudioEngine.h"
 #include "AssetObjects.h"
 #include "SceneObjects.h"
+#include "SceneScriptResolver.h"
