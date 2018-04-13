@@ -379,10 +379,7 @@ void renderScene()
 		glDepthFunc(GL_ALWAYS);
 		glEnable(GL_BLEND);
 
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
+		MVP::Reset();
 
 		DrawOverlay();
 		//Engine::DrawQuad(10, 20, 500, 300, red());
@@ -553,7 +550,7 @@ void updateFunc() {
 }
 
 void rendFunc() {
-	glTranslatef(-Water::me->wall / 2, -Water::me->wall / 2, -Water::me->wall / 2);
+	MVP::Translate(-Water::me->wall / 2, -Water::me->wall / 2, -Water::me->wall / 2);
 	Engine::DrawMeshInstanced(mesh, 0, mat, 256 * 3);
 }
 

@@ -10,17 +10,11 @@ void CheckGLOK() {
 	}
 }
 
-Mat4x4 GetMatrix(GLenum type) {
-	GLfloat matrix[16];
-	glGetFloatv(type, matrix);
-	return Mat4x4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
-}
-
 void Camera::DrawSceneObjectsOpaque(std::vector<pSceneObject> oo, GLuint shader) {
 	for (auto& sc : oo)
 	{
-		glPushMatrix();
-		glMultMatrixf(glm::value_ptr(sc->transform.localMatrix()));
+		MVP::Push();
+		MVP::Mul(sc->transform.localMatrix());
 		auto mrd = sc->GetComponent<MeshRenderer>();
 		if (mrd) {
 			mrd->DrawDeferred(shader);
@@ -30,21 +24,21 @@ void Camera::DrawSceneObjectsOpaque(std::vector<pSceneObject> oo, GLuint shader)
 			smd->DrawDeferred(shader);
 		}
 		DrawSceneObjectsOpaque(sc->children, shader);
-		glPopMatrix();
+		MVP::Pop();
 	}
 }
 
 void Camera::DrawSceneObjectsOverlay(std::vector<pSceneObject> oo, GLuint shader) {
 	for (auto& sc : oo)
 	{
-		glPushMatrix();
-		glMultMatrixf(glm::value_ptr(sc->transform.localMatrix()));
+		MVP::Push();
+		MVP::Mul(sc->transform.localMatrix());
 		auto vrd = sc->GetComponent<VoxelRenderer>();
 		if (vrd) {
 			vrd->Draw();
 		}
 		DrawSceneObjectsOverlay(sc->children, shader);
-		glPopMatrix();
+		MVP::Pop();
 	}
 }
 
@@ -434,8 +428,8 @@ void EB_Previewer::DrawPreview(Vec4 v) {
 	glDepthMask(true);
 	glDisable(GL_BLEND);
 
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
+	MVP::Switch(false);
+	MVP::Clear();
 	//render opaque
 
 	glViewport(0, 0, (int)previewWidth, (int)previewHeight);
@@ -488,7 +482,7 @@ void EB_Viewer::_RenderLights(Vec4 v) {
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, b_fbo);
 
 	Camera::_ApplyEmission(d_fbo, d_texs, previewWidth, previewHeight, b_fbo);
-	Mat4x4 mat = glm::inverse(GetMatrix(GL_PROJECTION_MATRIX));
+	Mat4x4 mat = glm::inverse(MVP::projection());
 	Camera::_RenderSky(mat, d_texs, d_depthTex, previewWidth, previewHeight); //wont work well on ortho, will it?
 	//glViewport(v.r, Display::height - v.g - v.a, v.b, v.a - EB_HEADER_SIZE - 2);
 	_DrawLights(Scene::active->objects, mat);
@@ -506,7 +500,7 @@ void EB_Previewer::_RenderLights(Vec4 v) {
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, b_fbo);
 
 	Camera::_ApplyEmission(d_fbo, d_texs, previewWidth, previewHeight, b_fbo);
-	Mat4x4 mat = glm::inverse(GetMatrix(GL_PROJECTION_MATRIX));
+	Mat4x4 mat = glm::inverse(MVP::projection());
 	Camera::_RenderSky(mat, d_texs, d_depthTex, previewWidth, previewHeight); //wont work well on ortho, will it?
 	//glViewport(v.r, Display::height - v.g - v.a, v.b, v.a - EB_HEADER_SIZE - 2);
 	_DrawLights(Scene::active->objects, mat);
@@ -624,13 +618,13 @@ void Camera::Render(RenderTexture* target, renderFunc func) {
 	glDepthMask(true);
 	glDisable(GL_BLEND);
 	ApplyGL();
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
+	MVP::Switch(false);
+	MVP::Clear();
 
 	DrawSceneObjectsOpaque(Scene::active->objects);
 	if (func) func();
-	//glMatrixMode(GL_MODELVIEW);
-	//glLoadIdentity();
+	//MVP::Switch(false);
+	//MVP::Clear();
 
 	glDisable(GL_DEPTH_TEST);
 	glDepthMask(false);
@@ -998,7 +992,7 @@ void Camera::_DoDrawLight_Spot(Light* l, Mat4x4& ip, GLuint d_fbo, GLuint d_texs
 		l->DrawShadowMap(tar);
 		glViewport(0, 0, (int)w, (int)h); //shadow map modifies viewport
 	}
-	Mat4x4 lp = GetMatrix(GL_PROJECTION_MATRIX);
+	Mat4x4 lp = MVP::projection();
 	
 	if (d_sLightProgram == 0) {
 		Debug::Error("SpotLightPass", "Fatal: Shader not initialized!");
@@ -1207,7 +1201,7 @@ void Camera::RenderLights(GLuint targetFbo) {
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, targetFbo);
 
 	_ApplyEmission(d_fbo, d_texs, (float)Display::width, (float)Display::height, targetFbo);
-	Mat4x4 mat = glm::inverse(GetMatrix(GL_PROJECTION_MATRIX));
+	Mat4x4 mat = glm::inverse(MVP::projection());
 	_RenderSky(mat, d_texs, d_depthTex); //wont work well on ortho, will it?
 	//glViewport(v.r, Display::height - v.g - v.a, v.b, v.a - EB_HEADER_SIZE - 2);
 	_DrawLights(Scene::active->objects, mat);
@@ -1424,8 +1418,8 @@ void Light::DrawShadowMap(GLuint tar) {
 	//case LIGHTTYPE_SPOT:
 	//case LIGHTTYPE_DIRECTIONAL:
 	//CalcShadowMatrix();
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
+	MVP::Switch(false);
+	MVP::Clear();
 	Camera::DrawSceneObjectsOpaque(Scene::active->objects);
 	//	break;           
 	//}
@@ -1548,34 +1542,34 @@ void CubeMap::_RenderCube(Vec3 pos, Vec3 xdir, GLuint fbos[], uint size, GLuint 
 	glDepthMask(true);
 	glDisable(GL_BLEND);
 	
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glMultMatrixf(glm::value_ptr(glm::perspectiveFov(PI, (float)size, (float)size, 0.001f, 1000.0f)));
-	glScalef(1, -1, -1);
-	//glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(QuatFunc::FromAxisAngle(Vec3(0, 1, 0), PI))));
-	glTranslatef(pos.x, pos.y, pos.z);
+	MVP::Switch(false);
+	MVP::Clear();
+	MVP::Switch(true);
+	MVP::Clear();
+	MVP::Mul(glm::perspectiveFov(PI, (float)size, (float)size, 0.001f, 1000.0f));
+	MVP::Scale(1, -1, -1);
+	//MVP::Mul(QuatFunc::ToMatrix(QuatFunc::FromAxisAngle(Vec3(0, 1, 0), PI))));
+	MVP::Translate(pos.x, pos.y, pos.z);
 	_DoRenderCubeFace(fbos[4]);
-	glTranslatef(-pos.x, -pos.y, -pos.z);
-	glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(QuatFunc::FromAxisAngle(Vec3(0, 1, 0), PI))));
-	glTranslatef(pos.x, pos.y, pos.z);
+	MVP::Translate(-pos.x, -pos.y, -pos.z);
+	MVP::Mul(QuatFunc::ToMatrix(QuatFunc::FromAxisAngle(Vec3(0, 1, 0), PI)));
+	MVP::Translate(pos.x, pos.y, pos.z);
 	_DoRenderCubeFace(fbos[0]);
-	glTranslatef(-pos.x, -pos.y, -pos.z);
-	glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(QuatFunc::FromAxisAngle(Vec3(0, 1, 0), PI))));
-	glTranslatef(pos.x, pos.y, pos.z);
+	MVP::Translate(-pos.x, -pos.y, -pos.z);
+	MVP::Mul(QuatFunc::ToMatrix(QuatFunc::FromAxisAngle(Vec3(0, 1, 0), PI)));
+	MVP::Translate(pos.x, pos.y, pos.z);
 	_DoRenderCubeFace(fbos[5]);
-	glTranslatef(-pos.x, -pos.y, -pos.z);
-	glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(QuatFunc::FromAxisAngle(Vec3(0, 1, 0), PI))));
-	glTranslatef(pos.x, pos.y, pos.z);
+	MVP::Translate(-pos.x, -pos.y, -pos.z);
+	MVP::Mul(QuatFunc::ToMatrix(QuatFunc::FromAxisAngle(Vec3(0, 1, 0), PI)));
+	MVP::Translate(pos.x, pos.y, pos.z);
 	_DoRenderCubeFace(fbos[1]);
-	glTranslatef(-pos.x, -pos.y, -pos.z);
-	glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(QuatFunc::FromAxisAngle(Vec3(0, 0, 1), PI))));
-	glTranslatef(pos.x, pos.y, pos.z);
+	MVP::Translate(-pos.x, -pos.y, -pos.z);
+	MVP::Mul(QuatFunc::ToMatrix(QuatFunc::FromAxisAngle(Vec3(0, 0, 1), PI)));
+	MVP::Translate(pos.x, pos.y, pos.z);
 	_DoRenderCubeFace(fbos[2]);
-	glTranslatef(-pos.x, -pos.y, -pos.z);
-	glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(QuatFunc::FromAxisAngle(Vec3(0, 0, 1), 2*PI))));
-	glTranslatef(pos.x, pos.y, pos.z);
+	MVP::Translate(-pos.x, -pos.y, -pos.z);
+	MVP::Mul(QuatFunc::ToMatrix(QuatFunc::FromAxisAngle(Vec3(0, 0, 1), 2*PI)));
+	MVP::Translate(pos.x, pos.y, pos.z);
 	_DoRenderCubeFace(fbos[3]);
 
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
@@ -1591,7 +1585,7 @@ void CubeMap::_DoRenderCubeFace(GLuint fbo) {
 	glClearBufferfv(GL_COLOR, 1, zero);
 	glClearBufferfv(GL_COLOR, 2, zero);
 	glClearBufferfv(GL_COLOR, 3, zero);
-	glMatrixMode(GL_MODELVIEW);
+	MVP::Switch(false);
 	Camera::DrawSceneObjectsOpaque(Scene::active->objects);
 }
 

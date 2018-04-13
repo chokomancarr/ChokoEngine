@@ -139,6 +139,12 @@ MVP::stack MVP::P = MVP::stack();
 Mat4x4 MVP::identity = Mat4x4();
 bool MVP::isProj = false;
 
+void MVP::Reset() {
+	P.swap(std::stack<Mat4x4>());
+	P.push(identity);
+	MV.swap(std::stack<Mat4x4>());
+	MV.push(identity);
+}
 void MVP::Switch(bool proj) {
 	isProj = proj;
 }
@@ -151,18 +157,25 @@ void MVP::Pop() {
 	else MV.pop();
 }
 void MVP::Clear() {
-	if (isProj) P.swap(std::stack<Mat4x4>());
-	else MV.swap(std::stack<Mat4x4>());
+	if (isProj) {
+		P.swap(std::stack<Mat4x4>());
+		P.push(identity);
+	}
+	else {
+		MV.swap(std::stack<Mat4x4>());
+		MV.push(identity);
+	}
 }
 void MVP::Mul(const Mat4x4& mat) {
-	if (isProj) P.top() = mat * P.top();
-	else MV.top() = mat * MV.top();
+	if (isProj) P.top() *= mat;// * P.top();
+	else MV.top() *= mat;// * MV.top();
 }
 void MVP::Translate(const Vec3& v) {
 	Translate(v.x, v.y, v.z);
 }
 void MVP::Translate(float x, float y, float z) {
-	Mul(Mat4x4(1, 0, 0, x, 0, 1, 0, y, 0, 0, 1, z, 0, 0, 0, 1));
+	//Mul(Mat4x4(1, 0, 0, x, 0, 1, 0, y, 0, 0, 1, z, 0, 0, 0, 1));
+	Mul(Mat4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, z, 1));
 }
 void MVP::Scale(const Vec3& v) {
 	Scale(v.x, v.y, v.z);
@@ -174,14 +187,14 @@ void MVP::Scale(float x, float y, float z) {
 Mat4x4 MVP::modelview() {
 	auto m = identity;
 	for (uint i = 0; i < MV.size(); i++) {
-		m = MV.c[i] * m;
+		m *= MV.c[i];// * m;
 	}
 	return m;
 }
 Mat4x4 MVP::projection() {
 	auto m = identity;
 	for (uint i = 0; i < P.size(); i++) {
-		m = P.c[i] * m;
+		m *= P.c[i];// * m;
 	}
 	return m;
 }
@@ -569,6 +582,7 @@ void Engine::Init(string path) {
 
 	std::cout << "...done" << std::endl;
 
+	MVP::Reset();
 	UI::Init();
 	ffmpeg_init finit = ffmpeg_init();
 	Material::LoadOris();
@@ -1429,11 +1443,8 @@ void Engine::DrawMeshInstanced(Mesh* mesh, uint matId, Material* mat, uint count
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glEnable(GL_CULL_FACE);
 	//glVertexPointer(3, GL_FLOAT, 0, &(mesh->vertices[0]));
-	GLfloat matrix[16], matrix2[16];
-	glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
-	glGetFloatv(GL_PROJECTION_MATRIX, matrix2);
-	Mat4x4 m1(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
-	Mat4x4 m2(matrix2[0], matrix2[1], matrix2[2], matrix2[3], matrix2[4], matrix2[5], matrix2[6], matrix2[7], matrix2[8], matrix2[9], matrix2[10], matrix2[11], matrix2[12], matrix2[13], matrix2[14], matrix2[15]);
+	Mat4x4 m1 = MVP::modelview();
+	Mat4x4 m2 = MVP::projection();
 
 	glBindVertexArray(mesh->vao);
 	matId = min(mesh->materialCount-1, matId);

@@ -730,8 +730,8 @@ GLuint EB_Viewer::bb_tex = 0;
 void EB_Viewer::DrawSceneObjectsOpaque(EB_Viewer* ebv, const std::vector<pSceneObject>& oo) {
 	for (auto& sc : oo)
 	{
-		glPushMatrix();
-		glMultMatrixf(glm::value_ptr(sc->transform._localMatrix));
+		MVP::Push();
+		MVP::Mul(sc->transform._localMatrix);
 		for (auto& com : sc->_components)
 		{
 			if (com->componentType == COMP_MRD || com->componentType == COMP_SRD || com->componentType == COMP_CAM)
@@ -740,12 +740,10 @@ void EB_Viewer::DrawSceneObjectsOpaque(EB_Viewer* ebv, const std::vector<pSceneO
 		DrawSceneObjectsOpaque(ebv, sc->children);
 
 		if (sc == ebv->editor->selected()) {
-			GLfloat matrix[16];
-			glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
-			ebv->editor->selectedMvMatrix = (Mat4x4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]));
+			ebv->editor->selectedMvMatrix = MVP::modelview();
 		}
 
-		glPopMatrix();
+		MVP::Pop();
 	}
 }
 
@@ -753,22 +751,22 @@ void EB_Viewer::DrawSceneObjectsGizmos(EB_Viewer* ebv, const std::vector<pSceneO
 	for (auto& psc : oo)
 	{
 		SceneObject* sc = psc.get();
-		glPushMatrix();
+		MVP::Push();
 		//Vec3 v = sc->transform.position;
 		//Vec3 vv = sc->transform.scale;
 		//Quat vvv = sc->transform.rotation();
-		//glTranslatef(v.x - v2.x, v.y - v2.y, v.z - v2.z);
-		//glTranslatef(v.x, v.y, v.z);
-		//glScalef(vv.x, vv.y, vv.z);
-		//glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(vvv)));
-		glMultMatrixf(glm::value_ptr(sc->transform._localMatrix));
+		//MVP::Translate(v.x - v2.x, v.y - v2.y, v.z - v2.z);
+		//MVP::Translate(v.x, v.y, v.z);
+		//MVP::Scale(vv.x, vv.y, vv.z);
+		//MVP::Mul(QuatFunc::ToMatrix(vvv)));
+		MVP::Mul(sc->transform._localMatrix);
 		for (auto& com : sc->_components)
 		{
 			if (com->componentType != COMP_MRD && com->componentType != COMP_CAM)
 				com->DrawEditor(ebv);
 		}
 		DrawSceneObjectsGizmos(ebv, sc->children);
-		glPopMatrix();
+		MVP::Pop();
 	}
 }
 
@@ -795,8 +793,8 @@ void EB_Viewer::Draw() {
 
 	Vec2 v2 = Vec2(Display::width, Display::height)*0.03f;
 	Engine::DrawQuad(v.r, v.g + EB_HEADER_SIZE - 1, v.b, v.a - EB_HEADER_SIZE - 2, white(1, 0.2f));//editor->checkers->pointer, Vec2(), Vec2(v2.x, 0), Vec2(0, v2.y), v2, true, white(0.05f));
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
+	MVP::Switch(true);
+	MVP::Clear();
 	float ww1 = editor->xPoss[x1];
 	float hh1 = editor->yPoss[y1];
 	float ww = editor->xPoss[x2] - ww1;
@@ -804,44 +802,44 @@ void EB_Viewer::Draw() {
 	float h40 = 40 * (hh*Display::height) / (ww*Display::width);
 	float mww = max(ww, 0.3f) * (float)pow(2, scale);
 	if (seeingCamera == nullptr) {
-		//glTranslatef(0, 0, 1);
-		glScalef(-mww*Display::width / v.b, mww*Display::width / v.a, 1);
-		if (persp) glMultMatrixf(glm::value_ptr(glm::perspectiveFov(fov * deg2rad, (float)Display::width, (float)Display::width, 0.01f, 1000.0f)));
-		else glMultMatrixf(glm::value_ptr(glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, 0.01f, 1000.0f)));
-		//glScalef(-mww*Display::width / v.b, mww*Display::width / v.a, 1);
-		glTranslatef(0, 0, -20);
+		//MVP::Translate(0, 0, 1);
+		MVP::Scale(-mww*Display::width / v.b, mww*Display::width / v.a, 1);
+		if (persp) MVP::Mul(glm::perspectiveFov(fov * deg2rad, (float)Display::width, (float)Display::width, 0.01f, 1000.0f));
+		else {
+			auto ortho = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, 0.01f, 1000.0f);
+			MVP::Mul(ortho);
+		}
+		//MVP::Scale(-mww*Display::width / v.b, mww*Display::width / v.a, 1);
+		MVP::Translate(0, 0, -20);
 	}
 	else {
 		Quat q = glm::inverse(seeingCamera->object->transform.rotation());
-		glScalef(scale, -scale, 1);
-		glMultMatrixf(glm::value_ptr(glm::perspectiveFov(seeingCamera->fov * deg2rad, (float)Display::width, (float)Display::height, seeingCamera->nearClip, seeingCamera->farClip)));
-		glScalef(1, -1, -1);
-		glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(q)));
+		MVP::Scale(scale, -scale, 1);
+		MVP::Mul(glm::perspectiveFov(seeingCamera->fov * deg2rad, (float)Display::width, (float)Display::height, seeingCamera->nearClip, seeingCamera->farClip));
+		MVP::Scale(1, -1, -1);
+		MVP::Mul(QuatFunc::ToMatrix(q));
 		Vec3 pos = -seeingCamera->object->transform.position();
-		glTranslatef(pos.x, pos.y, pos.z);
+		MVP::Translate(pos.x, pos.y, pos.z);
 	}
-	glPushMatrix();
+	MVP::Push();
 	if (seeingCamera == nullptr) {
 		float csz = cos(-rz*deg2rad);
 		float snz = sin(-rz*deg2rad);
 		float csw = cos(rw*deg2rad);
 		float snw = sin(rw*deg2rad);
 		Mat4x4 mMatrix = Mat4x4(1, 0, 0, 0, 0, csw, snw, 0, 0, -snw, csw, 0, 0, 0, 0, 1) * Mat4x4(csz, 0, -snz, 0, 0, 1, 0, 0, snz, 0, csz, 0, 0, 0, 0, 1);
-		glMultMatrixf(glm::value_ptr(mMatrix));
-		glTranslatef(-rotCenter.x, -rotCenter.y, -rotCenter.z);
+		MVP::Mul(mMatrix);
+		MVP::Translate(-rotCenter.x, -rotCenter.y, -rotCenter.z);
 	}
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
+	MVP::Switch(false);
+	MVP::Clear();
 	glEnable(GL_DEPTH_TEST);
 	glClearDepth(1);
 
 	//get matrix
-	GLfloat matrix[16];
-	glGetFloatv(GL_PROJECTION_MATRIX, matrix);
-	projMatrix = (Mat4x4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]));
+	projMatrix = MVP::projection();
 
-	glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
-	Mat4x4 tmpMat = (Mat4x4(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]));
+	Mat4x4 tmpMat = MVP::modelview();
 	invMatrix = glm::inverse(projMatrix * tmpMat);
 
 	float zero[] = { 0,0,0,0 };
@@ -863,8 +861,8 @@ void EB_Viewer::Draw() {
 	glDepthMask(true);
 	glDisable(GL_BLEND);
 
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
+	MVP::Switch(false);
+	MVP::Clear();
 	//render opaque
 
 	glViewport(0, 0, (int)previewWidth, (int)previewHeight);
@@ -910,11 +908,11 @@ void EB_Viewer::Draw() {
 	glEnable(GL_DEPTH_TEST);
 	glDepthMask(true);
 
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glMultMatrixf(glm::value_ptr(projMatrix));
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
+	MVP::Switch(true);
+	MVP::Clear();
+	MVP::Mul(projMatrix);
+	MVP::Switch(false);
+	MVP::Clear();
 
 	glViewport((int)v.r, (int)(Display::height - v.g - v.a), (int)v.b, (int)(v.a - EB_HEADER_SIZE - 2));
 
@@ -984,7 +982,7 @@ void EB_Viewer::Draw() {
 	glDepthFunc(GL_ALWAYS);
 
 	//Color::DrawPicker(150, 50, editor->cc);
-	glPopMatrix();
+	MVP::Pop();
 
 	/*
 	MD::me->Update();
@@ -992,7 +990,7 @@ void EB_Viewer::Draw() {
 	glBindBuffer(GL_ARRAY_BUFFER, MD::me->psb->pointer);
 	glUseProgram(0);
 
-	glTranslatef(-MD::me->wall / 2, -MD::me->wall / 2, -MD::me->wall / 2);
+	MVP::Translate(-MD::me->wall / 2, -MD::me->wall / 2, -MD::me->wall / 2);
 
 	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	glPointSize(4);
@@ -1016,11 +1014,11 @@ void EB_Viewer::Draw() {
 
 	//Engine::DrawMeshInstanced(_GetCache<Mesh>(ASSETTYPE_MESH, 2), 0, _GetCache<Material>(ASSETTYPE_MATERIAL, 0), 10000);
 
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	//glMultMatrixf(glm::value_ptr(glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f, -100.0f, 100.0f)));
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
+	MVP::Switch(true);
+	MVP::Clear();
+	//MVP::Mul(glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f, -100.0f, 100.0f)));
+	MVP::Switch(false);
+	MVP::Clear();
 
 	if (editor->selected()) {
 		editor->selectedSpos = projMatrix*editor->selectedMvMatrix*Vec4(0, 0, 0, 1);
@@ -1783,8 +1781,8 @@ void EB_Previewer::Draw() {
 		Vec2 v2 = Vec2(Display::width, Display::height)*0.03f;
 		//Engine::DrawQuad(0, 0, (float)Display::width, (float)Display::height, black());
 		if (editor->sceneLoaded()) {
-			glMatrixMode(GL_PROJECTION);
-			glLoadIdentity();
+			MVP::Switch(true);
+			MVP::Clear();
 			float ww1 = editor->xPoss[x1];
 			float hh1 = editor->yPoss[y1];
 			float ww = editor->xPoss[x2] - ww1;
@@ -1793,27 +1791,27 @@ void EB_Previewer::Draw() {
 			float h40 = 40 * (hh*Display::height) / (ww*Display::width);
 			float mww = max(ww, 0.3f) * (float)pow(2, scale);
 			if (seeingCamera == nullptr) {
-				glScalef(-mww*Display::width / v.b, mww*Display::width / v.a, 1);
-				if (viewer->persp) glMultMatrixf(glm::value_ptr(glm::perspectiveFov(viewer->fov * deg2rad, (float)Display::width, (float)Display::width, 0.01f, 1000.0f)));
-				else glMultMatrixf(glm::value_ptr(glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, 0.01f, 1000.0f)));
-				glTranslatef(0, 0, -20);
+				MVP::Scale(-mww*Display::width / v.b, mww*Display::width / v.a, 1);
+				if (viewer->persp) MVP::Mul(glm::perspectiveFov(viewer->fov * deg2rad, (float)Display::width, (float)Display::width, 0.01f, 1000.0f));
+				else MVP::Mul(glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, 0.01f, 1000.0f));
+				MVP::Translate(0, 0, -20);
 
 				float csz = cos(-viewer->rz*deg2rad);
 				float snz = sin(-viewer->rz*deg2rad);
 				float csw = cos(viewer->rw*deg2rad);
 				float snw = sin(viewer->rw*deg2rad);
 				Mat4x4 mMatrix = Mat4x4(1, 0, 0, 0, 0, csw, snw, 0, 0, -snw, csw, 0, 0, 0, 0, 1) * Mat4x4(csz, 0, -snz, 0, 0, 1, 0, 0, snz, 0, csz, 0, 0, 0, 0, 1);
-				glMultMatrixf(glm::value_ptr(mMatrix));
-				glTranslatef(-viewer->rotCenter.x, -viewer->rotCenter.y, -viewer->rotCenter.z);
+				MVP::Mul(mMatrix);
+				MVP::Translate(-viewer->rotCenter.x, -viewer->rotCenter.y, -viewer->rotCenter.z);
 			}
 			else {
 				Quat q = glm::inverse(seeingCamera->object->transform.rotation());
-				glScalef(scale, -scale, 1);
-				glMultMatrixf(glm::value_ptr(glm::perspectiveFov(seeingCamera->fov * deg2rad, (float)Display::width, (float)Display::height, seeingCamera->nearClip, seeingCamera->farClip)));
-				glScalef(1, -1, -1);
-				glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(q)));
+				MVP::Scale(scale, -scale, 1);
+				MVP::Mul(glm::perspectiveFov(seeingCamera->fov * deg2rad, (float)Display::width, (float)Display::height, seeingCamera->nearClip, seeingCamera->farClip));
+				MVP::Scale(1, -1, -1);
+				MVP::Mul(QuatFunc::ToMatrix(q));
 				Vec3 pos = -seeingCamera->object->transform.position();
-				glTranslatef(pos.x, pos.y, pos.z);
+				MVP::Translate(pos.x, pos.y, pos.z);
 			}
 
 			if (previewWidth != previewWidth_o || previewHeight != previewHeight_o) {
@@ -2038,10 +2036,10 @@ void PopupSelector::Draw() {
 		glDepthFunc(GL_ALWAYS);
 		glEnable(GL_BLEND);
 
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
+		MVP::Switch(true);
+		MVP::Clear();
+		MVP::Switch(false);
+		MVP::Clear();
 
 		if (editor->backgroundTex)
 			UI::Texture(0, 0, (float)width, (float)height, editor->backgroundTex, editor->backgroundAlpha*0.01f, DRAWTEX_CROP);
@@ -3001,7 +2999,7 @@ void Editor::GenerateScriptResolver() {
 	vcxOut.close();
 
 	//SceneScriptResolver.h
-	string h = "\// Auto-generated script. Do not modify. \n\n\
+	string h = "// Auto-generated script. Do not modify. \n\n\
 #pragma once\n#include \"Engine.h\"\n\ntypedef SceneScript*(*sceneScriptInstantiator)();\ntypedef void (*sceneScriptAssigner)(SceneScript*, std::ifstream&);\n\n";
 	for (auto& s : headerAssets) {
 		h += "_canref(" + s.substr(0, s.size() - 2) + ");\n";

@@ -120,14 +120,14 @@ void Camera::ApplyGL() {
 		break;
 	}
 
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
+	MVP::Switch(true);
+	MVP::Clear();
 	Quat q = glm::inverse(object->transform.rotation());
-	glMultMatrixf(glm::value_ptr(glm::perspectiveFov(fov * deg2rad, (float)Display::width, (float)Display::height, 0.01f, 500.0f)));
-	glScalef(1, 1, -1);
-	glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(q)));
+	MVP::Mul(glm::perspectiveFov(fov * deg2rad, (float)Display::width, (float)Display::height, 0.01f, 500.0f));
+	MVP::Scale(1, 1, -1);
+	MVP::Mul(QuatFunc::ToMatrix(q));
 	Vec3 pos = -object->transform.position();
-	glTranslatef(pos.x, pos.y, pos.z);
+	MVP::Translate(pos.x, pos.y, pos.z);
 }
 
 void Camera::GenShaderFromPath(const string& pathv, const string& pathf, GLuint* program) {
@@ -411,12 +411,9 @@ void MeshRenderer::DrawDeferred(GLuint shader) {
 	glEnable(GL_CULL_FACE);
 	//glVertexPointer(3, GL_FLOAT, 0, &(mf->mesh->vertices[0]));
 	//glLineWidth(1);
-	GLfloat matrix[16], matrix2[16];
-	glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
-	glGetFloatv(GL_PROJECTION_MATRIX, matrix2);
-	Mat4x4 m1(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
-	Mat4x4 m2(matrix2[0], matrix2[1], matrix2[2], matrix2[3], matrix2[4], matrix2[5], matrix2[6], matrix2[7], matrix2[8], matrix2[9], matrix2[10], matrix2[11], matrix2[12], matrix2[13], matrix2[14], matrix2[15]);
-	
+	Mat4x4 m1 = MVP::modelview();
+	Mat4x4 m2 = MVP::projection();
+
 	glBindVertexArray(mf->mesh->vao);
 	/*
 	glEnableVertexAttribArray(0);
@@ -519,11 +516,8 @@ void VoxelRenderer::Draw() {
 
 	UI::SetVao(8, (void*)cubeVerts);
 
-	GLfloat matrix[16], matrix2[16];
-	glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
-	glGetFloatv(GL_PROJECTION_MATRIX, matrix2);
-	Mat4x4 m1(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
-	Mat4x4 m2(matrix2[0], matrix2[1], matrix2[2], matrix2[3], matrix2[4], matrix2[5], matrix2[6], matrix2[7], matrix2[8], matrix2[9], matrix2[10], matrix2[11], matrix2[12], matrix2[13], matrix2[14], matrix2[15]);
+	Mat4x4 m1 = MVP::modelview();
+	Mat4x4 m2 = MVP::projection();
 	Mat4x4 im2 = glm::inverse(m2);
 	glUseProgram(_shader->pointer);
 
@@ -651,11 +645,8 @@ void SkinnedMeshRenderer::DrawDeferred(GLuint shader) {
 	glEnable(GL_CULL_FACE);
 	glVertexPointer(3, GL_FLOAT, 0, &(_mesh->vertices[0]));
 	glLineWidth(1);
-	GLfloat matrix[16], matrix2[16];
-	glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
-	glGetFloatv(GL_PROJECTION_MATRIX, matrix2);
-	Mat4x4 m1(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
-	Mat4x4 m2(matrix2[0], matrix2[1], matrix2[2], matrix2[3], matrix2[4], matrix2[5], matrix2[6], matrix2[7], matrix2[8], matrix2[9], matrix2[10], matrix2[11], matrix2[12], matrix2[13], matrix2[14], matrix2[15]);
+	Mat4x4 m1 = MVP::modelview();
+	Mat4x4 m2 = MVP::projection();
 
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
@@ -804,15 +795,15 @@ void Light::_SetHsvMap(void* v) {
 }
 
 void Light::CalcShadowMatrix() {
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
+	MVP::Switch(true);
+	MVP::Clear();
 	if (_lightType == LIGHTTYPE_SPOT || _lightType == LIGHTTYPE_POINT) {
 		Quat q = glm::inverse(object->transform.rotation());
-		glMultMatrixf(glm::value_ptr(glm::perspectiveFov(angle * deg2rad, 1024.0f, 1024.0f, minDist, maxDist)));
-		glScalef(1, 1, -1);
-		glMultMatrixf(glm::value_ptr(QuatFunc::ToMatrix(q)));
+		MVP::Mul(glm::perspectiveFov(angle * deg2rad, 1024.0f, 1024.0f, minDist, maxDist));
+		MVP::Scale(1, 1, -1);
+		MVP::Mul(QuatFunc::ToMatrix(q));
 		Vec3 pos = -object->transform.position();
-		glTranslatef(pos.x, pos.y, pos.z);
+		MVP::Translate(pos.x, pos.y, pos.z);
 	}
 	//else
 		//_shadowMatrix = Mat4x4();
@@ -1450,11 +1441,8 @@ void MeshRenderer::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 	if (!isE || ebv->selectedShading == 0) glEnable(GL_CULL_FACE);
 	glVertexPointer(3, GL_FLOAT, 0, &(mf->mesh->vertices[0]));
 	glLineWidth(1);
-	GLfloat matrix[16], matrix2[16];
-	glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
-	glGetFloatv(GL_PROJECTION_MATRIX, matrix2);
-	Mat4x4 m1(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
-	Mat4x4 m2(matrix2[0], matrix2[1], matrix2[2], matrix2[3], matrix2[4], matrix2[5], matrix2[6], matrix2[7], matrix2[8], matrix2[9], matrix2[10], matrix2[11], matrix2[12], matrix2[13], matrix2[14], matrix2[15]);
+	Mat4x4 m1 = MVP::modelview();
+	Mat4x4 m2 = MVP::projection();
 
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
@@ -1662,11 +1650,8 @@ void SkinnedMeshRenderer::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 	if (!isE || ebv->selectedShading == 0) glEnable(GL_CULL_FACE);
 	glVertexPointer(3, GL_FLOAT, 0, &(_mesh->vertices[0]));
 	glLineWidth(1);
-	GLfloat matrix[16], matrix2[16];
-	glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
-	glGetFloatv(GL_PROJECTION_MATRIX, matrix2);
-	Mat4x4 m1(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8], matrix[9], matrix[10], matrix[11], matrix[12], matrix[13], matrix[14], matrix[15]);
-	Mat4x4 m2(matrix2[0], matrix2[1], matrix2[2], matrix2[3], matrix2[4], matrix2[5], matrix2[6], matrix2[7], matrix2[8], matrix2[9], matrix2[10], matrix2[11], matrix2[12], matrix2[13], matrix2[14], matrix2[15]);
+	Mat4x4 m1 = MVP::modelview();
+	Mat4x4 m2 = MVP::projection();
 
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
@@ -1932,14 +1917,14 @@ void ReflectionProbe::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 	}
 
 	/*
-	glPushMatrix();
+	MVP::Push();
 	Vec3 v = object->transform.position;
 	Vec3 vv = object->transform.scale;
 	Quat vvv = object->transform.rotation;
-	glTranslatef(v.x, v.y, v.z);
-	glScalef(vv.x, vv.y, vv.z);
-	glMultMatrixf(glm::value_ptr(Quat2Mat(vvv)));
-	glPopMatrix();
+	MVP::Translate(v.x, v.y, v.z);
+	MVP::Scale(vv.x, vv.y, vv.z);
+	MVP::Mul(Quat2Mat(vvv)));
+	MVP::Pop();
 	*/
 }
 
@@ -1992,26 +1977,26 @@ void InverseKinematics::DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos
 
 void ArmatureBone::Draw(EB_Viewer* ebv) {
 	bool sel = (ebv->editor->selected == tr->object);
-	glPushMatrix();
-	glMultMatrixf(glm::value_ptr(tr->localMatrix()));
-	glPushMatrix();
-	glScalef(length, length, length);
+	MVP::Push();
+	MVP::Mul(tr->localMatrix());
+	MVP::Push();
+	MVP::Scale(length, length, length);
 	glVertexPointer(3, GL_FLOAT, 0, &boneVecs[0]);
 	glLineWidth(1);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	if (sel) glColor4f(boneSelCol.r, boneSelCol.g, boneSelCol.b, 1);
 	else glColor4f(boneCol.r, boneCol.g, boneCol.b, 1);
 	glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, &boneIndices[0]);
-	glPopMatrix();
+	MVP::Pop();
 
 	for (auto a : _children) a->Draw(ebv);
-	glPopMatrix();
+	MVP::Pop();
 }
 
 void Armature::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 	glEnableClientState(GL_VERTEX_ARRAY);
-	glPushMatrix();
-	glMultMatrixf(glm::value_ptr(object->transform.localMatrix()));
+	MVP::Push();
+	MVP::Mul(object->transform.localMatrix());
 	if (xray) {
 		glDepthFunc(GL_ALWAYS);
 		glDepthMask(false);
@@ -2019,7 +2004,7 @@ void Armature::DrawEditor(EB_Viewer* ebv, GLuint shader) {
 	for (auto a : _bones) a->Draw(ebv);
 	glDepthFunc(GL_LEQUAL);
 	glDepthMask(true);
-	glPopMatrix();
+	MVP::Pop();
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
@@ -2345,7 +2330,7 @@ SCR_VARTYPE SceneScript::String2Type(const string& s) {
 }
 
 ASSETTYPE SceneScript::String2Asset(const string& s) { //only references are allowed
-	if (s == "rTexture") ASSETTYPE_TEXTURE;
+	if (s == "rTexture") return ASSETTYPE_TEXTURE;
 	test(rBackground) ASSETTYPE_HDRI;
 	//test(rCubeMap) ASSETTYPE_TEXCUBE;
 	test(rShader) ASSETTYPE_SHADER;
@@ -2361,7 +2346,7 @@ ASSETTYPE SceneScript::String2Asset(const string& s) { //only references are all
 }
 
 COMPONENT_TYPE SceneScript::String2Comp(const string& s) {
-	if (s == "rCamera") COMP_CAM; //camera
+	if (s == "rCamera") return COMP_CAM; //camera
 	test(rMeshFilter) COMP_MFT; //mesh filter
 	test(rMeshRenderer) COMP_MRD; //mesh renderer
 	test(rTextureRenderer) COMP_TRD; //texture renderer

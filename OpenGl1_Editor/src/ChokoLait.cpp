@@ -111,8 +111,8 @@ void ChokoLait::Paint(emptyCallbackFunc rendFunc, emptyCallbackFunc paintFunc) {
 	
 	mainCamera->Render(nullptr, rendFunc);
 
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
+	MVP::Switch(false);
+	MVP::Clear();
 
 #ifdef PLATFORM_WIN
 	if (!UI::drawFuncLoc) {

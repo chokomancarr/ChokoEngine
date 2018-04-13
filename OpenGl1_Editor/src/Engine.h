@@ -347,6 +347,7 @@ float TryParse(string str, float defVal);
 
 class MVP {
 public:
+	static void Reset();
 	static void Switch(bool isProj);
 	static void Push(), Pop(), Clear();
 	static void Mul(const Mat4x4& mat);
@@ -354,7 +355,7 @@ public:
 	static void Scale(const Vec3& v), Scale(float x, float y, float z);
 
 	static Mat4x4 modelview(), projection();
-
+	
 protected:
 	class stack : public std::stack<Mat4x4> {
 	public:
@@ -362,9 +363,9 @@ protected:
 	};
 
 	static stack MV, P;
-
 	static Mat4x4 identity;
 	static bool isProj;
+
 };
 
 class MatFunc {
