@@ -91,22 +91,30 @@ int main(int argc, char **argv)
 		std::cerr << "Fatal: Cannot init glfw!" << std::endl;
 		abort();
 	}
+
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
+	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
 	glfwWindowHint(GLFW_VISIBLE, 0);
 	auto* window = glfwCreateWindow(1024, 600, "ChokoEngine", NULL, NULL);
-	glfwSetWindowPos(window, info.rcMonitor.left + editor->scrW / 2 - 512, info.rcMonitor.top + editor->scrH / 2 - 300);
 	Display::window = window;
 	if (!window) {
 		std::cerr << "Fatal: Cannot create glfw window!" << std::endl;
 		abort();
 	}
+	glfwSetWindowPos(window, info.rcMonitor.left + editor->scrW / 2 - 512, info.rcMonitor.top + editor->scrH / 2 - 300);
 	glfwMakeContextCurrent(window);
 	editor->hwnd2 = glfwGetWin32Window(window);
+
+	auto ver = string((const char*)glGetString(GL_VERSION));
 
 	//SendMessage(hwnd2, WM_SETICON, ICON_SMALL, hIcon);
 	//SendMessage(hwnd2, WM_SETICON, ICON_BIG, hIcon);
 	//SendMessage(GetWindow(hwnd2, GW_OWNER), WM_SETICON, ICON_SMALL, hIcon);
 	//SendMessage(GetWindow(hwnd2, GW_OWNER), WM_SETICON, ICON_BIG, hIcon);
-
+	glewExperimental = true;
 	string p;
 	GLint GlewInitResult = glewInit();
 	if (GLEW_OK != GlewInitResult)

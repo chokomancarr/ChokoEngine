@@ -1429,8 +1429,8 @@ void EBI_DrawAss_Eff(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 }
 
 void EBI_DrawAss_Aud(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
-	Engine::DrawQuad(v.r + 9, off + 20, v.b - 18, 100, black(0.5f));
-	glViewport((int)v.r + 10, (int)(Display::height - off - 110), (int)v.b - 20, 80);
+	Engine::DrawQuad(v.r + 1, off + 20, v.b - 2, 100, black(0.5f));
+	glViewport((int)v.r + 2, (int)(Display::height - off - 110), (int)v.b - 4, 80);
 	AudioClip* clip = (AudioClip*)editor->selectedFileCache;
 	UI::SetVao(clip->_eDataV.size(), &clip->_eDataV[0]);
 	glUseProgram(Engine::defProgram);
@@ -1441,21 +1441,21 @@ void EBI_DrawAss_Aud(Vec4 v, Editor* editor, EB_Inspector* b, float &off) {
 	glUseProgram(0);
 	glViewport(0, 0, (int)Display::width, (int)Display::height);
 	float poss = editor->clipPreviewBuffer.second / clip->length / clip->sampleRate / clip->channels;
-	float pos = Engine::DrawSliderFill(v.r + 9, off + 20, v.b - 18, 100, 0, 1, poss, black(0.0f), black(0.0f));
+	float pos = Engine::DrawSliderFill(v.r + 1, off + 20, v.b - 2, 100, 0, 1, poss, black(0.0f), black(0.0f));
 	if (abs(pos - poss) > 0.0001f) {
 		editor->clipPreviewBuffer.second = (uint)floor(pos * clip->length * clip->sampleRate * clip->channels);
 	}
-	Engine::DrawLine(Vec2(v.r + 10 + pos * (v.b - 20), off + 21), Vec2(v.r + 10 + pos * (v.b - 20), off + 118), white(), 1);
+	Engine::DrawLine(Vec2(v.r + 2 + pos * (v.b - 20), off + 21), Vec2(v.r + 2 + pos * (v.b - 20), off + 118), white(), 1);
 	off += 121;
 
 	if (!editor->clipPreviewBuffer.first) {
-		if (Engine::Button(v.r + 9, off, 30, 30, grey1()) == MOUSE_RELEASE) {
+		if (Engine::Button(v.r + 1, off, 100, 16, grey1(), "Play", 12, editor->font, white(), true) == MOUSE_RELEASE) {
 			editor->clipPreviewBuffer.first = clip;
 			editor->clipPreviewBuffer.second = 0;
 		}
 	}
 	else {
-		if (Engine::Button(v.r + 9, off, 30, 30, grey1()) == MOUSE_RELEASE) {
+		if (Engine::Button(v.r + 1, off, 100, 16, grey1(), "Stop", 12, editor->font, white(), true) == MOUSE_RELEASE) {
 			editor->clipPreviewBuffer.first = nullptr;
 			editor->clipPreviewBuffer.second = 0;
 		}
@@ -1526,7 +1526,7 @@ void EB_Inspector::Draw() {
 			break;
 		case ASSETTYPE_AUDIOCLIP:
 			EBI_DrawAss_Aud(v, editor, this, off);
-			canApply = true;
+			canApply = false;
 			break;
 		}
 
@@ -2750,7 +2750,7 @@ void Editor::LoadDefaultAssets() {
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_tex.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_tex3d.bmp", false));
 	assetIcons.push_back(new Texture(dataPath + "res\\asset_effect.bmp", false));
-	assetIcons.push_back(new Texture(dataPath + "res\\asset_audioclip.bmp", false));
+	assetIcons.push_back(new Texture(dataPath + "res\\asset_audioclip.jpg", false));
 
 	matVarTexs.emplace(SHADER_INT, GetRes("mat_i"));
 	matVarTexs.emplace(SHADER_FLOAT, GetRes("mat_f"));

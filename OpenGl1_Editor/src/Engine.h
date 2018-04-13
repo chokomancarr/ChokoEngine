@@ -145,6 +145,7 @@ typedef GLFWwindow NativeWindow;
 #include <fstream>
 #include <sstream>
 #include <vector>
+#include <stack>
 #include <unordered_map>
 #include <array>
 #include <memory>
@@ -343,6 +344,28 @@ int string_find(const string& s, const string& s2, int start = -1);
 int TryParse(string str, int defVal);
 uint TryParse(string str, uint defVal);
 float TryParse(string str, float defVal);
+
+class MVP {
+public:
+	static void Switch(bool isProj);
+	static void Push(), Pop(), Clear();
+	static void Mul(const Mat4x4& mat);
+	static void Translate(const Vec3& v), Translate(float x, float y, float z);
+	static void Scale(const Vec3& v), Scale(float x, float y, float z);
+
+	static Mat4x4 modelview(), projection();
+
+protected:
+	class stack : public std::stack<Mat4x4> {
+	public:
+		using std::stack<Mat4x4>::c;
+	};
+
+	static stack MV, P;
+
+	static Mat4x4 identity;
+	static bool isProj;
+};
 
 class MatFunc {
 public:

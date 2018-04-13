@@ -132,6 +132,60 @@ Vec3 Ds(Vec3 v) {
 	return Vec3(Dw(v.x) * 2 - 1, 1 - Dh(v.y) * 2, 1);
 }
 
+
+MVP::stack MVP::MV = MVP::stack();
+MVP::stack MVP::P = MVP::stack();
+Mat4x4 MVP::identity = Mat4x4();
+bool MVP::isProj = false;
+
+void MVP::Switch(bool proj) {
+	isProj = proj;
+}
+void MVP::Push() {
+	if (isProj) P.push(identity);
+	else MV.push(identity);
+}
+void MVP::Pop() {
+	if (isProj) P.pop();
+	else MV.pop();
+}
+void MVP::Clear() {
+	if (isProj) P.swap(std::stack<Mat4x4>());
+	else MV.swap(std::stack<Mat4x4>());
+}
+void MVP::Mul(const Mat4x4& mat) {
+	if (isProj) P.top() = mat * P.top();
+	else MV.top() = mat * MV.top();
+}
+void MVP::Translate(const Vec3& v) {
+	Translate(v.x, v.y, v.z);
+}
+void MVP::Translate(float x, float y, float z) {
+	Mul(Mat4x4(1, 0, 0, x, 0, 1, 0, y, 0, 0, 1, z, 0, 0, 0, 1));
+}
+void MVP::Scale(const Vec3& v) {
+	Scale(v.x, v.y, v.z);
+}
+void MVP::Scale(float x, float y, float z) {
+	Mul(Mat4x4(x, 0, 0, 0, 0, y, 0, 0, 0, 0, z, 0, 0, 0, 0, 1));
+}
+
+Mat4x4 MVP::modelview() {
+	auto m = identity;
+	for (uint i = 0; i < MV.size(); i++) {
+		m = MV.c[i] * m;
+	}
+	return m;
+}
+Mat4x4 MVP::projection() {
+	auto m = identity;
+	for (uint i = 0; i < P.size(); i++) {
+		m = P.c[i] * m;
+	}
+	return m;
+}
+
+
 GLuint Color::pickerProgH = 0;
 GLuint Color::pickerProgSV = 0;
 
