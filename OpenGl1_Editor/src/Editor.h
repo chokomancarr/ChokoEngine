@@ -286,11 +286,9 @@ public:
 
 	void OnMouseScr(bool up) override;
 
-	static bool DrawScalar(Editor* e, Vec4 v, float dh, string label, float& value, bool* dirty);
 	static bool DrawVector2(Editor* e, Vec4 v, float dh, string label, Vec2& value, bool* dirty);
 	static bool DrawVector3(Editor* e, Vec4 v, float dh, string label, Vec3& value, bool* dirty);
 	static bool DrawVector4(Editor* e, Vec4 v, float dh, string label, Vec4& value, bool* dirty);
-	static bool DrawVec4(Editor* e, Vec4 v, float dh, string label, Vec4& col, bool* dirty);
 	static void DrawAsset(Editor* e, Vec4 v, float dh, string label, ASSETTYPE type);
 
 	static void DrawObj(Vec4 v, Editor* editor, EB_Inspector* b, SceneObject* o);
@@ -376,12 +374,25 @@ public:
 	void Draw() override;
 };
 
+class AssRef {
+public:
+	AssRef(ASSETTYPE t) : type(t), asset(nullptr), _asset(-1), path("") {}
+
+	ASSETTYPE type;
+	AssetObject* asset;
+	int _asset;
+	string path;
+
+	static void SetObj(void* v);
+};
+
 class CompRef {
 public:
-	CompRef(COMPONENT_TYPE t) : type(t), comp(nullptr), path("") {}
+	CompRef(COMPONENT_TYPE t) : type(t), comp(nullptr), _comp(-1), path("") {}
 
 	COMPONENT_TYPE type;
 	Component* comp;
+	int _comp;
 	string path;
 };
 
@@ -696,7 +707,7 @@ public:
 	GLuint matPrev_fbo, matPrev_texs[4], matPrev_depthTex;
 	void DrawMaterialPreviewer(float x, float y, float w, float h, float& rx, float& rz, Material* mat);
 
-	ASSETID GetAssetInfoH(string p), GetAssetInfo(string p, ASSETTYPE &type, ASSETID& i);
+	ASSETID GetAssetInfo(string p, ASSETTYPE &type, ASSETID& i);
 	ASSETID GetAssetId(AssetObject* p), GetAssetId(AssetObject* p, ASSETTYPE& t);
 	string GetAssetName(ASSETTYPE t, ASSETID id);
 
