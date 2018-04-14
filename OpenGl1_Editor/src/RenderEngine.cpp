@@ -576,7 +576,7 @@ GLuint Camera::d_sLightCSProgram = 0;
 GLuint Camera::d_sLightRSMProgram = 0;
 GLuint Camera::d_sLightRSMFluxProgram = 0;
 GLuint Camera::d_reflQuadProgram = 0;
-GLint Camera::d_skyProgramLocs[8];
+GLint Camera::d_skyProgramLocs[9];
 std::unordered_map<string, GLuint> Camera::fetchTextures = std::unordered_map<string, GLuint>();
 std::vector<string> Camera::fetchTexturesUpdated = std::vector<string>();
 const string Camera::_gbufferNames[4] = {"Diffuse", "Normal", "Specular-Gloss", "Emission"};
@@ -714,6 +714,7 @@ void Camera::_RenderSky(Mat4x4 ip, GLuint d_texs[], GLuint d_depthTex, float w, 
 	GLint skyLoc = d_skyProgramLocs[5];
 	GLint skyStrLoc = d_skyProgramLocs[6];
 	GLint scrSzLoc = d_skyProgramLocs[7];
+	GLint skyBrtLoc = d_skyProgramLocs[8];
 
 	glBindVertexArray(fullscreenVao);
 	//glEnableClientState(GL_VERTEX_ARRAY);
@@ -742,6 +743,7 @@ void Camera::_RenderSky(Mat4x4 ip, GLuint d_texs[], GLuint d_depthTex, float w, 
 	glActiveTexture(GL_TEXTURE4);
 	glBindTexture(GL_TEXTURE_2D, Scene::active->settings.sky->pointer);
 	glUniform1f(skyStrLoc, Scene::active->settings.skyStrength);
+	glUniform1f(skyBrtLoc, Scene::active->settings.skyBrightness);
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, fullscreenIndices);

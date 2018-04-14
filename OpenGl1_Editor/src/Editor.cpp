@@ -923,18 +923,21 @@ void EB_Viewer::Draw() {
 
 	//draw grid
 	if (editor->_showGrid) {
-		glEnableClientState(GL_VERTEX_ARRAY);
-		glVertexPointer(3, GL_FLOAT, 0, &editor->grid[0]);
-		glLineWidth(0.5f);
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-		glColor4f(0.3f, 0.3f, 0.3f, 1.0f);
+		UI::SetVao(64, &editor->grid[0]);
+
+		auto mvp = MVP::projection() * MVP::modelview();
+
+		glUseProgram(Engine::defProgramW);
+		glUniformMatrix4fv(Engine::defWMVPLoc, 1, GL_FALSE, glm::value_ptr(mvp));
+		glBindVertexArray(UI::_vao);
+		glUniform4f(Engine::defWColLoc, 0.3f, 0.3f, 0.3f, 1.0f);
 		glDrawElements(GL_LINES, 64, GL_UNSIGNED_INT, &editor->gridId[0]);
-		glColor4f(1, 0, 0, 1.0f);
-		glLineWidth(1);
+		glUniform4f(Engine::defWColLoc, 1.0f, 0.0f, 0.0f, 1.0f);
 		glDrawElements(GL_LINES, 2, GL_UNSIGNED_INT, &editor->gridId[64]);
-		glColor4f(0, 0, 1, 1.0f);
+		glUniform4f(Engine::defWColLoc, 0.0f, 0.0f, 1.0f, 1.0f);
 		glDrawElements(GL_LINES, 2, GL_UNSIGNED_INT, &editor->gridId[66]);
-		glDisableClientState(GL_VERTEX_ARRAY);
+		glBindVertexArray(0);
+		glUseProgram(0);
 	}
 
 	if (editor->playSyncer.status == Editor_PlaySyncer::EPS_Offline) {
@@ -942,7 +945,6 @@ void EB_Viewer::Draw() {
 			Camera::DrawSceneObjectsOverlay(editor->activeScene->objects);
 		}
 	}
-
 
 	//draw tooltip
 	auto sel = editor->selected();

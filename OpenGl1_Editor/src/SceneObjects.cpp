@@ -208,6 +208,7 @@ void Camera::InitShaders() {
 	d_skyProgramLocs[5] = glGetUniformLocation(d_skyProgram, "inSky");
 	d_skyProgramLocs[6] = glGetUniformLocation(d_skyProgram, "skyStrength");
 	d_skyProgramLocs[7] = glGetUniformLocation(d_skyProgram, "screenSize");
+	d_skyProgramLocs[8] = glGetUniformLocation(d_skyProgram, "skyStrengthB");
 
 	glGenBuffers(1, &fullscreenVbo);
 	glBindBuffer(GL_ARRAY_BUFFER, fullscreenVbo);

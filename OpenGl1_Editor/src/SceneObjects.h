@@ -7,7 +7,7 @@ typedef void (*renderFunc)(void);
 class SceneSettings {
 public:
 	Background* sky;
-	float skyStrength;
+	float skyStrength, skyBrightness;
 	Color ambientCol;
 	GITYPE GIType = GITYPE_RSM;
 	float rsmRadius;
@@ -20,7 +20,7 @@ public:
 	friend class EB_Inspector;
 	friend class Scene;
 protected:
-	SceneSettings() : sky(nullptr), skyId(-1), skyStrength(1) {
+	SceneSettings() : sky(nullptr), skyId(-1), skyStrength(1), skyBrightness(1) {
 		sky = 0;
 	}
 	
@@ -907,12 +907,12 @@ public:
 protected:
 	SceneScript() : Component("", COMP_SCR, DRAWORDER_NONE) {}
 	
-	ASSETID _script;
-	std::vector<std::pair<string, SCR_VARVALS>> _vals;
-	
 #ifdef IS_EDITOR
 	SceneScript(Editor* e, string s);
 	SceneScript(std::ifstream& strm, SceneObject* o);
+
+	ASSETID _script;
+	std::vector<std::pair<string, SCR_VARVALS>> _vals;
 
 	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override; //we want c to be null if deleted
 	void Serialize(Editor* e, std::ofstream* stream) override;

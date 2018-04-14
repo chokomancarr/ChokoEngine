@@ -7,6 +7,37 @@
 
 #pragma region Shader
 
+IShaderBuffer::IShaderBuffer(uint size, void* data, uint padding, uint stride) : size(size) {
+	glGenBuffers(1, &pointer);
+	glBindBuffer(GL_UNIFORM_BUFFER, pointer);
+	glBufferData(GL_UNIFORM_BUFFER, size, (!!padding) ? nullptr : data, GL_DYNAMIC_READ);
+	if (!!padding) Set(data, padding, stride);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+}
+IShaderBuffer::~IShaderBuffer() {
+	glDeleteBuffers(1, &pointer);
+}
+
+void IShaderBuffer::Set(void* data, uint padding, uint stride) {
+	if (!data) {
+		Debug::Warning("ShaderBuffer", "Set: Buffer is null!");
+	}
+	glBindBuffer(GL_UNIFORM_BUFFER, pointer);
+	void* tar = (void*)glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
+	if (!tar) {
+		Debug::Warning("ShaderBuffer", "Set: Unable to map buffer!");
+	}
+	if (!padding) memcpy(tar, data, size);
+	else {
+		for (uint a = 0; a*padding < size; a++) {
+			memcpy((void*)((char*)tar + a*padding), (void*)((char*)data + a*stride), stride);
+		}
+	}
+	glUnmapBuffer(GL_UNIFORM_BUFFER);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+}
+
+
 bool Shader::LoadShader(GLenum shaderType, string source, GLuint& shader, string* err) {
 
 	int compile_result = 0;

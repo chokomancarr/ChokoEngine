@@ -74,13 +74,14 @@ namespace std {
 	}
 }
 
-std::vector<string> string_split(string s, char c) {
+std::vector<string> string_split(string s, char c, bool rm) {
 	std::vector<string> o = std::vector<string>();
 	size_t pos = -1;
 	do {
 		s = s.substr(pos + 1);
 		pos = s.find_first_of(c);
-		o.push_back(s.substr(0, pos));
+		if (!rm || pos > 0)
+			o.push_back(s.substr(0, pos));
 	} while (pos != string::npos);
 	return o;
 }
@@ -136,6 +137,8 @@ Vec3 Ds(Vec3 v) {
 
 MVP::stack MVP::MV = MVP::stack();
 MVP::stack MVP::P = MVP::stack();
+Mat4x4 MVP::_mv, MVP::_p;
+bool MVP::changedMv = true, MVP::changedP = true;
 Mat4x4 MVP::identity = Mat4x4();
 bool MVP::isProj = false;
 
@@ -144,6 +147,8 @@ void MVP::Reset() {
 	P.push(identity);
 	MV.swap(std::stack<Mat4x4>());
 	MV.push(identity);
+	changedMv = true;
+	changedP = true;
 }
 void MVP::Switch(bool proj) {
 	isProj = proj;
@@ -153,22 +158,36 @@ void MVP::Push() {
 	else MV.push(identity);
 }
 void MVP::Pop() {
-	if (isProj) P.pop();
-	else MV.pop();
+	if (isProj) {
+		P.pop();
+		changedP = true;
+	}
+	else {
+		MV.pop();
+		changedMv = true;
+	}
 }
 void MVP::Clear() {
 	if (isProj) {
 		P.swap(std::stack<Mat4x4>());
 		P.push(identity);
+		changedP = true;
 	}
 	else {
 		MV.swap(std::stack<Mat4x4>());
 		MV.push(identity);
+		changedMv = true;
 	}
 }
 void MVP::Mul(const Mat4x4& mat) {
-	if (isProj) P.top() *= mat;// * P.top();
-	else MV.top() *= mat;// * MV.top();
+	if (isProj) {
+		P.top() *= mat;
+		changedP = true;
+	}
+	else {
+		MV.top() *= mat;
+		changedMv = true;
+	}
 }
 void MVP::Translate(const Vec3& v) {
 	Translate(v.x, v.y, v.z);
@@ -185,18 +204,24 @@ void MVP::Scale(float x, float y, float z) {
 }
 
 Mat4x4 MVP::modelview() {
-	auto m = identity;
-	for (uint i = 0; i < MV.size(); i++) {
-		m *= MV.c[i];// * m;
+	if (changedMv) {
+		changedMv = false;
+		_mv = identity;
+		for (uint i = 0; i < MV.size(); i++) {
+			_mv *= MV.c[i];// * m;
+		}
 	}
-	return m;
+	return _mv;
 }
 Mat4x4 MVP::projection() {
-	auto m = identity;
-	for (uint i = 0; i < P.size(); i++) {
-		m *= P.c[i];// * m;
+	if (changedP) {
+		changedP = false;
+		_p = identity;
+		for (uint i = 0; i < P.size(); i++) {
+			_p *= P.c[i];// * m;
+		}
 	}
-	return m;
+	return _p;
 }
 
 
@@ -535,11 +560,14 @@ return now.tv_sec * 1000LL + now.tv_nsec/1000000LL;
 Texture* Engine::fallbackTex = nullptr;
 
 GLuint Engine::defProgram = 0;
+GLuint Engine::defProgramW = 0;
 GLuint Engine::unlitProgram = 0;
 GLuint Engine::unlitProgramA = 0;
 GLuint Engine::unlitProgramC = 0;
 GLuint Engine::skyProgram = 0;
 GLint Engine::defColLoc = 0;
+GLint Engine::defWColLoc = 0;
+GLint Engine::defWMVPLoc = 0;
 
 Font* Engine::defaultFont;
 Rect* Engine::stencilRect = nullptr;
@@ -561,6 +589,7 @@ void Engine::Init(string path) {
 
 #if defined(PLATFORM_WIN) || defined(PLATFORM_LNX)
 	string vertcode = "#version 330\nlayout(location = 0) in vec3 pos;\nlayout(location = 1) in vec2 uv;\nout vec2 UV;\nvoid main(){ \ngl_Position.xyz = pos;\ngl_Position.w = 1.0;\nUV = uv;\n}";
+	string vertcodeW = "#version 330\nlayout(location = 0) in vec3 pos;\nlayout(location = 1) in vec2 uv;\nuniform mat4 MVP;\nout vec2 UV;\nvoid main(){ \ngl_Position = MVP * vec4(pos, 1);\ngl_Position /= gl_Position.w;\nUV = uv;\n}";
 	string fragcode = "#version 330\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nuniform float level;\nout vec4 color;void main(){\ncolor = textureLod(sampler, UV, level)*col;\n}"; //out vec3 Vec4;\n
 	string fragcode2 = "#version 330\nin vec2 UV;\nuniform sampler2D sampler;\nuniform vec4 col;\nuniform float level;\nout vec4 color;void main(){\ncolor = vec4(1, 1, 1, textureLod(sampler, UV, level).r)*col;\n}"; //out vec3 Vec4;\n
 	string fragcode3 = "#version 330\nin vec2 UV;\nuniform vec4 col;\nout vec4 color;void main(){\ncolor = col;\n}";
@@ -578,6 +607,7 @@ void Engine::Init(string path) {
 	unlitProgramA = Shader::FromVF(vertcode, fragcode2);
 	unlitProgramC = Shader::FromVF(vertcode, fragcode3);
 	defProgram = unlitProgramC;
+	defProgramW = Shader::FromVF(vertcodeW, fragcode3);
 	skyProgram = Shader::FromVF(vertcode, fragcodeSky);
 
 	std::cout << "...done" << std::endl;
@@ -1312,6 +1342,8 @@ void Engine::ScanQuadParams() {
 	drawQuadLocsC[0] = glGetUniformLocation(unlitProgramC, "col");
 
 	defColLoc = drawQuadLocsC[0];
+	defWColLoc = glGetUniformLocation(defProgramW, "col");
+	defWMVPLoc = glGetUniformLocation(defProgramW, "MVP");
 }
 
 void Engine::DrawQuad(float x, float y, float w, float h, uint texture, float miplevel) {
@@ -1491,9 +1523,7 @@ void Engine::DrawLine(Vec3 v1, Vec3 v2, Vec4 col, float width) {
 	glUseProgram(0);
 }
 void Engine::DrawLineW(Vec3 v1, Vec3 v2, Vec4 col, float width) {
-	Vec3 quadPoss[2];
-	quadPoss[0] = v1;
-	quadPoss[1] = v2;
+	/*
 	uint quadIndexes[2] = { 0, 1 };
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(3, GL_FLOAT, 0, &quadPoss[0]);
@@ -1502,6 +1532,19 @@ void Engine::DrawLineW(Vec3 v1, Vec3 v2, Vec4 col, float width) {
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	glDrawElements(GL_LINES, 2, GL_UNSIGNED_INT, &quadIndexes[0]);
 	glDisableClientState(GL_VERTEX_ARRAY);
+	*/
+	Vec3 quadPoss[2]{ v1, v2 };
+	UI::SetVao(2, quadPoss);
+	
+	auto mvp = MVP::projection() * MVP::modelview();
+
+	glUseProgram(Engine::defProgramW);
+	glUniformMatrix4fv(Engine::defWMVPLoc, 1, GL_FALSE, glm::value_ptr(mvp));
+	glUniform4f(Engine::defWColLoc, col.r, col.g, col.b, col.a);
+	glBindVertexArray(UI::_vao);
+	glDrawArrays(GL_LINES, 0, 2);
+	glBindVertexArray(0);
+	glUseProgram(0);
 }
 
 void Engine::DrawLineWDotted(Vec3 v1, Vec3 v2, Vec4 col, float width, float dotSz, bool app) {

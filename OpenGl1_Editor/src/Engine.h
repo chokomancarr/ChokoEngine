@@ -338,7 +338,7 @@ namespace std {
 	string to_string(Quat v);
 }
 
-std::vector<string> string_split(string s, char c);
+std::vector<string> string_split(string s, char c, bool removeBlank = false);
 int string_find(const string& s, const string& s2, int start = -1);
 
 int TryParse(string str, int defVal);
@@ -363,6 +363,8 @@ protected:
 	};
 
 	static stack MV, P;
+	static Mat4x4 _mv, _p;
+	static bool changedMv, changedP;
 	static Mat4x4 identity;
 	static bool isProj;
 
@@ -1181,8 +1183,8 @@ public:
 	static void RotateUI(float a, Vec2 point);
 	static void ResetUIMatrix();
 
-	static GLuint defProgram, unlitProgram, unlitProgramA, unlitProgramC, skyProgram;
-	static GLint defColLoc;
+	static GLuint defProgram, defProgramW, unlitProgram, unlitProgramA, unlitProgramC, skyProgram;
+	static GLint defColLoc, defWColLoc, defWMVPLoc;
 	//static uint blurProgram, blurSBProgram;
 	static Font* defaultFont;
 	

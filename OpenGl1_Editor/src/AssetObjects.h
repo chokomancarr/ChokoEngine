@@ -144,6 +144,38 @@ protected:
 };
 
 
+class IShaderBuffer {
+public:
+	IShaderBuffer(uint size, void* data, uint padding = 0, uint stride = 1);
+	~IShaderBuffer();
+
+	GLuint pointer;
+	uint size;
+
+
+	void Set(void* data, uint padding = 0, uint stride = 1);
+
+	template <typename T> T* Get(T* target = nullptr) {
+		byte* tar;
+		if (!target) tar = new byte[size];
+		else tar = (byte*)target;
+		glBindBuffer(GL_UNIFORM_BUFFER, pointer);
+		void* src = (void*)glMapBuffer(GL_UNIFORM_BUFFER, GL_READ_ONLY);
+		if (!src) {
+			Debug::Warning("ShaderBuffer", "Set: Unable to map buffer!");
+		}
+		memcpy(tar, src, size);
+		glUnmapBuffer(GL_UNIFORM_BUFFER);
+		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+		return (T*)tar;
+	}
+};
+
+template<typename T> class ShaderBuffer : public IShaderBuffer {
+public:
+	ShaderBuffer(uint num, T* data = nullptr, uint padding = 0) : IShaderBuffer(num * sizeof(T), data, padding) {}
+};
+
 class ShaderValue {
 public:
 	ShaderValue() : i(0), x(0), y(0), z(0), m() {}
