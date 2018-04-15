@@ -43,11 +43,9 @@ void KillSplash();
 //{
 //	MessageBox(hwnd, "aaa", "title", MB_OK);
 //}
-#include "Gromacs.h"
+
 int main(int argc, char **argv)
 {
-	auto gro = Gromacs("D:\\md.gro");
-
 	editor = new Editor();
 	editor->dataPath = path = IO::InitPath();// path.substr(0, path.find_last_of('\\') + 1);
 	editor->lockMutex = &lockMutex;

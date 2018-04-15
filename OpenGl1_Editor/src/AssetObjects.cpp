@@ -1919,7 +1919,7 @@ Mesh::Mesh(const std::vector<Vec3>& verts, const std::vector<Vec3>& norms, const
 	loaded = (vertexCount > 0) && (normals.size() == vertexCount) && (triangleCount > 0);
 	if (!loaded) return;
 	CalcTangents();
-	RecalculateBoundingBox(); 
+	RecalculateBoundingBox();
 	InitVao();
 }
 
@@ -2199,6 +2199,8 @@ void Mesh::RecalculateBoundingBox() {
 void Mesh::CalcTangents() {
 	tangents = std::vector<Vec3>(vertices.size(), Vec3(0, 0, 0));
 	std::vector<int> tC = std::vector<int>(vertices.size(), 0);
+
+	if (!uv0.size()) return;
 
 	Vec2 u0, u1, u2, r1, r2;
 	Vec3 p0, p1, p2;

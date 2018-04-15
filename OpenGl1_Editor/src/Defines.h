@@ -11,7 +11,10 @@ Use compute shaders. Only available in certain hardware.
 On android, API 5.0 (OPENGL ES 3.1) is required.
 */
 #define FEATURE_COMPUTE_SHADERS
-
+/*
+Use audio. makes loading slower.
+*/
+//#define FEATURE_AUDIO_PLAYBACK
 
 //uncomment out to not use during building
 //#define DISABLE_AV_CODECS

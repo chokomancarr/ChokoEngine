@@ -69,9 +69,6 @@
     <ClCompile Include="src\Water.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Gromacs.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\SceneScriptResolver.h">
@@ -111,9 +108,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\Networking.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Gromacs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

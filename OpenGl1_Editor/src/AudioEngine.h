@@ -51,7 +51,18 @@ public:
 	static bool forcestop;
 	static std::thread* thread;
 
-	static bool Init();
+	static bool Init() {
+#ifdef FEATURE_AUDIO_PLAYBACK
+#ifdef PLATFORM_WIN
+		alive = Init_win();
+#elif defined(PLATFORM_ADR)
+		//alive = Init_adr();
+#endif
+#else
+		*(size_t*)&thread = 1;
+#endif
+		return alive;
+	}
 	static void Start(audioRequestPacketCallback callback), Stop();
 
 	static void _DoPlayStream();

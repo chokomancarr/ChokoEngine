@@ -77,15 +77,6 @@ audioRequestPacketCallback AudioEngine::callback = nullptr;
 bool AudioEngine::forcestop = false;
 std::thread* AudioEngine::thread;
 
-bool AudioEngine::Init() {
-#ifdef PLATFORM_WIN
-	alive = Init_win();
-#elif defined(PLATFORM_ADR)
-	//alive = Init_adr();
-#endif
-	return alive;
-}
-
 void AudioEngine::Start(audioRequestPacketCallback cb) {
 	if (thread) return;
 	forcestop = false;
