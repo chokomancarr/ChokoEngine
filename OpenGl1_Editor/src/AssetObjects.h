@@ -363,6 +363,7 @@ protected:
 #endif
 
 	std::vector<std::vector<int>> _matTriangles;
+	std::vector<GLuint> _matIndicesBuffers;
 	//void Draw(Material* mat);
 	//void Load();
 

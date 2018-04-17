@@ -522,7 +522,7 @@ void KillSplash() {
 }
 
 #elif defined TEST_LAIT
-//#define WATERY
+#define WATERY
 
 #ifdef WATERY
 #define PLATFORM_WIN

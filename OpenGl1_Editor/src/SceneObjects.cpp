@@ -432,7 +432,10 @@ void MeshRenderer::DrawDeferred(GLuint shader) {
 		if (shader == 0) materials[m]->ApplyGL(m1, m2);
 		else glUseProgram(shader);
 
-		glDrawElements(GL_TRIANGLES, mf->mesh->_matTriangles[m].size(), GL_UNSIGNED_INT, &(mf->mesh->_matTriangles[m][0]));
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mf->mesh->_matIndicesBuffers[m]);
+		glDrawElements(GL_TRIANGLES, mf->mesh->_matTriangles[m].size(), GL_UNSIGNED_INT, 0);
+		//glDrawElements(GL_TRIANGLES, mf->mesh->_matTriangles[m].size(), GL_UNSIGNED_INT, &mf->mesh->_matTriangles[m][0]);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	}
 	/*
 	glDisableVertexAttribArray(0);

@@ -1916,6 +1916,12 @@ Mesh::Mesh(const std::vector<Vec3>& verts, const std::vector<Vec3>& norms, const
 	uv0 = std::vector<Vec2>(uvs);
 	materialCount = 1;
 	_matTriangles.push_back(std::vector<int>(tris));
+	GLuint buf;
+	glGenBuffers(1, &buf);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buf);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, tris.size() * 4, &tris[0], GL_STATIC_DRAW);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); 
+	_matIndicesBuffers.push_back(buf);
 	loaded = (vertexCount > 0) && (normals.size() == vertexCount) && (triangleCount > 0);
 	if (!loaded) return;
 	CalcTangents();
