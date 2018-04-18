@@ -114,12 +114,6 @@ void ChokoLait::Paint(emptyCallbackFunc rendFunc, emptyCallbackFunc paintFunc) {
 	MVP::Switch(false);
 	MVP::Clear();
 
-#ifdef PLATFORM_WIN
-	if (!UI::drawFuncLoc) {
-		__trace(funcLoc);
-		UI::drawFuncLoc = funcLoc;
-	}
-#endif
 	UI::PreLoop();
 
 	glDisable(GL_DEPTH_TEST);

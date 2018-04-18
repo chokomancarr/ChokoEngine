@@ -202,7 +202,7 @@ int main(int argc, char **argv)
 		UpdateLoop();
 		renderScene();
 
-		//Input::inputString = "";
+		Input::inputString = "";
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 
@@ -346,10 +346,6 @@ void OnDie() {
 
 void DrawOverlay() {
 	std::lock_guard<std::mutex> lock(lockMutex);
-	if (!UI::drawFuncLoc) {
-		__trace(funcLoc);
-		UI::drawFuncLoc = funcLoc;
-	}
 	UI::PreLoop();
 	if (Scene::active) {
 		for (auto a : Scene::active->_preRenderComps) {

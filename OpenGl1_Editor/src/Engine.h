@@ -212,41 +212,6 @@ const PLATFORM platform = PLATFORM_LINUX;
 extern bool _pipemode;
 #endif
 
-#pragma region asm_related_functions
-
-#ifdef __MSVC_RUNTIME_CHECKS
-#error don't do runtime checks, it will ruin the stack-tracer (for now)
-#else
-#define __asmloc_offset 0
-#endif
-
-#define __asmloc_label STRINGMRG(asmlocregion, __COUNTER__)
-
-#define __asmloc(nm) __asmloc_do(nm, __asmloc_label)
-
-#define __asmloc_do(nm,lbl) int nm; \
-{__asm lbl: __asm mov eax, lbl __asm mov nm, eax}
-
-
-//get the location after calling instruction : https://en.wikibooks.org/wiki/X86_Disassembly/Functions_and_Stack_Frames
-#define __trace(nm) int nm; \
-__asm mov ebx, [ebp + 4] __asm mov nm, ebx
-
-//traces up cnt times. cnt must be more than 1.
-#define __tracen(nm,cnt) int nm; {\
-unsigned short num = cnt-1; \
-assert(num); \
-__asm mov ebx, ebp \
-__asm mov cx, num \
-__asm tracenregion: \
-__asm mov ebx, [ebx] \
-__asm dec cx \
-__asm jnz tracenregion \
-__asm mov ebx, [ebx + 4] \
-__asm mov nm, ebx }
-
-#pragma endregion
-
 #pragma region Type Extensions
 
 typedef unsigned char byte;
@@ -701,12 +666,12 @@ public:
 	static void Error(string c, string s);
 	static void ObjectTree(const std::vector<pSceneObject>& o);
 
-	/*
-	static void InitStackTrace();
-	static void** StackTrace(uint* count = nullptr);
-	static std::vector<string> StackTraceNames();
-	static void DumpStackTrace();
-	*/
+	//*
+	//static void InitStackTrace();
+	static uint StackTrace(uint count, void** buffer);
+	//static std::vector<string> StackTraceNames();
+	//static void DumpStackTrace();
+	//*/
 
 	friend int main(int argc, char **argv);
 	friend class ChokoLait;
@@ -1126,12 +1091,12 @@ public:
 
 	static bool _isDrawingLoop;
 	static void PreLoop();
-	static uint _activeEditText[UI_MAX_EDIT_TEXT_FRAMES], _lastEditText[UI_MAX_EDIT_TEXT_FRAMES], _editingEditText[UI_MAX_EDIT_TEXT_FRAMES];
+	static uintptr_t _activeEditText[UI_MAX_EDIT_TEXT_FRAMES], _lastEditText[UI_MAX_EDIT_TEXT_FRAMES], _editingEditText[UI_MAX_EDIT_TEXT_FRAMES];
 	static ushort _activeEditTextId, _editingEditTextId;
-	static uint drawFuncLoc;
-
+	
 	static void GetEditTextId();
 	static bool IsActiveEditText();
+	static bool IsSameId(uintptr_t* left, uintptr_t* right);
 
 	struct StyleColor {
 		Vec4 backColor, fontColor;

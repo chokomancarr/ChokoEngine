@@ -693,12 +693,11 @@ void Engine::EndStencil() {
 
 
 bool UI::_isDrawingLoop = false;
-uint UI::_activeEditText[UI_MAX_EDIT_TEXT_FRAMES] = {};
-uint UI::_lastEditText[UI_MAX_EDIT_TEXT_FRAMES] = {};
-uint UI::_editingEditText[UI_MAX_EDIT_TEXT_FRAMES] = {};
+uintptr_t UI::_activeEditText[UI_MAX_EDIT_TEXT_FRAMES] = {};
+uintptr_t UI::_lastEditText[UI_MAX_EDIT_TEXT_FRAMES] = {};
+uintptr_t UI::_editingEditText[UI_MAX_EDIT_TEXT_FRAMES] = {};
 ushort UI::_activeEditTextId = 0;
 ushort UI::_editingEditTextId = 0;
-uint UI::drawFuncLoc = 0;
 bool UI::focused = true;
 uint UI::_editTextCursorPos = 0;
 uint UI::_editTextCursorPos2 = 0;
@@ -762,56 +761,9 @@ void UI::SetVao(uint sz, void* verts, void* uvs) {
 	}
 	//e = glGetError();
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	/*
-	glBindBuffer(GL_ARRAY_BUFFER, _vboV);
-	auto d = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
-	memcpy(d, verts, sz * sizeof(Vec3));
-	glUnmapBuffer(GL_ARRAY_BUFFER);
-	if (uvs) {
-		glBindBuffer(GL_ARRAY_BUFFER, _vboU);
-		d = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
-		memcpy(d, uvs, sz * sizeof(Vec2));
-		glUnmapBuffer(GL_ARRAY_BUFFER);
-	}
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	*/
 }
 
-void UI_Trace(uint fpar, uint numb, uint* tar) {
-#ifdef PLATFORM_WIN
-	byte p = 0;
-	uint oldebx = 0;
-	uint par;
-	__asm {
-		mov oldebx, ebp
-	}
-	for (uint a = 0; a < numb; a++) { //skip numb frames
-		__asm {
-			//go up 1 ebx
-			mov ebx, oldebx
-			mov ebx, [ebx]
-			mov oldebx, ebx
-		}
-	}
-	while (p < UI_MAX_EDIT_TEXT_FRAMES) {
-		__asm {
-			mov ebx, oldebx
-			mov ebx, [ebx + 4]
-			mov par, ebx
-		}
-		tar[p] = par;
-		if (par == fpar) return;
-		__asm {
-			mov ebx, oldebx
-			mov ebx, [ebx]
-			mov oldebx, ebx
-		}
-		p++;
-	}
-#endif
-}
-
-bool UI_Same_Id(uint* left, uint* right) {
+bool UI::IsSameId(uintptr_t* left, uintptr_t* right) {
 	for (byte a = 0; a < UI_MAX_EDIT_TEXT_FRAMES; a++) {
 		if (left[a] != right[a]) return false;
 	}
@@ -820,12 +772,13 @@ bool UI_Same_Id(uint* left, uint* right) {
 
 void UI::GetEditTextId() {
 #ifdef PLATFORM_WIN
-	SecureZeroMemory(_activeEditText, UI_MAX_EDIT_TEXT_FRAMES * 4);
-	UI_Trace(drawFuncLoc, 2, _activeEditText);
-	if (UI_Same_Id(_activeEditText, _lastEditText)) _activeEditTextId++;
+	memset(_activeEditText, 0, UI_MAX_EDIT_TEXT_FRAMES * sizeof(uintptr_t));
+	Debug::StackTrace(10, (void**)_activeEditText);
+	//UI_Trace(drawFuncLoc, 2, _activeEditText);
+	if (IsSameId(_activeEditText, _lastEditText)) _activeEditTextId++;
 	else _activeEditTextId = 0;
 
-	memcpy(_lastEditText, _activeEditText, UI_MAX_EDIT_TEXT_FRAMES * 4);
+	memcpy(_lastEditText, _activeEditText, UI_MAX_EDIT_TEXT_FRAMES * sizeof(uintptr_t));
 #endif
 }
 
@@ -835,7 +788,7 @@ bool UI::IsActiveEditText() {
 
 void UI::PreLoop() {
 #ifdef PLATFORM_WIN
-	SecureZeroMemory(_lastEditText, UI_MAX_EDIT_TEXT_FRAMES * 4);
+	memset(_lastEditText, 0, UI_MAX_EDIT_TEXT_FRAMES * sizeof(uintptr_t));
 	_activeEditTextId = 0;
 #endif
 }
@@ -889,7 +842,7 @@ string UI::EditText(float x, float y, float w, float h, float s, Vec4 bcol, cons
 	string str = str2;
 	_checkdraw;
 	GetEditTextId();
-	bool isActive = (UI_Same_Id(_activeEditText, _editingEditText) && (_activeEditTextId == _editingEditTextId));
+	bool isActive = (UI::IsSameId(_activeEditText, _editingEditText) && (_activeEditTextId == _editingEditTextId));
 	
 	if (changed) *changed = false;
 
@@ -1747,8 +1700,6 @@ void Input::UpdateMouseNKeyboard(bool* src) {
 		}
 	}
 //#endif
-
-	inputString = "";
 	/*
 	bool shift = KeyHold(Key_LeftShift);
 	byte b;
@@ -1984,19 +1935,17 @@ void Debug::ObjectTree(const std::vector<pSceneObject>& o) {
 	Message("ObjectTree", "End");
 }
 
-/*
-void** Debug::StackTrace(uint* count) {
-	void** frames = new void*[10];
+uint Debug::StackTrace(uint count, void** frames) {
 	uint c;
 #ifdef PLATFORM_WIN
-	c = CaptureStackBackTrace(0, 10, frames, NULL);
+	c = CaptureStackBackTrace(0, count, frames, NULL);
 #elif defined(PLATFORM_LNX)
-	c = backtrace(frames, 10);
+	c = backtrace(frames, count);
 #endif
-	if (count) *count = c;
-	return frames;
+	return c;
 }
 
+/*
 void Debug::InitStackTrace() {
 #ifdef PLATFORM_WIN
 	winHandle = GetCurrentProcess();// glfwGetWin32Window(Display::window);
