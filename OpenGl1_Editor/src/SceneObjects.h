@@ -659,7 +659,7 @@ protected:
 
 enum ReflProbe_UpdateMode : byte {
 	ReflProbe_UpdateMode_Start,
-	ReflProbe_UpdateMode_Realtime,
+	ReflProbe_UpdateMode_ReKey_LeftAltime,
 	ReflProbe_UpdateMode_Manual
 };
 enum ReflProbe_ClearType : byte {
@@ -723,7 +723,7 @@ public:
 
 	bool jointIsAxial;
 	bool allowRotation[3];
-	IK_AXIAL_CONSTRAINT axialType;
+	IK_AXIAL_CONSTRAINT axiKey_LeftAltype;
 
 	void Apply();
 

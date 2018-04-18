@@ -44,6 +44,12 @@ void KillSplash();
 //	MessageBox(hwnd, "aaa", "title", MB_OK);
 //}
 
+void onGlfwError(int i, const char* c) {
+	auto msg = string(c);
+	__debugbreak();
+	std::cout << "GLFW Error: "<< msg << std::endl;
+}
+
 int main(int argc, char **argv)
 {
 	editor = new Editor();
@@ -91,6 +97,7 @@ int main(int argc, char **argv)
 		std::cerr << "Fatal: Cannot init glfw!" << std::endl;
 		abort();
 	}
+	glfwSetErrorCallback(onGlfwError);
 
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
@@ -195,6 +202,7 @@ int main(int argc, char **argv)
 		UpdateLoop();
 		renderScene();
 
+		//Input::inputString = "";
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 
@@ -214,9 +222,9 @@ int main(int argc, char **argv)
 
 void CheckShortcuts() {
 	if (editor->editorLayer == 0) {
-		bool cDn = Input::KeyHold(Key_Control);
-		bool aDn = Input::KeyHold(Key_Alt);
-		bool sDn = Input::KeyHold(Key_Shift);
+		bool cDn = Input::KeyHold(Key_LeftControl);
+		bool aDn = Input::KeyHold(Key_LeftAlt);
+		bool sDn = Input::KeyHold(Key_LeftShift);
 		for (auto& g : editor->globalShorts) {
 			if (ShortcutTriggered(g.first, cDn, aDn, sDn)) {
 				g.second(editor);

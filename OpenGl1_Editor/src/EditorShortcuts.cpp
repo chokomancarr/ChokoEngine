@@ -549,7 +549,7 @@ void EB_Viewer::_ViewCam(EditorBlock* b) {
 	}
 }
 void EB_Viewer::_SnapCenter(EditorBlock* b) {
-	if (b->editor->selected()) {
+	if (!b->editor->selected()) {
 		((EB_Viewer*)b)->rotCenter = Vec3();
 	}
 	else {

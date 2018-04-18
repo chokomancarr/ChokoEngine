@@ -139,18 +139,18 @@ Vec3 Ds2(Vec3 v) {
 }
 
 int GetShortcutInt(InputKey key, InputKey mod1, InputKey mod2, InputKey mod3) {
-	int i = (byte)key << 4; //kkkkmcas (m=usemod?)
+	int i = (ushort)key << 4; //kkkkmcas (m=usemod?)
 	if (mod1 == Key_None)
 		return i;
 	else {
 		i |= 8;
-		if ((mod1 == Key_Control) || (mod2 == Key_Control) || (mod3 == Key_Control)) {
+		if ((mod1 == Key_LeftControl) || (mod2 == Key_LeftControl) || (mod3 == Key_LeftControl)) {
 			i |= 4;
 		}
-		if ((mod1 == Key_Alt) || (mod2 == Key_Alt) || (mod3 == Key_Alt)) {
+		if ((mod1 == Key_LeftAlt) || (mod2 == Key_LeftAlt) || (mod3 == Key_LeftAlt)) {
 			i |= 2;
 		}
-		if ((mod1 == Key_Shift) || (mod2 == Key_Shift) || (mod3 == Key_Shift)) {
+		if ((mod1 == Key_LeftShift) || (mod2 == Key_LeftShift) || (mod3 == Key_LeftShift)) {
 			i |= 1;
 		}
 		return i;
@@ -158,10 +158,10 @@ int GetShortcutInt(InputKey key, InputKey mod1, InputKey mod2, InputKey mod3) {
 }
 
 bool ShortcutTriggered(int i, bool c, bool a, bool s) {
-	if (!Input::KeyDown((InputKey)((i&(0xff << 4)) >> 4))) {
+	if (!Input::KeyDown((InputKey)((i&(0xffff << 4)) >> 4))) {
 		return false;
 	}
-	else if ((i & 8) == 0)
+	else if (!(i & 8))
 		return true;
 	else {
 		return ((c == ((i & 4) == 4)) && (a == ((i & 2) == 2)) && (s == ((i & 1) == 1)));
@@ -667,11 +667,11 @@ EB_Viewer::EB_Viewer(Editor* e, int x1, int y1, int x2, int y2) : rz(45), rw(45)
 	this->y2 = y2;
 	MakeMatrix();
 
-	shortcuts.emplace(GetShortcutInt(Key_A, Key_Shift), &_OpenMenuAdd);
-	shortcuts.emplace(GetShortcutInt(Key_C, Key_Shift), &_OpenMenuCom);
+	shortcuts.emplace(GetShortcutInt(Key_A, Key_LeftShift), &_OpenMenuAdd);
+	shortcuts.emplace(GetShortcutInt(Key_C, Key_LeftShift), &_OpenMenuCom);
 	shortcuts.emplace(GetShortcutInt(Key_W), &_OpenMenuW);
-	shortcuts.emplace(GetShortcutInt(Key_Space, Key_Control), &_OpenMenuChgMani);
-	shortcuts.emplace(GetShortcutInt(Key_Space, Key_Alt), &_OpenMenuChgOrient);
+	shortcuts.emplace(GetShortcutInt(Key_Space, Key_LeftControl), &_OpenMenuChgMani);
+	shortcuts.emplace(GetShortcutInt(Key_Space, Key_LeftAlt), &_OpenMenuChgOrient);
 
 	shortcuts.emplace(GetShortcutInt(Key_X), &_X);
 	shortcuts.emplace(GetShortcutInt(Key_Y), &_Y);
@@ -686,14 +686,14 @@ EB_Viewer::EB_Viewer(Editor* e, int x1, int y1, int x2, int y2) : rz(45), rw(45)
 	shortcuts.emplace(GetShortcutInt(Key_S), &_Scale);
 
 	shortcuts.emplace(GetShortcutInt(Key_NumPad1), &_ViewFront);
-	shortcuts.emplace(GetShortcutInt(Key_NumPad1, Key_Control), &_ViewBack);
+	shortcuts.emplace(GetShortcutInt(Key_NumPad1, Key_LeftControl), &_ViewBack);
 	shortcuts.emplace(GetShortcutInt(Key_NumPad3), &_ViewRight);
-	shortcuts.emplace(GetShortcutInt(Key_NumPad3, Key_Control), &_ViewLeft);
+	shortcuts.emplace(GetShortcutInt(Key_NumPad3, Key_LeftControl), &_ViewLeft);
 	shortcuts.emplace(GetShortcutInt(Key_NumPad5), &_TogglePersp);
 	shortcuts.emplace(GetShortcutInt(Key_NumPad7), &_ViewTop);
-	shortcuts.emplace(GetShortcutInt(Key_NumPad7, Key_Control), &_ViewBottom);
+	shortcuts.emplace(GetShortcutInt(Key_NumPad7, Key_LeftControl), &_ViewBottom);
 	shortcuts.emplace(GetShortcutInt(Key_NumPad0), &_ViewCam);
-	shortcuts.emplace(GetShortcutInt(Key_NumPad0, Key_Alt), &_SnapCenter);
+	shortcuts.emplace(GetShortcutInt(Key_NumPadDot), &_SnapCenter);
 
 	shortcuts.emplace(GetShortcutInt(Key_Escape), &_Escape);
 }
@@ -1090,13 +1090,13 @@ void EB_Viewer::Draw() {
 		drawDescLT = 3;
 		switch (selectedOrient) {
 		case 0:
-			descLabelLT = "Selected Orientation: Global (Alt-Space)";
+			descLabelLT = "Selected Orientation: Global (Key_LeftAlt-Space)";
 			break;
 		case 1:
-			descLabelLT = "Selected Orientation: Local (Alt-Space)";
+			descLabelLT = "Selected Orientation: Local (Key_LeftAlt-Space)";
 			break;
 		case 2:
-			descLabelLT = "Selected Orientation: View (Alt-Space)";
+			descLabelLT = "Selected Orientation: View (Key_LeftAlt-Space)";
 			break;
 		}
 	}
@@ -1183,8 +1183,8 @@ void EB_Viewer::DrawSArrows(Vec3 pos, float size) {
 #undef _rot
 
 void EB_Viewer::OnMouseM(Vec2 d) {
-	if (editor->mousePressType == 1 || (editor->mousePressType == 0 && Input::KeyHold(Key_Alt))) {
-		if (Input::KeyHold(Key_Shift)) {
+	if (editor->mousePressType == 1 || (editor->mousePressType == 0 && Input::KeyHold(Key_LeftAlt))) {
+		if (Input::KeyHold(Key_LeftShift)) {
 			//float w = Display::width*(editor->xPoss[x2] - editor->xPoss[x1]);
 			//float h = Display::height*(editor->yPoss[y2] - editor->yPoss[y1]);
 			Vec4 r = invMatrix * Vec4(2.0f / Display::width, 0, 0, 0);
@@ -1283,7 +1283,7 @@ void EB_Viewer::OnMousePress(int i) {
 }
 
 void EB_Viewer::OnMouseScr(bool up) {
-	if (Input::KeyHold(Key_Alt)) {
+	if (Input::KeyHold(Key_LeftAlt)) {
 		fov += (up ? 5 : -5);
 		fov = min(max(fov, 1.0f), 179.0f);
 	}
@@ -1655,7 +1655,7 @@ EB_AnimEditor::EB_AnimEditor(Editor* e, int x1, int y1, int x2, int y2) : _editi
 	this->x2 = x2;
 	this->y2 = y2;
 
-	shortcuts.emplace(GetShortcutInt(Key_A, Key_Shift), &_AddState);
+	shortcuts.emplace(GetShortcutInt(Key_A, Key_LeftShift), &_AddState);
 }
 
 void EB_AnimEditor::Draw() {
@@ -1751,7 +1751,7 @@ EB_Previewer::EB_Previewer(Editor* e, int x1, int y1, int x2, int y2) {
 		InitGBuffer();
 	}
 	e->playSyncer.previewer = this;
-	shortcuts.emplace(GetShortcutInt(Key_Z, Key_Shift), &_ToggleBuffers);
+	shortcuts.emplace(GetShortcutInt(Key_Z, Key_LeftShift), &_ToggleBuffers);
 	shortcuts.emplace(GetShortcutInt(Key_Z), &_ToggleLumi);
 }
 
@@ -2793,15 +2793,15 @@ void Editor::LoadDefaultAssets() {
 	gridId[66] = 62;
 	gridId[67] = 63;
 
-	globalShorts.emplace(GetShortcutInt(Key_B, Key_Control), &Compile);
-	globalShorts.emplace(GetShortcutInt(Key_B, Key_Control, Key_Shift), &ShowCompileSett);
-	globalShorts.emplace(GetShortcutInt(Key_U, Key_Control, Key_Alt), &ShowPrefs);
-	globalShorts.emplace(GetShortcutInt(Key_S, Key_Control), &SaveScene);
-	globalShorts.emplace(GetShortcutInt(Key_O, Key_Control), &OpenScene);
-	globalShorts.emplace(GetShortcutInt(Key_X, Key_Control), &DeleteActive);
-	//globalShorts.emplace(GetShortcutInt(Key_Space, Key_Shift), &Maximize);
-	globalShorts.emplace(GetShortcutInt(Key_P, Key_Control), &TogglePlay);
-	globalShorts.emplace(GetShortcutInt(Key_Z, Key_Control), &Undo);
+	globalShorts.emplace(GetShortcutInt(Key_B, Key_LeftControl), &Compile);
+	globalShorts.emplace(GetShortcutInt(Key_B, Key_LeftControl, Key_LeftShift), &ShowCompileSett);
+	globalShorts.emplace(GetShortcutInt(Key_U, Key_LeftControl, Key_LeftAlt), &ShowPrefs);
+	globalShorts.emplace(GetShortcutInt(Key_S, Key_LeftControl), &SaveScene);
+	globalShorts.emplace(GetShortcutInt(Key_O, Key_LeftControl), &OpenScene);
+	globalShorts.emplace(GetShortcutInt(Key_X, Key_LeftControl), &DeleteActive);
+	//globalShorts.emplace(GetShortcutInt(Key_Space, Key_LeftShift), &Maximize);
+	globalShorts.emplace(GetShortcutInt(Key_P, Key_LeftControl), &TogglePlay);
+	globalShorts.emplace(GetShortcutInt(Key_Z, Key_LeftControl), &Undo);
 
 	assetTypes.emplace("scene", ASSETTYPE_SCENE);
 	assetTypes.emplace("mesh", ASSETTYPE_MESH);
@@ -3571,19 +3571,19 @@ void DoScanAssetsGet(Editor* e, std::vector<string>& list, string p, bool rec) {
 			if (type == ASSETTYPE_MATERIAL || type == ASSETTYPE_CAMEFFECT || type == ASSETTYPE_SCENE || type == ASSETTYPE_ANIMATION) //no meta file
 				continue;
 			if (IO::HasFile(ss.c_str())) {
-				FILETIME metaTime, realTime;
+				FILETIME metaTime, reKey_LeftAltime;
 				HANDLE metaF = CreateFile(ss.c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 				HANDLE realF = CreateFile(w.c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 				GetFileTime(metaF, nullptr, nullptr, &metaTime);
-				GetFileTime(realF, nullptr, nullptr, &realTime);
+				GetFileTime(realF, nullptr, nullptr, &reKey_LeftAltime);
 				CloseHandle(metaF);
 				CloseHandle(realF);
-				ULARGE_INTEGER metaT, realT;
+				ULARGE_INTEGER metaT, reKey_LeftAlt;
 				metaT.HighPart = metaTime.dwHighDateTime;
 				metaT.LowPart = metaTime.dwHighDateTime;
-				realT.HighPart = realTime.dwHighDateTime;
-				realT.LowPart = realTime.dwLowDateTime;
-				if (realT.QuadPart < metaT.QuadPart) {
+				reKey_LeftAlt.HighPart = reKey_LeftAltime.dwHighDateTime;
+				reKey_LeftAlt.LowPart = reKey_LeftAltime.dwLowDateTime;
+				if (reKey_LeftAlt.QuadPart < metaT.QuadPart) {
 					continue;
 				}
 			}

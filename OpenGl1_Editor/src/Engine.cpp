@@ -612,6 +612,7 @@ void Engine::Init(string path) {
 
 	std::cout << "...done" << std::endl;
 
+	Input::RegisterCallbacks();
 	MVP::Reset();
 	UI::Init();
 	ffmpeg_init finit = ffmpeg_init();
@@ -902,7 +903,7 @@ string UI::EditText(float x, float y, float w, float h, float s, Vec4 bcol, cons
 			if (!!_editTextCursorPos) _editTextCursorPos -= Input::KeyDown(Key_LeftArrow);
 			_editTextCursorPos += Input::KeyDown(Key_RightArrow);
 			_editTextCursorPos = Clamp(_editTextCursorPos, 0U, _editTextString.size());
-			if (!Input::KeyHold(Key_Shift) && (Input::KeyDown(Key_LeftArrow) || Input::KeyDown(Key_RightArrow))) {
+			if (!Input::KeyHold(Key_LeftShift) && (Input::KeyDown(Key_LeftArrow) || Input::KeyDown(Key_RightArrow))) {
 				_editTextCursorPos2 = _editTextCursorPos;
 				_editTextBlinkTime = 0;
 			}
@@ -1704,34 +1705,52 @@ std::array<Vec2, 10> Input::touchPoss = std::array<Vec2, 10>();
 //std::array<float, 10> Input::touchForce = std::array<float, 10>();
 std::array<byte, 10> Input::touchStates = std::array<byte, 10>();
 
+void Input::RegisterCallbacks() {
+	glfwSetInputMode(Display::window, GLFW_STICKY_KEYS, 1);
+	glfwSetCharCallback(Display::window, TextCallback);
+}
+
+void Input::TextCallback(GLFWwindow* w, uint i) {
+	inputString += string((char*)&i, 1);
+}
+
 bool Input::KeyDown(InputKey k) {
-	return keyStatusNew[k] && !keyStatusOld[k];
+	return keyStatusNew[k - 32] && !keyStatusOld[k - 32];
 }
 
 bool Input::KeyHold(InputKey k) {
-	return keyStatusNew[k];
+	return keyStatusNew[k - 32];
 }
 
 bool Input::KeyUp(InputKey k) {
-	return !keyStatusNew[k] && keyStatusOld[k];
+	return !keyStatusNew[k - 32] && keyStatusOld[k - 32];
 }
 
 void Input::UpdateMouseNKeyboard(bool* src) {
-#ifdef PLATFORM_WIN
-	std::swap(keyStatusOld, keyStatusNew);
-	if (src) std::swap_ranges(src, src + 255, keyStatusNew);
+//#ifdef PLATFORM_WIN
+	memcpy(keyStatusOld, keyStatusNew, 325);
+	if (src) std::swap_ranges(src, src + 325, keyStatusNew);
 	else {
+		/*
 		for (byte a = 1; a < 112; a++) {
 			keyStatusNew[a] = ((GetAsyncKeyState(a) >> 8) == -128);
 		}
 		for (byte a = Key_Plus; a <= Key_Dot; a++) {
 			keyStatusNew[a] = ((GetAsyncKeyState(a) >> 8) == -128);
 		}
+		*/
+		for (uint i = 32; i < 97; i++) {
+			keyStatusNew[i - 32] = !!glfwGetKey(Display::window, i);
+		}
+		for (uint i = 256; i < 347; i++) {
+			keyStatusNew[i - 32] = !!glfwGetKey(Display::window, i);
+		}
 	}
-#endif
-	
+//#endif
+
 	inputString = "";
-	bool shift = KeyHold(Key_Shift);
+	/*
+	bool shift = KeyHold(Key_LeftShift);
 	byte b;
 	for (b = Key_0; b <= Key_9; b++) {
 		if (KeyDown((InputKey)b)) {
@@ -1754,7 +1773,7 @@ void Input::UpdateMouseNKeyboard(bool* src) {
 		}
 	}
 	if (KeyDown(Key_Space)) inputString += " ";
-
+	*/
 	if (mouse0)
 		mouse0State = min<byte>(mouse0State+1U, MOUSE_HOLD);
 	else
