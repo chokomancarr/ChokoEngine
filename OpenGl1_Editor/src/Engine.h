@@ -85,6 +85,7 @@ Global stuff, normally not macro-protected
 #else //networking is identical on unix systems
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #ifdef PLATFORM_LNX
 #include <unistd.h>
 #include <execinfo.h>
@@ -797,6 +798,8 @@ public:
 	static long long millis;
 	static float time;
 	static float delta;
+	
+	void Update();
 };
 
 long long milliseconds();

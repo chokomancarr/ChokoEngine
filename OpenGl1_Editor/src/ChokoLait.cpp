@@ -98,10 +98,7 @@ bool ChokoLait::alive() {
 }
 
 void ChokoLait::Update(emptyCallbackFunc func) {
-	long long millis = milliseconds();
-	Time::delta = (millis - Time::millis)*0.001f;
-	Time::time = (millis - Time::startMillis)*0.001f;
-	Time::millis = millis;
+	Time::Update();
 	Input::UpdateMouseNKeyboard();
 	if (func) func();
 }

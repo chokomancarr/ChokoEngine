@@ -327,10 +327,7 @@ void UpdateLoop() {
 	//	{
 			//lock_guard<mutex> lock(lockMutex);
 			//redrawn = false;
-			long long millis = milliseconds();
-			Time::delta = (millis - Time::millis)*0.001f;
-			Time::time = (millis - Time::startMillis)*0.001f;
-			Time::millis = millis;
+			Time::Update();
 			Input::UpdateMouseNKeyboard();
 			Editor::onFocus = GetForegroundWindow() == Editor::hwnd2;
 			DoUpdate();
