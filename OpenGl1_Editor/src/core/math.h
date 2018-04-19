@@ -1,5 +1,4 @@
 #pragma once
-#include "Engine.h"
 
 template <typename T> const T& min(const T& a, const T& b) {
 	if (a > b) return b;
@@ -28,16 +27,3 @@ template <typename T> T Lerp(T a, T b, float c) {
 template <typename T> float InverseLerp(T a, T b, T c) {
 	return Clamp((float)((c - a) / (b - a)), 0.0f, 1.0f);
 }
-
-class MatFunc {
-public:
-	static Mat4x4 FromTRS(const Vec3& t, const Quat& r, const Vec3& s);
-};
-class QuatFunc {
-public:
-	static Quat Inverse(const Quat&);
-	static Vec3 ToEuler(const Quat&);
-	static Mat4x4 ToMatrix(const Quat&);
-	static Quat FromAxisAngle(Vec3, float);
-	static Quat LookAt(const Vec3&, const Vec3&);
-};

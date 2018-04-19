@@ -3,7 +3,6 @@
 #ifdef IS_EDITOR
 
 #include "Engine.h"
-#include "Xml.h"
 /*
 Editor functions
 */
@@ -765,6 +764,12 @@ private:
 	Editor(Editor const &);
 	Editor& operator= (Editor const &);
 };
+
+#ifdef IS_EDITOR
+template<typename T> T* _GetCache(ASSETTYPE t, ASSETID i, bool async = false) {
+	return static_cast<T*>(Editor::instance->GetCache(t, i, async));
+}
+#endif
 
 class BlockCombo {
 public:

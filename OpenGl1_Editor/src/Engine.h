@@ -205,8 +205,12 @@ typedef unsigned int uint;
 typedef unsigned long ulong;
 typedef unsigned short ushort;
 typedef std::string string;
+
+typedef glm::tvec2<int, glm::highp> Int2;
 typedef glm::vec2 Vec2;
+typedef glm::tvec2<int, glm::highp> Int3;
 typedef glm::vec3 Vec3;
+typedef glm::tvec3<int, glm::highp> Int4;
 typedef glm::vec4 Vec4;
 typedef glm::quat Quat;
 typedef glm::mat4 Mat4x4;
@@ -225,27 +229,20 @@ const uint UI_MAX_EDIT_TEXT_FRAMES = 8;
 
 #include "core/math.h"
 
-#include "AudioEngine.h"
-#include "Networking.h"
+class MatFunc {
+public:
+	static Mat4x4 FromTRS(const Vec3& t, const Quat& r, const Vec3& s);
+};
+class QuatFunc {
+public:
+	static Quat Inverse(const Quat&);
+	static Vec3 ToEuler(const Quat&);
+	static Mat4x4 ToMatrix(const Quat&);
+	static Quat FromAxisAngle(Vec3, float);
+	static Quat LookAt(const Vec3&, const Vec3&);
+};
 
 #define push_val(var, nm, val) auto var = nm; nm = val;
-
-/* cmake for msvc does not have to_string */
-#if defined(PLATFORM_ADR)
-namespace std {
-	template <typename T> string to_string(T val) {
-		std::ostringstream strm;
-		strm << val;
-		return strm.str();
-	}
-
-	int stoi(const string& s);
-	float stof(const string& s);
-	unsigned long stoul(const string& s);
-}
-
-#elif defined(PLATFORM_LNX)
-#endif
 
 #ifndef PLATFORM_WIN
 void fopen_s(FILE** f, const char* c, const char* m);
@@ -259,33 +256,15 @@ public:
 };
 #endif
 
-namespace std {
-	string to_string(Vec2 v);
-	string to_string(Vec3 v);
-	string to_string(Vec4 v);
-	string to_string(Quat v);
-}
-
-std::vector<string> string_split(string s, char c, bool removeBlank = false);
-int string_find(const string& s, const string& s2, int start = -1);
-
-int TryParse(string str, int defVal);
-uint TryParse(string str, uint defVal);
-float TryParse(string str, float defVal);
+#include "utils/net.h"
+#include "utils/xml.h"
+#include "utils/strext.h"
 
 #include "core/mvp.h"
-
-struct BBox {
-	BBox() {}
-	BBox(float, float, float, float, float, float);
-
-	float x0, x1, y0, y1, z0, z1;
-};
+#include "core/bbox.h"
 
 #include "utils/color.h"
 #include "utils/rect.h"
-
-typedef glm::tvec2<int, glm::highp> Int2;
 
 typedef byte DRAWORDER; //because we use this as flags
 const DRAWORDER DRAWORDER_NONE = 0x00;
@@ -301,12 +280,9 @@ const uint ECACHESZ_PADDING = 1;
 #pragma region class names
 
 //we really shouldn't be doing this
-#if defined(PLATFORM_WIN)
+#ifdef PLATFORM_WIN
 #define _allowshared(T) friend class std::_Ref_count_obj<T>
-#elif defined(PLATFORM_ADR)
-#define _allowshared(T) friend class __gnu_cxx::new_allocator<T>
-//#define _allowshared(T) friend class std::__libcpp_compressed_pair_imp<std::allocator<T>, T, 1>
-#elif defined(PLATFORM_LNX)
+#else
 #define _allowshared(T) friend class __gnu_cxx::new_allocator<T>
 #endif
 
@@ -543,26 +519,14 @@ enum FFT_WINDOW : byte {
 #include "scene/object.h"
 
 #include "core/debug.h"
-#include "core/ptrext.h"
 #include "core/time.h"
 #include "core/io.h"
 
+#include "utils/random.h"
+#include "utils/ptrext.h"
 #include "utils/precedurals.h"
 #include "utils/stream.h"
-
-#ifdef PLATFORM_WIN
-class SerialPort {
-public:
-	static std::vector<string> GetNames();
-	static bool Connect(string port);
-	static bool Disconnect();
-	static bool Read(byte* data, uint count);
-	static bool Write(byte* data, uint count);
-
-protected:
-	static HANDLE handle;
-};
-#endif
+#include "utils/serial.h"
 
 #include "core/font.h"
 #include "core/input.h"
