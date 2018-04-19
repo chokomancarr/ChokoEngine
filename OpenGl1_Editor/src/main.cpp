@@ -131,6 +131,9 @@ int main(int argc, char **argv)
 		return 0;
 	}
 
+	PopupSelector::Init();
+	glfwMakeContextCurrent(window);
+
 	Engine::Init(path);
 	Editor::instance->activeScene = new Scene();
 	Scene::active = Editor::instance->activeScene;
@@ -160,9 +163,6 @@ int main(int argc, char **argv)
 
 	//updateThread = std::thread(UpdateLoop);
 	atexit(OnDie);
-	
-	PopupSelector::Init();
-	glfwMakeContextCurrent(window);
 
 	KillSplash();
 
@@ -202,7 +202,6 @@ int main(int argc, char **argv)
 		UpdateLoop();
 		renderScene();
 
-		Input::inputString = "";
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 
@@ -322,17 +321,11 @@ void DoUpdate() {
 
 
 void UpdateLoop() {
-	//while (!die) {
-	//	if (redrawn)
-	//	{
-			//lock_guard<mutex> lock(lockMutex);
-			//redrawn = false;
-			Time::Update();
-			Input::UpdateMouseNKeyboard();
-			Editor::onFocus = GetForegroundWindow() == Editor::hwnd2;
-			DoUpdate();
-	//	}
-	//}
+	Input::PreLoop();
+	Time::Update();
+	Input::UpdateMouseNKeyboard();
+	Editor::onFocus = GetForegroundWindow() == Editor::hwnd2;
+	DoUpdate();
 }
 
 void OnDie() {

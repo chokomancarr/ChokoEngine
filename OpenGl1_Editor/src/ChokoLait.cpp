@@ -28,11 +28,11 @@ void ChokoLait::_InitVars() {
 		abort();
 	}
 	glfwWindowHint(GLFW_VISIBLE, 0);
-#ifdef PLATFORM_LNX
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR,4);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR,5);
+
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
+	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-#endif
 	window = glfwCreateWindow(10, 10, "ChokoLait Application", NULL, NULL);
 	Display::window = window;
 	if (!window) {
@@ -41,6 +41,7 @@ void ChokoLait::_InitVars() {
 	}
 	glfwMakeContextCurrent(window);
 
+	glewExperimental = true;
 	GLint GlewInitResult = glewInit();
 	if (GLEW_OK != GlewInitResult)
 	{

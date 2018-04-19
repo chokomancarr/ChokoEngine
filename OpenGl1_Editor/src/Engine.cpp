@@ -135,96 +135,6 @@ Vec3 Ds(Vec3 v) {
 }
 
 
-MVP::stack MVP::MV = MVP::stack();
-MVP::stack MVP::P = MVP::stack();
-Mat4x4 MVP::_mv, MVP::_p;
-bool MVP::changedMv = true, MVP::changedP = true;
-Mat4x4 MVP::identity = Mat4x4();
-bool MVP::isProj = false;
-
-void MVP::Reset() {
-	P.swap(std::stack<Mat4x4>());
-	P.push(identity);
-	MV.swap(std::stack<Mat4x4>());
-	MV.push(identity);
-	changedMv = true;
-	changedP = true;
-}
-void MVP::Switch(bool proj) {
-	isProj = proj;
-}
-void MVP::Push() {
-	if (isProj) P.push(identity);
-	else MV.push(identity);
-}
-void MVP::Pop() {
-	if (isProj) {
-		P.pop();
-		changedP = true;
-	}
-	else {
-		MV.pop();
-		changedMv = true;
-	}
-}
-void MVP::Clear() {
-	if (isProj) {
-		P.swap(std::stack<Mat4x4>());
-		P.push(identity);
-		changedP = true;
-	}
-	else {
-		MV.swap(std::stack<Mat4x4>());
-		MV.push(identity);
-		changedMv = true;
-	}
-}
-void MVP::Mul(const Mat4x4& mat) {
-	if (isProj) {
-		P.top() *= mat;
-		changedP = true;
-	}
-	else {
-		MV.top() *= mat;
-		changedMv = true;
-	}
-}
-void MVP::Translate(const Vec3& v) {
-	Translate(v.x, v.y, v.z);
-}
-void MVP::Translate(float x, float y, float z) {
-	//Mul(Mat4x4(1, 0, 0, x, 0, 1, 0, y, 0, 0, 1, z, 0, 0, 0, 1));
-	Mul(Mat4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, z, 1));
-}
-void MVP::Scale(const Vec3& v) {
-	Scale(v.x, v.y, v.z);
-}
-void MVP::Scale(float x, float y, float z) {
-	Mul(Mat4x4(x, 0, 0, 0, 0, y, 0, 0, 0, 0, z, 0, 0, 0, 0, 1));
-}
-
-Mat4x4 MVP::modelview() {
-	if (changedMv) {
-		changedMv = false;
-		_mv = identity;
-		for (uint i = 0; i < MV.size(); i++) {
-			_mv *= MV.c[i];// * m;
-		}
-	}
-	return _mv;
-}
-Mat4x4 MVP::projection() {
-	if (changedP) {
-		changedP = false;
-		_p = identity;
-		for (uint i = 0; i < P.size(); i++) {
-			_p *= P.c[i];// * m;
-		}
-	}
-	return _p;
-}
-
-
 GLuint Color::pickerProgH = 0;
 GLuint Color::pickerProgSV = 0;
 
@@ -571,13 +481,6 @@ GLint Engine::defWMVPLoc = 0;
 
 Font* Engine::defaultFont;
 Rect* Engine::stencilRect = nullptr;
-bool Input::mouse0 = false;
-bool Input::mouse1 = false;
-bool Input::mouse2 = false;
-byte Input::mouse0State = 0;
-byte Input::mouse1State = 0;
-byte Input::mouse2State = 0;
-string Input::inputString = "";
 
 void Engine::Init(string path) {
 	if (path != "") {
@@ -771,7 +674,7 @@ bool UI::IsSameId(uintptr_t* left, uintptr_t* right) {
 }
 
 void UI::GetEditTextId() {
-#ifdef PLATFORM_WIN
+//#ifdef PLATFORM_WIN
 	memset(_activeEditText, 0, UI_MAX_EDIT_TEXT_FRAMES * sizeof(uintptr_t));
 	Debug::StackTrace(10, (void**)_activeEditText);
 	//UI_Trace(drawFuncLoc, 2, _activeEditText);
@@ -779,7 +682,7 @@ void UI::GetEditTextId() {
 	else _activeEditTextId = 0;
 
 	memcpy(_lastEditText, _activeEditText, UI_MAX_EDIT_TEXT_FRAMES * sizeof(uintptr_t));
-#endif
+//#endif
 }
 
 bool UI::IsActiveEditText() {
@@ -787,10 +690,10 @@ bool UI::IsActiveEditText() {
 }
 
 void UI::PreLoop() {
-#ifdef PLATFORM_WIN
+//#ifdef PLATFORM_WIN
 	memset(_lastEditText, 0, UI_MAX_EDIT_TEXT_FRAMES * sizeof(uintptr_t));
 	_activeEditTextId = 0;
-#endif
+//#endif
 }
 
 #define _checkdraw assert(UI::CanDraw() && "UI functions can only be called from the Overlay function!");
@@ -838,7 +741,7 @@ void UI::Texture(float x, float y, float w, float h, ::Texture* texture, Vec4 ti
 }
 
 string UI::EditText(float x, float y, float w, float h, float s, Vec4 bcol, const string& str2, Font* font, bool delayed, bool* changed, Vec4 fcol, Vec4 hcol, Vec4 acol, bool ser) {
-#ifdef PLATFORM_WIN
+//#ifdef PLATFORM_WIN
 	string str = str2;
 	_checkdraw;
 	GetEditTextId();
@@ -855,7 +758,7 @@ string UI::EditText(float x, float y, float w, float h, float s, Vec4 bcol, cons
 			if (!delayed) _editTextString = str;
 			if (!!_editTextCursorPos) _editTextCursorPos -= Input::KeyDown(Key_LeftArrow);
 			_editTextCursorPos += Input::KeyDown(Key_RightArrow);
-			_editTextCursorPos = Clamp(_editTextCursorPos, 0U, _editTextString.size());
+			_editTextCursorPos = Clamp<uint>(_editTextCursorPos, 0U, _editTextString.size());
 			if (!Input::KeyHold(Key_LeftShift) && (Input::KeyDown(Key_LeftArrow) || Input::KeyDown(Key_RightArrow))) {
 				_editTextCursorPos2 = _editTextCursorPos;
 				_editTextBlinkTime = 0;
@@ -931,7 +834,7 @@ string UI::EditText(float x, float y, float w, float h, float s, Vec4 bcol, cons
 		font->Align(al);
 
 		if ((Input::mouse0State == MOUSE_UP && !Rect(x, y, w, h).Inside(Input::mousePos)) || Input::KeyDown(Key_Enter)) {
-			SecureZeroMemory(_editingEditText, UI_MAX_EDIT_TEXT_FRAMES * 4);
+			memset(_editingEditText, 0, UI_MAX_EDIT_TEXT_FRAMES * sizeof(uintptr_t));
 			_activeEditTextId = 0;
 			if (changed && delayed) *changed = true;
 
@@ -942,14 +845,14 @@ string UI::EditText(float x, float y, float w, float h, float s, Vec4 bcol, cons
 			return delayed ? _editTextString : str;
 		}
 		if (Input::KeyDown(Key_Escape)) {
-			SecureZeroMemory(_editingEditText, UI_MAX_EDIT_TEXT_FRAMES * 4);
+			memset(_editingEditText, 0, UI_MAX_EDIT_TEXT_FRAMES * sizeof(uintptr_t));
 			_activeEditTextId = 0;
 			return str;
 		}
 		return delayed ? str : _editTextString;
 	}
 	else if(Engine::Button(x, y, w, h, bcol, str, s, font, fcol, false) == MOUSE_RELEASE) {
-		memcpy(_editingEditText, _activeEditText, UI_MAX_EDIT_TEXT_FRAMES * 4);
+		memcpy(_editingEditText, _activeEditText, UI_MAX_EDIT_TEXT_FRAMES * sizeof(uintptr_t));
 		_editingEditTextId = _activeEditTextId;
 		_editTextCursorPos = str.size();
 		_editTextCursorPos2 = 0;
@@ -957,7 +860,7 @@ string UI::EditText(float x, float y, float w, float h, float s, Vec4 bcol, cons
 		if (delayed) _editTextString = str;
 	}
 	return str;
-#endif
+//#endif
 }
 
 void UI::Label(float x, float y, float s, string st, Font* font, Vec4 col, float maxw) {
@@ -1643,6 +1546,14 @@ void Engine::DrawCubeLinesW(float x0, float x1, float y0, float y1, float z0, fl
 
 #pragma region Input
 
+bool Input::mouse0 = false;
+bool Input::mouse1 = false;
+bool Input::mouse2 = false;
+byte Input::mouse0State = 0;
+byte Input::mouse1State = 0;
+byte Input::mouse2State = 0;
+string Input::inputString = "";
+
 Vec2 Input::mousePos = Vec2(0, 0);
 Vec2 Input::mousePosRelative = Vec2(0, 0);
 Vec2 Input::mousePosOld = Vec2(0, 0);
@@ -1658,13 +1569,18 @@ std::array<Vec2, 10> Input::touchPoss = std::array<Vec2, 10>();
 //std::array<float, 10> Input::touchForce = std::array<float, 10>();
 std::array<byte, 10> Input::touchStates = std::array<byte, 10>();
 
+string Input::_inputString = "";
+
 void Input::RegisterCallbacks() {
 	glfwSetInputMode(Display::window, GLFW_STICKY_KEYS, 1);
 	glfwSetCharCallback(Display::window, TextCallback);
+#ifdef IS_EDITOR
+	glfwSetCharCallback(PopupSelector::window, TextCallback);
+#endif
 }
 
 void Input::TextCallback(GLFWwindow* w, uint i) {
-	inputString += string((char*)&i, 1);
+	_inputString += string((char*)&i, 1);
 }
 
 bool Input::KeyDown(InputKey k) {
@@ -1792,6 +1708,11 @@ void Input::UpdateAdr(AInputEvent* e) {
 }
 #endif
 
+void Input::PreLoop() {
+	inputString = _inputString;
+	_inputString.clear();
+}
+
 #pragma endregion
 
 #pragma region Display
@@ -1840,7 +1761,7 @@ bool Audio::Gen(byte* data, uint count) {
 #ifdef PLATFORM_WIN
 	auto pc = count * AudioEngine::pwfx->nChannels;
 	auto sz = sources.size();
-	SecureZeroMemory(data, pc * sizeof(float));
+	memset(data, 0, pc * sizeof(float));
 	if (!sz) {
 		return true;
 	}
@@ -2183,11 +2104,11 @@ string IO::InitPath() {
 		char cpath[200];
 #ifdef PLATFORM_WIN
 		GetModuleFileName(NULL, cpath, 200);
-		auto path2 = cpath;
+		string path2 = cpath;
 		path2 = path2.substr(0, path2.find_last_of('\\') + 1);
 #elif defined(PLATFORM_LNX)
 		getcwd(cpath, 199);
-		auto path2 = cpath;
+		string path2 = cpath;
 #endif
 		path = path2;
 		Debug::Message("IO", "Path set to " + path);

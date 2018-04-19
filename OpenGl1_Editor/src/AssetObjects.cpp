@@ -11,6 +11,14 @@
 #include <shellapi.h>
 #endif
 
+/* jpeglib */
+#ifdef PLATFORM_WIN
+#pragma comment(lib, "jpeg_win.lib")
+#endif
+#include "jpeglib.h"
+#include "jerror.h"
+#include "lodepng.h"
+
 #define F2ISTREAM(_varname, _pathname) std::ifstream _f2i_ifstream((_pathname).c_str(), std::ios::in | std::ios::binary); \
 std::istream _varname(_f2i_ifstream.rdbuf());
 

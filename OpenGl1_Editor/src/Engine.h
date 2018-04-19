@@ -75,14 +75,13 @@ Global stuff, normally not macro-protected
 #endif
 
 #include <Windows.h>
-//#include <Dbghelp.h>
 #include <WinSock2.h>
 #include <signal.h>
 #pragma comment(lib, "Secur32.lib")
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "iphlpapi.lib")
 #pragma comment(lib, "Dbghelp.lib")
-#else //networking is identical on unix systems
+#else //networking is identical on *nix systems
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -151,7 +150,6 @@ typedef GLFWwindow NativeWindow;
 #include <array>
 #include <memory>
 #include <thread>
-#include "lodepng.h"
 #include <math.h>
 #include "glm/glm.hpp"
 #include "glm/gtx/quaternion.hpp"
@@ -159,19 +157,6 @@ typedef GLFWwindow NativeWindow;
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
 
-/* freetype */
-#ifdef PLATFORM_WIN
-#pragma comment(lib, "freetype_win.lib")
-#endif
-#include <ft2build.h>
-#include FT_FREETYPE_H
-
-/* jpeglib */
-#ifdef PLATFORM_WIN
-#pragma comment(lib, "jpeg_win.lib")
-#endif
-#include "jpeglib.h"
-#include "jerror.h"
 
 /* ffmpeg */
 #ifdef FEATURE_AV_CODECS
@@ -233,45 +218,15 @@ const float rad2deg = 57.2958f;
 const float deg2rad = 0.0174533f;
 const char char0 = 0;
 
-#define UI_MAX_EDIT_TEXT_FRAMES 8
+const uint UI_MAX_EDIT_TEXT_FRAMES = 8;
 
 #define Normalize(a) glm::normalize(a)
 #define Distance(a, b) glm::distance(a, b)
 
-template <typename T> const T& min(const T& a, const T& b) {
-	if (a > b) return b;
-	else return a;
-}
-template <typename T> const T& max(const T& a, const T& b) {
-	if (a > b) return a;
-	else return b;
-}
-template <typename T> T Repeat(T t, T a, T b) {
-	while (t > b)
-		t -= (b - a);
-	while (t < a)
-		t += (b - a);
-	return t;
-}
-template <typename T> T Clamp(T t, T a, T b) {
-	return min(b, max(t, a));
-}
-
-template <typename T> T Lerp(T a, T b, float c) {
-	if (c < 0) return a;
-	else if (c > 1) return b;
-	else return a*(1 - c) + b*c;
-}
-template <typename T> float InverseLerp(T a, T b, T c) {
-	return Clamp((float)((c - a) / (b - a)), 0.0f, 1.0f);
-}
+#include "core/math.h"
 
 #include "AudioEngine.h"
 #include "Networking.h"
-
-//shorthands
-Vec4 black(float f = 1);
-Vec4 red(float f = 1, float i = 1), green(float f = 1, float i = 1), blue(float f = 1, float i = 1), cyan(float f = 1, float i = 1), yellow(float f = 1, float i = 1), white(float f = 1, float i = 1);
 
 #define push_val(var, nm, val) auto var = nm; nm = val;
 
@@ -297,6 +252,13 @@ void fopen_s(FILE** f, const char* c, const char* m);
 #define sscanf_s sscanf
 #endif
 
+#ifdef PLATFORM_WIN
+class WinFunc {
+public:
+	static HWND GetHwndFromProcessID(DWORD id);
+};
+#endif
+
 namespace std {
 	string to_string(Vec2 v);
 	string to_string(Vec3 v);
@@ -311,43 +273,7 @@ int TryParse(string str, int defVal);
 uint TryParse(string str, uint defVal);
 float TryParse(string str, float defVal);
 
-class MVP {
-public:
-	static void Reset();
-	static void Switch(bool isProj);
-	static void Push(), Pop(), Clear();
-	static void Mul(const Mat4x4& mat);
-	static void Translate(const Vec3& v), Translate(float x, float y, float z);
-	static void Scale(const Vec3& v), Scale(float x, float y, float z);
-
-	static Mat4x4 modelview(), projection();
-	
-protected:
-	class stack : public std::stack<Mat4x4> {
-	public:
-		using std::stack<Mat4x4>::c;
-	};
-
-	static stack MV, P;
-	static Mat4x4 _mv, _p;
-	static bool changedMv, changedP;
-	static Mat4x4 identity;
-	static bool isProj;
-
-};
-
-class MatFunc {
-public:
-	static Mat4x4 FromTRS(const Vec3& t, const Quat& r, const Vec3& s);
-};
-class QuatFunc {
-public:
-	static Quat Inverse(const Quat&);
-	static Vec3 ToEuler(const Quat&);
-	static Mat4x4 ToMatrix(const Quat&);
-	static Quat FromAxisAngle(Vec3, float);
-	static Quat LookAt(const Vec3&, const Vec3&);
-};
+#include "core/mvp.h"
 
 struct BBox {
 	BBox() {}
@@ -356,63 +282,19 @@ struct BBox {
 	float x0, x1, y0, y1, z0, z1;
 };
 
-class Color {
-public:
-	Color() : r(0), g(0), b(0), a(0), useA(true) {}
-	Color(Vec4 v, bool hasA = true) : r((byte)round(v.r * 255)), g((byte)round(v.g * 255)), b((byte)round(v.b * 255)), a((byte)round(v.a * 255)), useA(hasA) {}
-
-	bool useA;
-	byte r, g, b, a;
-	float h, s, v;
-
-	Vec3 hsv() { return Vec3(h, s, v); }
-
-	Vec4 vec4() {
-		return Vec4(r, g, b, a)*(1.0f / 255);
-	}
-
-	static GLuint pickerProgH, pickerProgSV;
-
-	string hex();
-
-	static void Rgb2Hsv(byte r, byte g, byte b, float& h, float& s, float& v), Hsv2Rgb(float h, float s, float v, byte& r, byte& g, byte& b);
-	static Vec3 Rgb2Hsv(Vec4 col);
-	static string Col2Hex(Vec4 col);
-	static void DrawPicker(float x, float y, Color& c);
-	static Vec4 HueBaseCol(float hue);
-
-protected:
-
-	void RecalcRGB(), RecalcHSV();
-	static void DrawSV(float x, float y, float w, float h, float hue);
-	static void DrawH(float x, float y, float w, float h);
-};
-
-class Rect {
-public:
-	Rect() : x(0), y(0), w(1), h(1) {}
-	Rect(float x, float y, float w, float h) : x(x), y(y), w(w), h(h) {}
-	Rect(Vec4 v) : x(v.r), y(v.g), w(v.b), h(v.a) {}
-	float x, y, w, h;
-
-	/*! Check if v is inside this rect.
-	*/
-	bool Inside(const Vec2& v);
-	/*! Returns a new Rect covered by both this rect and r2
-	*/
-	Rect Intersection(const Rect& r2);
-};
+#include "utils/color.h"
+#include "utils/rect.h"
 
 typedef glm::tvec2<int, glm::highp> Int2;
 
-typedef unsigned char DRAWORDER;
-#define DRAWORDER_NONE 0x00
-#define DRAWORDER_SOLID 0x01
-#define DRAWORDER_TRANSPARENT 0x02
-#define DRAWORDER_OVERLAY 0x04
-#define DRAWORDER_LIGHT 0x08
+typedef byte DRAWORDER; //because we use this as flags
+const DRAWORDER DRAWORDER_NONE = 0x00;
+const DRAWORDER DRAWORDER_SOLID = 0x01;
+const DRAWORDER DRAWORDER_TRANSPARENT = 0x02;
+const DRAWORDER DRAWORDER_OVERLAY = 0x04;
+const DRAWORDER DRAWORDER_LIGHT = 0x08;
 
-#define ECACHESZ_PADDING 1
+const uint ECACHESZ_PADDING = 1;
 
 #pragma endregion
 
@@ -658,193 +540,15 @@ enum FFT_WINDOW : byte {
 
 #pragma endregion
 
-/*! Debugging functions. Output is saved in Log.txt beside the executable.
-[av] */
-class Debug {
-public:
-	static void Message(string c, string s);
-	static void Warning(string c, string s);
-	static void Error(string c, string s);
-	static void ObjectTree(const std::vector<pSceneObject>& o);
+#include "scene/object.h"
 
-	//*
-	//static void InitStackTrace();
-	static uint StackTrace(uint count, void** buffer);
-	//static std::vector<string> StackTraceNames();
-	//static void DumpStackTrace();
-	//*/
+#include "core/debug.h"
+#include "core/ptrext.h"
+#include "core/time.h"
+#include "core/io.h"
 
-	friend int main(int argc, char **argv);
-	friend class ChokoLait;
-protected:
-	static std::ofstream* stream;
-	static void Init(string path);
-
-private:
-	static void DoDebugObjectTree(const std::vector<pSceneObject>& o, int i);
-	
-#ifdef PLATFORM_WIN
-	static HANDLE winHandle;
-#endif
-};
-
-/*! Base class of instantiatable object
-[av] */
-class Object : public std::enable_shared_from_this<Object> {
-public:
-	Object(string nm = "");
-	Object(ulong id, string nm);
-	ulong id;
-	string name;
-	bool dirty = false; //triggers a reload of internal variables
-	bool dead = false; //will be cleaned up after this frame
-
-	virtual bool ReferencingObject(Object* o) { return false; }
-};
-
-#pragma region pointer extensions
-
-template <class T> std::shared_ptr<T> get_shared(Object* ref) {
-	return std::dynamic_pointer_cast<T> (ref->shared_from_this());
-}
-
-template <class T> class Ref {
-public:
-	Ref(bool suppress = false) : _suppress(suppress) {
-		static_assert(std::is_base_of<Object, T>::value, "Ref class must be derived from Object!");
-	}
-	Ref(std::shared_ptr<T> ref, bool suppress = false) : _suppress(suppress), _object(ref), _empty(false) {
-		static_assert(std::is_base_of<Object, T>::value, "Ref class must be derived from Object!");
-	}
-
-	std::shared_ptr<T> operator()() { //get
-		if (_empty) {
-			if (!_suppress) Debug::Error("Object Reference", "Reference is null!");
-			return nullptr;
-		}
-		else if (_object.expired()) {
-			if (!_suppress) Debug::Error("Object Reference", "Reference is deleted!");
-			return nullptr;
-		}
-		else return _object.lock();
-	}
-	std::shared_ptr<T> operator->() { return this->operator()(); }
-
-	void operator()(const std::shared_ptr<T>& ref) { //set
-		_object = ref;
-		_empty = false;
-	}
-	void operator()(const Ref<T>& ref) {
-		_object = ref._object;
-		_empty = false;
-	}
-	void operator()(const T* ref) {
-		if (!ref) clear();
-		else {
-			_object = get_shared<T>((Object*)ref);
-			_empty = false;
-		}
-	}
-	operator bool() const {
-		return !(_empty || _object.expired());
-	}
-
-	bool operator ==(const Ref<T>& rhs) const {
-		return this->_object.lock() == rhs._object.lock();
-	}
-	bool operator !=(const Ref<T>& rhs) const {
-		return this->_object.lock() != rhs._object.lock();
-	}
-
-	void clear() {
-		_empty = true;
-	}
-	bool ok() {
-		return !(_empty || _object.expired());
-	}
-	T* raw() {
-		if (ok()) return _object.lock().get();
-		else return nullptr;
-	}
-
-private:
-	std::weak_ptr<T> _object;
-	bool _empty = true, _suppress = false;
-};
-
-#pragma endregion
-
-/*! Run-time mesh generation.
-[av] */
-class Procedurals {
-public:
-	static Mesh* Plane(uint xCount, uint yCount);
-	static Mesh* UVSphere(uint uCount, uint vCount);
-};
-
-/*! RNG System
-[av] */
-class Random {
-public:
-	static int seed;
-	static float Value(), Range(float min, float max);
-};
-
-/*! Time information
-[av] */
-class Time {
-public:
-	static long long startMillis;
-	static long long millis;
-	static float time;
-	static float delta;
-	
-	void Update();
-};
-
-long long milliseconds();
-
-void _StreamWrite(const void* val, std::ofstream* stream, int size);
-void _StreamWriteAsset(Editor* e, std::ofstream* stream, ASSETTYPE t, ASSETID i);
-
-template<typename T> void _Strm2Val(std::istream& strm, T &val) {
-	long long pos = strm.tellg();
-	strm.read((char*)&val, (std::streamsize)sizeof(T));
-	if (strm.fail()) {
-		Debug::Error("Strm2Val", "Fail bit raised! (probably eof reached) " + std::to_string(pos));
-	}
-}
-ASSETID _Strm2H(std::istream& strm);
-
-string _Strm2Asset(std::istream& strm, Editor* e, ASSETTYPE& t, ASSETID& i, int maxL = 100);
-
-
-/*! File/folder reading/writing functions.
-[av] */
-class IO {
-public:
-	static std::vector<string> GetFiles(const string& path, string ext = "");
-#ifdef IS_EDITOR
-	static std::vector<EB_Browser_File> GetFilesE(Editor* e, const string& path);
-#endif
-	static void GetFolders(const string& path, std::vector<string>* names, bool hidden = false);
-	static bool HasDirectory(string szPath);
-	static bool HasFile(string szPath);
-	static string ReadFile(const string& path);
-#if defined(IS_EDITOR) || defined(PLATFORM_WIN)
-	static std::vector<string> GetRegistryKeys(HKEY key);
-	static std::vector<std::pair<string, string>> GetRegistryKeyValues(HKEY hKey, DWORD numValues = 5);
-#endif
-	static string GetText(const string& path);
-	static std::vector<byte> GetBytes(const string& path);
-
-	static string path;
-
-	friend class ChokoLait;
-	friend class Engine;
-//protected:
-	static string InitPath();
-};
+#include "utils/precedurals.h"
+#include "utils/stream.h"
 
 #ifdef PLATFORM_WIN
 class SerialPort {
@@ -860,280 +564,17 @@ protected:
 };
 #endif
 
-#ifdef PLATFORM_WIN
-class WinFunc {
-public:
-	static HWND GetHwndFromProcessID(DWORD id);
-};
-#endif
+#include "core/font.h"
+#include "core/input.h"
+#include "core/display.h"
+#include "core/audio.h"
+#include "core/ui.h"
 
-/*! Dynamic fonts constructed with FreeType (.ttf files)
-[av]*/
-class Font {
-public:
-	Font(const string& path, ALIGNMENT align = ALIGN_TOPLEFT);
-	bool loaded = false;
-	//bool useSubpixel; //glyphs are rgba if true, else r (does it look good in games?)
-	GLuint glyph(uint size) { if (_glyphs.count(size) == 1) return _glyphs[size]; else return CreateGlyph(size); }
-
-	ALIGNMENT alignment;
-
-	Font* Align(ALIGNMENT a);
-
-	friend class Engine;
-	friend class UI;
-#ifdef IS_EDITOR
-	friend class PopupSelector;
-#endif
-protected:
-	static FT_Library _ftlib;
-	static void Init(), InitVao(uint sz);
-	FT_Face _face;
-	static GLuint fontProgram;
-
-	float w2h[256];
-	float w2s[256];
-	Vec2 off[256];
-
-	uint vecSize;
-	std::vector<Vec3> poss;
-	std::vector<Vec2> uvs;
-	std::vector<uint> ids;
-	std::vector<float> cs;
-	void SizeVec(uint sz);
-
-	static uint vaoSz;
-	static GLuint vao, vbos[3];
-
-	std::unordered_map<uint, GLuint> _glyphs; //each glyph size is fontSize*16
-	GLuint CreateGlyph (uint size, bool recalcW2h = false);
-};
-
-/*! Mouse, keyboard, and touch input
-[av] */
-class Input {
-public:
-	static Vec2 mousePos, mousePosRelative, mouseDelta, mouseDownPos;
-	static bool mouse0, mouse1, mouse2;
-	static byte mouse0State, mouse1State, mouse2State;
-	static string inputString;
-	static void UpdateMouseNKeyboard(bool* src = nullptr);
-
-	static bool KeyDown(InputKey key), KeyHold(InputKey key), KeyUp(InputKey key);
-
-	static uint touchCount;
-	static std::array<uint, 10> touchIds;
-	static std::array<Vec2, 10> touchPoss;
-	//static std::array<float, 10> touchForce;
-	static std::array<byte, 10> touchStates;
-	class Motion {
-	public:
-		static Vec2 Pan();
-		static Vec2 Zoom();
-		static Vec3 Rotate();
-	};
-#ifdef PLATFORM_ADR
-	static void UpdateAdr(AInputEvent* e);
-#endif
-
-	Vec2 _mousePos, _mousePosRelative, _mouseDelta, _mouseDownPos;
-	bool _mouse0, _mouse1, _mouse2;
-	bool _keyStatuses[325];
-	friend class Engine;
-	friend struct Editor_PlaySyncer;
-protected:
-	static void RegisterCallbacks(), TextCallback(GLFWwindow*, uint);
-	static bool keyStatusOld[325], keyStatusNew[325];
-private:
-	static Vec2 mousePosOld;
-	//Input(Input const &); //deliberately not defined
-	//Input& operator= (Input const &);
-};
-
-/*! Display window properties
-[av] */
-class Display {
-public:
-	static int width, height;
-	const static uint dpi = 96;
-	static glm::mat3 uiMatrix;
-
-	static void Resize(int x, int y, bool maximize = false);
-
-	friend int main(int argc, char **argv);
-	//move all functions in here please
-	friend void MouseGL(GLFWwindow* window, int button, int state, int mods);
-	friend void MotionGL(GLFWwindow* window, double x, double y);
-	friend void FocusGL(GLFWwindow* window, int focus);
-	friend class PopupSelector;
-	friend class ChokoLait;
-//protected:
-	static NativeWindow* window;
-};
-
-class Audio {
-public:
-	class Playback {
-	public:
-		uint pos;
-		AudioClip* clip;
-
-		friend class Audio;
-	protected:
-		Playback(AudioClip* clip, float pos);
-
-		bool Gen(float* data, uint count);
-	};
-
-	/*!
-	Plays an audio clip directly into stream, ignoring effects
-	[av] */
-	static Playback* Play(AudioClip* clip, float pos = 0);
-
-//protected:
-	static std::vector<Playback*> sources;
-
-	static bool Gen(byte* data, uint count);
-};
-
+#include "utils/fft.h"
 #ifdef FEATURE_COMPUTE_SHADERS
-/*! generic class of ComputeBuffer
-[av] */
-class IComputeBuffer {
-public:
-	IComputeBuffer(uint size, void* data, uint padding = 0, uint stride = 1);
-	~IComputeBuffer();
-
-	GLuint pointer;
-	uint size;
-
-
-	void Set(void* data, uint padding = 0, uint stride = 1);
-	
-	/*! Returns a copy of the compute buffer data.
-	 * The lhs pointer will be overwritten if target is null. Use Get(T*) to use a preallocated buffer.
-	 */
-	template <typename T> T* Get(T* target = nullptr) {
-		byte* tar;
-		if (!target) tar = new byte[size];
-		else tar = (byte*)target;
-		GLint bufmask = GL_MAP_READ_BIT;
-		glBindBuffer(GL_SHADER_STORAGE_BUFFER, pointer);
-		void* src = (void*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, 4 * 4, bufmask);
-		if (!src) {
-			Debug::Warning("ComputeBuffer", "Set: Unable to map buffer!");
-		}
-		memcpy(tar, src, size);
-		glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
-		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-		return (T*)tar;
-	}
-};
-
-/*! Data buffer to be used by ComputeShader.
-[av] */
-template<typename T> class ComputeBuffer : public IComputeBuffer {
-public:
-	ComputeBuffer(uint num, T* data = nullptr, uint padding = 0) : IComputeBuffer(num*sizeof(T), data, padding) {}
-};
-
-/*! GPGPU Shader. 
-[av] */
-class ComputeShader {
-public:
-	/*! Creates a ComputeShader from the shader source.
-	Example usage: ComputeShader(IO::GetText("C:\\source.compute"));
-	*/
-	ComputeShader(string str);
-	~ComputeShader();
-
-	static ComputeShader* FromPath(string path);
-
-	void SetBuffer(uint binding, IComputeBuffer* buf);
-	void SetFloat(string name, const int& val);
-	void SetFloat(string name, const float& val);
-	void SetMatrix(string name, const Mat4x4& val);
-	void SetArray(string name, void* val, uint cnt);
-
-	void Dispatch(uint cx, uint cy, uint xz);
-protected:
-	std::vector<std::pair<GLuint, IComputeBuffer*>> buffers;
-
-	GLuint pointer;
-};
+#include "utils/compute.h"
 #endif
 
-
-/*! Cooley-Tukey FFT
-[av] */
-class FFT {
-public:
-	static std::vector<std::complex<float>> Evaluate(const std::vector<float>& values, FFT_WINDOW window);
-	
-private:
-	static bool isGoodLength(uint a);
-	static float applyWindow(float val, float pos);
-	static void doFft(std::complex<float>* v, uint c);
-	static void separate(std::complex<float>* v, uint c);
-};
-
-
-/*! 2D drawing to the screen.
-[av] */
-class UI {
-public:
-	static void Texture(float x, float y, float w, float h, ::Texture* texture, DRAWTEX_SCALING scl = DRAWTEX_STRETCH, float miplevel = 0);
-	static void Texture(float x, float y, float w, float h, ::Texture* texture, float alpha, DRAWTEX_SCALING scl = DRAWTEX_STRETCH, float miplevel = 0);
-	static void Texture(float x, float y, float w, float h, ::Texture* texture, Vec4 tint, DRAWTEX_SCALING scl = DRAWTEX_STRETCH, float miplevel = 0);
-	static void Label(float x, float y, float s, string str, Font* font, Vec4 col = black(), float maxw = -1);
-
-	//Draws an editable text box. EditText does not work on recursive functions.
-	static string EditText(float x, float y, float w, float h, float s, Vec4 bcol, const string& str, Font* font, bool delayed = false, bool* changed = nullptr, Vec4 fcol = black(), Vec4 hcol = Vec4(0, 120.0f / 255, 215.0f / 255, 1), Vec4 acol = white(), bool ser = true);
-	
-	static bool CanDraw();
-
-	static bool _isDrawingLoop;
-	static void PreLoop();
-	static uintptr_t _activeEditText[UI_MAX_EDIT_TEXT_FRAMES], _lastEditText[UI_MAX_EDIT_TEXT_FRAMES], _editingEditText[UI_MAX_EDIT_TEXT_FRAMES];
-	static ushort _activeEditTextId, _editingEditTextId;
-	
-	static void GetEditTextId();
-	static bool IsActiveEditText();
-	static bool IsSameId(uintptr_t* left, uintptr_t* right);
-
-	struct StyleColor {
-		Vec4 backColor, fontColor;
-		//Texture* backTex;
-
-		void Set(const Vec4 vb, const Vec4 vf) {
-			backColor = vb;
-			fontColor = vf;
-		}
-	};
-	struct Style {
-		StyleColor normal, mouseover, highlight, press;
-		int fontSize;
-	};
-
-	friend class Engine;
-	friend void FocusGL(GLFWwindow* window, int focus);
-	friend class PopupSelector;
-	friend class RenderTexture;
-//protected:
-
-	static bool focused;
-	static uint _editTextCursorPos, _editTextCursorPos2;
-	static string _editTextString;
-	static float _editTextBlinkTime;
-
-	static Style _defaultStyle;
-
-	static void InitVao(), SetVao(uint sz, void* verts, void* uvs = nullptr);
-	static uint _vboSz;
-	static GLuint _vao, _vboV, _vboU;
-	
-	static void Init();
-};
 
 class Engine { //why do I have this class again?
 public:
