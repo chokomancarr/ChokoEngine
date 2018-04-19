@@ -565,8 +565,32 @@ void paintfunc() {
 	//set.skyStrength = Engine::DrawSliderFill(400, 10, 150, 20, 0, 3, set.skyStrength, white(0.5f, 0.3f), white());
 }
 
+/*
+void addcpp(string path) {
+	auto files = IO::GetFiles(path);
+	for (auto f : files) {
+		if (f.back() == 'h') {
+			if ((std::find(files.begin(), files.end(), f.substr(0, f.size() - 1) + "cpp") == files.end()) &&
+				(std::find(files.begin(), files.end(), f.substr(0, f.size() - 1) + "c") == files.end())) {
+				std::ofstream strm(f.substr(0, f.size() - 1) + "cpp");
+				strm << "#include \"Engine.h\"" << std::endl;
+			}
+		}
+	}
+	std::vector<string> folders;
+	IO::GetFolders(path, &folders);
+	for (auto f : folders) {
+		if (f != "." && f != "..") {
+			addcpp(path + "\\" + f);
+		}
+	}
+}
+*/
+
 int main(int argc, char **argv)
 {
+	//addcpp("C:\\Users\\Pua Kai\\Documents\\GitHub\\ChokoEngine\\OpenGl1_Editor\\src\\asset");
+
 	ChokoLait::Init(500, 500);
 
 	auto& set = Scene::active->settings;

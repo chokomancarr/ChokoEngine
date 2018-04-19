@@ -228,8 +228,22 @@ xcopy /y "$(SolutionDir)Debug\Library\include\*" "D:\TestProject2\System\"</Comm
   <ItemGroup>
     <ClCompile Include="hdr\hdr.cpp" />
     <ClCompile Include="png\lodepng.cpp" />
-    <ClCompile Include="src\AssetObjects.cpp" />
     <ClCompile Include="src\asset\animation.cpp" />
+    <ClCompile Include="src\asset\animclip.cpp" />
+    <ClCompile Include="src\asset\assetmanager.cpp" />
+    <ClCompile Include="src\asset\assetobject.cpp" />
+    <ClCompile Include="src\asset\audioclip.cpp" />
+    <ClCompile Include="src\asset\cameffect.cpp" />
+    <ClCompile Include="src\asset\cubemap.cpp" />
+    <ClCompile Include="src\asset\img\background.cpp" />
+    <ClCompile Include="src\asset\img\rendertexture.cpp" />
+    <ClCompile Include="src\asset\img\texture.cpp" />
+    <ClCompile Include="src\asset\img\texture3d.cpp" />
+    <ClCompile Include="src\asset\img\videotexture.cpp" />
+    <ClCompile Include="src\asset\material.cpp" />
+    <ClCompile Include="src\asset\mesh.cpp" />
+    <ClCompile Include="src\asset\resources.cpp" />
+    <ClCompile Include="src\asset\shader.cpp" />
     <ClCompile Include="src\AudioEngine.cpp" />
     <ClCompile Include="src\ChokoLait.cpp" />
     <ClCompile Include="src\core\math.h" />
@@ -241,7 +255,6 @@ xcopy /y "$(SolutionDir)Debug\Library\include\*" "D:\TestProject2\System\"</Comm
     <ClCompile Include="src\utils\net.cpp" />
     <ClCompile Include="src\RenderEngine.cpp" />
     <ClCompile Include="src\SceneObjects.cpp" />
-    <ClCompile Include="src\Shader.cpp" />
     <ClCompile Include="src\Types.cpp" />
     <ClCompile Include="src\utils\xml.cpp" />
     <ClCompile Include="src\Water.cpp" />
