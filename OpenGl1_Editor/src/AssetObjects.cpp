@@ -2038,6 +2038,14 @@ Mesh::Mesh(std::istream& stream, uint offset) : AssetObject(ASSETTYPE_MESH), loa
 				Debug::Error("Mesh Importer", "mesh metadata corrupted (uv1 incomplete)!");
 				return;
 			}
+			GLuint buf;
+			for (uint i = 0; i < materialCount; i++) {
+				glGenBuffers(1, &buf);
+				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buf);
+				glBufferData(GL_ELEMENT_ARRAY_BUFFER, _matTriangles[i].size() * 4, &_matTriangles[i][0], GL_STATIC_DRAW);
+				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+				_matIndicesBuffers.push_back(buf);
+			}
 			CalcTangents();
 			RecalculateBoundingBox();
 			InitVao();
@@ -2174,6 +2182,14 @@ Mesh::Mesh(string p) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0
 		else if (uv1.size() != vertexCount) {
 			Debug::Error("Mesh Importer", "mesh metadata corrupted (uv1 incomplete)!");
 			return;
+		}
+		GLuint buf;
+		for (uint i = 0; i < materialCount; i++) {
+			glGenBuffers(1, &buf);
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buf);
+			glBufferData(GL_ELEMENT_ARRAY_BUFFER, _matTriangles[i].size() * 4, &_matTriangles[i][0], GL_STATIC_DRAW);
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+			_matIndicesBuffers.push_back(buf);
 		}
 		CalcTangents();
 		RecalculateBoundingBox();
