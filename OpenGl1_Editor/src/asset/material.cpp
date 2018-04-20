@@ -1,4 +1,5 @@
 #include "Engine.h"
+#include "Editor.h"
 
 Material::Material() : _shaderId(-1), AssetObject(ASSETTYPE_MATERIAL), writeMask(4, true) {
 	_shader = nullptr;// Engine::unlitProgram;

@@ -1,11 +1,5 @@
 #pragma once
 
-/*
-Global stuff, normally not macro-protected
-
-[av]: available in Lait version
-*/
-
 #define _ITERATOR_DEBUG_LEVEL 0
 
 #include "Defines.h"
@@ -80,11 +74,9 @@ Global stuff, normally not macro-protected
 #pragma comment(lib, "Secur32.lib")
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "iphlpapi.lib")
-#pragma comment(lib, "Dbghelp.lib")
+//#pragma comment(lib, "Dbghelp.lib")
 #else //networking is identical on *nix systems
 #include <arpa/inet.h>
-#include <sys/socket.h>
-#include <sys/time.h>
 #ifdef PLATFORM_LNX
 #include <unistd.h>
 #include <execinfo.h>
@@ -227,6 +219,9 @@ const uint UI_MAX_EDIT_TEXT_FRAMES = 8;
 #define Normalize(a) glm::normalize(a)
 #define Distance(a, b) glm::distance(a, b)
 
+float Dw(float), Dh(float);
+Vec3 Ds(Vec3);
+
 #include "core/math.h"
 
 class MatFunc {
@@ -248,6 +243,9 @@ public:
 void fopen_s(FILE** f, const char* c, const char* m);
 #define sscanf_s sscanf
 #endif
+
+#define F2ISTREAM(_varname, _pathname) std::ifstream _f2i_ifstream((_pathname).c_str(), std::ios::in | std::ios::binary); \
+std::istream _varname(_f2i_ifstream.rdbuf());
 
 #ifdef PLATFORM_WIN
 class WinFunc {
@@ -536,7 +534,7 @@ enum FFT_WINDOW : byte {
 
 #include "utils/fft.h"
 #ifdef FEATURE_COMPUTE_SHADERS
-#include "utils/compute.h"
+#include "asset/compute.h"
 #endif
 
 

@@ -1,4 +1,5 @@
 #include "Engine.h"
+#include "Editor.h"
 
 CameraEffect::CameraEffect(Material* mat) : AssetObject(ASSETTYPE_CAMEFFECT) {
 	material = mat;

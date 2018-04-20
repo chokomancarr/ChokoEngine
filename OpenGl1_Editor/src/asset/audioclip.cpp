@@ -1,4 +1,5 @@
 #include "Engine.h"
+#include "Editor.h"
 
 #ifndef DISABLE_AV_CODECS
 void AudioClip::_Init_ffmpeg(const string& path) {

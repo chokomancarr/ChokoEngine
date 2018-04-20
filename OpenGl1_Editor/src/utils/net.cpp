@@ -1,8 +1,9 @@
-#include "net.h"
+#include "Engine.h"
 #ifdef PLATFORM_WIN
 #include <Ws2tcpip.h>
 #include <IPHlpApi.h>
 #else
+#include <sys/socket.h>
 #include <sys/types.h>
 #include "ifaddrs.h"
 #endif

@@ -1,5 +1,6 @@
 #include "Engine.h"
 #include "hdr.h"
+#include "Editor.h"
 
 Background::Background(const string& path) : width(0), height(0), AssetObject(ASSETTYPE_HDRI) {
 	if (path.size() < 5 || path.substr(path.size() - 4, string::npos) != ".hdr") {

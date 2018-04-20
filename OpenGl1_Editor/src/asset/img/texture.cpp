@@ -1,4 +1,5 @@
 #include "Engine.h"
+#include "Editor.h"
 
 #ifdef PLATFORM_WIN
 #pragma comment(lib, "jpeg_win.lib")
