@@ -99,6 +99,7 @@ bool ChokoLait::alive() {
 }
 
 void ChokoLait::Update(emptyCallbackFunc func) {
+	Input::PreLoop();
 	Time::Update();
 	Input::UpdateMouseNKeyboard();
 	if (func) func();

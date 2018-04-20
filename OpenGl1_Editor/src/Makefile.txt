@@ -1,0 +1,4 @@
+CXX = g++ 
+CXXFLAGS = -O0 -g -std=c++11 -I/usr/local/include/freetype2/ -D CHOKO_LAIT -D PLATFORM_LNX -D GLEW_STATIC
+LDFLAGS = -Wl,-rpath='$$ORIGIN' -L/usr/lib -L/usr/local/lib -static-libstdc++
+LIBS = -L../lib -lpthread -lm -lGL -lGLEW -lglfw -ljpeg -lfreetype -lz

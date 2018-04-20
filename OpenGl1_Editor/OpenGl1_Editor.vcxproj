@@ -261,6 +261,7 @@ xcopy /y "$(SolutionDir)Debug\Library\include\*" "D:\TestProject2\System\"</Comm
     <ClCompile Include="src\EditorShortcuts.cpp" />
     <ClCompile Include="src\Engine.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\makegen.cpp" />
     <ClCompile Include="src\scene\comp\animator.cpp" />
     <ClCompile Include="src\scene\comp\armature.cpp" />
     <ClCompile Include="src\scene\comp\arrayrenderer.cpp" />
@@ -329,6 +330,7 @@ xcopy /y "$(SolutionDir)Debug\Library\include\*" "D:\TestProject2\System\"</Comm
     <ClInclude Include="src\core\input.h" />
     <ClInclude Include="src\core\io.h" />
     <ClInclude Include="src\core\mvp.h" />
+    <ClInclude Include="src\makegen.h" />
     <ClInclude Include="src\scene\comp\animator.h" />
     <ClInclude Include="src\scene\comp\armature.h" />
     <ClInclude Include="src\scene\comp\arrayrenderer.h" />
