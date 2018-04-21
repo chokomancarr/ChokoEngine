@@ -88,8 +88,8 @@ void MeshRenderer::Refresh() {
 		_materials.clear();
 	}
 	else {
-		Ref<Material> emt;
-		materials.resize(mf->mesh->materialCount, emt);
+		//Ref<Material> emt;
+		materials.resize(mf->mesh->materialCount);// , emt);
 		_materials.resize(mf->mesh->materialCount, -1);
 	}
 }

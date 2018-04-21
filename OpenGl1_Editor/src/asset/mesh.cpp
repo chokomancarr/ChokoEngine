@@ -173,6 +173,11 @@ Mesh::Mesh(string p) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0
 	char cc;
 	stream.read(&cc, 1);
 
+	byte b;
+	string s;
+	Vec2 v2;
+	Vec3 v3;
+
 	//std::cout << path << std::endl;
 	while (cc != 0 && !stream.eof()) {
 		switch (cc) {
@@ -184,15 +189,14 @@ Mesh::Mesh(string p) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0
 			uv1.reserve(vertexCount);
 			vertexGroups.reserve(vertexCount);
 			for (uint vc = 0; vc < vertexCount; vc++) {
-				Vec3 v;
-				_Strm2Val(stream, v.x);
-				_Strm2Val(stream, v.y);
-				_Strm2Val(stream, v.z);
-				vertices.push_back(v);
-				_Strm2Val(stream, v.x);
-				_Strm2Val(stream, v.y);
-				_Strm2Val(stream, v.z);
-				normals.push_back(v);
+				_Strm2Val(stream, v3.x);
+				_Strm2Val(stream, v3.y);
+				_Strm2Val(stream, v3.z);
+				vertices.push_back(v3);
+				_Strm2Val(stream, v3.x);
+				_Strm2Val(stream, v3.y);
+				_Strm2Val(stream, v3.z);
+				normals.push_back(v3);
 			}
 			break;
 		case 'F':
@@ -218,43 +222,56 @@ Mesh::Mesh(string p) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0
 			}
 			break;
 		case 'U':
-			byte c;
-			_Strm2Val(stream, c);
+			_Strm2Val(stream, b);
 			for (uint vc = 0; vc < vertexCount; vc++) {
-				Vec2 i;
-				_Strm2Val(stream, i.x);
-				_Strm2Val(stream, i.y);
-				uv0.push_back(i);
+				_Strm2Val(stream, v2.x);
+				_Strm2Val(stream, v2.y);
+				uv0.push_back(v2);
 			}
-			if (c > 1) {
+			if (b > 1) {
 				for (uint vc = 0; vc < vertexCount; vc++) {
-					Vec2 i;
-					_Strm2Val(stream, i.x);
-					_Strm2Val(stream, i.y);
-					uv1.push_back(i);
+					_Strm2Val(stream, v2.x);
+					_Strm2Val(stream, v2.y);
+					uv1.push_back(v2);
 				}
 			}
 			break;
 		case 'G':
-			byte d;
-			_Strm2Val(stream, d);
-			while (d > 0) {
-				char* cc = new char[100];
-				stream.getline(cc, 100, (char)0);
-				vertexGroups.push_back(string(cc));
-				d--;
+			_Strm2Val(stream, b);
+			while (b > 0) {
+				//char* cc = new char[100];
+				//stream.getline(cc, 100, char0);
+				//vertexGroups.push_back(string(cc));
+				std::getline(stream, s, char0);
+				vertexGroups.push_back(s);
+				b--;
 			}
 			vertexGroupWeights.resize(vertexCount);
 			for (uint vc = 0; vc < vertexCount; vc++) {
-				_Strm2Val(stream, d);
+				_Strm2Val(stream, b);
 				byte dd;
 				float ff;
-				vertexGroupWeights[vc].reserve(d);
-				while (d > 0) {
+				vertexGroupWeights[vc].reserve(b);
+				while (b > 0) {
 					_Strm2Val(stream, dd);
 					_Strm2Val(stream, ff);
 					vertexGroupWeights[vc].push_back(std::pair<byte, float>(dd, ff));
-					d--;
+					b--;
+				}
+			}
+			break;
+		case 'S':
+			_Strm2Val(stream, b);
+			shapekeys.resize(b);
+			for (byte a = 0; a < b; a++) {
+				std::getline(stream, s, char0);
+				shapekeys[a].first = s;
+				shapekeys[a].second.resize(vertexCount);
+				for (uint i = 0; i < vertexCount; i++) {
+					_Strm2Val(stream, v3.x);
+					_Strm2Val(stream, v3.y);
+					_Strm2Val(stream, v3.z);
+					shapekeys[a].second[i] = v3;
 				}
 			}
 			break;

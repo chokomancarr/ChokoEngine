@@ -29,9 +29,6 @@ string Input::_inputString = "";
 void Input::RegisterCallbacks() {
 	glfwSetInputMode(Display::window, GLFW_STICKY_KEYS, 1);
 	glfwSetCharCallback(Display::window, TextCallback);
-#ifdef IS_EDITOR
-	glfwSetCharCallback(PopupSelector::window, TextCallback);
-#endif
 }
 
 void Input::TextCallback(GLFWwindow* w, uint i) {

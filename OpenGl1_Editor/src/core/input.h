@@ -36,6 +36,9 @@ public:
 
 	friend class Engine;
 	friend struct Editor_PlaySyncer;
+#ifdef IS_EDITOR
+	friend class PopupSelector;
+#endif
 protected:
 	static void RegisterCallbacks(), TextCallback(GLFWwindow*, uint);
 	static bool keyStatusOld[325], keyStatusNew[325];

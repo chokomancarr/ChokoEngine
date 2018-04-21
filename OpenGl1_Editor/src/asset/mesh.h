@@ -13,6 +13,7 @@ public:
 	std::vector<Vec2> uv0, uv1;
 	std::vector<std::vector<std::pair<byte, float>>> vertexGroupWeights;
 	std::vector<string> vertexGroups;
+	std::vector<std::pair<string, std::vector<Vec3>>> shapekeys;
 	BBox boundingBox;
 
 	uint vertexCount, triangleCount, materialCount;

@@ -1,4 +1,5 @@
 import bpy
+import bmesh
 import os
 import sys
 import struct
@@ -61,6 +62,14 @@ class KTMExporter():
                 scll = obj.scale
                 self.write(file2, " \x00scl {:f} {:f} {:f}\n".format(scll[0], scll[2], scll[1]))
                 
+                
+                bm = bmesh.new();
+                bm.from_mesh(obj.to_mesh(bpy.context.scene, False, 'PREVIEW'));
+                bpy.context.scene.objects.active = obj
+                if bm.verts.layers.shape.keys():
+                    obj.modifiers.clear()
+                    #bpy.ops.object.shape_key_remove(all=True) #shape keys will be ignored when calling to_mesh(,True,)
+                
                 print ("!writing to: " + dirr + name + "_blend\\" + obj.name + ".mesh.meta")
                 file = open(dirr + name + "_blend\\" + obj.name + ".mesh.meta", "wb")
                 obj.modifiers.new("EdgeSplit", 'EDGE_SPLIT')
@@ -68,45 +77,103 @@ class KTMExporter():
                 obj.modifiers["EdgeSplit"].use_edge_sharp = True
                 obj.modifiers.new("Triangulate", 'TRIANGULATE')
                 m = obj.to_mesh(bpy.context.scene, True, 'PREVIEW') #struct.pack("<i", len(m.loops))
-                self.write(file, "KTO123" + obj.name + "\x00V") #V size4 [vert4+norm4 array] F size4 [3xface4 array] (U size1 [uv02 array] (uv12 array)) 
-                file.write(struct.pack("<i", len(m.loops)))
-                for loop in m.loops:
-                    vert = m.vertices[loop.vertex_index]
-                    #self.write(file, "    vrt {} {:f} {:f} {:f}\r\n".format(loop.index, vert.co[0], vert.co[2], vert.co[1]))
-                    file.write(struct.pack("<fff", vert.co[0], vert.co[2], vert.co[1]))
-                    #self.write(file, "    nrm {} {:f} {:f} {:f}\r\n".format(loop.index, vert.normal[0], vert.normal[2], vert.normal[1]))
-                    file.write(struct.pack("<fff", vert.normal[0], vert.normal[2], vert.normal[1]))
+                
+                #extract and clean vertex data
+                verts = m.vertices
+                vrts = [] #(vert_id, uv)
+                loop2vrt = [] #int
+                vrt2vert = [] #int
+                
+                if m.uv_layers:
+                    uid = 0
+                    vrtc = 0
+                    for uvl in m.uv_layers[0].data:
+                        pr = (m.loops[uid].vertex_index, uvl.uv)
+                        try:
+                            vid = vrts.index(pr)
+                        except ValueError:
+                            vrts.append(pr)
+                            loop2vrt.append(vrtc)
+                            vrt2vert.append(pr[0])
+                        else:
+                            loop2vrt.append(vid)
+                        uid = uid + 1
+                
+                vrtsz = len(vrts)
+                
+                #write data
+                self.write(file, "KTO123" + obj.name + "\x00V") #V size4 [vert4+norm4 array] F size4 [3xface4 array] (U size1 [uv02 array] (uv12 array))
+                file.write(struct.pack("<i", vrtsz))
+                for vrt in vrts:
+                    v = verts[vrt[0]]
+                    file.write(struct.pack("<fff", v.co[0], v.co[1], v.co[2]))
+                    file.write(struct.pack("<fff", v.normal[0], v.normal[1], v.normal[2]))
+                
                 self.write(file, "F")
                 file.write(struct.pack("<i", len(m.polygons)))
                 for poly in m.polygons:
-                    #self.write(file, "    tri {} ".format(poly.material_index))
-                    #for loop_index in poly.loop_indices:
-                    #self.write(file, " {} {} {}".format(poly.loop_indices[0], poly.loop_indices[2], poly.loop_indices[1]))
-                    #self.write(file, "\r\n")
                     file.write(struct.pack("<B", poly.material_index))
-                    file.write(struct.pack("<iii", poly.loop_indices[0], poly.loop_indices[2], poly.loop_indices[1]))
-                if len(m.uv_layers) > 0:
+                    file.write(struct.pack("<iii", loop2vrt[poly.loop_indices[0]], loop2vrt[poly.loop_indices[2]], loop2vrt[poly.loop_indices[1]]))
+                
+                #if m.uv_layers:
+                #    self.write(file, "U")
+                #    file.write(struct.pack("<B", 1))
+                #    for uvl in m.uv_layers[0].data:
+                #        file.write(struct.pack("<ff", uvl.uv[0], uvl.uv[1]))
+                if m.uv_layers:
                     self.write(file, "U")
-                    file.write(struct.pack("<B", len(m.uv_layers)))
-                    for uvl in m.uv_layers[0].data:
-                        file.write(struct.pack("<ff", uvl.uv[0], uvl.uv[1]))
-                    if len(m.uv_layers) > 1:
-                        for uvl in m.uv_layers[1].data:
-                            file.write(struct.pack("<ff", uvl.uv[0], uvl.uv[1]))
+                    file.write(struct.pack("<B", 1))
+                    for v in vrts:
+                        file.write(struct.pack("<ff", v[1][0], v[1][1]))
+                
+                
                 #G groupSz1 [groupName NULL] (for each vert)[groupSz1 [groupId1 groupWeight4]]
                 self.write(file, "G")
                 file.write(struct.pack("<B", len(obj.vertex_groups)))
                 for grp in obj.vertex_groups:
                     self.write(file, grp.name + "\x00")
-                for loop in m.loops:
-                    vert = m.vertices[loop.vertex_index]
+                for vrt in vrts:
+                    vert = verts[vrt[0]]
                     file.write(struct.pack("<B", len(vert.groups)))
                     for grp in vert.groups:
                         file.write(struct.pack("<Bf", grp.group, grp.weight))
                 
-                #if obj.type == 'MESH' and m.shape_keys:
-                #    for block in m.shape_keys.key_blocks:
-                #        self.write(file, "    shp " + block.name + "\r\n")
+                if len(bm.verts.layers.shape.keys()) > 1:
+                    isFirst = True
+                    self.write(file, "S")
+                    file.write(struct.pack("<B", len(bm.verts.layers.shape.keys()) - 1))
+                    bm.verts.ensure_lookup_table()
+                    
+                    vert2bvt = []
+                    for v2 in verts:
+                        i = 0
+                        for v in bm.verts:
+                            if v2.co == v.co:
+                                vert2bvt.append(i)
+                                break
+                            i = i + 1
+                    
+                    for key in bm.verts.layers.shape.keys():
+                        if isFirst:
+                            isFirst = False
+                        else:
+                            #lid = 0
+                            val = bm.verts.layers.shape.get(key)
+                            print("  key %s" % (key))
+                            self.write(file, key + "\x00")
+                            #sk=obj.data.shape_keys.key_blocks[key]
+                            #print("   v=%f, f=%f" % (sk.value, sk.frame))
+                            #for v in bm.verts:
+                            #    delta = v[val] - v.co
+                            #    file.write(struct.pack("<fff", delta[0], delta[2], delta[1]))
+                                #if (delta.length > 0):
+                                #print ("    %i = %s" % (lid, delta))
+                                #lid = lid+1
+                            for vt in vrt2vert:
+                                v = bm.verts[vert2bvt[vt]]
+                                delta = v[val] - v.co
+                                file.write(struct.pack("<fff", delta[0], delta[2], delta[1]))
+                    
                 file.close()
             elif obj.type == "ARMATURE":
                 self.export_arm(file2, obj, dirr, name)

@@ -1922,6 +1922,7 @@ void PopupSelector::Init() {
 	InitVaoF();
 
 	mainWindow = Display::window;
+	glfwSetCharCallback(window, Input::TextCallback);
 }
 
 void PopupSelector::InitVao() {
