@@ -27,25 +27,13 @@ void MeshRenderer::DrawDeferred(GLuint shader) {
 	MeshFilter* mf = (MeshFilter*)dependacyPointers[0].raw();
 	if (!mf->mesh || !mf->mesh->loaded)
 		return;
-	//glEnableClientState(GL_VERTEX_ARRAY);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glEnable(GL_CULL_FACE);
-	//glVertexPointer(3, GL_FLOAT, 0, &(mf->mesh->vertices[0]));
-	//glLineWidth(1);
 	Mat4x4 m1 = MVP::modelview();
 	Mat4x4 m2 = MVP::projection();
 
 	glBindVertexArray(mf->mesh->vao);
-	/*
-	glEnableVertexAttribArray(0);
-	glEnableVertexAttribArray(1);
-	glEnableVertexAttribArray(2);
-	glEnableVertexAttribArray(3);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->vertices[0]));
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->uv0[0]));
-	glVertexAttribPointer(2, 3, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->normals[0]));
-	glVertexAttribPointer(3, 3, GL_FLOAT, GL_TRUE, 0, &(mf->mesh->tangents[0]));
-	*/
+
 	for (uint m = 0; m < mf->mesh->materialCount; m++) {
 		if (!materials[m])
 			continue;
@@ -55,17 +43,11 @@ void MeshRenderer::DrawDeferred(GLuint shader) {
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mf->mesh->_matIndicesBuffers[m]);
 		glDrawElements(GL_TRIANGLES, mf->mesh->_matTriangles[m].size(), GL_UNSIGNED_INT, 0);
 		//glDrawElements(GL_TRIANGLES, mf->mesh->_matTriangles[m].size(), GL_UNSIGNED_INT, &mf->mesh->_matTriangles[m][0]);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	}
-	/*
-	glDisableVertexAttribArray(0);
-	glDisableVertexAttribArray(1);
-	glDisableVertexAttribArray(2);
-	glDisableVertexAttribArray(3);
-	*/
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
 	glUseProgram(0);
 	glBindVertexArray(0);
-	//glDisableClientState(GL_VERTEX_ARRAY);
 	glDisable(GL_CULL_FACE);
 }
 

@@ -60,6 +60,8 @@ public:
 	void SetArray(string name, void* val, uint cnt);
 
 	void Dispatch(uint cx, uint cy, uint xz);
+
+	friend class SkinnedMeshRenderer;
 protected:
 	std::vector<std::pair<GLuint, IComputeBuffer*>> buffers;
 

@@ -15,6 +15,7 @@ public:
 	void DrawInspector(Editor* e, Component* c, Vec4 v, uint& pos) override;
 	void Serialize(Editor* e, std::ofstream* stream) override {}
 	//void Refresh() override;
+	bool expandShapekeys = false;
 #endif
 	friend class Engine;
 	friend class Editor;
@@ -38,6 +39,7 @@ protected:
 	bool overwriteWriteMask = false;
 	std::vector<bool> writeMask;
 	bool showBoundingBox = false;
+	float shapekeyWeights[64];
 
 	struct SkinDats {
 		SkinDats() {
@@ -54,11 +56,16 @@ protected:
 	ComputeBuffer<Vec4>*skinBufPossO, *skinBufNrmsO;
 	ComputeBuffer<SkinDats>* skinBufDats;
 	ComputeBuffer<Mat4x4>* skinBufMats;
+	ComputeBuffer<Vec4>* skinBufShps;
+	ComputeBuffer<float>* skinBufShpWs;
 	static ComputeShader* skinningProg;
 	uint skinDispatchGroups;
 
+	GLuint vao;
+
 	static void InitSkinning();
 	void Skin();
+	void InitVao();
 
 	void SetMesh(int i);
 	static void _UpdateMesh(void* i);

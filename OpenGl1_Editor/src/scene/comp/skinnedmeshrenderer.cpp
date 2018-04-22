@@ -30,9 +30,9 @@ void SkinnedMeshRenderer::mesh(Mesh* m) {
 
 void SkinnedMeshRenderer::InitWeights() {
 	std::vector<uint> noweights;
-	weights.clear();
+	//weights.clear();
 	auto bsz = armature->_allbones.size();
-	weights.resize(_mesh->vertexCount);
+	weights = std::vector<std::array<std::pair<ArmatureBone*, float>, 4>>(_mesh->vertexCount);
 	std::vector<SkinDats> dats(_mesh->vertexCount);
 	for (uint i = 0; i < _mesh->vertexCount; i++) {
 		byte a = 0;
@@ -70,6 +70,10 @@ void SkinnedMeshRenderer::InitWeights() {
 		delete(skinBufNrmsO);
 		delete(skinBufDats);
 		delete(skinBufMats);
+		if (skinBufShps) {
+			delete(skinBufShps);
+			delete(skinBufShpWs);
+		}
 	}
 	skinBufPoss = new ComputeBuffer<Vec4>(_mesh->vertexCount);
 	skinBufNrms = new ComputeBuffer<Vec4>(_mesh->vertexCount);
@@ -80,6 +84,16 @@ void SkinnedMeshRenderer::InitWeights() {
 	skinBufPoss->Set(&_mesh->vertices[0].x, sizeof(Vec4), sizeof(Vec3));
 	skinBufNrms->Set(&_mesh->normals[0].x, sizeof(Vec4), sizeof(Vec3));
 	skinBufDats->Set(&dats[0]);
+	if (!!_mesh->shapekeyCount) {
+		skinBufShps = new ComputeBuffer<Vec4>(_mesh->vertexCount * _mesh->shapekeyCount);
+		Vec3* keys = new Vec3[_mesh->vertexCount * _mesh->shapekeyCount];
+		for (byte b = 0; b < _mesh->shapekeyCount; b++) {
+			memcpy(keys + (_mesh->vertexCount * b), &_mesh->shapekeys[b].second[0], _mesh->vertexCount * sizeof(Vec3));
+		}
+		skinBufShps->Set(keys, sizeof(Vec4), sizeof(Vec3));
+		memset(shapekeyWeights, 0, 64 * 4);
+		skinBufShpWs = new ComputeBuffer<float>(64, shapekeyWeights);
+	}
 	skinDispatchGroups = (uint)ceilf(((float)_mesh->vertexCount) / SKINNED_THREADS_PER_GROUP);
 
 	if (!!noweights.size())
@@ -91,14 +105,16 @@ void SkinnedMeshRenderer::DrawDeferred(GLuint shader) {
 		return;
 	Skin();
 
-	glEnableClientState(GL_VERTEX_ARRAY);
+	//glEnableClientState(GL_VERTEX_ARRAY);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glEnable(GL_CULL_FACE);
-	glVertexPointer(3, GL_FLOAT, 0, &(_mesh->vertices[0]));
-	glLineWidth(1);
+	//glEnable(GL_CULL_FACE);
+	glDisable(GL_CULL_FACE);
+	//glVertexPointer(3, GL_FLOAT, 0, &(_mesh->vertices[0]));
+	//glLineWidth(1);
 	Mat4x4 m1 = MVP::modelview();
 	Mat4x4 m2 = MVP::projection();
 
+	/*
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
 	glEnableVertexAttribArray(2);
@@ -110,20 +126,30 @@ void SkinnedMeshRenderer::DrawDeferred(GLuint shader) {
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glVertexAttribPointer(3, 3, GL_FLOAT, GL_TRUE, 0, &(_mesh->tangents[0]));
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 0, &(_mesh->uv0[0]));
+	*/
+	glBindVertexArray(vao);
+
 	for (uint m = 0; m < _mesh->materialCount; m++) {
 		if (!materials[m])
 			continue;
 		if (shader == 0) materials[m]->ApplyGL(m1, m2);
 		else glUseProgram(shader);
-		glDrawElements(GL_TRIANGLES, _mesh->_matTriangles[m].size(), GL_UNSIGNED_INT, &(_mesh->_matTriangles[m][0]));
+
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _mesh->_matIndicesBuffers[m]);
+		glDrawElements(GL_TRIANGLES, _mesh->_matTriangles[m].size(), GL_UNSIGNED_INT, 0);
+		//glDrawElements(GL_TRIANGLES, _mesh->_matTriangles[m].size(), GL_UNSIGNED_INT, &(_mesh->_matTriangles[m][0]));
 	}
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+	/*
 	glDisableVertexAttribArray(0);
 	glDisableVertexAttribArray(1);
 	glDisableVertexAttribArray(2);
 	glDisableVertexAttribArray(3);
+	*/
 
 	glUseProgram(0);
-	glDisableClientState(GL_VERTEX_ARRAY);
+	//glDisableClientState(GL_VERTEX_ARRAY);
 	glDisable(GL_CULL_FACE);
 }
 
@@ -137,16 +163,63 @@ void SkinnedMeshRenderer::Skin() {
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, skinBufNrms->pointer);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, skinBufDats->pointer);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, skinBufMats->pointer);
+	if (!!_mesh->shapekeyCount) {
+		skinBufShpWs->Set(shapekeyWeights);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 8, skinBufShps->pointer);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 9, skinBufShpWs->pointer);
+	}
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 10, skinBufPossO->pointer);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 11, skinBufNrmsO->pointer);
-	skinningProg->Dispatch(skinDispatchGroups, 1, 1);
+	//skinningProg->Dispatch(skinDispatchGroups, 1, 1);
+	glUseProgram(skinningProg->pointer);
+	//auto l = glGetUniformLocation(skinningProg->pointer, "params");
+	glUniform4i(1, _mesh->vertexCount, _mesh->shapekeyCount, 0, 0);
+	glDispatchCompute(skinDispatchGroups, 1, 1);
+	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+	glUseProgram(0);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, 0);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, 0);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, 0);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, 0);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 8, 0);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 9, 0);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 10, 0);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 11, 0);
+}
 
+void SkinnedMeshRenderer::InitVao() {
+	if (vao) {
+		glDeleteVertexArrays(1, &vao);
+	}
+	glGenVertexArrays(1, &vao);
+	glBindVertexArray(vao);
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glEnableVertexAttribArray(2);
+	glEnableVertexAttribArray(3);
+	glBindBuffer(GL_ARRAY_BUFFER, skinBufPossO->pointer);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vec4), 0);
+	glBindBuffer(GL_ARRAY_BUFFER, _mesh->vbos[1]);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, 0);
+	glBindBuffer(GL_ARRAY_BUFFER, skinBufNrmsO->pointer);
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vec4), NULL);
+	glBindBuffer(GL_ARRAY_BUFFER, _mesh->vbos[3]);
+	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+	/*
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, skinBufPossO->pointer);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, skinBufPossO->pointer);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+	glBindBuffer(GL_ARRAY_BUFFER, _mesh->vbos[2]);
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+	glBindBuffer(GL_ARRAY_BUFFER, _mesh->vbos[3]);
+	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+	*/
 }
 
 void SkinnedMeshRenderer::SetMesh(int i) {
@@ -165,6 +238,7 @@ void SkinnedMeshRenderer::SetMesh(int i) {
 		materials.resize(_mesh->materialCount, nullptr);
 		_materials.resize(_mesh->materialCount, -1);
 	}
+	InitVao();
 }
 
 void SkinnedMeshRenderer::_UpdateMesh(void* i) {
@@ -204,6 +278,20 @@ void SkinnedMeshRenderer::DrawInspector(Editor* e, Component* c, Vec4 v, uint& p
 		else {
 			UI::Label(v.r + 2, v.g + pos, 12, "Materials: " + std::to_string(_mesh->materialCount), e->font, white());
 			pos += 17;
+			if (!!_mesh->shapekeyCount) {
+				if (Engine::EButton(e->editorLayer == 0, v.r + 5, v.g + pos, 16, 16, expandShapekeys ? e->tex_collapse : e->tex_expand, white()) == MOUSE_RELEASE) {
+					expandShapekeys = !expandShapekeys;
+				}
+				UI::Label(v.r + 22, v.g + pos, 12, "Shape Keys", e->font, white());
+				pos += 17;
+				if (expandShapekeys) {
+					for (byte ea = 0; ea < _mesh->shapekeyCount; ea++) {
+						UI::Label(v.r + 22, v.g + pos, 12, _mesh->shapekeys[ea].first, e->font, white());
+						shapekeyWeights[ea] = Engine::DrawSliderFill(v.r + v.b * 0.3f + 22, v.g + pos, v.b * 0.7f - 23, 16, 0, 1, shapekeyWeights[ea], grey2(), white());
+						pos += 17;
+					}
+				}
+			}
 			for (uint a = 0; a < _mesh->materialCount; a++) {
 				UI::Label(v.r + 2, v.g + pos, 12, "Material " + std::to_string(a), e->font, white());
 				e->DrawAssetSelector(v.r + v.b * 0.3f, v.g + pos, v.b*0.7f, 16, grey1(), ASSETTYPE_MATERIAL, 12, e->font, &_materials[a], &_UpdateMat, this);

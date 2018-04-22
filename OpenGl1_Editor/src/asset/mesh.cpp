@@ -152,7 +152,7 @@ Mesh::Mesh(std::istream& stream, uint offset) : AssetObject(ASSETTYPE_MESH), loa
 	}
 }
 
-Mesh::Mesh(string p) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0), triangleCount(0), materialCount(0) {
+Mesh::Mesh(string p) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0), triangleCount(0), materialCount(0), shapekeyCount(0) {
 	F2ISTREAM(stream, p);
 	if (!stream.good()) {
 		std::cout << "mesh file not found!" << std::endl;
@@ -261,9 +261,9 @@ Mesh::Mesh(string p) : AssetObject(ASSETTYPE_MESH), loaded(false), vertexCount(0
 			}
 			break;
 		case 'S':
-			_Strm2Val(stream, b);
-			shapekeys.resize(b);
-			for (byte a = 0; a < b; a++) {
+			_Strm2Val(stream, shapekeyCount);
+			shapekeys.resize(shapekeyCount);
+			for (byte a = 0; a < shapekeyCount; a++) {
 				std::getline(stream, s, char0);
 				shapekeys[a].first = s;
 				shapekeys[a].second.resize(vertexCount);
@@ -467,7 +467,6 @@ void Mesh::InitVao() {
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, NULL);
 	glBindBuffer(GL_ARRAY_BUFFER, vbos[1]);
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, NULL);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindBuffer(GL_ARRAY_BUFFER, vbos[2]);
 	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, NULL);
 	glBindBuffer(GL_ARRAY_BUFFER, vbos[3]);

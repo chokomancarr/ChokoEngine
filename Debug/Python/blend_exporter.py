@@ -95,6 +95,7 @@ class KTMExporter():
                             vrts.append(pr)
                             loop2vrt.append(vrtc)
                             vrt2vert.append(pr[0])
+                            vrtc = vrtc + 1
                         else:
                             loop2vrt.append(vid)
                         uid = uid + 1
@@ -106,8 +107,8 @@ class KTMExporter():
                 file.write(struct.pack("<i", vrtsz))
                 for vrt in vrts:
                     v = verts[vrt[0]]
-                    file.write(struct.pack("<fff", v.co[0], v.co[1], v.co[2]))
-                    file.write(struct.pack("<fff", v.normal[0], v.normal[1], v.normal[2]))
+                    file.write(struct.pack("<fff", v.co[0], v.co[2], v.co[1]))
+                    file.write(struct.pack("<fff", v.normal[0], v.normal[2], v.normal[1]))
                 
                 self.write(file, "F")
                 file.write(struct.pack("<i", len(m.polygons)))
@@ -115,11 +116,6 @@ class KTMExporter():
                     file.write(struct.pack("<B", poly.material_index))
                     file.write(struct.pack("<iii", loop2vrt[poly.loop_indices[0]], loop2vrt[poly.loop_indices[2]], loop2vrt[poly.loop_indices[1]]))
                 
-                #if m.uv_layers:
-                #    self.write(file, "U")
-                #    file.write(struct.pack("<B", 1))
-                #    for uvl in m.uv_layers[0].data:
-                #        file.write(struct.pack("<ff", uvl.uv[0], uvl.uv[1]))
                 if m.uv_layers:
                     self.write(file, "U")
                     file.write(struct.pack("<B", 1))

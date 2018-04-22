@@ -17,6 +17,7 @@ public:
 	BBox boundingBox;
 
 	uint vertexCount, triangleCount, materialCount;
+	byte shapekeyCount;
 
 	void RecalculateBoundingBox();
 
