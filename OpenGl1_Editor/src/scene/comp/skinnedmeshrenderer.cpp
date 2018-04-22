@@ -140,6 +140,7 @@ void SkinnedMeshRenderer::DrawDeferred(GLuint shader) {
 		//glDrawElements(GL_TRIANGLES, _mesh->_matTriangles[m].size(), GL_UNSIGNED_INT, &(_mesh->_matTriangles[m][0]));
 	}
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
 
 	/*
 	glDisableVertexAttribArray(0);
